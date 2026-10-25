@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f66e8">
+<link rel="manifest" href="manifest.webmanifest">
+<title>単語帳</title>
+<style>
+:root{--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--border:#d9e1ec;--accent:#2f66e8;--soft:#edf2f8;--green:#2e9d57}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif}
+.wrap{width:min(820px,calc(100% - 24px));margin:24px auto 54px}h1{margin:0 0 18px;font-size:clamp(32px,5vw,48px)}
+button,input,textarea{font:inherit}button{cursor:pointer;border:0}.topbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.btn{padding:10px 14px;border-radius:12px;background:var(--soft);color:var(--text)}.status{display:flex;justify-content:space-between;margin:0 4px 10px;color:var(--muted);font-size:15px}
+.nav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:min(670px,100%);margin:0 auto 18px}
+.nav button{min-height:54px;border-radius:16px;background:#fff;border:1px solid var(--border);color:var(--text);font-weight:800;font-size:17px}
+.nav .mode{background:var(--accent);border-color:var(--accent);color:#fff}.nav .mode.normal{background:var(--green);border-color:var(--green)}
+.stage{min-height:360px;display:flex;align-items:center;justify-content:center}.card{width:min(670px,100%);height:360px;position:relative;cursor:pointer}
+.face{position:absolute;inset:0;border:1px solid var(--border);border-radius:28px;background:#fff;box-shadow:0 18px 45px rgba(31,41,55,.08);display:flex;align-items:center;justify-content:center;text-align:center;padding:64px 22px 70px;overflow:hidden}
+.back{display:none;background:#f9fbff}.card.show-back .front{display:none}.card.show-back .back{display:flex}
+.face-label{position:absolute;top:26px;left:34px;color:var(--muted);font-size:16px;font-weight:800}
+.card-text{font-size:clamp(28px,5.2vw,46px);font-weight:850;line-height:1.3;overflow-wrap:anywhere;white-space:pre-wrap}
+.back .card-text{width:100%;font-size:clamp(18px,2.8vw,24px);font-weight:700;text-align:center}
+.back.multiline .card-text{display:inline-block;width:auto;max-width:26em;margin:0 auto;text-align:left}
+.back.size-medium .card-text{font-size:20px;line-height:1.45}.back.size-small .card-text{font-size:17px;line-height:1.42}.back.size-xsmall .card-text{font-size:14px;line-height:1.38}
+.back.longtext{align-items:flex-start;overflow-y:auto;padding-top:72px;padding-bottom:34px}.back.longtext .card-text{margin-top:auto;margin-bottom:auto}
+.card-actions{position:absolute;top:22px;right:24px;z-index:5;display:flex;gap:8px}.small{padding:8px 12px;border-radius:11px;background:rgba(255,255,255,.96);border:1px solid var(--border);color:var(--text);font-weight:700}
+.small.add{color:var(--accent);border-color:#bfd0fb;background:#f4f7ff}.small.save{background:var(--accent);border-color:var(--accent);color:#fff}
+.card-number{position:absolute;right:24px;top:76px;z-index:4;color:#aeb7c4;opacity:.65;font-size:13px;pointer-events:none}
+.editor{width:100%;min-height:150px;border:0;outline:0;resize:none;background:transparent;text-align:center;color:var(--text);font-size:clamp(28px,5.2vw,46px);font-weight:850;line-height:1.3;padding:0;font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto}
+.back .editor{font-size:clamp(18px,2.8vw,24px);font-weight:700;text-align:center}.back.multiline .editor{width:26em;max-width:90%;margin:0 auto;text-align:left}
+.back.size-medium .editor{font-size:20px;line-height:1.45}.back.size-small .editor{font-size:17px;line-height:1.42}.back.size-xsmall .editor{font-size:14px;line-height:1.38}
+.empty{width:min(670px,100%);min-height:300px;border:1px dashed var(--border);border-radius:28px;background:#fff;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px}
+.empty strong{color:var(--text);font-size:22px}.hint{margin-top:12px;text-align:center;color:var(--muted);font-size:13px}
+@media(max-width:560px){.wrap{margin-top:16px}.card{height:320px}.face{padding:62px 18px 64px}.face-label{left:20px;top:22px}.card-actions{right:16px;top:16px}.card-number{right:18px;top:72px}.nav{gap:7px}.nav button{font-size:15px;min-height:48px}.topbar .btn{font-size:14px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+<h1>単語帳</h1>
+<div class="topbar">
+<button id="exportBtn" class="btn">データ保存</button>
+<button id="importBtn" class="btn">データ読込</button><input id="importFile" type="file" accept=".json,application/json" hidden>
+<button id="excelBtn" class="btn">Excel追加</button><input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden>
+</div>
+<div class="status"><span id="countText">0件</span><span></span></div>
+<div class="nav">
+<button id="prevBtn">← 戻る</button><button id="modeBtn" class="mode normal">通常</button><button id="nextBtn">次へ →</button>
+</div>
+<div id="stage" class="stage"></div>
+<div class="hint">カードをクリックすると表・裏が切り替わります。</div>
+</div>
+<script>
+const KEY="simple_vocab_cards_v1";
+let cards=loadCards(),order=cards.map((_,i)=>i),pos=0,editing=false,isShuffled=false;
+const stage=document.getElementById("stage"),countText=document.getElementById("countText");
+function loadCards(){try{const d=JSON.parse(localStorage.getItem(KEY));return Array.isArray(d)?d.filter(x=>x&&typeof x.word==="string"&&typeof x.meaning==="string"):[]}catch{return[]}}
+function saveCards(){localStorage.setItem(KEY,JSON.stringify(cards))}
+function rebuildOrder(){order=cards.map((_,i)=>i);pos=Math.min(pos,Math.max(0,order.length-1));isShuffled=false;updateMode()}
+function currentIndex(){return order.length?order[pos]:-1}
+function updateMode(){const b=document.getElementById("modeBtn");b.textContent=isShuffled?"シャッフル":"通常";b.classList.toggle("normal",!isShuffled)}
+function updateNav(){const d=!cards.length||editing;prevBtn.disabled=d;nextBtn.disabled=d;modeBtn.disabled=cards.length<2||editing;[prevBtn,nextBtn,modeBtn].forEach(b=>{b.style.opacity=b.disabled?".45":"1"})}
+function applyBackClasses(back,text){const n=text.length;back.classList.toggle("multiline",text.includes("\n"));back.classList.toggle("size-medium",n>160&&n<=300);back.classList.toggle("size-small",n>300&&n<=500);back.classList.toggle("size-xsmall",n>500);back.classList.toggle("longtext",n>160)}
+function render(){editing=false;stage.innerHTML="";countText.textContent=cards.length+"件";if(!cards.length){const e=document.createElement("div");e.className="empty";e.innerHTML="<strong>カードがありません</strong><div>カードを追加してください。</div>";const b=document.createElement("button");b.className="btn";b.textContent="＋ カード追加";b.onclick=showDraft;e.appendChild(b);stage.appendChild(e);updateNav();updateMode();return}renderCard(cards[currentIndex()]);updateNav();updateMode()}
+function renderCard(item){
+ const idx=currentIndex(),card=document.createElement("article");card.className="card";
+ const front=document.createElement("div");front.className="face front";const back=document.createElement("div");back.className="face back";
+ const fl=document.createElement("div");fl.className="face-label";fl.textContent="表・単語";const bl=document.createElement("div");bl.className="face-label";bl.textContent="裏・意味";
+ const ft=document.createElement("div");ft.className="card-text";ft.textContent=item.word;const bt=document.createElement("div");bt.className="card-text";bt.textContent=item.meaning;applyBackClasses(back,item.meaning);
+ front.append(fl,ft);back.append(bl,bt);card.append(front,back);
+ const actions=document.createElement("div");actions.className="card-actions";
+ const add=document.createElement("button");add.className="small add";add.textContent="＋追加";
+ const edit=document.createElement("button");edit.className="small";edit.textContent="編集";
+ const del=document.createElement("button");del.className="small";del.textContent="削除";
+ actions.append(add,edit,del);card.appendChild(actions);
+ const num=document.createElement("div");num.className="card-number";num.textContent=(pos+1)+" / "+cards.length;card.appendChild(num);stage.appendChild(card);
+ card.onclick=()=>{if(!editing)card.classList.toggle("show-back")};
+ add.onclick=e=>{e.stopPropagation();if(!editing)showDraft()};
+ edit.onclick=e=>{e.stopPropagation();if(editing){saveEdit()}else startEdit()};
+ del.onclick=e=>{e.stopPropagation();if(editing){render();return}if(confirm("「"+item.word+"」を削除しますか？")){cards.splice(idx,1);saveCards();rebuildOrder();if(pos>=order.length)pos=Math.max(0,order.length-1);render()}};
+ let fe=null,be=null;
+ function startEdit(){editing=true;fe=document.createElement("textarea");fe.className="editor";fe.value=item.word;be=document.createElement("textarea");be.className="editor";be.value=item.meaning;ft.replaceWith(fe);bt.replaceWith(be);applyBackClasses(back,be.value);be.oninput=()=>applyBackClasses(back,be.value);[fe,be].forEach(x=>x.onclick=e=>e.stopPropagation());edit.textContent="保存";edit.classList.add("save");del.textContent="取消";updateNav();setTimeout(()=>{(card.classList.contains("show-back")?be:fe).focus()},30)}
+ function saveEdit(){const w=fe.value.trim(),m=be.value.trim();if(!w||!m){alert("単語と意味の両方を入力してください。");return}cards[idx]={word:w,meaning:m};saveCards();render()}
+}
+function showDraft(){
+ editing=true;stage.innerHTML="";const card=document.createElement("article");card.className="card";const front=document.createElement("div");front.className="face front",back=document.createElement("div");back.className="face back";
+ const fl=document.createElement("div");fl.className="face-label";fl.textContent="表・単語";const bl=document.createElement("div");bl.className="face-label";bl.textContent="裏・意味";
+ const fe=document.createElement("textarea");fe.className="editor";fe.placeholder="単語を入力";const be=document.createElement("textarea");be.className="editor";be.placeholder="意味を入力";front.append(fl,fe);back.append(bl,be);card.append(front,back);
+ const a=document.createElement("div");a.className="card-actions";const s=document.createElement("button");s.className="small save";s.textContent="保存";const c=document.createElement("button");c.className="small";c.textContent="取消";a.append(s,c);card.appendChild(a);stage.appendChild(card);
+ be.oninput=()=>applyBackClasses(back,be.value);card.onclick=e=>{if(e.target!==fe&&e.target!==be)card.classList.toggle("show-back")};s.onclick=e=>{e.stopPropagation();const w=fe.value.trim(),m=be.value.trim();if(!w||!m){alert("単語と意味の両方を入力してください。");return}cards.push({word:w,meaning:m});saveCards();rebuildOrder();pos=cards.length-1;render()};c.onclick=e=>{e.stopPropagation();render()};updateNav();setTimeout(()=>fe.focus(),30)
+}
+prevBtn.onclick=()=>{if(!cards.length||editing)return;pos=(pos-1+order.length)%order.length;render()};
+nextBtn.onclick=()=>{if(!cards.length||editing)return;pos=(pos+1)%order.length;render()};
+modeBtn.onclick=()=>{if(cards.length<2||editing)return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()};
+exportBtn.onclick=()=>{const blob=new Blob([JSON.stringify(cards,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tangocho-data.json";a.click();URL.revokeObjectURL(u)};
+importBtn.onclick=()=>importFile.click();
+importFile.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d))throw 0;cards=d.filter(x=>x&&typeof x.word==="string"&&typeof x.meaning==="string").map(x=>({word:x.word.trim(),meaning:x.meaning.trim()})).filter(x=>x.word&&x.meaning);saveCards();rebuildOrder();pos=0;render()}catch{alert("読み込めないファイルです。")}e.target.value=""};
+excelBtn.onclick=()=>excelFile.click();
+excelFile.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{let rows=[];if(f.name.toLowerCase().endsWith(".csv")){rows=(await f.text()).split(/\r?\n/).filter(Boolean).map(r=>r.split(","))}else{if(typeof XLSX==="undefined")throw 0;const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:""})}if(!rows.length)throw 0;const a=String(rows[0]?.[0]??"").trim().toLowerCase(),b=String(rows[0]?.[1]??"").trim().toLowerCase();if(["単語","表","word","front","問題"].includes(a)||["意味","裏","meaning","back","答え"].includes(b))rows=rows.slice(1);const added=rows.map(r=>({word:String(r?.[0]??"").trim(),meaning:String(r?.[1]??"").trim()})).filter(x=>x.word&&x.meaning);if(!added.length){alert("A列に単語、B列に意味を入力してください。");return}cards.push(...added);saveCards();rebuildOrder();pos=Math.max(0,cards.length-added.length);render();alert(added.length+"枚のカードを追加しました。")}catch{alert("Excelファイルを読み込めませんでした。")}e.target.value=""};
+rebuildOrder();render();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
+</script>
+</body></html>
