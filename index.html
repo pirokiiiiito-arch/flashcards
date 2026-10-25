@@ -68,7 +68,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0}.topbar{displa
       <input id="syncPassword" type="password" autocomplete="current-password" placeholder="パスワード（6文字以上）">
       <div class="sync-row">
         <button id="loginBtn" class="btn" type="button">ログイン</button>
-        <button id="signupBtn" class="btn" type="button">新規登録</button>
+        <button id="signupBtn" class="btn" type="button">新規登録</button>\n        <button id="resendBtn" class="btn" type="button">確認メール再送</button>
       </div>
     </div>
     <div id="signedInBox" style="display:none">
@@ -185,7 +185,7 @@ async function signUp(){
   if(!email||password.length<6){setSyncMsg("メールアドレスと6文字以上のパスワードを入力してください。");return}
   try{
     setSyncMsg("登録中…");
-    const data=await rawAuth("/auth/v1/signup",{email,password});
+    const data=await rawAuth("/auth/v1/signup?redirect_to="+encodeURIComponent("https://pirokiiiiito-arch.github.io/flashcards/"),{email,password});
     if(data.access_token){
       saveSession(normalizeSession(data));
       await afterLogin();
@@ -213,7 +213,22 @@ async function signOut(){
   }catch{}
   stopSyncLoop();saveSession(null);setSyncMsg("ログアウトしました。");
 }
-loginBtn.onclick=signIn;signupBtn.onclick=signUp;logoutBtn.onclick=signOut;
+async function resendConfirmation(){
+  const email=syncEmail.value.trim();
+  if(!email){setSyncMsg("メールアドレスを入力してください。");return}
+  try{
+    setSyncMsg("確認メールを再送しています…");
+    const r=await fetch(SUPABASE_URL+"/auth/v1/resend?redirect_to="+encodeURIComponent("https://pirokiiiiito-arch.github.io/flashcards/"),{
+      method:"POST",
+      headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({type:"signup",email})
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(data.msg||data.message||"再送に失敗しました。");
+    setSyncMsg("確認メールを再送しました。新しいメールのリンクを開いてください。");
+  }catch(e){setSyncMsg(e.message)}
+}
+loginBtn.onclick=signIn;signupBtn.onclick=signUp;resendBtn.onclick=resendConfirmation;logoutBtn.onclick=signOut;
 syncNowBtn.onclick=async()=>{try{setSyncMsg("同期中…");await syncPull(true);setSyncMsg("同期しました。")}catch(e){setSyncMsg(e.message)}};
 
 function rebuildOrder(){order=cards.map((_,i)=>i);pos=Math.min(pos,Math.max(0,order.length-1));isShuffled=false;updateMode()}
