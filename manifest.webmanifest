@@ -1,0 +1,11 @@
+{
+  "name":"単語帳",
+  "short_name":"単語帳",
+  "start_url":"./",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#f4f7fb",
+  "theme_color":"#2f66e8",
+  "description":"表裏を切り替えて学習できる単語帳",
+  "icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
