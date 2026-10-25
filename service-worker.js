@@ -1,4 +1,4 @@
-const CACHE="flashcards-v3";
+const CACHE="flashcards-v4";
 const STATIC=["./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install",event=>{
