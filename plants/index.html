@@ -130,7 +130,7 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 <script>
 const STORAGE_KEY="plant_flashcards_v1";
 const SEED_KEY="plant_flashcards_seed_loaded_v1";
-const ANGIO_EXPAND_KEY="plant_angiosperm_greenlist_v1";
+const ANGIO_EXPAND_KEY="plant_angiosperm_greenlist_v2";
 const TARGETS={angiosperm:10000,gymnosperm:1000,fern:1000,moss:1000};
 const GROUPS={
   angiosperm:"被子植物",
@@ -486,42 +486,32 @@ document.getElementById("excelFile").onchange=async e=>{
   e.target.value="";
 };
 
-function decodePlantCsv(buffer){
-  let text=new TextDecoder("utf-8").decode(buffer);
-  if(!text.includes("新リスト和名")||text.includes("\uFFFD")){
-    try{text=new TextDecoder("shift_jis").decode(buffer)}catch{}
-  }
-  return text;
-}
-function parsePlantCsv(text){
-  const wb=XLSX.read(text,{type:"string"});
-  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false,defval:""});
-}
-function isJapanesePlantName(name){
-  const s=String(name||"").trim();
-  return !!s && !/[A-Za-z]/.test(s);
-}
 async function ensureAngiospermExpansion(){
   if(localStorage.getItem(ANGIO_EXPAND_KEY)==="1")return;
-  const current=cards.filter(x=>x.group==="angiosperm").length;
-  if(current>=TARGETS.angiosperm){localStorage.setItem(ANGIO_EXPAND_KEY,"1");return}
   try{
-    const url="https://raw.githubusercontent.com/ykiu/greenlist-normalizer/master/downloads/csv/GreenListAv1.01.csv";
-    const res=await fetch(url,{cache:"no-store"});
-    if(!res.ok)throw new Error("GreenList fetch failed");
-    const rows=parsePlantCsv(decodePlantCsv(await res.arrayBuffer()));
+    const files=[
+      "./data-angio-extra-1.json",
+      "./data-angio-extra-2.json",
+      "./data-angio-extra-3.json",
+      "./data-angio-extra-4.json",
+      "./data-angio-extra-5.json"
+    ];
     const existing=new Set(cards.filter(x=>x.group==="angiosperm").map(x=>normalizeName(x.name)));
-    let angioCount=existing.size;
-    for(const row of rows){
-      if(angioCount>=TARGETS.angiosperm)break;
-      const name=normalizeName(row["新リスト和名"]);
-      if(!isJapanesePlantName(name)||existing.has(name))continue;
-      const family=String(row["APG科和名"]||"").trim();
-      const sci=String(row["GreenList学名"]||"").trim();
-      const desc=[family,sci?("学名："+sci):""].filter(Boolean).join("。")+(family||sci?"。":"");
-      cards.push({id:"greenlist-angio-"+uid(),group:"angiosperm",name,description:desc,imageUrl:"",images:["","",""]});
-      existing.add(name);
-      angioCount++;
+    for(const file of files){
+      const res=await fetch(file,{cache:"no-store"});
+      if(!res.ok)throw new Error("追加データを読み込めません");
+      const data=await res.json();
+      for(const card of (data.cards||[])){
+        const name=normalizeName(card.name);
+        if(!name||existing.has(name))continue;
+        cards.push(withImages({
+          id:card.id||uid(),
+          group:"angiosperm",
+          name,
+          description:String(card.description||"")
+        },getImages(card)));
+        existing.add(name);
+      }
     }
     saveCards();
     localStorage.setItem(ANGIO_EXPAND_KEY,"1");
