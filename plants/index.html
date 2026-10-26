@@ -53,7 +53,7 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 .number{position:absolute;right:24px;top:68px;color:#b3bcb6;font-size:13px}
 .front-name{font-size:clamp(27px,4.7vw,47px);font-weight:850;text-align:center;line-height:1.25;overflow-wrap:anywhere}
 .back-body{width:100%;max-width:none;margin:6px auto 0;display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
-.image-box{width:100%;aspect-ratio:16/9;border:1px dashed #bfc9c2;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);text-align:center;padding:12px}
+.image-box{width:100%;aspect-ratio:16/9;border:1px dashed #bfc9c2;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);text-align:center;padding:12px}.image-box[contenteditable="true"]{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;touch-action:auto;cursor:text}
 .image-box img{width:100%;height:100%;object-fit:contain;display:block}.image-stack{display:grid;gap:16px}.image-slot{display:grid;gap:6px}.image-slot-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.image-slot-title{font-size:12px;color:var(--muted);font-weight:800}.image-slot-tools{display:flex;gap:7px;flex-wrap:wrap}.paste-btn{background:#edf6f0;color:var(--green);border:1px solid #a9c7b4}
 .desc{white-space:pre-wrap;line-height:1.7;font-size:16px;text-align:left}
 .image-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.paste-note{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.5}
@@ -311,7 +311,7 @@ function renderCard(item,showBack=false){
 
   let sx=0,sy=0,pid=null,moved=false,suppressUntil=0;
   card.addEventListener("pointerdown",e=>{
-    if(editing||e.pointerType==="mouse"||e.target.closest("button,a,input,textarea,select"))return;
+    if(editing||e.pointerType==="mouse"||e.target.closest("button,a,input,textarea,select,[contenteditable=\"true\"]"))return;
     sx=e.clientX;sy=e.clientY;pid=e.pointerId;moved=false;
     try{card.setPointerCapture(e.pointerId)}catch{}
   });
@@ -340,10 +340,10 @@ function renderCard(item,showBack=false){
     }
   });
   card.addEventListener("click",e=>{
-    if(editing||Date.now()<suppressUntil||e.target.closest("button,a,input,textarea,select"))return;
+    if(editing||Date.now()<suppressUntil||e.target.closest("button,a,input,textarea,select,[contenteditable=\"true\"]"))return;
     card.classList.toggle("show-back");
   });
-  card.addEventListener("selectstart",e=>{if(!editing&&!e.target.closest("input,textarea"))e.preventDefault()});
+  card.addEventListener("selectstart",e=>{if(!editing&&!e.target.closest("input,textarea,[contenteditable=\"true\"]"))e.preventDefault()});
 
   add.onclick=e=>{e.stopPropagation();showDraft()};
   edit.onclick=e=>{e.stopPropagation();showEditor(item,idx)};
@@ -454,24 +454,72 @@ function fileFromClipboardItem(item){
   }catch{}
   return null;
 }
+async function imageNodeToStoredValue(img){
+  const src=String(img?.getAttribute("src")||img?.src||"");
+  if(!src)return "";
+  if(src.startsWith("data:image/"))return src;
+  if(src.startsWith("blob:")){
+    try{
+      const blob=await fetch(src).then(r=>r.blob());
+      return await resizeImage(blob,1200,1200,.84);
+    }catch{return ""}
+  }
+  if(/^https?:/i.test(src))return src;
+  return "";
+}
+async function captureInsertedImage(target,onImage){
+  const img=target.querySelector("img");
+  if(!img)return false;
+  const data=await imageNodeToStoredValue(img);
+  if(!data)return false;
+  target.removeAttribute("data-paste-hint");
+  await onImage(data);
+  return true;
+}
+function clipboardImageFile(dataTransfer){
+  const items=[...(dataTransfer?.items||[])];
+  const imgItem=items.find(x=>x.kind==="file"&&x.type&&x.type.startsWith("image/"));
+  return imgItem?fileFromClipboardItem(imgItem):null;
+}
 function bindImagePaste(target,onImage){
-  target.addEventListener("beforeinput",e=>{
-    if(e.inputType && e.inputType!=="insertFromPaste") e.preventDefault();
-  });
-  target.addEventListener("paste",async e=>{
-    const items=[...(e.clipboardData?.items||[])];
-    const imgItem=items.find(x=>x.kind==="file"&&x.type.startsWith("image/"));
-    if(!imgItem)return;
-    const file=fileFromClipboardItem(imgItem);
+  let handling=false;
+  const saveFile=async file=>{
+    if(!file||handling)return false;
+    handling=true;
+    try{
+      const data=await resizeImage(file,1200,1200,.84);
+      target.removeAttribute("data-paste-hint");
+      await onImage(data);
+      return true;
+    }catch{
+      return false;
+    }finally{
+      handling=false;
+    }
+  };
+
+  target.addEventListener("beforeinput",async e=>{
+    if(e.inputType!=="insertFromPaste")return;
+    const file=clipboardImageFile(e.dataTransfer);
     if(!file)return;
     e.preventDefault();
-    target.removeAttribute("data-paste-hint");
-    try{
-      const data=await resizeImage(file,900,900,.84);
-      await onImage(data);
-    }catch{
-      alert("貼り付けた画像を読み込めませんでした。");
+    await saveFile(file);
+  });
+
+  target.addEventListener("paste",async e=>{
+    const file=clipboardImageFile(e.clipboardData);
+    if(file){
+      e.preventDefault();
+      await saveFile(file);
+      return;
     }
+    setTimeout(()=>captureInsertedImage(target,onImage),0);
+    setTimeout(()=>captureInsertedImage(target,onImage),120);
+  });
+
+  target.addEventListener("input",()=>{
+    if(handling)return;
+    setTimeout(()=>captureInsertedImage(target,onImage),0);
   });
 }
 function resizeImage(file,maxW,maxH,quality){
