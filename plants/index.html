@@ -104,12 +104,12 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 
 <div id="homeView">
   <div class="home-grid">
-    <button class="group-card" data-group="angiosperm"><strong>被子植物</strong><span class="count" data-count="angiosperm">0 / 1000</span></button>
+    <button class="group-card" data-group="angiosperm"><strong>被子植物</strong><span class="count" data-count="angiosperm">0 / 10000</span></button>
     <button class="group-card" data-group="gymnosperm"><strong>裸子植物</strong><span class="count" data-count="gymnosperm">0 / 1000</span></button>
     <button class="group-card" data-group="fern"><strong>シダ植物</strong><span class="count" data-count="fern">0 / 1000</span></button>
     <button class="group-card" data-group="moss"><strong>コケ植物</strong><span class="count" data-count="moss">0 / 1000</span></button>
   </div>
-  <div class="hint">各分類1000種を目標に登録。名称は漢字またはカタカナで管理します。</div>
+  <div class="hint">被子植物は10000種、その他は各1000種を目標に登録。名称は漢字またはカタカナで管理します。</div>
 </div>
 
 <div id="deckView" class="hide">
@@ -130,6 +130,8 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 <script>
 const STORAGE_KEY="plant_flashcards_v1";
 const SEED_KEY="plant_flashcards_seed_loaded_v1";
+const ANGIO_EXPAND_KEY="plant_angiosperm_greenlist_v1";
+const TARGETS={angiosperm:10000,gymnosperm:1000,fern:1000,moss:1000};
 const GROUPS={
   angiosperm:"被子植物",
   gymnosperm:"裸子植物",
@@ -174,7 +176,7 @@ function normalizeName(s){return String(s||"").trim()}
 function updateCounts(){
   Object.keys(GROUPS).forEach(g=>{
     const n=cards.filter(x=>x.group===g).length;
-    document.querySelector('[data-count="'+g+'"]').textContent=n+" / 1000";
+    document.querySelector('[data-count="'+g+'"]').textContent=n+" / "+TARGETS[g];
   });
 }
 function groupCards(){return cards.map((x,i)=>({x,i})).filter(o=>o.x.group===currentGroup)}
@@ -194,7 +196,7 @@ function updateMode(){shuffleBtn.textContent=isShuffled?"シャッフル":"通�
 function updateDeckHeader(){
   groupTitle.textContent=GROUPS[currentGroup]||"";
   const n=groupCards().length;
-  groupCount.textContent=n+" / 1000";
+  groupCount.textContent=n+" / "+TARGETS[currentGroup];
 }
 function openGroup(g){
   currentGroup=g;
@@ -484,6 +486,47 @@ document.getElementById("excelFile").onchange=async e=>{
   e.target.value="";
 };
 
+function decodePlantCsv(buffer){
+  let text=new TextDecoder("utf-8").decode(buffer);
+  if(!text.includes("新リスト和名")||text.includes("\uFFFD")){
+    try{text=new TextDecoder("shift_jis").decode(buffer)}catch{}
+  }
+  return text;
+}
+function parsePlantCsv(text){
+  const wb=XLSX.read(text,{type:"string"});
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false,defval:""});
+}
+function isJapanesePlantName(name){
+  const s=String(name||"").trim();
+  return !!s && !/[A-Za-z]/.test(s);
+}
+async function ensureAngiospermExpansion(){
+  if(localStorage.getItem(ANGIO_EXPAND_KEY)==="1")return;
+  const current=cards.filter(x=>x.group==="angiosperm").length;
+  if(current>=TARGETS.angiosperm){localStorage.setItem(ANGIO_EXPAND_KEY,"1");return}
+  try{
+    const url="https://raw.githubusercontent.com/ykiu/greenlist-normalizer/master/downloads/csv/GreenListAv1.01.csv";
+    const res=await fetch(url,{cache:"no-store"});
+    if(!res.ok)throw new Error("GreenList fetch failed");
+    const rows=parsePlantCsv(decodePlantCsv(await res.arrayBuffer()));
+    const existing=new Set(cards.filter(x=>x.group==="angiosperm").map(x=>normalizeName(x.name)));
+    for(const row of rows){
+      if(cards.filter(x=>x.group==="angiosperm").length>=TARGETS.angiosperm)break;
+      const name=normalizeName(row["新リスト和名"]);
+      if(!isJapanesePlantName(name)||existing.has(name))continue;
+      const family=String(row["APG科和名"]||"").trim();
+      const sci=String(row["GreenList学名"]||"").trim();
+      const desc=[family,sci?("学名："+sci):""].filter(Boolean).join("。")+(family||sci?"。":"");
+      cards.push({id:"greenlist-angio-"+uid(),group:"angiosperm",name,description:desc,imageUrl:"",images:["","",""]});
+      existing.add(name);
+    }
+    saveCards();
+    localStorage.setItem(ANGIO_EXPAND_KEY,"1");
+  }catch(e){
+    console.warn("被子植物拡張データを読み込めませんでした",e);
+  }
+}
 async function ensureSeedData(){
   if(localStorage.getItem(SEED_KEY)==="1")return;
   if(cards.length){localStorage.setItem(SEED_KEY,"1");return}
@@ -500,6 +543,7 @@ async function ensureSeedData(){
 }
 (async()=>{
   await ensureSeedData();
+  await ensureAngiospermExpansion();
   updateCounts();
   if(currentGroup){rebuildOrder();render()}
 })();
