@@ -10,7 +10,7 @@
 :root{--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--border:#d9e1ec;--accent:#2f66e8;--soft:#edf2f8;--green:#2e9d57}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif}
 .wrap{width:min(820px,calc(100% - 24px));margin:24px auto 54px}h1{margin:0 0 18px;font-size:clamp(32px,5vw,48px)}
-button,input,textarea{font:inherit}button{cursor:pointer;border:0}.topbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.topbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .btn{padding:10px 14px;border-radius:12px;background:var(--soft);color:var(--text)}.status{display:flex;justify-content:space-between;margin:0 4px 10px;color:var(--muted);font-size:15px}
 .nav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:min(670px,100%);margin:0 auto 18px}
 .nav button{min-height:54px;border-radius:16px;background:#fff;border:1px solid var(--border);color:var(--text);font-weight:800;font-size:17px}
@@ -101,6 +101,14 @@ const SUPABASE_URL="https://himtyybslzzwsfmgdivx.supabase.co";
 const SUPABASE_KEY="sb_publishable_tUa2O6wln22qdUk97worCg_Z3vL5bZO";
 let cards=loadCards(),order=cards.map((_,i)=>i),pos=0,editing=false,isShuffled=false;
 let cloudSession=loadSession(),syncTimer=null,syncBusy=false,lastCloudFingerprint="";
+const actionLocks=new Map();
+function allowAction(name,ms=280){
+  const now=performance.now();
+  const last=actionLocks.get(name)||0;
+  if(now-last<ms)return false;
+  actionLocks.set(name,now);
+  return true;
+}
 const stage=document.getElementById("stage"),countText=document.getElementById("countText");
 const syncBtn=document.getElementById("syncBtn"),syncBtnText=document.getElementById("syncBtnText");
 const syncModalWrap=document.getElementById("syncModalWrap"),signedOutBox=document.getElementById("signedOutBox"),signedInBox=document.getElementById("signedInBox");
@@ -393,6 +401,7 @@ function renderCard(item){
  card.addEventListener("click",e=>{
    if(editing||Date.now()<suppressClickUntil)return;
    if(e.target.closest("button,textarea,input"))return;
+   if(!allowAction("card-toggle",320))return;
    card.classList.toggle("show-back");
  });
  card.addEventListener("selectstart",e=>{
@@ -444,9 +453,9 @@ function showDraft(){
  c.onclick=e=>{e.stopPropagation();render()};updateNav();setTimeout(()=>fe.focus(),30)
 }
 
-prevBtn.onclick=()=>{if(!cards.length||editing)return;pos=(pos-1+order.length)%order.length;render()};
-nextBtn.onclick=()=>{if(!cards.length||editing)return;pos=(pos+1)%order.length;render()};
-modeBtn.onclick=()=>{if(cards.length<2||editing)return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()};
+prevBtn.onclick=()=>{if(!cards.length||editing||!allowAction("prev",280))return;pos=(pos-1+order.length)%order.length;render()};
+nextBtn.onclick=()=>{if(!cards.length||editing||!allowAction("next",280))return;pos=(pos+1)%order.length;render()};
+modeBtn.onclick=()=>{if(cards.length<2||editing||!allowAction("mode",450))return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()};
 
 exportBtn.onclick=()=>{const simple=cards.map(x=>({word:x.word,meaning:x.meaning}));const blob=new Blob([JSON.stringify(simple,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tangocho-data.json";a.click();URL.revokeObjectURL(u)};
 importBtn.onclick=()=>importFile.click();
