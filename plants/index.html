@@ -135,6 +135,10 @@ const ANGIO_EXPAND_KEY="plant_angiosperm_greenlist_v2";
 const NONANGIO_EXPAND_KEY="plant_nonangio_expand_v1";
 const IMAGE_DB_NAME="plant_flashcard_images_v1";
 const IMAGE_STORE="images";
+const CLOUD_SESSION_KEY="flashcards_supabase_session_v1";
+const SUPABASE_URL="https://himtyybslzzwsfmgdivx.supabase.co";
+const SUPABASE_KEY="sb_publishable_tUa2O6wln22qdUk97worCg_Z3vL5bZO";
+const CLOUD_BUCKET="plant-images";
 const TARGETS={angiosperm:10000,gymnosperm:1000,fern:1000,moss:1000};
 const GROUPS={
   angiosperm:"被子植物",
@@ -145,6 +149,7 @@ const GROUPS={
 let cards=loadCards();
 let currentGroup=null, order=[], pos=0, isShuffled=false, editing=false;
 let activeImagePaste=null;
+let cloudSession=loadCloudSession();
 
 const homeView=document.getElementById("homeView");
 const deckView=document.getElementById("deckView");
@@ -176,6 +181,99 @@ function getImages(item){
 function withImages(item,images){
   const clean=images.slice(0,3).map(x=>String(x||""));
   return {...item,images:clean,imageUrl:clean[0]||""};
+}
+function loadCloudSession(){
+  try{return JSON.parse(localStorage.getItem(CLOUD_SESSION_KEY))||null}catch{return null}
+}
+function saveCloudSession(session){
+  cloudSession=session||null;
+  if(session)localStorage.setItem(CLOUD_SESSION_KEY,JSON.stringify(session));
+  else localStorage.removeItem(CLOUD_SESSION_KEY);
+}
+async function rawCloudAuth(path,body){
+  const r=await fetch(SUPABASE_URL+path,{
+    method:"POST",
+    headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  });
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.msg||data.message||data.error_description||"画像同期の認証に失敗しました");
+  return data;
+}
+async function ensureCloudSession(){
+  if(!cloudSession?.access_token)return null;
+  if((cloudSession.expires_at||0)>Date.now()+60000)return cloudSession;
+  if(!cloudSession.refresh_token){saveCloudSession(null);return null}
+  try{
+    const data=await rawCloudAuth("/auth/v1/token?grant_type=refresh_token",{refresh_token:cloudSession.refresh_token});
+    const session={
+      access_token:data.access_token,
+      refresh_token:data.refresh_token||cloudSession.refresh_token,
+      expires_at:Date.now()+(Number(data.expires_in||3600)*1000),
+      user:data.user||cloudSession.user||null
+    };
+    saveCloudSession(session);
+    return session;
+  }catch{
+    saveCloudSession(null);
+    return null;
+  }
+}
+function cloudImagePath(item,index,userId){
+  return userId+"/"+String(item.id||"card").replaceAll("/","_")+"/"+index+".jpg";
+}
+function encodedStoragePath(path){
+  return path.split("/").map(encodeURIComponent).join("/");
+}
+async function dataUrlToBlob(dataUrl){
+  const r=await fetch(dataUrl);
+  if(!r.ok)throw new Error("画像変換に失敗しました");
+  return await r.blob();
+}
+function blobToDataUrl(blob){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result||""));
+    reader.onerror=()=>reject(reader.error||new Error("画像読込に失敗しました"));
+    reader.readAsDataURL(blob);
+  });
+}
+async function cloudUploadImage(item,index,dataUrl){
+  const session=await ensureCloudSession();
+  if(!session?.user?.id)return false;
+  const blob=await dataUrlToBlob(dataUrl);
+  const path=cloudImagePath(item,index,session.user.id);
+  const url=SUPABASE_URL+"/storage/v1/object/"+CLOUD_BUCKET+"/"+encodedStoragePath(path);
+  const r=await fetch(url,{
+    method:"POST",
+    headers:{
+      "apikey":SUPABASE_KEY,
+      "Authorization":"Bearer "+session.access_token,
+      "Content-Type":blob.type||"image/jpeg",
+      "x-upsert":"true"
+    },
+    body:blob
+  });
+  if(!r.ok){
+    const msg=await r.text().catch(()=>"");
+    throw new Error(msg||"クラウド画像保存に失敗しました");
+  }
+  return true;
+}
+async function cloudDownloadImage(item,index){
+  const session=await ensureCloudSession();
+  if(!session?.user?.id)return "";
+  const path=cloudImagePath(item,index,session.user.id);
+  const url=SUPABASE_URL+"/storage/v1/object/authenticated/"+CLOUD_BUCKET+"/"+encodedStoragePath(path);
+  const r=await fetch(url,{
+    headers:{
+      "apikey":SUPABASE_KEY,
+      "Authorization":"Bearer "+session.access_token
+    }
+  });
+  if(r.status===404||r.status===400)return "";
+  if(!r.ok)return "";
+  return await blobToDataUrl(await r.blob());
 }
 function openImageDB(){
   return new Promise((resolve,reject)=>{
@@ -216,6 +314,47 @@ async function resolveImageValue(value){
   const s=String(value||"");
   if(!s.startsWith("idb:"))return s;
   try{return await getStoredImage(s.slice(4))}catch{return ""}
+}
+async function resolveCardImage(item,index,value){
+  const local=await resolveImageValue(value);
+  if(local)return local;
+
+  const cloud=await cloudDownloadImage(item,index);
+  if(!cloud)return "";
+
+  try{
+    const ref=storedImageRef(item,index);
+    await putStoredImage(ref.slice(4),cloud);
+    const next=getImages(item);
+    next[index]=ref;
+    const cardIndex=cards.findIndex(x=>x.id===item.id);
+    if(cardIndex>=0){
+      cards[cardIndex]=withImages(cards[cardIndex],next);
+      saveCards();
+    }
+  }catch{}
+  return cloud;
+}
+async function syncLocalImagesToCloud(){
+  const session=await ensureCloudSession();
+  if(!session?.user?.id)return;
+  const key="plant_cloud_image_migration_v1:"+session.user.id;
+  if(localStorage.getItem(key)==="1")return;
+  let allOk=true;
+  for(const item of cards){
+    const imgs=getImages(item);
+    for(let i=0;i<imgs.length;i++){
+      const value=imgs[i];
+      if(!String(value||"").startsWith("idb:"))continue;
+      try{
+        const data=await resolveImageValue(value);
+        if(data)await cloudUploadImage(item,i,data);
+      }catch{
+        allOk=false;
+      }
+    }
+  }
+  if(allOk)localStorage.setItem(key,"1");
 }
 async function migrateInlineImages(){
   let changed=false;
@@ -326,17 +465,15 @@ function renderCard(item,showBack=false){
       slotHead.appendChild(googleTop);
     }
     const imageBox=document.createElement("div");imageBox.className="image-box";imageBox.tabIndex=0;imageBox.contentEditable="true";imageBox.spellcheck=false;imageBox.title="画像をコピーしてここで貼り付けできます";
-    if(src){
-      imageBox.textContent="画像読込中";
-      resolveImageValue(src).then(resolved=>{
-        if(!resolved){imageBox.textContent="画像を読み込めません";return}
-        const img=document.createElement("img");
-        img.src=resolved;
-        img.alt=item.name+" 画像"+(imageIndex+1);
-        img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
-        imageBox.replaceChildren(img);
-      });
-    }else imageBox.textContent="画像"+(imageIndex+1)+" 未登録";
+    imageBox.textContent=src?"画像読込中":"画像"+(imageIndex+1)+" 未登録";
+    resolveCardImage(item,imageIndex,src).then(resolved=>{
+      if(!resolved)return;
+      const img=document.createElement("img");
+      img.src=resolved;
+      img.alt=item.name+" 画像"+(imageIndex+1);
+      img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
+      imageBox.replaceChildren(img);
+    });
     const savePastedImage=async data=>{
       const next=getImages(item);
       const stored=await storeImageForCard(item,imageIndex,data);
@@ -345,11 +482,14 @@ function renderCard(item,showBack=false){
       item=cards[idx];
       saveCards();
 
+      const localData=await resolveImageValue(stored);
       const img=document.createElement("img");
-      img.src=await resolveImageValue(stored);
+      img.src=localData;
       img.alt=item.name+" 画像"+(imageIndex+1);
       img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
       imageBox.replaceChildren(img);
+
+      try{await cloudUploadImage(item,imageIndex,localData)}catch(e){console.warn("画像クラウド同期失敗",e)}
     };
     bindImagePaste(imageBox,savePastedImage);
     const slotTools=document.createElement("div");slotTools.className="image-slot-tools";
@@ -500,6 +640,7 @@ function showEditor(item,idx,focusImage=false){
       eImgs[i].dataset.storedRef=stored;
       eImgs[i].value=stored.startsWith("idb:")?"":stored;
       if(stored.startsWith("idb:"))eImgs[i].placeholder="端末保存画像あり（URL入力で置換）";
+      try{await cloudUploadImage(item,i,data)}catch(e){console.warn("画像クラウド同期失敗",e)};
     });
     bindImagePaste(eImgs[i],async data=>{
       const stored=await storeImageForCard(item,i,data);
@@ -509,7 +650,7 @@ function showEditor(item,idx,focusImage=false){
     });
     ePastes[i].onclick=async()=>{
       const btn=ePastes[i];
-      const save=async data=>{const stored=await storeImageForCard(item,i,data);eImgs[i].dataset.storedRef=stored;eImgs[i].value=stored.startsWith("idb:")?"":stored;if(stored.startsWith("idb:"))eImgs[i].placeholder="端末保存画像あり（URL入力で置換）"};
+      const save=async data=>{const stored=await storeImageForCard(item,i,data);eImgs[i].dataset.storedRef=stored;eImgs[i].value=stored.startsWith("idb:")?"":stored;if(stored.startsWith("idb:"))eImgs[i].placeholder="端末保存画像あり（URL入力で置換）";try{await cloudUploadImage(item,i,data)}catch(e){console.warn("画像クラウド同期失敗",e)}};
       const done=()=>{
         btn.classList.remove("denied");
         btn.classList.add("done");
@@ -856,6 +997,7 @@ async function ensureSeedData(){
   await ensureAngiospermExpansion();
   await ensureNonAngioExpansion();
   await migrateInlineImages();
+  await syncLocalImagesToCloud();
   updateCounts();
   if(currentGroup){rebuildOrder();render()}
 })();
