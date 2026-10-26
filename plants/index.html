@@ -70,17 +70,26 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 .hide{display:none!important}
 
 @media(max-width:640px){
+  .wrap{width:min(940px,calc(100% - 16px));margin:8px auto 36px}
+  header{margin-bottom:8px}
+  h1{font-size:28px}
+  .sub{font-size:11px;margin-top:2px}
+  .deckbar{margin:6px 0}
+  .deck-title strong{font-size:19px}
+  .nav{gap:6px;margin:0 auto 8px}
+  .nav button{min-height:40px;font-size:13px}
   .home-grid{grid-template-columns:1fr}
-  .stage{min-height:430px}
+  .stage{min-height:430px;align-items:flex-start}
   .card{height:430px}
   .face{padding:66px 16px 24px}
+  .front{top:6px;bottom:168px;padding:42px 14px 16px}
+  .front .label{top:13px}
+  .front-name{font-size:clamp(25px,7vw,38px);line-height:1.18}
   .actions{right:14px;top:14px}
   .label{left:18px;top:20px}
   .number{right:18px;top:64px}
   .back-body{grid-template-columns:1fr;gap:14px}
   .image-box{width:100%;aspect-ratio:16/9;max-height:none}
-  .nav{gap:7px}
-  .nav button{font-size:14px}
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
