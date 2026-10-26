@@ -132,6 +132,8 @@ const STORAGE_KEY="plant_flashcards_v1";
 const SEED_KEY="plant_flashcards_seed_loaded_v1";
 const ANGIO_EXPAND_KEY="plant_angiosperm_greenlist_v2";
 const NONANGIO_EXPAND_KEY="plant_nonangio_expand_v1";
+const IMAGE_DB_NAME="plant_flashcard_images_v1";
+const IMAGE_STORE="images";
 const TARGETS={angiosperm:10000,gymnosperm:1000,fern:1000,moss:1000};
 const GROUPS={
   angiosperm:"被子植物",
@@ -173,6 +175,66 @@ function getImages(item){
 function withImages(item,images){
   const clean=images.slice(0,3).map(x=>String(x||""));
   return {...item,images:clean,imageUrl:clean[0]||""};
+}
+function openImageDB(){
+  return new Promise((resolve,reject)=>{
+    if(!("indexedDB" in window)){reject(new Error("IndexedDB unavailable"));return}
+    const req=indexedDB.open(IMAGE_DB_NAME,1);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(IMAGE_STORE))req.result.createObjectStore(IMAGE_STORE)};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error("IndexedDB open failed"));
+  });
+}
+async function putStoredImage(key,value){
+  const db=await openImageDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IMAGE_STORE,"readwrite");
+    tx.objectStore(IMAGE_STORE).put(value,key);
+    tx.oncomplete=()=>{db.close();resolve(key)};
+    tx.onerror=()=>{const e=tx.error;db.close();reject(e||new Error("画像保存に失敗しました"))};
+  });
+}
+async function getStoredImage(key){
+  const db=await openImageDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IMAGE_STORE,"readonly");
+    const req=tx.objectStore(IMAGE_STORE).get(key);
+    req.onsuccess=()=>{const v=req.result||"";db.close();resolve(v)};
+    req.onerror=()=>{const e=req.error;db.close();reject(e||new Error("画像読込に失敗しました"))};
+  });
+}
+function storedImageRef(item,index){return "idb:plantimg:"+item.id+":"+index}
+async function storeImageForCard(item,index,value){
+  const s=String(value||"");
+  if(!s.startsWith("data:image/"))return s;
+  const ref=storedImageRef(item,index);
+  await putStoredImage(ref.slice(4),s);
+  return ref;
+}
+async function resolveImageValue(value){
+  const s=String(value||"");
+  if(!s.startsWith("idb:"))return s;
+  try{return await getStoredImage(s.slice(4))}catch{return ""}
+}
+async function migrateInlineImages(){
+  let changed=false;
+  for(let ci=0;ci<cards.length;ci++){
+    const item=cards[ci];
+    const imgs=getImages(item);
+    let itemChanged=false;
+    for(let i=0;i<imgs.length;i++){
+      if(!String(imgs[i]||"").startsWith("data:image/"))continue;
+      try{
+        imgs[i]=await storeImageForCard(item,i,imgs[i]);
+        itemChanged=true;
+      }catch{}
+    }
+    if(itemChanged){
+      cards[ci]=withImages(item,imgs);
+      changed=true;
+    }
+  }
+  if(changed)saveCards();
 }
 function normalizeName(s){return String(s||"").trim()}
 function updateCounts(){
@@ -264,18 +326,26 @@ function renderCard(item,showBack=false){
     }
     const imageBox=document.createElement("div");imageBox.className="image-box";imageBox.tabIndex=0;imageBox.contentEditable="true";imageBox.spellcheck=false;imageBox.title="画像をコピーしてここで貼り付けできます";
     if(src){
-      const img=document.createElement("img");img.src=src;img.alt=item.name+" 画像"+(imageIndex+1);img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
-      imageBox.appendChild(img);
+      imageBox.textContent="画像読込中";
+      resolveImageValue(src).then(resolved=>{
+        if(!resolved){imageBox.textContent="画像を読み込めません";return}
+        const img=document.createElement("img");
+        img.src=resolved;
+        img.alt=item.name+" 画像"+(imageIndex+1);
+        img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
+        imageBox.replaceChildren(img);
+      });
     }else imageBox.textContent="画像"+(imageIndex+1)+" 未登録";
     const savePastedImage=async data=>{
       const next=getImages(item);
-      next[imageIndex]=data;
+      const stored=await storeImageForCard(item,imageIndex,data);
+      next[imageIndex]=stored;
       cards[idx]=withImages(item,next);
       item=cards[idx];
       saveCards();
 
       const img=document.createElement("img");
-      img.src=data;
+      img.src=await resolveImageValue(stored);
       img.alt=item.name+" 画像"+(imageIndex+1);
       img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
       imageBox.replaceChildren(img);
@@ -409,7 +479,15 @@ function showEditor(item,idx,focusImage=false){
   const ePastes=[wrap.querySelector("#ePaste1"),wrap.querySelector("#ePaste2"),wrap.querySelector("#ePaste3")];
   Object.entries(GROUPS).forEach(([k,v])=>{const o=document.createElement("option");o.value=k;o.textContent=v;eGroup.appendChild(o)});
   eGroup.value=item.group||currentGroup;eName.value=item.name||"";eDesc.value=item.description||"";
-  getImages(item).forEach((src,i)=>{eImgs[i].value=src});
+  getImages(item).forEach((src,i)=>{
+    if(String(src||"").startsWith("idb:")){
+      eImgs[i].dataset.storedRef=src;
+      eImgs[i].value="";
+      eImgs[i].placeholder="端末保存画像あり（URL入力で置換）";
+    }else{
+      eImgs[i].value=src;
+    }
+  });
   const eGoogle=wrap.querySelector("#eGoogle");
   const refreshGoogle=()=>{eGoogle.href="https://www.google.com/search?tbm=isch&q="+encodeURIComponent((eName.value||"植物")+" 植物")};
   refreshGoogle();eName.addEventListener("input",refreshGoogle);
@@ -417,12 +495,20 @@ function showEditor(item,idx,focusImage=false){
     fileInput.addEventListener("change",async()=>{
       const f=fileInput.files[0];if(!f)return;
       const data=await resizeImage(f,1200,1200,.84);
-      eImgs[i].value=data;
+      const stored=await storeImageForCard(item,i,data);
+      eImgs[i].dataset.storedRef=stored;
+      eImgs[i].value=stored.startsWith("idb:")?"":stored;
+      if(stored.startsWith("idb:"))eImgs[i].placeholder="端末保存画像あり（URL入力で置換）";
     });
-    bindImagePaste(eImgs[i],async data=>{eImgs[i].value=data});
+    bindImagePaste(eImgs[i],async data=>{
+      const stored=await storeImageForCard(item,i,data);
+      eImgs[i].dataset.storedRef=stored;
+      eImgs[i].value=stored.startsWith("idb:")?"":stored;
+      if(stored.startsWith("idb:"))eImgs[i].placeholder="端末保存画像あり（URL入力で置換）";
+    });
     ePastes[i].onclick=async()=>{
       const btn=ePastes[i];
-      const save=async data=>{eImgs[i].value=data};
+      const save=async data=>{const stored=await storeImageForCard(item,i,data);eImgs[i].dataset.storedRef=stored;eImgs[i].value=stored.startsWith("idb:")?"":stored;if(stored.startsWith("idb:"))eImgs[i].placeholder="端末保存画像あり（URL入力で置換）"};
       const done=()=>{
         btn.classList.remove("denied");
         btn.classList.add("done");
@@ -443,7 +529,7 @@ function showEditor(item,idx,focusImage=false){
   });
   wrap.querySelector("#eCancel").onclick=render;
   wrap.querySelector("#eSave").onclick=()=>{
-    const name=normalizeName(eName.value),description=eDesc.value.trim(),group=eGroup.value,images=eImgs.map(x=>x.value.trim());
+    const name=normalizeName(eName.value),description=eDesc.value.trim(),group=eGroup.value,images=eImgs.map(x=>x.value.trim()||x.dataset.storedRef||"");
     if(!name){alert("植物名を入力してください。");return}
     const updated=withImages({id:item.id||uid(),group,name,description},images);
     if(idx<0){cards.push(updated);saveCards();currentGroup=group;rebuildOrder(updated.id);pos=Math.max(0,order.findIndex(i=>cards[i].id===updated.id));}
@@ -768,6 +854,7 @@ async function ensureSeedData(){
   await ensureSeedData();
   await ensureAngiospermExpansion();
   await ensureNonAngioExpansion();
+  await migrateInlineImages();
   updateCounts();
   if(currentGroup){rebuildOrder();render()}
 })();
