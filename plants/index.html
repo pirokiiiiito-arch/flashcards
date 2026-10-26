@@ -150,6 +150,8 @@ let cards=loadCards();
 let currentGroup=null, order=[], pos=0, isShuffled=false, editing=false;
 let activeImagePaste=null;
 let cloudSession=loadCloudSession();
+const legacyImageRequests=new Set();
+function plantDrivePrimary(){return localStorage.getItem('plant_drive_primary_v1')==='1'}
 
 const homeView=document.getElementById("homeView");
 const deckView=document.getElementById("deckView");
@@ -221,6 +223,7 @@ async function ensureCloudSession(){
   }
 }
 function updateImageSyncStatus(){
+  if(plantDrivePrimary()){if(imageSyncStatus)imageSyncStatus.textContent='画像Drive同期：再接続待ち';return;}
   const on=!!cloudSession?.access_token;
   if(!imageSyncStatus)return;
   imageSyncStatus.textContent=on?"画像同期：ON":"画像同期：ログイン必要";
@@ -247,9 +250,15 @@ function blobToDataUrl(blob){
   });
 }
 async function cloudUploadImage(item,index,dataUrl){
+  if(plantDrivePrimary())return false;
+  const work=legacyUploadImage(item,index,dataUrl);legacyImageRequests.add(work);
+  try{return await work}finally{legacyImageRequests.delete(work)}
+}
+async function legacyUploadImage(item,index,dataUrl){
   const session=await ensureCloudSession();
   if(!session?.user?.id)return false;
   const blob=await dataUrlToBlob(dataUrl);
+  if(plantDrivePrimary())return false;
   const path=cloudImagePath(item,index,session.user.id);
   const url=SUPABASE_URL+"/storage/v1/object/"+CLOUD_BUCKET+"/"+encodedStoragePath(path);
   const r=await fetch(url,{
@@ -314,7 +323,7 @@ function storedImageRef(item,index){return "idb:plantimg:"+item.id+":"+index}
 async function storeImageForCard(item,index,value){
   const s=String(value||"");
   if(!s.startsWith("data:image/"))return s;
-  const ref=storedImageRef(item,index);
+  const ref=storedImageRef(item,index)+":"+uid();
   await putStoredImage(ref.slice(4),s);
   return ref;
 }
@@ -327,6 +336,7 @@ async function resolveCardImage(item,index,value){
   const local=await resolveImageValue(value);
   if(local)return local;
 
+  if(plantDrivePrimary())return "";
   const cloud=await cloudDownloadImage(item,index);
   if(!cloud)return "";
 
@@ -344,6 +354,7 @@ async function resolveCardImage(item,index,value){
   return cloud;
 }
 async function syncLocalImagesToCloud(){
+  if(plantDrivePrimary())return;
   const session=await ensureCloudSession();
   if(!session?.user?.id)return;
   const key="plant_cloud_image_migration_v1:"+session.user.id;
@@ -428,7 +439,7 @@ function goHome(){
 }
 document.querySelectorAll(".group-card").forEach(b=>b.addEventListener("click",()=>openGroup(b.dataset.group)));
 homeBtn.addEventListener("click",goHome);
-imageSyncStatus?.addEventListener("click",async()=>{const s=await ensureCloudSession();updateImageSyncStatus();if(!s)location.href="../"});
+imageSyncStatus?.addEventListener("click",async()=>{if(window.PlantDriveSync||plantDrivePrimary())return;const s=await ensureCloudSession();updateImageSyncStatus();if(!s)location.href="../"});
 
 function render(showBack=false){
   editing=false;
@@ -487,7 +498,7 @@ function renderCard(item,showBack=false){
       const next=getImages(item);
       const stored=await storeImageForCard(item,imageIndex,data);
       next[imageIndex]=stored;
-      cards[idx]=withImages(item,next);
+      cards[idx]=withImages({...item,updated_at:new Date().toISOString()},next);
       item=cards[idx];
       saveCards();
 
@@ -630,7 +641,7 @@ function showEditor(item,idx,focusImage=false){
   Object.entries(GROUPS).forEach(([k,v])=>{const o=document.createElement("option");o.value=k;o.textContent=v;eGroup.appendChild(o)});
   eGroup.value=item.group||currentGroup;eName.value=item.name||"";eDesc.value=item.description||"";
   getImages(item).forEach((src,i)=>{
-    if(String(src||"").startsWith("idb:")){
+    if(/^(idb:|gdrive:)/.test(String(src||""))){
       eImgs[i].dataset.storedRef=src;
       eImgs[i].value="";
       eImgs[i].placeholder="端末保存画像あり（URL入力で置換）";
@@ -639,6 +650,7 @@ function showEditor(item,idx,focusImage=false){
     }
   });
   const eGoogle=wrap.querySelector("#eGoogle");
+  eImgs.forEach(input=>input.addEventListener("input",()=>{delete input.dataset.storedRef}));
   const refreshGoogle=()=>{eGoogle.href="https://www.google.com/search?tbm=isch&q="+encodeURIComponent((eName.value||"植物")+" 植物")};
   refreshGoogle();eName.addEventListener("input",refreshGoogle);
   eFiles.forEach((fileInput,i)=>{
@@ -683,7 +695,7 @@ function showEditor(item,idx,focusImage=false){
   wrap.querySelector("#eSave").onclick=()=>{
     const name=normalizeName(eName.value),description=eDesc.value.trim(),group=eGroup.value,images=eImgs.map(x=>x.value.trim()||x.dataset.storedRef||"");
     if(!name){alert("植物名を入力してください。");return}
-    const updated=withImages({id:item.id||uid(),group,name,description},images);
+    const updated=withImages({id:item.id||uid(),group,name,description,sort_order:item.sort_order||Date.now(),updated_at:new Date().toISOString()},images);
     if(idx<0){cards.push(updated);saveCards();currentGroup=group;rebuildOrder(updated.id);pos=Math.max(0,order.findIndex(i=>cards[i].id===updated.id));}
     else{cards[idx]=updated;saveCards();currentGroup=group;rebuildOrder(updated.id)}
     render();
@@ -892,8 +904,11 @@ shuffleBtn.onclick=()=>{
 };
 document.getElementById("addTopBtn").onclick=showDraft;
 
-document.getElementById("exportBtn").onclick=()=>{
-  const blob=new Blob([JSON.stringify(cards,null,2)],{type:"application/json"});
+document.getElementById("exportBtn").onclick=async()=>{
+  let exported=[];
+  try{for(const item of cards){const images=await Promise.all(getImages(item).map(resolveImageValue));exported.push(withImages(item,images));}}
+  catch(e){alert(e.message||'画像を取得できません。Google Driveへ接続してください。');return;}
+  const blob=new Blob([JSON.stringify(exported,null,2)],{type:"application/json"});
   const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="plant-flashcards.json";a.click();URL.revokeObjectURL(u);
 };
 document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
@@ -1002,19 +1017,20 @@ async function ensureSeedData(){
     localStorage.setItem(SEED_KEY,"1");
   }catch{}
 }
-(async()=>{
+const plantBootReady=(async()=>{
   await ensureSeedData();
   await ensureAngiospermExpansion();
   await ensureNonAngioExpansion();
   await migrateInlineImages();
-  await ensureCloudSession();
+  if(!plantDrivePrimary()){await ensureCloudSession();await syncLocalImagesToCloud();}
   updateImageSyncStatus();
-  await syncLocalImagesToCloud();
   updateCounts();
   if(currentGroup){rebuildOrder();render()}
 })();
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{}));
 </script>
-<script src="./drive-sync.js"></script>
+<script src="../drive-config.js?v=3"></script>
+<script src="../drive-core.js?v=3"></script>
+<script src="./drive-sync.js?v=3"></script>
 </body>
 </html>

@@ -101,6 +101,8 @@ const SUPABASE_URL="https://himtyybslzzwsfmgdivx.supabase.co";
 const SUPABASE_KEY="sb_publishable_tUa2O6wln22qdUk97worCg_Z3vL5bZO";
 let cards=loadCards(),order=cards.map((_,i)=>i),pos=0,editing=false,isShuffled=false;
 let cloudSession=loadSession(),syncTimer=null,syncBusy=false,lastCloudFingerprint="";
+const legacyRequests=new Set();
+function wordDrivePrimary(){return localStorage.getItem('word_drive_primary_v1')==='1'}
 const actionLocks=new Map();
 function allowAction(name,ms=280){
   const now=performance.now();
@@ -132,6 +134,10 @@ const stage=document.getElementById("stage"),countText=document.getElementById("
 const syncBtn=document.getElementById("syncBtn"),syncBtnText=document.getElementById("syncBtnText");
 const syncModalWrap=document.getElementById("syncModalWrap"),signedOutBox=document.getElementById("signedOutBox"),signedInBox=document.getElementById("signedInBox");
 const syncEmail=document.getElementById("syncEmail"),syncPassword=document.getElementById("syncPassword"),syncMsg=document.getElementById("syncMsg"),accountLine=document.getElementById("accountLine");
+const prevBtn=document.getElementById('prevBtn'),nextBtn=document.getElementById('nextBtn'),modeBtn=document.getElementById('modeBtn');
+const exportBtn=document.getElementById('exportBtn'),importBtn=document.getElementById('importBtn'),importFile=document.getElementById('importFile');
+const excelBtn=document.getElementById('excelBtn'),excelFile=document.getElementById('excelFile'),closeSyncBtn=document.getElementById('closeSyncBtn');
+const loginBtn=document.getElementById('loginBtn'),signupBtn=document.getElementById('signupBtn'),resendBtn=document.getElementById('resendBtn'),logoutBtn=document.getElementById('logoutBtn'),syncNowBtn=document.getElementById('syncNowBtn');
 
 function loadCards(){
   try{
@@ -155,7 +161,7 @@ function saveSession(s){
 function updateSyncUI(){
   const on=!!cloudSession?.access_token;
   syncBtn?.classList.toggle("on",on);
-  if(syncBtnText)syncBtnText.textContent=on?"同期中":"同期ログイン";
+  if(syncBtnText)syncBtnText.textContent=wordDrivePrimary()?"旧Supabase（停止中）":on?"同期中":"同期ログイン";
   if(signedOutBox)signedOutBox.style.display=on?"none":"block";
   if(signedInBox)signedInBox.style.display=on?"block":"none";
   if(accountLine)accountLine.textContent=on?(cloudSession?.user?.email||"ログイン済み"):"";if(countText)countText.textContent=cards.length+"件"+(on?"":"（未同期）");
@@ -196,10 +202,16 @@ async function ensureSession(){
     return cloudSession;
   }catch(e){saveSession(null);stopSyncLoop();return null}
 }
-async function api(path,{method="GET",body,headers={}}={}){
+async function api(path,options={}){
+  if(wordDrivePrimary()&&(options.method||'GET')!=='GET')throw new Error('Drive同期中のため旧Supabaseへの書き込みは停止しています。');
+  const work=legacyApi(path,options);legacyRequests.add(work);
+  try{return await work}finally{legacyRequests.delete(work)}
+}
+async function legacyApi(path,{method="GET",body,headers={}}={}){
   const s=await ensureSession();
   if(!s)throw new Error("同期ログインが必要です。");
   const h={"apikey":SUPABASE_KEY,"Authorization":"Bearer "+s.access_token,...headers};
+  if(wordDrivePrimary()&&method!=="GET")throw new Error('Drive同期中のため旧Supabaseへの書き込みは停止しています。');
   if(body!==undefined)h["Content-Type"]="application/json";
   const r=await fetch(SUPABASE_URL+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
   const text=await r.text();
@@ -269,13 +281,13 @@ function maxSortOrder(){return cards.reduce((m,x)=>Math.max(m,Number(x.sort_orde
 function nextSortOrder(){return Math.max(maxSortOrder()+1,Date.now()*1000)}
 
 async function cloudInsert(items){
-  if(!cloudSession||!items.length)return items;
+  if(wordDrivePrimary()||!cloudSession||!items.length)return items;
   const userId=cloudSession.user?.id;
   const rows=items.map((x,i)=>({user_id:userId,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||nextSortOrder()+i,updated_at:new Date().toISOString()}));
   return await api("/rest/v1/flashcards_sync",{method:"POST",body:rows,headers:{"Prefer":"return=representation"}});
 }
 async function cloudUpdate(item){
-  if(!cloudSession||!item.id)return;
+  if(wordDrivePrimary()||!cloudSession||!item.id)return;
   await api("/rest/v1/flashcards_sync?id=eq."+encodeURIComponent(item.id),{
     method:"PATCH",
     body:{word:item.word,meaning:item.meaning,sort_order:Number(item.sort_order)||0,updated_at:new Date().toISOString()},
@@ -283,16 +295,18 @@ async function cloudUpdate(item){
   });
 }
 async function cloudDelete(item){
-  if(!cloudSession||!item?.id)return;
+  if(wordDrivePrimary()||!cloudSession||!item?.id)return;
   await api("/rest/v1/flashcards_sync?id=eq."+encodeURIComponent(item.id),{method:"DELETE",headers:{"Prefer":"return=minimal"}});
 }
 async function fetchCloudCards(){
   if(!cloudSession)return [];
-  const rows=await api("/rest/v1/flashcards_sync?select=id,word,meaning,sort_order,updated_at&order=sort_order.asc",{method:"GET"});
+  const rows=[];
+  for(let offset=0;;offset+=1000){const page=await api("/rest/v1/flashcards_sync?select=id,word,meaning,sort_order,updated_at&order=sort_order.asc,id.asc&limit=1000&offset="+offset,{method:"GET"});rows.push(...(page||[]));if(!page||page.length<1000)break;}
   return (rows||[]).map(x=>({id:x.id,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||0,updated_at:x.updated_at||null}));
 }
 function fingerprint(list){return JSON.stringify(list.map(x=>[x.id,x.word,x.meaning,x.sort_order,x.updated_at]))}
 async function restoreSeedCards(){
+  if(wordDrivePrimary())return;
   if(!cloudSession?.access_token)return;
   const s=await ensureSession();
   if(!s)return;
@@ -312,12 +326,15 @@ async function restoreSeedCards(){
 }
 
 async function migrateLocalToCloud(){
+  if(wordDrivePrimary())return;
   const remote=await fetchCloudCards();
+  if(wordDrivePrimary())return;
   const local=cards.slice();
   if(remote.length===0&&local.length){
     let base=Date.now()*1000;
     const pending=local.map((x,i)=>({word:x.word,meaning:x.meaning,sort_order:x.sort_order||base+i}));
     const inserted=await cloudInsert(pending);
+    if(wordDrivePrimary())return;
     cards=(inserted||[]).map(x=>({id:x.id,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||0,updated_at:x.updated_at||null}));
     saveCards();rebuildOrder();render();lastCloudFingerprint=fingerprint(cards);return;
   }
@@ -328,20 +345,22 @@ async function migrateLocalToCloud(){
       let base=Math.max(remote.reduce((m,x)=>Math.max(m,Number(x.sort_order)||0),0)+1,Date.now()*1000);
       await cloudInsert(missing.map((x,i)=>({word:x.word,meaning:x.meaning,sort_order:base+i})));
     }
-    cards=await fetchCloudCards();saveCards();rebuildOrder();render();lastCloudFingerprint=fingerprint(cards);
+    const incoming=await fetchCloudCards();if(wordDrivePrimary())return;cards=incoming;saveCards();rebuildOrder();render();lastCloudFingerprint=fingerprint(cards);
   }
 }
 async function afterLogin(){
+  if(wordDrivePrimary()){updateSyncUI();return;}
   updateSyncUI();
   await migrateLocalToCloud();
   startSyncLoop();
 }
 async function syncPull(force=false){
-  if(!cloudSession||editing||syncBusy)return;
+  if(wordDrivePrimary()||!cloudSession||editing||syncBusy)return;
   syncBusy=true;
   try{
     const keepId=cards[currentIndex()]?.id||null;
     const remote=await fetchCloudCards();
+    if(wordDrivePrimary())return;
     const fp=fingerprint(remote);
     if(force||fp!==lastCloudFingerprint){
       cards=remote;saveCards();rebuildOrder();
@@ -352,7 +371,7 @@ async function syncPull(force=false){
 }
 function startSyncLoop(){
   stopSyncLoop();
-  if(!cloudSession)return;
+  if(wordDrivePrimary()||!cloudSession)return;
   syncTimer=setInterval(()=>syncPull(false).catch(()=>{}),3000);
 }
 function stopSyncLoop(){if(syncTimer){clearInterval(syncTimer);syncTimer=null}}
@@ -454,7 +473,7 @@ function renderCard(item){
    const w=fe.value.trim(),m=be.value.trim();if(!w||!m){alert("単語と意味の両方を入力してください。");return}
    const changed={...item,word:w,meaning:m,updated_at:new Date().toISOString()};
    try{
-     if(cloudSession){
+     if(cloudSession&&!wordDrivePrimary()){
        if(!changed.id){const ins=await cloudInsert([changed]);if(ins?.[0])Object.assign(changed,ins[0])}
        else await cloudUpdate(changed);
      }
@@ -473,7 +492,7 @@ function showDraft(){
    e.stopPropagation();const w=fe.value.trim(),m=be.value.trim();if(!w||!m){alert("単語と意味の両方を入力してください。");return}
    let item={word:w,meaning:m,sort_order:nextSortOrder(),updated_at:new Date().toISOString()};
    try{
-     if(cloudSession){const ins=await cloudInsert([item]);if(ins?.[0])item={id:ins[0].id,word:ins[0].word,meaning:ins[0].meaning,sort_order:Number(ins[0].sort_order)||item.sort_order,updated_at:ins[0].updated_at||item.updated_at}}
+     if(cloudSession&&!wordDrivePrimary()){const ins=await cloudInsert([item]);if(ins?.[0])item={id:ins[0].id,word:ins[0].word,meaning:ins[0].meaning,sort_order:Number(ins[0].sort_order)||item.sort_order,updated_at:ins[0].updated_at||item.updated_at}}
      cards.push(item);saveCards();rebuildOrder();pos=cards.length-1;lastCloudFingerprint="";render();
    }catch(err){alert(err.message)}
  };
@@ -491,7 +510,7 @@ importFile.onchange=async e=>{
   try{
     const d=JSON.parse(await f.text());if(!Array.isArray(d))throw 0;
     const incoming=d.filter(x=>x&&typeof x.word==="string"&&typeof x.meaning==="string").map((x,i)=>({word:x.word.trim(),meaning:x.meaning.trim(),sort_order:Date.now()*1000+i})).filter(x=>x.word&&x.meaning);
-    if(cloudSession){
+    if(cloudSession&&!wordDrivePrimary()){
       await api("/rest/v1/flashcards_sync?user_id=eq."+encodeURIComponent(cloudSession.user.id),{method:"DELETE",headers:{"Prefer":"return=minimal"}});
       const ins=await cloudInsert(incoming);
       cards=(ins||[]).map(x=>({id:x.id,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||0,updated_at:x.updated_at||null}));
@@ -514,7 +533,7 @@ excelFile.onchange=async e=>{
     const base=nextSortOrder();
     const added=rows.map((r,i)=>({word:String(r?.[0]??"").trim(),meaning:String(r?.[1]??"").trim(),sort_order:base+i})).filter(x=>x.word&&x.meaning);
     if(!added.length){alert("A列に単語、B列に意味を入力してください。");return}
-    if(cloudSession){
+    if(cloudSession&&!wordDrivePrimary()){
       const ins=await cloudInsert(added);
       cards.push(...(ins||[]).map(x=>({id:x.id,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||0,updated_at:x.updated_at||null})));
     }else cards.push(...added);
@@ -524,9 +543,11 @@ excelFile.onchange=async e=>{
 };
 
 rebuildOrder();render();updateSyncUI();
-(async()=>{if(cloudSession){try{await ensureSession();if(cloudSession){await migrateLocalToCloud();startSyncLoop()}}catch{}}})();
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
+(async()=>{if(cloudSession&&!wordDrivePrimary()){try{await ensureSession();if(cloudSession&&!wordDrivePrimary()){await migrateLocalToCloud();startSyncLoop()}}catch{}}})();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{}));
 
 </script>
-<script src="./drive-sync.js"></script>
+<script src="./drive-config.js?v=3"></script>
+<script src="./drive-core.js?v=3"></script>
+<script src="./drive-sync.js?v=3"></script>
 </body></html>

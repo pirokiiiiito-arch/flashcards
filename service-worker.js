@@ -1,39 +1,16 @@
-const CACHE="flashcards-v13";
-const STATIC=["./manifest.webmanifest","./icon.svg","./drive-sync.js"];
-
-self.addEventListener("install",event=>{
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(STATIC)));
-  self.skipWaiting();
-});
-
-self.addEventListener("activate",event=>{
-  event.waitUntil(
-    caches.keys()
-      .then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
-      .then(()=>self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch",event=>{
-  const req=event.request;
-  if(req.mode==="navigate"){
-    event.respondWith(
-      fetch(req).then(res=>{
-        const copy=res.clone();
-        caches.open(CACHE).then(cache=>cache.put("./index.html",copy));
-        return res;
-      }).catch(()=>caches.match("./index.html"))
-    );
-    return;
-  }
-
-  event.respondWith(
-    fetch(req).then(res=>{
-      if(req.method==="GET" && new URL(req.url).origin===self.location.origin){
-        const copy=res.clone();
-        caches.open(CACHE).then(cache=>cache.put(req,copy));
-      }
-      return res;
-    }).catch(()=>caches.match(req))
-  );
+const CACHE = 'flashcards-v14-drive3';
+const STATIC = ['./', './index.html', './manifest.webmanifest', './icon.svg', './drive-config.js?v=3', './drive-core.js?v=3', './drive-sync.js?v=3'];
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)).then(() => self.skipWaiting())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('flashcards-v') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('fetch', e => {
+  const r = e.request, u = new URL(r.url), scope = new URL(self.registration.scope);
+  if (r.method !== 'GET' || u.origin !== scope.origin || !u.pathname.startsWith(scope.pathname)) return;
+  // The root worker must never substitute the word app for /plants/ or /colors/.
+  if (u.pathname.slice(scope.pathname.length).includes('/')) return;
+  e.respondWith(fetch(new Request(r, { cache: 'no-cache' })).then(async response => {
+    if (response.ok && response.type === 'basic') { const c = await caches.open(CACHE); await c.put(r, response.clone()); }
+    return response;
+  }).catch(async () => {
+    const c = await caches.open(CACHE); return await c.match(r) || (r.mode === 'navigate' ? await c.match('./index.html') : null) || Response.error();
+  }));
 });

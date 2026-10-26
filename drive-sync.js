@@ -1,45 +1,59 @@
-/* 単語カード Google Drive appDataFolder 同期 */
-(function(){
-'use strict';
-if(window.WordDriveSync)return;
-const SCHEMA='word-flashcards-drive-sync-v2',FILE='word-flashcards-sync-v2.json';
-const CLIENT_KEY='flashcards_gdrive_client_id_v1',META_KEY='word_gdrive_meta_v2',DEVICE_KEY='word_gdrive_device_v1';
-const SCOPE='https://www.googleapis.com/auth/drive.appdata';
-let token='',expires=0,fileId=null,busy=false,applying=false,timer=null;
-const clone=x=>JSON.parse(JSON.stringify(x)),iso=()=>new Date().toISOString(),own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
-const key=x=>String(x?.id||((x?.word||'')+'\u0000'+(x?.meaning||'')));
-const cardJson=x=>JSON.stringify({id:x?.id||null,word:x?.word||'',meaning:x?.meaning||'',sort_order:Number(x?.sort_order)||0});
-let meta={updated:{},deleted:{},last_sync_at:''};try{meta={...meta,...JSON.parse(localStorage.getItem(META_KEY)||'{}')};}catch{}
-meta.updated=meta.updated||{};meta.deleted=meta.deleted||{};
-let snapshot=new Map((cards||[]).map(x=>[key(x),cardJson(x)]));
-const device=(()=>{let d=localStorage.getItem(DEVICE_KEY);if(!d){d=crypto.randomUUID?.()||('device-'+Date.now());localStorage.setItem(DEVICE_KEY,d);}return d;})();
-function saveMeta(){localStorage.setItem(META_KEY,JSON.stringify(meta));}
-function client(){return String(localStorage.getItem(CLIENT_KEY)||'').trim();}
-function setClient(v){v=String(v||'').trim();if(v)localStorage.setItem(CLIENT_KEY,v);return v;}
-function valid(){return !!token&&Date.now()<expires-30000;}
-function updateBtn(){const b=document.getElementById('wordDriveBtn');if(!b)return;b.classList.toggle('on',valid());const t=document.getElementById('wordDriveBtnText');if(t)t.textContent=busy?'Drive同期中…':valid()?'Drive同期済み':'Google Drive同期';}
-function setStatus(s,err=false){const e=document.getElementById('wordDriveStatus');if(e){e.textContent=s||'';e.style.color=err?'#a12b24':'var(--muted)';}}
-function installUI(){
- const b=document.createElement('button');b.id='wordDriveBtn';b.className='btn sync-btn';b.type='button';b.innerHTML='<span class="sync-dot"></span><span id="wordDriveBtnText">Google Drive同期</span>';document.querySelector('.topbar')?.appendChild(b);b.onclick=openDialog;
- const d=document.createElement('dialog');d.id='wordDriveDialog';d.style.cssText='width:min(620px,94vw);border:1px solid var(--border);border-radius:20px;padding:20px;box-shadow:0 20px 70px #0004';
- d.innerHTML='<h2 style="margin:0 0 8px">Google Drive同期</h2><p style="color:var(--muted);line-height:1.6">単語カードをPC・スマホで共有します。Drive接続中はDriveを正本として扱い、既存Supabase同期は停止します。</p><input id="wordDriveClient" style="width:100%;padding:11px;border:1px solid var(--border);border-radius:10px" placeholder="OAuth 2.0 クライアントID"><p style="font-size:12px;color:var(--muted)">Google Driveの非表示アプリデータ領域だけを使用します。</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="wordDriveConnect" class="btn" type="button">接続して同期</button><button id="wordDriveNow" class="btn" type="button">今すぐ同期</button><button id="wordDriveOff" class="btn" type="button">接続解除</button><button id="wordDriveClose" class="btn" type="button">閉じる</button></div><div id="wordDriveStatus" style="margin-top:12px;font-size:13px"></div>';
- document.body.appendChild(d);wordDriveClient.value=client();wordDriveConnect.onclick=()=>sync(true).catch(showErr);wordDriveNow.onclick=()=>sync(false).catch(showErr);wordDriveOff.onclick=disconnect;wordDriveClose.onclick=()=>d.close();updateBtn();
-}
-function openDialog(){wordDriveClient.value=client();setStatus(valid()?'Drive接続済みです。変更は自動同期します。':'クライアントIDを入力して接続してください。');wordDriveDialog.showModal?.();}
-function showErr(e){setStatus(e?.message||String(e),true);updateBtn();}
-async function loadGIS(){if(window.google?.accounts?.oauth2)return;await new Promise((r,j)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.defer=true;s.onload=r;s.onerror=()=>j(new Error('Googleログイン機能を読み込めませんでした'));document.head.appendChild(s);});}
-async function auth(force=false){if(!(location.protocol==='https:'||(location.protocol==='http:'&&['localhost','127.0.0.1'].includes(location.hostname))))throw new Error('Drive同期はHTTPSまたはlocalhostから利用してください。');const id=setClient(wordDriveClient?.value||client());if(!id)throw new Error('OAuthクライアントIDを入力してください。');if(valid())return token;await loadGIS();return await new Promise((r,j)=>{const c=google.accounts.oauth2.initTokenClient({client_id:id,scope:SCOPE,callback:x=>{if(x.error){j(new Error(x.error_description||x.error));return;}token=x.access_token||'';expires=Date.now()+Number(x.expires_in||3600)*1000;updateBtn();r(token);},error_callback:()=>j(new Error('Google認証を完了できませんでした'))});c.requestAccessToken({prompt:force?'consent select_account':'select_account'});});}
-function stopSupabase(){try{stopSyncLoop?.();}catch{}localStorage.setItem('word_drive_primary_v1','1');}
-function disconnect(){if(token&&window.google?.accounts?.oauth2?.revoke)try{google.accounts.oauth2.revoke(token,()=>{})}catch{}token='';expires=0;fileId=null;localStorage.removeItem('word_drive_primary_v1');try{if(cloudSession)startSyncLoop?.();}catch{}setStatus('この端末のDrive接続を解除しました。Drive上のデータは残ります。');updateBtn();}
-async function df(u,o={}){if(!valid())await auth(false);const h=new Headers(o.headers||{});h.set('Authorization','Bearer '+token);const r=await fetch(u,{...o,headers:h});if(!r.ok){let m='';try{m=(await r.json())?.error?.message||''}catch{}throw new Error(m||('Google Drive APIエラー '+r.status));}return r;}
-async function locate(){if(fileId)return fileId;const q=encodeURIComponent("name='"+FILE+"' and trashed=false");const d=await (await df('https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q='+q+'&fields=files(id)&pageSize=10')).json();fileId=d.files?.[0]?.id||null;return fileId;}
-async function readCloud(){const id=await locate();if(!id)return null;const d=await (await df('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'?alt=media')).json();if(d.schema!==SCHEMA)throw new Error('Driveの単語カード同期データ形式が一致しません。');return d;}
-async function writeCloud(d){const id=await locate();if(id){await df('https://www.googleapis.com/upload/drive/v3/files/'+encodeURIComponent(id)+'?uploadType=media',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});return;}const bd='word_'+Math.random().toString(36).slice(2),md=JSON.stringify({name:FILE,parents:['appDataFolder']});const body='--'+bd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+md+'\r\n--'+bd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(d)+'\r\n--'+bd+'--';const x=await (await df('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})).json();fileId=x.id;}
-function markChanges(){const cur=new Map((cards||[]).map(x=>[key(x),cardJson(x)])),t=iso();for(const [k,v] of cur){if(!snapshot.has(k)||snapshot.get(k)!==v){meta.updated[k]=t;delete meta.deleted[k];}}for(const k of snapshot.keys()){if(!cur.has(k)){meta.deleted[k]=t;delete meta.updated[k];}}snapshot=cur;saveMeta();}
-function state(){const upd={...meta.updated};for(const x of cards||[]){const k=key(x);if(!upd[k]&&x.updated_at)upd[k]=String(x.updated_at);}return {schema:SCHEMA,saved_at:iso(),device_id:device,cards:clone(cards||[]),updated:upd,deleted:{...meta.deleted}};}
-function merge(local,remote){remote=remote||{cards:[],updated:{},deleted:{}};const lm=new Map((local.cards||[]).map(x=>[key(x),x])),rm=new Map((remote.cards||[]).map(x=>[key(x),x]));const ks=new Set([...lm.keys(),...rm.keys(),...Object.keys(local.deleted||{}),...Object.keys(remote.deleted||{})]);const out=[],updated={},deleted={};for(const k of ks){const lt=local.updated?.[k]||'',rt=remote.updated?.[k]||'',ld=local.deleted?.[k]||'',rd=remote.deleted?.[k]||'';const max=[lt,rt,ld,rd].sort().pop()||'';if((ld===max&&ld)||(rd===max&&rd)){deleted[k]=max;continue;}let chosen=null,ts='';if(rt===max&&rm.has(k)){chosen=rm.get(k);ts=rt;}else if(lt===max&&lm.has(k)){chosen=lm.get(k);ts=lt;}else if(rm.has(k)){chosen=rm.get(k);ts=rt;}else if(lm.has(k)){chosen=lm.get(k);ts=lt;}if(chosen){out.push(clone(chosen));updated[k]=ts;}}out.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));return {cards:out,updated,deleted};}
-async function sync(force=false,quiet=false){if(busy)return;busy=true;updateBtn();if(!quiet)setStatus('Google Driveと同期しています…');try{await auth(force);stopSupabase();const local=state(),remote=await readCloud(),m=merge(local,remote);applying=true;meta.updated=m.updated;meta.deleted=m.deleted;cards=m.cards;saveCards();snapshot=new Map(cards.map(x=>[key(x),cardJson(x)]));applying=false;meta.last_sync_at=iso();saveMeta();await writeCloud(state());if(!quiet)setStatus('同期しました。PC・スマホで同じ単語カードを共有できます。');}finally{applying=false;busy=false;updateBtn();}}
-function schedule(){if(applying||!valid())return;clearTimeout(timer);timer=setTimeout(()=>sync(false,true).catch(()=>{}),1400);}
-function hook(){const old=window.saveCards;if(typeof old==='function')window.saveCards=function(){if(!applying)markChanges();const r=old.apply(this,arguments);snapshot=new Map((cards||[]).map(x=>[key(x),cardJson(x)]));if(!applying)schedule();return r;};if(localStorage.getItem('word_drive_primary_v1')==='1')try{stopSyncLoop?.();}catch{}window.addEventListener('focus',()=>{if(valid())sync(false,true).catch(()=>{});});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&valid())sync(false,true).catch(()=>{});});}
-installUI();hook();window.WordDriveSync=Object.freeze({sync:()=>sync(false,false),disconnect,schema:SCHEMA,fileName:FILE});
+/* Word-card adapter. Supabase is read only during Drive migration. */
+(function () {
+  'use strict';
+  const F = window.FlashcardsDrive;
+  const key = c => 'card:' + c.id;
+  const clean = c => ({ id: c.id, word: c.word, meaning: c.meaning, sort_order: Number(c.sort_order) || 0, updated_at: c.updated_at || null });
+  let migrationRows = null;
+  function values(list) { return Object.fromEntries(list.map(c => [key(c), clean(c)])); }
+  function timestamps(list) { return Object.fromEntries(list.filter(c => c.updated_at).map(c => [key(c), c.updated_at])); }
+  async function read() {
+    for (const c of cards) if (!c.id) c.id = 'legacy-' + await F.digest(c.word + '\u0000' + c.meaning);
+    return values(cards);
+  }
+  function oldMeta() { try { return JSON.parse(localStorage.getItem('word_gdrive_meta_v2') || '{}'); } catch { return {}; } }
+  const cfg = {
+    namespace: 'word-flashcards', toolbar: '.topbar', primary: wordDrivePrimary,
+    storageKeys: [KEY], reload: () => { if (!editing) { cards = loadCards(); rebuildOrder(); render(); } },
+    read, isEditing: () => editing,
+    enablePrimary: async () => {
+      localStorage.setItem('word_drive_primary_v1', '1'); stopSyncLoop();
+      await Promise.allSettled([...legacyRequests]); updateSyncUI();
+    },
+    beforeInitial: async () => {
+      migrationRows = cloudSession ? await fetchCloudCards() : [];
+      const byText = new Map(migrationRows.map(c => [c.word + '\u0000' + c.meaning, c.id]));
+      for (const c of cards) if ((!c.id || c.id.startsWith('legacy-')) && byText.has(c.word + '\u0000' + c.meaning)) c.id = byText.get(c.word + '\u0000' + c.meaning);
+      saveCards();
+    },
+    timestamps: () => ({ ...Object.fromEntries(Object.entries(oldMeta().updated || {}).map(([k, v]) => ['card:' + k, v])), ...timestamps(cards) }),
+    tombstones: () => Object.fromEntries(Object.entries(oldMeta().deleted || {}).map(([k, v]) => ['card:' + k, v])),
+    toCloudValue: async (k, v) => v,
+    legacy: [{ file: 'word-flashcards-sync-v2.json', convert: async raw => {
+      if (raw.schema !== 'word-flashcards-drive-sync-v2' || !Array.isArray(raw.cards)) throw new Error('旧単語同期ファイルの形式を確認できません。');
+      const list = raw.cards.map(c => ({ ...c }));
+      const known = new Map(cards.map(c => [c.word + '\u0000' + c.meaning, c.id]));
+      for (const c of list) if (!c.id) c.id = known.get(c.word + '\u0000' + c.meaning) || 'legacy-' + await F.digest(c.word + '\u0000' + c.meaning);
+      return { data: values(list), timestamps: { ...timestamps(list), ...Object.fromEntries(Object.entries(raw.updated || {}).map(([k, v]) => ['card:' + k, v])) }, deleted: Object.fromEntries(Object.entries(raw.deleted || {}).map(([k, v]) => ['card:' + k, v])) };
+    } }],
+    migrate: async (api, view) => {
+      if (!cloudSession) return null;
+      const marker = 'migration:supabase:' + cloudSession.user?.id;
+      if (view.data[marker]) return null;
+      const rows = migrationRows || await fetchCloudCards();
+      return { data: { ...values(rows), [marker]: { completed_at: new Date().toISOString(), rows: rows.length, source: 'read-only' } }, timestamps: timestamps(rows) };
+    },
+    prepareApply: async view => Object.entries(view.data).filter(([k]) => k.startsWith('card:')).map(([, c]) => c).sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)),
+    apply: list => {
+      const id = cards[currentIndex()]?.id, back = !!stage.querySelector('.show-back'), shuffled = isShuffled, oldOrder = order.map(i => cards[i]?.id);
+      cards = list; saveCards();
+      if (shuffled) { order = oldOrder.map(k => cards.findIndex(c => c.id === k)).filter(i => i >= 0); for (let i = 0; i < cards.length; i++) if (!order.includes(i)) order.push(i); isShuffled = true; }
+      else rebuildOrder();
+      const at = order.findIndex(i => cards[i]?.id === id); if (at >= 0) pos = at;
+      render(); if (back) stage.querySelector('.card')?.classList.add('show-back'); updateSyncUI();
+    }
+  };
+  const sync = F.install(cfg); window.WordDriveSync = sync;
+  const originalSave = saveCards;
+  saveCards = function () { for (const c of cards) if (!c.id) c.id = crypto.randomUUID(); const out = originalSave(); sync.changed(); return out; };
 })();
