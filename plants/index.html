@@ -218,7 +218,7 @@ function goHome(){
 document.querySelectorAll(".group-card").forEach(b=>b.addEventListener("click",()=>openGroup(b.dataset.group)));
 homeBtn.addEventListener("click",goHome);
 
-function render(){
+function render(showBack=false){
   editing=false;
   stage.innerHTML="";
   updateCounts();updateDeckHeader();updateMode();
@@ -230,11 +230,11 @@ function render(){
     e.appendChild(b);stage.appendChild(e);return;
   }
   if(pos>=order.length)pos=0;
-  renderCard(cards[currentIndex()]);
+  renderCard(cards[currentIndex()],showBack);
 }
-function renderCard(item){
+function renderCard(item,showBack=false){
   const idx=currentIndex();
-  const card=document.createElement("article");card.className="card";
+  const card=document.createElement("article");card.className="card"+(showBack?" show-back":"");
   const front=document.createElement("div");front.className="face front";
   const back=document.createElement("div");back.className="face back";
 
@@ -268,7 +268,7 @@ function renderCard(item){
     }else imageBox.textContent="画像"+(imageIndex+1)+" 未登録";
     const savePastedImage=async data=>{
       const next=getImages(item);next[imageIndex]=data;
-      cards[idx]=withImages(item,next);saveCards();render();
+      cards[idx]=withImages(item,next);saveCards();render(true);
     };
     bindImagePaste(imageBox,savePastedImage);
     const slotTools=document.createElement("div");slotTools.className="image-slot-tools";
