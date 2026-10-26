@@ -131,6 +131,7 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 const STORAGE_KEY="plant_flashcards_v1";
 const SEED_KEY="plant_flashcards_seed_loaded_v1";
 const ANGIO_EXPAND_KEY="plant_angiosperm_greenlist_v2";
+const NONANGIO_EXPAND_KEY="plant_nonangio_expand_v1";
 const TARGETS={angiosperm:10000,gymnosperm:1000,fern:1000,moss:1000};
 const GROUPS={
   angiosperm:"被子植物",
@@ -519,6 +520,31 @@ async function ensureAngiospermExpansion(){
     console.warn("被子植物拡張データを読み込めませんでした",e);
   }
 }
+async function ensureNonAngioExpansion(){
+  if(localStorage.getItem(NONANGIO_EXPAND_KEY)==="1")return;
+  try{
+    const res=await fetch("./data-nonangio-extra.json",{cache:"no-store"});
+    if(!res.ok)throw new Error("追加データを読み込めません");
+    const data=await res.json();
+    const existing=new Set(cards.map(x=>x.group+"\u0000"+normalizeName(x.name)));
+    for(const card of (data.cards||[])){
+      if(!validCard(card))continue;
+      const key=card.group+"\u0000"+normalizeName(card.name);
+      if(existing.has(key))continue;
+      cards.push(withImages({
+        id:card.id||uid(),
+        group:card.group,
+        name:normalizeName(card.name),
+        description:String(card.description||"")
+      },getImages(card)));
+      existing.add(key);
+    }
+    saveCards();
+    localStorage.setItem(NONANGIO_EXPAND_KEY,"1");
+  }catch(e){
+    console.warn("裸子・シダ・コケの拡張データを読み込めませんでした",e);
+  }
+}
 async function ensureSeedData(){
   if(localStorage.getItem(SEED_KEY)==="1")return;
   if(cards.length){localStorage.setItem(SEED_KEY,"1");return}
@@ -536,6 +562,7 @@ async function ensureSeedData(){
 (async()=>{
   await ensureSeedData();
   await ensureAngiospermExpansion();
+  await ensureNonAngioExpansion();
   updateCounts();
   if(currentGroup){rebuildOrder();render()}
 })();
