@@ -1,5 +1,5 @@
-const CACHE="flashcards-v12";
-const STATIC=["./manifest.webmanifest","./icon.svg"];
+const CACHE="flashcards-v13";
+const STATIC=["./manifest.webmanifest","./icon.svg","./drive-sync.js"];
 
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(STATIC)));
