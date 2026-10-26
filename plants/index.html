@@ -54,7 +54,7 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 .front-name{font-size:clamp(27px,4.7vw,47px);font-weight:850;text-align:center;line-height:1.25;overflow-wrap:anywhere}
 .back-body{width:100%;max-width:none;margin:6px auto 0;display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
 .image-box{width:100%;aspect-ratio:16/9;border:1px dashed #bfc9c2;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);text-align:center;padding:12px}.image-box[contenteditable="true"]{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;touch-action:auto;cursor:text}
-.image-box img{width:100%;height:100%;object-fit:contain;display:block}.image-stack{display:grid;gap:16px}.image-slot{display:grid;gap:6px}.image-slot-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.image-slot-title{font-size:12px;color:var(--muted);font-weight:800}.image-slot-tools{display:flex;gap:7px;flex-wrap:wrap}.paste-btn{background:#edf6f0;color:var(--green);border:1px solid #a9c7b4}
+.image-box img{width:100%;height:100%;object-fit:contain;display:block}.image-stack{display:grid;gap:16px}.image-slot{display:grid;gap:6px}.image-slot-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.image-slot-title{font-size:12px;color:var(--muted);font-weight:800}.image-slot-tools{display:flex;gap:7px;flex-wrap:wrap}.paste-btn{background:#edf6f0;color:var(--green);border:1px solid #a9c7b4}.paste-btn.waiting{background:#fff7dc;color:#7a5b00;border-color:#d8bf62}.paste-btn.done{background:#eaf7ee;color:#17633a;border-color:#8fc4a2}
 .desc{white-space:pre-wrap;line-height:1.7;font-size:16px;text-align:left}
 .image-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.paste-note{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.5}
 .linkbtn{display:inline-flex;align-items:center;min-height:40px;padding:8px 10px;border-radius:10px;background:#fff;border:1px solid var(--border);color:var(--text);text-decoration:none;font-size:13px;font-weight:700}
@@ -283,10 +283,29 @@ function renderCard(item,showBack=false){
     bindImagePaste(imageBox,savePastedImage);
     const slotTools=document.createElement("div");slotTools.className="image-slot-tools";
     const pasteBtn=document.createElement("button");pasteBtn.className="small paste-btn";pasteBtn.textContent="貼り付け";
+    const setPasteButtonState=(state)=>{
+      pasteBtn.classList.remove("waiting","done");
+      if(state==="waiting"){
+        pasteBtn.classList.add("waiting");
+        pasteBtn.textContent="Ctrl+V待ち";
+      }else if(state==="done"){
+        pasteBtn.classList.add("done");
+        pasteBtn.textContent="貼り付け済み";
+        setTimeout(()=>{
+          pasteBtn.classList.remove("done");
+          pasteBtn.textContent="貼り付け";
+        },1200);
+      }else{
+        pasteBtn.textContent="貼り付け";
+      }
+    };
     pasteBtn.onclick=async e=>{
       e.stopPropagation();
-      activeImagePaste={target:imageBox,onImage:savePastedImage};
-      await pasteImageFromClipboard(savePastedImage,imageBox);
+      activeImagePaste={target:imageBox,onImage:savePastedImage,onSuccess:()=>setPasteButtonState("done")};
+      pasteBtn.textContent="読込中…";
+      const ok=await pasteImageFromClipboard(savePastedImage,imageBox);
+      if(ok)setPasteButtonState("done");
+      else setPasteButtonState("waiting");
     };
     slotTools.appendChild(pasteBtn);
     slot.append(slotHead,imageBox,slotTools);
@@ -388,7 +407,21 @@ function showEditor(item,idx,focusImage=false){
     });
     bindImagePaste(eImgs[i],async data=>{eImgs[i].value=data});
     ePastes[i].onclick=async()=>{
-      await pasteImageFromClipboard(async data=>{eImgs[i].value=data},eImgs[i]);
+      const btn=ePastes[i];
+      const save=async data=>{eImgs[i].value=data};
+      const done=()=>{
+        btn.classList.remove("waiting");
+        btn.classList.add("done");
+        btn.textContent="貼り付け済み";
+        setTimeout(()=>{btn.classList.remove("done");btn.textContent="貼り付け"},1200);
+      };
+      activeImagePaste={target:eImgs[i],onImage:save,onSuccess:done};
+      btn.textContent="読込中…";
+      const ok=await pasteImageFromClipboard(save,eImgs[i]);
+      if(!ok){
+        btn.classList.add("waiting");
+        btn.textContent="Ctrl+V待ち";
+      }
     };
   });
   wrap.querySelector("#eCancel").onclick=render;
@@ -450,24 +483,43 @@ async function clipboardItemToImageValue(item){
   return "";
 }
 async function pasteImageFromClipboard(onImage,fallbackTarget){
-  activeImagePaste={target:fallbackTarget,onImage};
+  if(!activeImagePaste||activeImagePaste.target!==fallbackTarget){
+    activeImagePaste={target:fallbackTarget,onImage};
+  }
   try{
-    if(!window.isSecureContext||!navigator.clipboard||typeof navigator.clipboard.read!=="function")throw new Error("unsupported");
-    const items=await navigator.clipboard.read();
-    for(const item of items){
-      const value=await clipboardItemToImageValue(item);
-      if(!value)continue;
-      await onImage(value);
-      return true;
+    if(window.isSecureContext&&navigator.clipboard&&typeof navigator.clipboard.read==="function"){
+      const items=await navigator.clipboard.read();
+      for(const item of items){
+        const value=await clipboardItemToImageValue(item);
+        if(!value)continue;
+        await onImage(value);
+        activeImagePaste?.onSuccess?.();
+        return true;
+      }
     }
   }catch(err){}
+
+  try{
+    if(window.isSecureContext&&navigator.clipboard&&typeof navigator.clipboard.readText==="function"){
+      const text=acceptableImageValue(await navigator.clipboard.readText());
+      if(text){
+        await onImage(text);
+        activeImagePaste?.onSuccess?.();
+        return true;
+      }
+    }
+  }catch(err){}
+
   prepareNativePasteTarget(fallbackTarget);
   if(fallbackTarget){
     fallbackTarget.setAttribute("data-paste-hint","1");
     if(!fallbackTarget.querySelector("img")){
-      fallbackTarget.textContent="Ctrl+V または長押し → 貼り付け";
+      fallbackTarget.textContent="Ctrl+Vで貼り付け";
     }
   }
+  try{
+    if(document.queryCommandSupported?.("paste")) document.execCommand("paste");
+  }catch(err){}
   return false;
 }
 function fileFromClipboardItem(item){
@@ -532,6 +584,7 @@ function bindImagePaste(target,onImage){
     try{
       target.removeAttribute("data-paste-hint");
       await onImage(value);
+      activeImagePaste?.onSuccess?.();
       return true;
     }finally{
       handling=false;
@@ -561,9 +614,10 @@ document.addEventListener("paste",async e=>{
   const value=await dataTransferImageValue(e.clipboardData);
   if(!value)return;
   e.preventDefault();
-  const {target,onImage}=activeImagePaste;
+  const {target,onImage,onSuccess}=activeImagePaste;
   target?.removeAttribute?.("data-paste-hint");
   await onImage(value);
+  onSuccess?.();
 });
 function resizeImage(file,maxW,maxH,quality){
   return new Promise((resolve,reject)=>{
