@@ -261,7 +261,7 @@ function renderCard(item,showBack=false){
       googleTop.rel="noopener noreferrer";
       slotHead.appendChild(googleTop);
     }
-    const imageBox=document.createElement("div");imageBox.className="image-box";imageBox.tabIndex=0;imageBox.title="画像をコピーしてここで貼り付けできます";
+    const imageBox=document.createElement("div");imageBox.className="image-box";imageBox.tabIndex=0;imageBox.contentEditable="true";imageBox.spellcheck=false;imageBox.title="画像をコピーしてここで貼り付けできます";
     if(src){
       const img=document.createElement("img");img.src=src;img.alt=item.name+" 画像"+(imageIndex+1);img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
       imageBox.appendChild(img);
@@ -401,6 +401,20 @@ function showEditor(item,idx,focusImage=false){
   setTimeout(()=>{(focusImage?eImgs[0]:eName).focus()},30);
 }
 
+function prepareNativePasteTarget(target){
+  try{
+    target.contentEditable="true";
+    target.focus({preventScroll:true});
+    const sel=window.getSelection?.();
+    if(sel){
+      const range=document.createRange();
+      range.selectNodeContents(target);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }catch{}
+}
 async function pasteImageFromClipboard(onImage,fallbackTarget){
   try{
     if(!window.isSecureContext||!navigator.clipboard||typeof navigator.clipboard.read!=="function")throw new Error("unsupported");
@@ -416,8 +430,21 @@ async function pasteImageFromClipboard(onImage,fallbackTarget){
     alert("クリップボードに画像がありません。画像をコピーしてから押してください。");
     return false;
   }catch(err){
-    try{fallbackTarget?.focus()}catch{}
-    alert("このブラウザではボタンから画像を読み取れません。画像欄を長押しして「貼り付け」、またはCtrl+Vを使ってください。");
+    prepareNativePasteTarget(fallbackTarget);
+    if(fallbackTarget){
+      const old=fallbackTarget.getAttribute("data-paste-hint");
+      fallbackTarget.setAttribute("data-paste-hint","1");
+      if(!old){
+        const originalText=fallbackTarget.textContent;
+        if(!fallbackTarget.querySelector("img")) fallbackTarget.textContent="ここを長押し → 貼り付け";
+        setTimeout(()=>{
+          if(fallbackTarget.getAttribute("data-paste-hint")==="1" && !fallbackTarget.querySelector("img")){
+            fallbackTarget.textContent=originalText||"画像未登録";
+            fallbackTarget.removeAttribute("data-paste-hint");
+          }
+        },5000);
+      }
+    }
     return false;
   }
 }
@@ -428,6 +455,9 @@ function fileFromClipboardItem(item){
   return null;
 }
 function bindImagePaste(target,onImage){
+  target.addEventListener("beforeinput",e=>{
+    if(e.inputType && e.inputType!=="insertFromPaste") e.preventDefault();
+  });
   target.addEventListener("paste",async e=>{
     const items=[...(e.clipboardData?.items||[])];
     const imgItem=items.find(x=>x.kind==="file"&&x.type.startsWith("image/"));
@@ -435,6 +465,7 @@ function bindImagePaste(target,onImage){
     const file=fileFromClipboardItem(imgItem);
     if(!file)return;
     e.preventDefault();
+    target.removeAttribute("data-paste-hint");
     try{
       const data=await resizeImage(file,900,900,.84);
       await onImage(data);
