@@ -141,6 +141,7 @@ const GROUPS={
 };
 let cards=loadCards();
 let currentGroup=null, order=[], pos=0, isShuffled=false, editing=false;
+let activeImagePaste=null;
 
 const homeView=document.getElementById("homeView");
 const deckView=document.getElementById("deckView");
@@ -284,6 +285,7 @@ function renderCard(item,showBack=false){
     const pasteBtn=document.createElement("button");pasteBtn.className="small paste-btn";pasteBtn.textContent="貼り付け";
     pasteBtn.onclick=async e=>{
       e.stopPropagation();
+      activeImagePaste={target:imageBox,onImage:savePastedImage};
       await pasteImageFromClipboard(savePastedImage,imageBox);
     };
     slotTools.appendChild(pasteBtn);
@@ -415,38 +417,58 @@ function prepareNativePasteTarget(target){
     }
   }catch{}
 }
+function extractImageSrcFromHtml(htmlText){
+  try{
+    const doc=new DOMParser().parseFromString(String(htmlText||""),"text/html");
+    const img=doc.querySelector("img");
+    return String(img?.getAttribute("src")||"").trim();
+  }catch{return ""}
+}
+function acceptableImageValue(value){
+  const s=String(value||"").trim();
+  if(s.startsWith("data:image/"))return s;
+  if(/^https?:\/\//i.test(s))return s;
+  return "";
+}
+async function clipboardItemToImageValue(item){
+  const imageType=item.types?.find(t=>t.startsWith("image/"));
+  if(imageType){
+    const blob=await item.getType(imageType);
+    return await resizeImage(blob,1200,1200,.84);
+  }
+  if(item.types?.includes("text/html")){
+    const htmlBlob=await item.getType("text/html");
+    const src=extractImageSrcFromHtml(await htmlBlob.text());
+    const accepted=acceptableImageValue(src);
+    if(accepted)return accepted;
+  }
+  if(item.types?.includes("text/plain")){
+    const textBlob=await item.getType("text/plain");
+    const accepted=acceptableImageValue(await textBlob.text());
+    if(accepted)return accepted;
+  }
+  return "";
+}
 async function pasteImageFromClipboard(onImage,fallbackTarget){
+  activeImagePaste={target:fallbackTarget,onImage};
   try{
     if(!window.isSecureContext||!navigator.clipboard||typeof navigator.clipboard.read!=="function")throw new Error("unsupported");
     const items=await navigator.clipboard.read();
     for(const item of items){
-      const type=item.types.find(t=>t.startsWith("image/"));
-      if(!type)continue;
-      const blob=await item.getType(type);
-      const data=await resizeImage(blob,1200,1200,.84);
-      await onImage(data);
+      const value=await clipboardItemToImageValue(item);
+      if(!value)continue;
+      await onImage(value);
       return true;
     }
-    alert("クリップボードに画像がありません。画像をコピーしてから押してください。");
-    return false;
-  }catch(err){
-    prepareNativePasteTarget(fallbackTarget);
-    if(fallbackTarget){
-      const old=fallbackTarget.getAttribute("data-paste-hint");
-      fallbackTarget.setAttribute("data-paste-hint","1");
-      if(!old){
-        const originalText=fallbackTarget.textContent;
-        if(!fallbackTarget.querySelector("img")) fallbackTarget.textContent="ここを長押し → 貼り付け";
-        setTimeout(()=>{
-          if(fallbackTarget.getAttribute("data-paste-hint")==="1" && !fallbackTarget.querySelector("img")){
-            fallbackTarget.textContent=originalText||"画像未登録";
-            fallbackTarget.removeAttribute("data-paste-hint");
-          }
-        },5000);
-      }
+  }catch(err){}
+  prepareNativePasteTarget(fallbackTarget);
+  if(fallbackTarget){
+    fallbackTarget.setAttribute("data-paste-hint","1");
+    if(!fallbackTarget.querySelector("img")){
+      fallbackTarget.textContent="Ctrl+V または長押し → 貼り付け";
     }
-    return false;
   }
+  return false;
 }
 function fileFromClipboardItem(item){
   try{
@@ -477,40 +499,51 @@ async function captureInsertedImage(target,onImage){
   return true;
 }
 function clipboardImageFile(dataTransfer){
+  const files=[...(dataTransfer?.files||[])];
+  const direct=files.find(f=>f.type&&f.type.startsWith("image/"));
+  if(direct)return direct;
   const items=[...(dataTransfer?.items||[])];
   const imgItem=items.find(x=>x.kind==="file"&&x.type&&x.type.startsWith("image/"));
   return imgItem?fileFromClipboardItem(imgItem):null;
 }
+async function dataTransferImageValue(dataTransfer){
+  const file=clipboardImageFile(dataTransfer);
+  if(file)return await resizeImage(file,1200,1200,.84);
+
+  const htmlText=dataTransfer?.getData?.("text/html")||"";
+  const htmlSrc=acceptableImageValue(extractImageSrcFromHtml(htmlText));
+  if(htmlSrc)return htmlSrc;
+
+  const plain=acceptableImageValue(dataTransfer?.getData?.("text/plain")||"");
+  if(plain)return plain;
+
+  return "";
+}
 function bindImagePaste(target,onImage){
   let handling=false;
-  const saveFile=async file=>{
-    if(!file||handling)return false;
+  const makeActive=()=>{activeImagePaste={target,onImage}};
+  target.addEventListener("focus",makeActive);
+  target.addEventListener("pointerdown",makeActive);
+  target.addEventListener("click",makeActive);
+
+  const saveValue=async value=>{
+    if(!value||handling)return false;
     handling=true;
     try{
-      const data=await resizeImage(file,1200,1200,.84);
       target.removeAttribute("data-paste-hint");
-      await onImage(data);
+      await onImage(value);
       return true;
-    }catch{
-      return false;
     }finally{
       handling=false;
     }
   };
 
-  target.addEventListener("beforeinput",async e=>{
-    if(e.inputType!=="insertFromPaste")return;
-    const file=clipboardImageFile(e.dataTransfer);
-    if(!file)return;
-    e.preventDefault();
-    await saveFile(file);
-  });
-
   target.addEventListener("paste",async e=>{
-    const file=clipboardImageFile(e.clipboardData);
-    if(file){
+    makeActive();
+    const value=await dataTransferImageValue(e.clipboardData);
+    if(value){
       e.preventDefault();
-      await saveFile(file);
+      await saveValue(value);
       return;
     }
     setTimeout(()=>captureInsertedImage(target,onImage),0);
@@ -522,6 +555,16 @@ function bindImagePaste(target,onImage){
     setTimeout(()=>captureInsertedImage(target,onImage),0);
   });
 }
+
+document.addEventListener("paste",async e=>{
+  if(e.defaultPrevented||!activeImagePaste)return;
+  const value=await dataTransferImageValue(e.clipboardData);
+  if(!value)return;
+  e.preventDefault();
+  const {target,onImage}=activeImagePaste;
+  target?.removeAttribute?.("data-paste-hint");
+  await onImage(value);
+});
 function resizeImage(file,maxW,maxH,quality){
   return new Promise((resolve,reject)=>{
     const img=new Image(),url=URL.createObjectURL(file);
