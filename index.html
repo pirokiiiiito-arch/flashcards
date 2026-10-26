@@ -109,6 +109,25 @@ function allowAction(name,ms=280){
   actionLocks.set(name,now);
   return true;
 }
+function bindSingleAction(el,name,handler,{touchLock=650,clickLock=260}={}){
+  let suppressClickUntil=0;
+  el.addEventListener("pointerup",e=>{
+    if(e.pointerType!=="touch"&&e.pointerType!=="pen")return;
+    e.preventDefault();
+    suppressClickUntil=Date.now()+900;
+    if(!allowAction(name,touchLock))return;
+    handler(e);
+  });
+  el.addEventListener("click",e=>{
+    if(Date.now()<suppressClickUntil){
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if(!allowAction(name,clickLock))return;
+    handler(e);
+  });
+}
 const stage=document.getElementById("stage"),countText=document.getElementById("countText");
 const syncBtn=document.getElementById("syncBtn"),syncBtnText=document.getElementById("syncBtnText");
 const syncModalWrap=document.getElementById("syncModalWrap"),signedOutBox=document.getElementById("signedOutBox"),signedInBox=document.getElementById("signedInBox");
@@ -352,7 +371,7 @@ function renderCard(item){
  const del=document.createElement("button");del.className="small";del.textContent="削除";
  actions.append(add,edit,del);card.appendChild(actions);
  const num=document.createElement("div");num.className="card-number";num.textContent=(pos+1)+" / "+cards.length;card.appendChild(num);stage.appendChild(card);
- let swipeStartX=0,swipeStartY=0,swipePointerId=null,swipeMoved=false,suppressClickUntil=0;
+ let swipeStartX=0,swipeStartY=0,swipePointerId=null,swipeMoved=false,suppressClickUntil=0,touchTapHandled=false;
  card.addEventListener("pointerdown",e=>{
    if(editing||e.pointerType==="mouse"||e.target.closest("button,textarea,input"))return;
    swipePointerId=e.pointerId;
@@ -376,19 +395,27 @@ function renderCard(item){
    const dx=e.clientX-swipeStartX;
    const dy=e.clientY-swipeStartY;
    const horizontal=Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.2;
+   const simpleTap=Math.abs(dx)<12&&Math.abs(dy)<12;
+   const isTouch=e.pointerType==="touch"||e.pointerType==="pen";
    card.style.transform="";
    try{card.releasePointerCapture(e.pointerId)}catch{}
    swipePointerId=null;
+   if(isTouch)e.preventDefault();
    if(horizontal&&!editing&&cards.length){
-     suppressClickUntil=Date.now()+450;
+     suppressClickUntil=Date.now()+900;
+     touchTapHandled=isTouch;
      if(dx<0){
        pos=(pos+1)%order.length;
      }else{
        pos=(pos-1+order.length)%order.length;
      }
      render();
+   }else if(isTouch&&simpleTap&&!editing){
+     suppressClickUntil=Date.now()+900;
+     touchTapHandled=true;
+     if(allowAction("card-touch-toggle",650))card.classList.toggle("show-back");
    }else if(swipeMoved){
-     suppressClickUntil=Date.now()+250;
+     suppressClickUntil=Date.now()+500;
    }
  }
  card.addEventListener("pointerup",finishSwipe);
@@ -399,9 +426,9 @@ function renderCard(item){
    }
  });
  card.addEventListener("click",e=>{
-   if(editing||Date.now()<suppressClickUntil)return;
+   if(editing||Date.now()<suppressClickUntil||touchTapHandled)return;
    if(e.target.closest("button,textarea,input"))return;
-   if(!allowAction("card-toggle",320))return;
+   if(!allowAction("card-click-toggle",320))return;
    card.classList.toggle("show-back");
  });
  card.addEventListener("selectstart",e=>{
@@ -453,9 +480,9 @@ function showDraft(){
  c.onclick=e=>{e.stopPropagation();render()};updateNav();setTimeout(()=>fe.focus(),30)
 }
 
-prevBtn.onclick=()=>{if(!cards.length||editing||!allowAction("prev",280))return;pos=(pos-1+order.length)%order.length;render()};
-nextBtn.onclick=()=>{if(!cards.length||editing||!allowAction("next",280))return;pos=(pos+1)%order.length;render()};
-modeBtn.onclick=()=>{if(cards.length<2||editing||!allowAction("mode",450))return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()};
+bindSingleAction(prevBtn,"prev",()=>{if(!cards.length||editing)return;pos=(pos-1+order.length)%order.length;render()});
+bindSingleAction(nextBtn,"next",()=>{if(!cards.length||editing)return;pos=(pos+1)%order.length;render()});
+bindSingleAction(modeBtn,"mode",()=>{if(cards.length<2||editing)return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()},{touchLock:800,clickLock:450});
 
 exportBtn.onclick=()=>{const simple=cards.map(x=>({word:x.word,meaning:x.meaning}));const blob=new Blob([JSON.stringify(simple,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tangocho-data.json";a.click();URL.revokeObjectURL(u)};
 importBtn.onclick=()=>importFile.click();
