@@ -15,7 +15,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0}.topbar{displa
 .nav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:min(670px,100%);margin:0 auto 18px}
 .nav button{min-height:54px;border-radius:16px;background:#fff;border:1px solid var(--border);color:var(--text);font-weight:800;font-size:17px}
 .nav .mode{background:var(--accent);border-color:var(--accent);color:#fff}.nav .mode.normal{background:var(--green);border-color:var(--green)}
-.stage{min-height:360px;display:flex;align-items:center;justify-content:center}.card{width:min(670px,100%);height:360px;position:relative;cursor:pointer}
+.stage{min-height:360px;display:flex;align-items:center;justify-content:center}.card{width:min(670px,100%);height:360px;position:relative;cursor:pointer;touch-action:pan-y;will-change:transform}
 .face{position:absolute;inset:0;border:1px solid var(--border);border-radius:28px;background:#fff;box-shadow:0 18px 45px rgba(31,41,55,.08);display:flex;align-items:center;justify-content:center;text-align:center;padding:64px 22px 70px;overflow:hidden}
 .back{display:none;background:#f9fbff}.card.show-back .front{display:none}.card.show-back .back{display:flex}
 .face-label{position:absolute;top:26px;left:34px;color:var(--muted);font-size:16px;font-weight:800}
@@ -91,7 +91,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0}.topbar{displa
 <button id="prevBtn">← 戻る</button><button id="modeBtn" class="mode normal">通常</button><button id="nextBtn">次へ →</button>
 </div>
 <div id="stage" class="stage"></div>
-<div class="hint">カードをクリックすると表・裏が切り替わります。</div>
+<div class="hint">タップで表・裏を切替。スマホは左スワイプで次へ、右スワイプで戻ります。</div>
 </div>
 <script>
 
@@ -345,7 +345,57 @@ function renderCard(item){
  const del=document.createElement("button");del.className="small";del.textContent="削除";
  actions.append(add,edit,del);card.appendChild(actions);
  const num=document.createElement("div");num.className="card-number";num.textContent=(pos+1)+" / "+cards.length;card.appendChild(num);stage.appendChild(card);
- card.onclick=()=>{if(!editing)card.classList.toggle("show-back")};
+ let swipeStartX=0,swipeStartY=0,swipePointerId=null,swipeMoved=false,suppressClickUntil=0;
+ card.addEventListener("pointerdown",e=>{
+   if(editing||e.pointerType==="mouse"||e.target.closest("button,textarea,input"))return;
+   swipePointerId=e.pointerId;
+   swipeStartX=e.clientX;
+   swipeStartY=e.clientY;
+   swipeMoved=false;
+   try{card.setPointerCapture(e.pointerId)}catch{}
+ });
+ card.addEventListener("pointermove",e=>{
+   if(swipePointerId!==e.pointerId||editing)return;
+   const dx=e.clientX-swipeStartX;
+   const dy=e.clientY-swipeStartY;
+   if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.15){
+     swipeMoved=true;
+     const follow=Math.max(-44,Math.min(44,dx*0.22));
+     card.style.transform="translateX("+follow+"px)";
+   }
+ });
+ function finishSwipe(e){
+   if(swipePointerId!==e.pointerId)return;
+   const dx=e.clientX-swipeStartX;
+   const dy=e.clientY-swipeStartY;
+   const horizontal=Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.2;
+   card.style.transform="";
+   try{card.releasePointerCapture(e.pointerId)}catch{}
+   swipePointerId=null;
+   if(horizontal&&!editing&&cards.length){
+     suppressClickUntil=Date.now()+450;
+     if(dx<0){
+       pos=(pos+1)%order.length;
+     }else{
+       pos=(pos-1+order.length)%order.length;
+     }
+     render();
+   }else if(swipeMoved){
+     suppressClickUntil=Date.now()+250;
+   }
+ }
+ card.addEventListener("pointerup",finishSwipe);
+ card.addEventListener("pointercancel",e=>{
+   if(swipePointerId===e.pointerId){
+     card.style.transform="";
+     swipePointerId=null;
+   }
+ });
+ card.addEventListener("click",e=>{
+   if(editing||Date.now()<suppressClickUntil)return;
+   if(e.target.closest("button,textarea,input"))return;
+   card.classList.toggle("show-back");
+ });
  add.onclick=e=>{e.stopPropagation();if(!editing)showDraft()};
  edit.onclick=e=>{e.stopPropagation();if(editing){saveEdit()}else startEdit()};
  del.onclick=async e=>{
