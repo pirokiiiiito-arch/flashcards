@@ -548,6 +548,7 @@ async function captureInsertedImage(target,onImage){
   if(!data)return false;
   target.removeAttribute("data-paste-hint");
   await onImage(data);
+  if(activeImagePaste?.target===target) activeImagePaste?.onSuccess?.();
   return true;
 }
 function clipboardImageFile(dataTransfer){
@@ -573,7 +574,7 @@ async function dataTransferImageValue(dataTransfer){
 }
 function bindImagePaste(target,onImage){
   let handling=false;
-  const makeActive=()=>{activeImagePaste={target,onImage}};
+  const makeActive=()=>{activeImagePaste=activeImagePaste?.target===target?{...activeImagePaste,target,onImage}:{target,onImage}};
   target.addEventListener("focus",makeActive);
   target.addEventListener("pointerdown",makeActive);
   target.addEventListener("click",makeActive);
