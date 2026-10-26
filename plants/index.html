@@ -54,7 +54,7 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 .front-name{font-size:clamp(27px,4.7vw,47px);font-weight:850;text-align:center;line-height:1.25;overflow-wrap:anywhere}
 .back-body{width:100%;max-width:none;margin:6px auto 0;display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
 .image-box{width:100%;aspect-ratio:16/9;border:1px dashed #bfc9c2;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);text-align:center;padding:12px}
-.image-box img{width:100%;height:100%;object-fit:contain;display:block}.image-stack{display:grid;gap:16px}.image-slot{display:grid;gap:6px}.image-slot-title{font-size:12px;color:var(--muted);font-weight:800}.image-slot-tools{display:flex;gap:7px;flex-wrap:wrap}.paste-btn{background:#edf6f0;color:var(--green);border:1px solid #a9c7b4}
+.image-box img{width:100%;height:100%;object-fit:contain;display:block}.image-stack{display:grid;gap:16px}.image-slot{display:grid;gap:6px}.image-slot-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.image-slot-title{font-size:12px;color:var(--muted);font-weight:800}.image-slot-tools{display:flex;gap:7px;flex-wrap:wrap}.paste-btn{background:#edf6f0;color:var(--green);border:1px solid #a9c7b4}
 .desc{white-space:pre-wrap;line-height:1.7;font-size:16px;text-align:left}
 .image-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.paste-note{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.5}
 .linkbtn{display:inline-flex;align-items:center;min-height:40px;padding:8px 10px;border-radius:10px;background:#fff;border:1px solid var(--border);color:var(--text);text-decoration:none;font-size:13px;font-weight:700}
@@ -249,7 +249,18 @@ function renderCard(item){
   const images=getImages(item);
   images.forEach((src,imageIndex)=>{
     const slot=document.createElement("div");slot.className="image-slot";
+    const slotHead=document.createElement("div");slotHead.className="image-slot-head";
     const slotTitle=document.createElement("div");slotTitle.className="image-slot-title";slotTitle.textContent="画像"+(imageIndex+1);
+    slotHead.appendChild(slotTitle);
+    if(imageIndex===0){
+      const googleTop=document.createElement("a");
+      googleTop.className="linkbtn";
+      googleTop.textContent="Google画像検索";
+      googleTop.href="https://www.google.com/search?tbm=isch&q="+encodeURIComponent(item.name+" 植物");
+      googleTop.target="_blank";
+      googleTop.rel="noopener noreferrer";
+      slotHead.appendChild(googleTop);
+    }
     const imageBox=document.createElement("div");imageBox.className="image-box";imageBox.tabIndex=0;imageBox.title="画像をコピーしてここで貼り付けできます";
     if(src){
       const img=document.createElement("img");img.src=src;img.alt=item.name+" 画像"+(imageIndex+1);img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
@@ -267,16 +278,13 @@ function renderCard(item){
       await pasteImageFromClipboard(savePastedImage,imageBox);
     };
     slotTools.appendChild(pasteBtn);
-    slot.append(slotTitle,imageBox,slotTools);
+    slot.append(slotHead,imageBox,slotTools);
     imageStack.appendChild(slot);
   });
 
   const imageTools=document.createElement("div");imageTools.className="image-tools";
-  const google=document.createElement("a");google.className="linkbtn";google.textContent="Google画像検索";
-  google.href="https://www.google.com/search?tbm=isch&q="+encodeURIComponent(item.name+" 植物");
-  google.target="_blank";google.rel="noopener noreferrer";
   const imgBtn=document.createElement("button");imgBtn.className="small";imgBtn.textContent="画像1〜3を編集";
-  imageTools.append(google,imgBtn);
+  imageTools.append(imgBtn);
   const pasteNote=document.createElement("div");pasteNote.className="paste-note";pasteNote.textContent="各画像欄を選んで貼り付け（Ctrl+V）できます。最大3枚。";
   left.append(imageStack,imageTools,pasteNote);
 
