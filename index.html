@@ -109,7 +109,7 @@ function allowAction(name,ms=280){
   actionLocks.set(name,now);
   return true;
 }
-function bindSingleAction(el,name,handler,{touchLock=650,clickLock=260}={}){
+function bindSingleAction(el,name,handler,{touchLock=90,clickLock=220}={}){
   let suppressClickUntil=0;
   el.addEventListener("pointerup",e=>{
     if(e.pointerType!=="touch"&&e.pointerType!=="pen")return;
@@ -395,7 +395,7 @@ function renderCard(item){
    const dx=e.clientX-swipeStartX;
    const dy=e.clientY-swipeStartY;
    const horizontal=Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.2;
-   const simpleTap=Math.abs(dx)<12&&Math.abs(dy)<12;
+   const simpleTap=Math.abs(dx)<24&&Math.abs(dy)<24;
    const isTouch=e.pointerType==="touch"||e.pointerType==="pen";
    card.style.transform="";
    try{card.releasePointerCapture(e.pointerId)}catch{}
@@ -413,7 +413,7 @@ function renderCard(item){
    }else if(isTouch&&simpleTap&&!editing){
      suppressClickUntil=Date.now()+900;
      touchTapHandled=true;
-     if(allowAction("card-touch-toggle",650))card.classList.toggle("show-back");
+     card.classList.toggle("show-back");
    }else if(swipeMoved){
      suppressClickUntil=Date.now()+500;
    }
@@ -482,7 +482,7 @@ function showDraft(){
 
 bindSingleAction(prevBtn,"prev",()=>{if(!cards.length||editing)return;pos=(pos-1+order.length)%order.length;render()});
 bindSingleAction(nextBtn,"next",()=>{if(!cards.length||editing)return;pos=(pos+1)%order.length;render()});
-bindSingleAction(modeBtn,"mode",()=>{if(cards.length<2||editing)return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()},{touchLock:800,clickLock:450});
+bindSingleAction(modeBtn,"mode",()=>{if(cards.length<2||editing)return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()},{touchLock:120,clickLock:350});
 
 exportBtn.onclick=()=>{const simple=cards.map(x=>({word:x.word,meaning:x.meaning}));const blob=new Blob([JSON.stringify(simple,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tangocho-data.json";a.click();URL.revokeObjectURL(u)};
 importBtn.onclick=()=>importFile.click();
