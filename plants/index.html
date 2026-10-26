@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f7d5a">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>植物単語帳</title>
+<style>
+:root{
+  --bg:#f6f8f6;--panel:#fff;--text:#17231d;--muted:#6b766f;--border:#d8e0da;
+  --green:#2f7d5a;--green-soft:#edf6f0;--back:#f6fbf7;--danger:#b42318;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;border:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.wrap{width:min(940px,calc(100% - 24px));margin:22px auto 60px}
+header{display:flex;gap:14px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-bottom:18px}
+h1{margin:0;font-size:clamp(30px,5vw,46px)}
+.sub{color:var(--muted);font-size:13px;margin-top:5px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:10px 14px;border-radius:12px;background:#eaf0ec;color:var(--text);font-weight:700}
+.btn.primary{background:var(--green);color:#fff}
+.btn.danger{background:#fff0ef;color:var(--danger)}
+.file{display:none}
+
+.home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+.group-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;text-align:left;min-height:112px}
+.group-card strong{display:block;font-size:22px;margin-bottom:10px}
+.group-card .count{color:var(--muted);font-size:14px}
+.group-card:hover{border-color:#b9cabc}
+.group-card.active{background:var(--green-soft);border-color:#9fc2ad}
+
+.deckbar{display:none;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:12px 0}
+.deckbar.show{display:flex}
+.deck-title{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.deck-title strong{font-size:22px}
+.deck-title span{color:var(--muted);font-size:14px}
+.nav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:min(720px,100%);margin:0 auto 16px}
+.nav button{min-height:50px;border-radius:14px;background:#fff;border:1px solid var(--border);font-weight:800}
+.nav .mode{background:var(--green);color:#fff;border-color:var(--green)}
+.stage{min-height:470px;display:flex;align-items:center;justify-content:center}
+.card{width:min(720px,100%);height:470px;position:relative;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.face{position:absolute;inset:0;background:#fff;border:1px solid var(--border);border-radius:26px;box-shadow:0 16px 36px rgba(27,54,39,.07);padding:68px 24px 28px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.back{display:none;background:var(--back);align-items:flex-start;overflow-y:auto}
+.card.show-back .front{display:none}.card.show-back .back{display:flex}
+.label{position:absolute;left:26px;top:24px;color:var(--muted);font-size:14px;font-weight:800}
+.actions{position:absolute;right:20px;top:18px;z-index:10;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.small{padding:8px 11px;border-radius:10px;background:#fff;border:1px solid var(--border);font-weight:750}
+.small.add{color:var(--green);border-color:#a9c7b4;background:#f4faf6}
+.number{position:absolute;right:24px;top:68px;color:#b3bcb6;font-size:13px}
+.front-name{font-size:clamp(34px,6vw,58px);font-weight:850;text-align:center;line-height:1.25;overflow-wrap:anywhere}
+.back-body{width:100%;max-width:620px;margin:6px auto 0;display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:24px;align-items:start}
+.image-box{aspect-ratio:4/3;border:1px dashed #bfc9c2;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);text-align:center;padding:12px}
+.image-box img{width:100%;height:100%;object-fit:contain;display:block}
+.desc{white-space:pre-wrap;line-height:1.7;font-size:16px;text-align:left}
+.image-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.linkbtn{display:inline-flex;align-items:center;min-height:40px;padding:8px 10px;border-radius:10px;background:#fff;border:1px solid var(--border);color:var(--text);text-decoration:none;font-size:13px;font-weight:700}
+.editor-wrap{width:100%;max-width:620px;display:grid;gap:12px}
+.field{display:grid;gap:6px}
+.field label{font-size:13px;color:var(--muted);font-weight:700}
+.input,.textarea,.select{width:100%;border:1px solid var(--border);border-radius:12px;padding:11px 12px;background:#fff;color:var(--text)}
+.textarea{min-height:150px;resize:vertical;white-space:pre-wrap}
+.editor-actions{display:flex;gap:8px;flex-wrap:wrap}
+.empty{width:min(720px,100%);min-height:330px;background:#fff;border:1px dashed var(--border);border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;color:var(--muted);padding:28px}
+.empty strong{color:var(--text);font-size:22px}
+.hint{text-align:center;color:var(--muted);font-size:12px;margin-top:10px}
+.hide{display:none!important}
+
+@media(max-width:640px){
+  .home-grid{grid-template-columns:1fr}
+  .stage{min-height:430px}
+  .card{height:430px}
+  .face{padding:66px 16px 24px}
+  .actions{right:14px;top:14px}
+  .label{left:18px;top:20px}
+  .number{right:18px;top:64px}
+  .back-body{grid-template-columns:1fr;gap:14px}
+  .image-box{max-height:220px}
+  .nav{gap:7px}
+  .nav button{font-size:14px}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>植物単語帳</h1>
+    <div class="sub">表＝植物名 / 裏＝画像＋説明</div>
+  </div>
+  <div class="toolbar">
+    <button id="homeBtn" class="btn hide">分類一覧</button>
+    <button id="exportBtn" class="btn">データ保存</button>
+    <button id="importBtn" class="btn">データ読込</button>
+    <input id="importFile" class="file" type="file" accept=".json,application/json">
+    <button id="excelBtn" class="btn">Excel追加</button>
+    <input id="excelFile" class="file" type="file" accept=".xlsx,.xls,.csv">
+  </div>
+</header>
+
+<div id="homeView">
+  <div class="home-grid">
+    <button class="group-card" data-group="angiosperm"><strong>被子植物</strong><span class="count" data-count="angiosperm">0 / 1000</span></button>
+    <button class="group-card" data-group="gymnosperm"><strong>裸子植物</strong><span class="count" data-count="gymnosperm">0 / 1000</span></button>
+    <button class="group-card" data-group="fern"><strong>シダ植物</strong><span class="count" data-count="fern">0 / 1000</span></button>
+    <button class="group-card" data-group="moss"><strong>コケ植物</strong><span class="count" data-count="moss">0 / 1000</span></button>
+  </div>
+  <div class="hint">各分類1000種を目標に登録。名称は漢字またはカタカナで管理します。</div>
+</div>
+
+<div id="deckView" class="hide">
+  <div class="deckbar show">
+    <div class="deck-title"><strong id="groupTitle"></strong><span id="groupCount"></span></div>
+    <button id="addTopBtn" class="btn primary">＋ カード追加</button>
+  </div>
+  <div class="nav">
+    <button id="prevBtn">← 戻る</button>
+    <button id="shuffleBtn" class="mode">通常</button>
+    <button id="nextBtn">次へ →</button>
+  </div>
+  <div id="stage" class="stage"></div>
+  <div class="hint">タップで表・裏を切替。スマホは左スワイプで次へ、右スワイプで戻ります。</div>
+</div>
+</div>
+
+<script>
+const STORAGE_KEY="plant_flashcards_v1";
+const GROUPS={
+  angiosperm:"被子植物",
+  gymnosperm:"裸子植物",
+  fern:"シダ植物",
+  moss:"コケ植物"
+};
+let cards=loadCards();
+let currentGroup=null, order=[], pos=0, isShuffled=false, editing=false;
+
+const homeView=document.getElementById("homeView");
+const deckView=document.getElementById("deckView");
+const homeBtn=document.getElementById("homeBtn");
+const stage=document.getElementById("stage");
+const groupTitle=document.getElementById("groupTitle");
+const groupCount=document.getElementById("groupCount");
+const prevBtn=document.getElementById("prevBtn");
+const nextBtn=document.getElementById("nextBtn");
+const shuffleBtn=document.getElementById("shuffleBtn");
+
+function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))}
+function loadCards(){
+  try{
+    const d=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return Array.isArray(d)?d.filter(validCard):[];
+  }catch{return[]}
+}
+function validCard(x){
+  return x&&GROUPS[x.group]&&typeof x.name==="string"&&typeof x.description==="string";
+}
+function saveCards(){localStorage.setItem(STORAGE_KEY,JSON.stringify(cards))}
+function normalizeName(s){return String(s||"").trim()}
+function updateCounts(){
+  Object.keys(GROUPS).forEach(g=>{
+    const n=cards.filter(x=>x.group===g).length;
+    document.querySelector('[data-count="'+g+'"]').textContent=n+" / 1000";
+  });
+}
+function groupCards(){return cards.map((x,i)=>({x,i})).filter(o=>o.x.group===currentGroup)}
+function rebuildOrder(keepCardId=null){
+  const list=groupCards();
+  order=list.map(o=>o.i);
+  isShuffled=false;
+  if(!order.length){pos=0;updateMode();return}
+  if(keepCardId){
+    const idx=order.findIndex(i=>cards[i].id===keepCardId);
+    pos=idx>=0?idx:Math.min(pos,order.length-1);
+  }else pos=Math.min(pos,order.length-1);
+  updateMode();
+}
+function currentIndex(){return order.length?order[pos]:-1}
+function updateMode(){shuffleBtn.textContent=isShuffled?"シャッフル":"通常"}
+function updateDeckHeader(){
+  groupTitle.textContent=GROUPS[currentGroup]||"";
+  const n=groupCards().length;
+  groupCount.textContent=n+" / 1000";
+}
+function openGroup(g){
+  currentGroup=g;
+  homeView.classList.add("hide");
+  deckView.classList.remove("hide");
+  homeBtn.classList.remove("hide");
+  rebuildOrder();
+  pos=0;
+  render();
+}
+function goHome(){
+  currentGroup=null;editing=false;
+  deckView.classList.add("hide");
+  homeView.classList.remove("hide");
+  homeBtn.classList.add("hide");
+  updateCounts();
+}
+document.querySelectorAll(".group-card").forEach(b=>b.addEventListener("click",()=>openGroup(b.dataset.group)));
+homeBtn.addEventListener("click",goHome);
+
+function render(){
+  editing=false;
+  stage.innerHTML="";
+  updateCounts();updateDeckHeader();updateMode();
+  const list=groupCards();
+  if(!list.length){
+    const e=document.createElement("div");e.className="empty";
+    e.innerHTML="<strong>カードがありません</strong><div>この分類の植物を追加してください。</div>";
+    const b=document.createElement("button");b.className="btn primary";b.textContent="＋ カード追加";b.onclick=showDraft;
+    e.appendChild(b);stage.appendChild(e);return;
+  }
+  if(pos>=order.length)pos=0;
+  renderCard(cards[currentIndex()]);
+}
+function renderCard(item){
+  const idx=currentIndex();
+  const card=document.createElement("article");card.className="card";
+  const front=document.createElement("div");front.className="face front";
+  const back=document.createElement("div");back.className="face back";
+
+  const fl=document.createElement("div");fl.className="label";fl.textContent="表・植物名";
+  const bl=document.createElement("div");bl.className="label";bl.textContent="裏・画像と説明";
+  const name=document.createElement("div");name.className="front-name";name.textContent=item.name;
+  front.append(fl,name);
+
+  const body=document.createElement("div");body.className="back-body";
+  const left=document.createElement("div");
+  const imageBox=document.createElement("div");imageBox.className="image-box";
+  if(item.imageUrl){
+    const img=document.createElement("img");img.src=item.imageUrl;img.alt=item.name;img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
+    imageBox.appendChild(img);
+  }else imageBox.textContent="画像未登録";
+
+  const imageTools=document.createElement("div");imageTools.className="image-tools";
+  const google=document.createElement("a");google.className="linkbtn";google.textContent="Google画像検索";
+  google.href="https://www.google.com/search?tbm=isch&q="+encodeURIComponent(item.name+" 植物");
+  google.target="_blank";google.rel="noopener noreferrer";
+  const imgBtn=document.createElement("button");imgBtn.className="small";imgBtn.textContent="画像登録";
+  imageTools.append(google,imgBtn);
+  left.append(imageBox,imageTools);
+
+  const desc=document.createElement("div");desc.className="desc";desc.textContent=item.description||"説明未登録";
+  body.append(left,desc);back.append(bl,body);
+
+  const actions=document.createElement("div");actions.className="actions";
+  const add=document.createElement("button");add.className="small add";add.textContent="＋追加";
+  const edit=document.createElement("button");edit.className="small";edit.textContent="編集";
+  const del=document.createElement("button");del.className="small";del.textContent="削除";
+  actions.append(add,edit,del);
+
+  const num=document.createElement("div");num.className="number";num.textContent=(pos+1)+" / "+order.length;
+  card.append(front,back,actions,num);stage.appendChild(card);
+
+  let sx=0,sy=0,pid=null,moved=false,suppressUntil=0;
+  card.addEventListener("pointerdown",e=>{
+    if(editing||e.pointerType==="mouse"||e.target.closest("button,a,input,textarea,select"))return;
+    sx=e.clientX;sy=e.clientY;pid=e.pointerId;moved=false;
+    try{card.setPointerCapture(e.pointerId)}catch{}
+  });
+  card.addEventListener("pointermove",e=>{
+    if(pid!==e.pointerId||editing)return;
+    const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.15){
+      moved=true;card.style.transform="translateX("+Math.max(-44,Math.min(44,dx*.22))+"px)";
+    }
+  });
+  card.addEventListener("pointerup",e=>{
+    if(pid!==e.pointerId)return;
+    const dx=e.clientX-sx,dy=e.clientY-sy;
+    const swipe=Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.2;
+    const tap=Math.abs(dx)<24&&Math.abs(dy)<24;
+    const touch=e.pointerType==="touch"||e.pointerType==="pen";
+    card.style.transform="";pid=null;
+    if(touch)e.preventDefault();
+    if(swipe&&order.length){
+      suppressUntil=Date.now()+900;
+      pos=dx<0?(pos+1)%order.length:(pos-1+order.length)%order.length;
+      render();
+    }else if(touch&&tap&&!editing){
+      suppressUntil=Date.now()+900;
+      card.classList.toggle("show-back");
+    }
+  });
+  card.addEventListener("click",e=>{
+    if(editing||Date.now()<suppressUntil||e.target.closest("button,a,input,textarea,select"))return;
+    card.classList.toggle("show-back");
+  });
+  card.addEventListener("selectstart",e=>{if(!editing&&!e.target.closest("input,textarea"))e.preventDefault()});
+
+  add.onclick=e=>{e.stopPropagation();showDraft()};
+  edit.onclick=e=>{e.stopPropagation();showEditor(item,idx)};
+  imgBtn.onclick=e=>{e.stopPropagation();showEditor(item,idx,true)};
+  del.onclick=e=>{
+    e.stopPropagation();
+    if(!confirm("「"+item.name+"」を削除しますか？"))return;
+    const keep=order[Math.min(pos,order.length-2)]>=0?cards[order[Math.min(pos,order.length-2)]]?.id:null;
+    cards.splice(idx,1);saveCards();rebuildOrder(keep);render();
+  };
+}
+function showDraft(){showEditor({id:uid(),group:currentGroup,name:"",description:"",imageUrl:""},-1)}
+function showEditor(item,idx,focusImage=false){
+  editing=true;stage.innerHTML="";
+  const wrap=document.createElement("div");wrap.className="editor-wrap";
+  wrap.innerHTML=
+    '<div class="field"><label>分類</label><select id="eGroup" class="select"></select></div>'+
+    '<div class="field"><label>植物名（漢字またはカタカナ）</label><input id="eName" class="input" placeholder="例：サクラ"></div>'+
+    '<div class="field"><label>説明文</label><textarea id="eDesc" class="textarea" placeholder="特徴・分布・見分け方など"></textarea></div>'+
+    '<div class="field"><label>画像URL</label><input id="eImg" class="input" placeholder="https://..."></div>'+
+    '<div class="field"><label>画像ファイル（この端末に保存）</label><input id="eFile" class="input" type="file" accept="image/*"></div>'+
+    '<div class="editor-actions"><button id="eSave" class="btn primary">保存</button><button id="eCancel" class="btn">取消</button><a id="eGoogle" class="linkbtn" target="_blank" rel="noopener noreferrer">Google画像検索</a></div>';
+  stage.appendChild(wrap);
+  const eGroup=wrap.querySelector("#eGroup"),eName=wrap.querySelector("#eName"),eDesc=wrap.querySelector("#eDesc"),eImg=wrap.querySelector("#eImg"),eFile=wrap.querySelector("#eFile");
+  Object.entries(GROUPS).forEach(([k,v])=>{const o=document.createElement("option");o.value=k;o.textContent=v;eGroup.appendChild(o)});
+  eGroup.value=item.group||currentGroup;eName.value=item.name||"";eDesc.value=item.description||"";eImg.value=item.imageUrl||"";
+  const eGoogle=wrap.querySelector("#eGoogle");
+  const refreshGoogle=()=>{eGoogle.href="https://www.google.com/search?tbm=isch&q="+encodeURIComponent((eName.value||"植物")+" 植物")};
+  refreshGoogle();eName.addEventListener("input",refreshGoogle);
+  eFile.addEventListener("change",async()=>{
+    const f=eFile.files[0];if(!f)return;
+    const data=await resizeImage(f,900,900,.84);
+    eImg.value=data;
+  });
+  wrap.querySelector("#eCancel").onclick=render;
+  wrap.querySelector("#eSave").onclick=()=>{
+    const name=normalizeName(eName.value),description=eDesc.value.trim(),group=eGroup.value,imageUrl=eImg.value.trim();
+    if(!name){alert("植物名を入力してください。");return}
+    const updated={id:item.id||uid(),group,name,description,imageUrl};
+    if(idx<0){cards.push(updated);saveCards();currentGroup=group;rebuildOrder(updated.id);pos=Math.max(0,order.findIndex(i=>cards[i].id===updated.id));}
+    else{cards[idx]=updated;saveCards();currentGroup=group;rebuildOrder(updated.id)}
+    render();
+  };
+  setTimeout(()=>{(focusImage?eImg:eName).focus()},30);
+}
+function resizeImage(file,maxW,maxH,quality){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const r=Math.min(1,maxW/img.width,maxH/img.height),w=Math.max(1,Math.round(img.width*r)),h=Math.max(1,Math.round(img.height*r));
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);resolve(c.toDataURL("image/jpeg",quality));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("画像を読み込めません"))};
+    img.src=url;
+  });
+}
+prevBtn.onclick=()=>{if(!order.length||editing)return;pos=(pos-1+order.length)%order.length;render()};
+nextBtn.onclick=()=>{if(!order.length||editing)return;pos=(pos+1)%order.length;render()};
+shuffleBtn.onclick=()=>{
+  if(order.length<2||editing)return;
+  if(isShuffled){rebuildOrder();pos=0}
+  else{for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true;updateMode()}
+  render();
+};
+document.getElementById("addTopBtn").onclick=showDraft;
+
+document.getElementById("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(cards,null,2)],{type:"application/json"});
+  const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="plant-flashcards.json";a.click();URL.revokeObjectURL(u);
+};
+document.getElementById("importBtn").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const d=JSON.parse(await f.text());
+    if(!Array.isArray(d))throw 0;
+    cards=d.filter(validCard).map(x=>({id:x.id||uid(),group:x.group,name:normalizeName(x.name),description:String(x.description||""),imageUrl:String(x.imageUrl||"")}));
+    saveCards();updateCounts();if(currentGroup){rebuildOrder();render()}
+  }catch{alert("読み込めないJSONです。")}
+  e.target.value="";
+};
+document.getElementById("excelBtn").onclick=()=>document.getElementById("excelFile").click();
+document.getElementById("excelFile").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    let rows=[];
+    if(f.name.toLowerCase().endsWith(".csv"))rows=(await f.text()).split(/\r?\n/).filter(Boolean).map(r=>r.split(","));
+    else{const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:""})}
+    if(!rows.length)throw 0;
+    const head=rows[0].map(x=>String(x).trim().toLowerCase());
+    const headerLike=head.some(x=>["分類","植物名","名前","説明","画像url","group","name","description","imageurl"].includes(x));
+    if(headerLike)rows=rows.slice(1);
+    const mapGroup=v=>{
+      const s=String(v||"").trim();
+      if(GROUPS[s])return s;
+      return Object.keys(GROUPS).find(k=>GROUPS[k]===s)||null;
+    };
+    const added=rows.map(r=>({id:uid(),group:mapGroup(r[0])||currentGroup,name:normalizeName(r[1]),description:String(r[2]||"").trim(),imageUrl:String(r[3]||"").trim()})).filter(validCard).filter(x=>x.name);
+    cards.push(...added);saveCards();updateCounts();if(currentGroup){rebuildOrder();render()}
+    alert(added.length+"枚追加しました。");
+  }catch{alert("Excelを読み込めませんでした。A列=分類、B列=植物名、C列=説明、D列=画像URLにしてください。")}
+  e.target.value="";
+};
+
+updateCounts();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
+</script>
+</body>
+</html>
