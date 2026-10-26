@@ -128,6 +128,7 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 
 <script>
 const STORAGE_KEY="plant_flashcards_v1";
+const SEED_KEY="plant_flashcards_seed_loaded_v1";
 const GROUPS={
   angiosperm:"被子植物",
   gymnosperm:"裸子植物",
@@ -397,7 +398,25 @@ document.getElementById("excelFile").onchange=async e=>{
   e.target.value="";
 };
 
-updateCounts();
+async function ensureSeedData(){
+  if(localStorage.getItem(SEED_KEY)==="1")return;
+  if(cards.length){localStorage.setItem(SEED_KEY,"1");return}
+  try{
+    const r=await fetch("./data.json",{cache:"no-store"});
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    if(Array.isArray(d.cards)){
+      cards=d.cards.filter(validCard);
+      saveCards();
+    }
+    localStorage.setItem(SEED_KEY,"1");
+  }catch{}
+}
+(async()=>{
+  await ensureSeedData();
+  updateCounts();
+  if(currentGroup){rebuildOrder();render()}
+})();
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
 </script>
 </body>
