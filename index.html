@@ -131,7 +131,7 @@ function updateSyncUI(){
   if(syncBtnText)syncBtnText.textContent=on?"同期中":"同期ログイン";
   if(signedOutBox)signedOutBox.style.display=on?"none":"block";
   if(signedInBox)signedInBox.style.display=on?"block":"none";
-  if(accountLine)accountLine.textContent=on?(cloudSession?.user?.email||"ログイン済み"):"";
+  if(accountLine)accountLine.textContent=on?(cloudSession?.user?.email||"ログイン済み"):"";if(countText)countText.textContent=cards.length+"件"+(on?"":"（未同期）");
 }
 function setSyncMsg(msg){if(syncMsg)syncMsg.textContent=msg||""}
 function openSync(){updateSyncUI();setSyncMsg("");syncModalWrap.classList.add("open");syncModalWrap.setAttribute("aria-hidden","false")}
@@ -229,14 +229,14 @@ async function resendConfirmation(){
   }catch(e){setSyncMsg(e.message)}
 }
 loginBtn.onclick=signIn;signupBtn.onclick=signUp;resendBtn.onclick=resendConfirmation;logoutBtn.onclick=signOut;
-syncNowBtn.onclick=async()=>{try{setSyncMsg("同期中…");await syncPull(true);setSyncMsg("同期しました。")}catch(e){setSyncMsg(e.message)}};
+syncNowBtn.onclick=async()=>{try{setSyncMsg("端末とクラウドを統合中…");await migrateLocalToCloud();await syncPull(true);setSyncMsg("同期しました。端末とクラウドの件数を揃えました。")}catch(e){setSyncMsg(e.message)}};
 
 function rebuildOrder(){order=cards.map((_,i)=>i);pos=Math.min(pos,Math.max(0,order.length-1));isShuffled=false;updateMode()}
 function currentIndex(){return order.length?order[pos]:-1}
 function updateMode(){const b=document.getElementById("modeBtn");b.textContent=isShuffled?"シャッフル":"通常";b.classList.toggle("normal",!isShuffled)}
 function updateNav(){const d=!cards.length||editing;prevBtn.disabled=d;nextBtn.disabled=d;modeBtn.disabled=cards.length<2||editing;[prevBtn,nextBtn,modeBtn].forEach(b=>{b.style.opacity=b.disabled?".45":"1"})}
 function applyBackClasses(back,text){const n=text.length;back.classList.toggle("multiline",text.includes("\n"));back.classList.toggle("size-medium",n>160&&n<=300);back.classList.toggle("size-small",n>300&&n<=500);back.classList.toggle("size-xsmall",n>500);back.classList.toggle("longtext",n>160)}
-function render(){editing=false;stage.innerHTML="";countText.textContent=cards.length+"件";if(!cards.length){const e=document.createElement("div");e.className="empty";e.innerHTML="<strong>カードがありません</strong><div>カードを追加してください。</div>";const b=document.createElement("button");b.className="btn";b.textContent="＋ カード追加";b.onclick=showDraft;e.appendChild(b);stage.appendChild(e);updateNav();updateMode();return}renderCard(cards[currentIndex()]);updateNav();updateMode()}
+function render(){editing=false;stage.innerHTML="";countText.textContent=cards.length+"件"+(cloudSession?.access_token?"":"（未同期）");if(!cards.length){const e=document.createElement("div");e.className="empty";e.innerHTML="<strong>カードがありません</strong><div>カードを追加してください。</div>";const b=document.createElement("button");b.className="btn";b.textContent="＋ カード追加";b.onclick=showDraft;e.appendChild(b);stage.appendChild(e);updateNav();updateMode();return}renderCard(cards[currentIndex()]);updateNav();updateMode()}
 
 function maxSortOrder(){return cards.reduce((m,x)=>Math.max(m,Number(x.sort_order)||0),0)}
 function nextSortOrder(){return Math.max(maxSortOrder()+1,Date.now()*1000)}
@@ -285,7 +285,6 @@ async function restoreSeedCards(){
 }
 
 async function migrateLocalToCloud(){
-  await restoreSeedCards();
   const remote=await fetchCloudCards();
   const local=cards.slice();
   if(remote.length===0&&local.length){
