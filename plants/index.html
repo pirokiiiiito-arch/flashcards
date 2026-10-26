@@ -18,7 +18,7 @@ button{cursor:pointer;border:0;touch-action:manipulation;-webkit-tap-highlight-c
 .wrap{width:min(940px,calc(100% - 16px));margin:8px auto 36px}
 header{display:flex;gap:14px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px}
 h1{margin:0;font-size:28px}
-.sub{color:var(--muted);font-size:11px;margin-top:2px}
+.sub{color:var(--muted);font-size:11px;margin-top:2px}.sync-status{margin-top:4px;padding:0;background:transparent;color:var(--muted);font-size:11px;font-weight:700;text-decoration:underline;text-underline-offset:2px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
 .btn{padding:10px 14px;border-radius:12px;background:#eaf0ec;color:var(--text);font-weight:700}
 .btn.primary{background:var(--green);color:#fff}
@@ -91,7 +91,7 @@ h1{margin:0;font-size:28px}
 <header>
   <div>
     <h1>植物単語帳</h1>
-    <div class="sub">表＝植物名 / 裏＝画像＋説明</div>
+    <div class="sub">表＝植物名 / 裏＝画像＋説明</div><button id="imageSyncStatus" class="sync-status" type="button">画像同期を確認中…</button>
   </div>
   <div class="toolbar">
     <button id="homeBtn" class="btn hide">分類一覧</button>
@@ -160,6 +160,7 @@ const groupCount=document.getElementById("groupCount");
 const prevBtn=document.getElementById("prevBtn");
 const nextBtn=document.getElementById("nextBtn");
 const shuffleBtn=document.getElementById("shuffleBtn");
+const imageSyncStatus=document.getElementById("imageSyncStatus");
 
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))}
 function loadCards(){
@@ -219,6 +220,13 @@ async function ensureCloudSession(){
     return null;
   }
 }
+function updateImageSyncStatus(){
+  const on=!!cloudSession?.access_token;
+  if(!imageSyncStatus)return;
+  imageSyncStatus.textContent=on?"画像同期：ON":"画像同期：ログイン必要";
+  imageSyncStatus.title=on?"PC・スマホ間で画像を同期します":"単語帳で同期ログインすると画像を共有できます";
+}
+
 function cloudImagePath(item,index,userId){
   return userId+"/"+String(item.id||"card").replaceAll("/","_")+"/"+index+".jpg";
 }
@@ -420,6 +428,7 @@ function goHome(){
 }
 document.querySelectorAll(".group-card").forEach(b=>b.addEventListener("click",()=>openGroup(b.dataset.group)));
 homeBtn.addEventListener("click",goHome);
+imageSyncStatus?.addEventListener("click",async()=>{const s=await ensureCloudSession();updateImageSyncStatus();if(!s)location.href="../"});
 
 function render(showBack=false){
   editing=false;
@@ -647,6 +656,7 @@ function showEditor(item,idx,focusImage=false){
       eImgs[i].dataset.storedRef=stored;
       eImgs[i].value=stored.startsWith("idb:")?"":stored;
       if(stored.startsWith("idb:"))eImgs[i].placeholder="端末保存画像あり（URL入力で置換）";
+      try{await cloudUploadImage(item,i,data)}catch(e){console.warn("画像クラウド同期失敗",e)}
     });
     ePastes[i].onclick=async()=>{
       const btn=ePastes[i];
@@ -997,6 +1007,8 @@ async function ensureSeedData(){
   await ensureAngiospermExpansion();
   await ensureNonAngioExpansion();
   await migrateInlineImages();
+  await ensureCloudSession();
+  updateImageSyncStatus();
   await syncLocalImagesToCloud();
   updateCounts();
   if(currentGroup){rebuildOrder();render()}
