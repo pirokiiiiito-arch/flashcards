@@ -267,8 +267,17 @@ function renderCard(item,showBack=false){
       imageBox.appendChild(img);
     }else imageBox.textContent="画像"+(imageIndex+1)+" 未登録";
     const savePastedImage=async data=>{
-      const next=getImages(item);next[imageIndex]=data;
-      cards[idx]=withImages(item,next);saveCards();render(true);
+      const next=getImages(item);
+      next[imageIndex]=data;
+      cards[idx]=withImages(item,next);
+      item=cards[idx];
+      saveCards();
+
+      const img=document.createElement("img");
+      img.src=data;
+      img.alt=item.name+" 画像"+(imageIndex+1);
+      img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
+      imageBox.replaceChildren(img);
     };
     bindImagePaste(imageBox,savePastedImage);
     const slotTools=document.createElement("div");slotTools.className="image-slot-tools";
