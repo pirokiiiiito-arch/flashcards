@@ -53,7 +53,7 @@ h1{margin:0;font-size:clamp(30px,5vw,46px)}
 .front-name{font-size:clamp(34px,6vw,58px);font-weight:850;text-align:center;line-height:1.25;overflow-wrap:anywhere}
 .back-body{width:100%;max-width:none;margin:6px auto 0;display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
 .image-box{width:100%;aspect-ratio:16/9;border:1px dashed #bfc9c2;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);text-align:center;padding:12px}
-.image-box img{width:100%;height:100%;object-fit:contain;display:block}.image-stack{display:grid;gap:16px}.image-slot{display:grid;gap:6px}.image-slot-title{font-size:12px;color:var(--muted);font-weight:800}
+.image-box img{width:100%;height:100%;object-fit:contain;display:block}.image-stack{display:grid;gap:16px}.image-slot{display:grid;gap:6px}.image-slot-title{font-size:12px;color:var(--muted);font-weight:800}.image-slot-tools{display:flex;gap:7px;flex-wrap:wrap}.paste-btn{background:#edf6f0;color:var(--green);border:1px solid #a9c7b4}
 .desc{white-space:pre-wrap;line-height:1.7;font-size:16px;text-align:left}
 .image-tools{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.paste-note{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.5}
 .linkbtn{display:inline-flex;align-items:center;min-height:40px;padding:8px 10px;border-radius:10px;background:#fff;border:1px solid var(--border);color:var(--text);text-decoration:none;font-size:13px;font-weight:700}
@@ -251,11 +251,19 @@ function renderCard(item){
       const img=document.createElement("img");img.src=src;img.alt=item.name+" 画像"+(imageIndex+1);img.onerror=()=>{imageBox.textContent="画像を読み込めません";};
       imageBox.appendChild(img);
     }else imageBox.textContent="画像"+(imageIndex+1)+" 未登録";
-    bindImagePaste(imageBox,async data=>{
+    const savePastedImage=async data=>{
       const next=getImages(item);next[imageIndex]=data;
       cards[idx]=withImages(item,next);saveCards();render();
-    });
-    slot.append(slotTitle,imageBox);
+    };
+    bindImagePaste(imageBox,savePastedImage);
+    const slotTools=document.createElement("div");slotTools.className="image-slot-tools";
+    const pasteBtn=document.createElement("button");pasteBtn.className="small paste-btn";pasteBtn.textContent="貼り付け";
+    pasteBtn.onclick=async e=>{
+      e.stopPropagation();
+      await pasteImageFromClipboard(savePastedImage,imageBox);
+    };
+    slotTools.appendChild(pasteBtn);
+    slot.append(slotTitle,imageBox,slotTools);
     imageStack.appendChild(slot);
   });
 
@@ -334,14 +342,15 @@ function showEditor(item,idx,focusImage=false){
     '<div class="field"><label>分類</label><select id="eGroup" class="select"></select></div>'+
     '<div class="field"><label>植物名（漢字またはカタカナ）</label><input id="eName" class="input" placeholder="例：サクラ"></div>'+
     '<div class="field"><label>説明文</label><textarea id="eDesc" class="textarea" placeholder="特徴・分布・見分け方など"></textarea></div>'+
-    '<div class="field"><label>画像1 URL / 貼り付け</label><input id="eImg1" class="input" placeholder="画像URL、または画像をコピーしてCtrl+V"><input id="eFile1" class="input" type="file" accept="image/*"></div>'+
-    '<div class="field"><label>画像2 URL / 貼り付け</label><input id="eImg2" class="input" placeholder="画像URL、または画像をコピーしてCtrl+V"><input id="eFile2" class="input" type="file" accept="image/*"></div>'+
-    '<div class="field"><label>画像3 URL / 貼り付け</label><input id="eImg3" class="input" placeholder="画像URL、または画像をコピーしてCtrl+V"><input id="eFile3" class="input" type="file" accept="image/*"><div class="paste-note">最大3枚。各欄にGoogle画像検索などから画像を貼り付けできます。</div></div>'+
+    '<div class="field"><label>画像1 URL / 貼り付け</label><input id="eImg1" class="input" placeholder="画像URL、または画像をコピーしてCtrl+V"><div class="image-slot-tools"><button id="ePaste1" class="small paste-btn" type="button">貼り付け</button><input id="eFile1" class="input" type="file" accept="image/*"></div></div>'+
+    '<div class="field"><label>画像2 URL / 貼り付け</label><input id="eImg2" class="input" placeholder="画像URL、または画像をコピーしてCtrl+V"><div class="image-slot-tools"><button id="ePaste2" class="small paste-btn" type="button">貼り付け</button><input id="eFile2" class="input" type="file" accept="image/*"></div></div>'+
+    '<div class="field"><label>画像3 URL / 貼り付け</label><input id="eImg3" class="input" placeholder="画像URL、または画像をコピーしてCtrl+V"><div class="image-slot-tools"><button id="ePaste3" class="small paste-btn" type="button">貼り付け</button><input id="eFile3" class="input" type="file" accept="image/*"></div><div class="paste-note">最大3枚。各画像の「貼り付け」を押すだけでも登録できます。</div></div>'+
     '<div class="editor-actions"><button id="eSave" class="btn primary">保存</button><button id="eCancel" class="btn">取消</button><a id="eGoogle" class="linkbtn" target="_blank" rel="noopener noreferrer">Google画像検索</a></div>';
   stage.appendChild(wrap);
   const eGroup=wrap.querySelector("#eGroup"),eName=wrap.querySelector("#eName"),eDesc=wrap.querySelector("#eDesc");
   const eImgs=[wrap.querySelector("#eImg1"),wrap.querySelector("#eImg2"),wrap.querySelector("#eImg3")];
   const eFiles=[wrap.querySelector("#eFile1"),wrap.querySelector("#eFile2"),wrap.querySelector("#eFile3")];
+  const ePastes=[wrap.querySelector("#ePaste1"),wrap.querySelector("#ePaste2"),wrap.querySelector("#ePaste3")];
   Object.entries(GROUPS).forEach(([k,v])=>{const o=document.createElement("option");o.value=k;o.textContent=v;eGroup.appendChild(o)});
   eGroup.value=item.group||currentGroup;eName.value=item.name||"";eDesc.value=item.description||"";
   getImages(item).forEach((src,i)=>{eImgs[i].value=src});
@@ -355,6 +364,9 @@ function showEditor(item,idx,focusImage=false){
       eImgs[i].value=data;
     });
     bindImagePaste(eImgs[i],async data=>{eImgs[i].value=data});
+    ePastes[i].onclick=async()=>{
+      await pasteImageFromClipboard(async data=>{eImgs[i].value=data},eImgs[i]);
+    };
   });
   wrap.querySelector("#eCancel").onclick=render;
   wrap.querySelector("#eSave").onclick=()=>{
@@ -368,6 +380,26 @@ function showEditor(item,idx,focusImage=false){
   setTimeout(()=>{(focusImage?eImgs[0]:eName).focus()},30);
 }
 
+async function pasteImageFromClipboard(onImage,fallbackTarget){
+  try{
+    if(!window.isSecureContext||!navigator.clipboard||typeof navigator.clipboard.read!=="function")throw new Error("unsupported");
+    const items=await navigator.clipboard.read();
+    for(const item of items){
+      const type=item.types.find(t=>t.startsWith("image/"));
+      if(!type)continue;
+      const blob=await item.getType(type);
+      const data=await resizeImage(blob,1200,1200,.84);
+      await onImage(data);
+      return true;
+    }
+    alert("クリップボードに画像がありません。画像をコピーしてから押してください。");
+    return false;
+  }catch(err){
+    try{fallbackTarget?.focus()}catch{}
+    alert("このブラウザではボタンから画像を読み取れません。画像欄を長押しして「貼り付け」、またはCtrl+Vを使ってください。");
+    return false;
+  }
+}
 function fileFromClipboardItem(item){
   try{
     if(item && item.kind==="file" && item.type && item.type.startsWith("image/")) return item.getAsFile();
