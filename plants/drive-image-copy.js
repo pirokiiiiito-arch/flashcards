@@ -157,8 +157,10 @@
       if (!initial.length) { phase = '全登録画像の参照がDriveになっています'; notify(); return; }
       busy = true;
       try {
-        // This private pre-switch snapshot contains URLs/refs, never deletes old IndexedDB blobs.
-        await api.cache.put('states', 'plant-before-image-copy:' + api.account + ':' + Date.now(), structuredClone(options.getCards()));
+        // Preserve the first pre-switch snapshot once per account. Creating one
+        // per reconnect would fill IndexedDB when a source remains unavailable.
+        const snapshotKey = 'plant-before-image-copy:' + api.account;
+        if (!await api.cache.get('states', snapshotKey)) await api.cache.put('states', snapshotKey, structuredClone(options.getCards()));
         let n = 0;
         for (const row of initial) {
           if (!api.valid() || options.isEditing()) break;
