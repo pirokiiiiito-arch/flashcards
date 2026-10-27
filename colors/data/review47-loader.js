@@ -36,7 +36,7 @@
     hint.textContent='カードの機能を読み込んでいます…';
     for(const name of ['./app-main.js?v=1','./origin-editor.js?v=2','./manual-edit-compat.js',
       '../drive-config.js?v=3','../drive-core.js?v=6','./asset-migration.js?v=1',
-      './drive-sync.js?v=11','./nav-top.js?v=1']) await script(name);
+      './drive-sync.js?v=12','./recovery-import.js?v=1','./nav-top.js?v=1']) await script(name);
     hint.remove();
   } catch(error){
     hint.textContent='1000色の復元データを読み込めません: '+(error?.message||String(error));

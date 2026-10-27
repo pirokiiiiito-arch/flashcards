@@ -44,7 +44,7 @@
     namespace: 'colors1000-review47', toolbar: '.toolbar .controls', ready,
     primary: () => localStorage.getItem('colors1000_drive_primary_v3') === '1',
     enablePrimary: () => localStorage.setItem('colors1000_drive_primary_v3', '1'),
-    read, toCloudValue, isEditing: () => migrationBusy || !!document.getElementById('originEditorDialog')?.open,
+    read, toCloudValue, isEditing: () => migrationBusy || !!window.__COLOR_RESTORE_IMPORT_ACTIVE || !!document.getElementById('originEditorDialog')?.open,
     // In this app an origin key is never intentionally deleted: "元の調査文に戻す"
     // is stored as mode:"original". Therefore a tombstoned origin key is an old sync bug
     // and can be safely restored from its latest non-deleted journal revision.
