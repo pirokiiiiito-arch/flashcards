@@ -9,7 +9,7 @@
   button.type='button';button.className='btn';button.textContent='以前追加した写真・由来を復元';
   button.title='旧PCから救出したJSONまたはJSON.gzを選びます（非公開）';
   const picker=document.createElement('input');
-  picker.type='file';picker.accept='.json,.gz,.json.gz,application/json,application/gzip';picker.hidden=true;
+  picker.type='file';picker.accept='.json,.gz,.json.gz,application/json,application/gzip';picker.multiple=true;picker.hidden=true;
   const notice=document.createElement('p');
   notice.setAttribute('role','status');notice.style.cssText='font-size:12px;line-height:1.6;margin:8px 0';
   toolbar.append(button,picker,notice);
@@ -24,21 +24,59 @@
   const own=(obj,key)=>Object.prototype.hasOwnProperty.call(obj,key);
   button.onclick=()=>picker.click();
   picker.onchange=async()=>{
-    const file=picker.files?.[0];picker.value='';if(!file)return;
+    const files=Array.from(picker.files||[]);picker.value='';if(!files.length)return;
     button.disabled=true;window.__COLOR_RESTORE_IMPORT_ACTIVE=true;
     try{
       notice.textContent='救出ファイルを検証しています…';
-      if(file.size>350*1024*1024)throw Error('ファイルが大きすぎます。救出用JSONまたはJSON.gzを選んでください。');
-      let content;
-      if(file.name.endsWith('.gz')){
-        if(typeof DecompressionStream!=='function')throw Error('gzipを読み込めません。ブラウザを更新してください。');
-        content=await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
-      }else content=await file.text();
-      const backup=JSON.parse(content);
-      if(!['colors1000-manual-recovery-v1','colors1000-browser-recovery-v1'].includes(backup.schema))
-        throw Error('旧PCの手動写真・由来を救出したファイルを選んでください。');
-      const signature=backup.dataset_signature||backup.origin_envelope?.dataset_signature;
-      if(signature!==editor.datasetSignature)throw Error('色ID・色名・HEXが現在の1000色と一致しません。');
+      const combined={schema:'colors1000-manual-recovery-v1',dataset_signature:editor.datasetSignature,
+        manual_photo_edits:{},manual_origin_edits:{},study_progress:{}};
+      let kind=null, expectedParts=null;
+      const seen=new Set();
+      for(let i=0;i<files.length;i++){
+        const file=files[i];
+        notice.textContent='復元ファイルの確認 '+(i+1)+'／'+files.length+': '+file.name;
+        if(file.size>350*1024*1024)throw Error('ファイルが大きすぎます: '+file.name);
+        let content;
+        if(file.name.endsWith('.gz')){
+          if(typeof DecompressionStream!=='function')throw Error('gzipを読み込めません。ブラウザを更新してください。');
+          content=await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+        }else content=await file.text();
+        const part=JSON.parse(content);
+        const partKind=part.schema==='colors1000-manual-recovery-chunk-v1'?'chunk':'full';
+        if(!['colors1000-manual-recovery-v1','colors1000-browser-recovery-v1','colors1000-manual-recovery-chunk-v1'].includes(part.schema))
+          throw Error('1000色カード用ではない復元ファイルです: '+file.name);
+        if(kind&&kind!==partKind)throw Error('一括ファイルと分割ファイルを混ぜないでください。');
+        kind=partKind;
+        const signature=part.dataset_signature||part.origin_envelope?.dataset_signature;
+        if(signature!==editor.datasetSignature)throw Error('色ID・色名・HEXが現在の1000色と一致しません。');
+        if(partKind==='chunk'){
+          const n=Number(part.part_index),all=Number(part.part_count);
+          if(!Number.isInteger(n)||!Number.isInteger(all)||n<1||all<1||n>all)
+            throw Error('分割ファイルの番号が正しくありません。');
+          if(expectedParts!==null&&expectedParts!==all)throw Error('異なる分割セットが混ざっています。');
+          if(seen.has(n))throw Error('同じ番号の分割ファイルが重複しています。');
+          expectedParts=all;seen.add(n);
+        }else if(files.length!==1)throw Error('大きな一括JSONは1個だけ選んでください。');
+        for(const [k,v] of Object.entries(part.manual_photo_edits||{})){
+          if(Object.prototype.hasOwnProperty.call(combined.manual_photo_edits,k))throw Error('画像の欄が重複しています: '+k);
+          combined.manual_photo_edits[k]=v;
+        }
+        for(const [k,v] of Object.entries(part.manual_origin_edits||{})){
+          if(Object.prototype.hasOwnProperty.call(combined.manual_origin_edits,k))throw Error('由来の編集が重複しています: '+k);
+          combined.manual_origin_edits[k]=v;
+        }
+        Object.assign(combined.study_progress,part.study_progress||{});
+      }
+      if(kind==='chunk'){
+        if(seen.size!==expectedParts||files.length!==expectedParts)
+          throw Error('分割ファイルが不足しています。'+expectedParts+'個全部を同時に選んでください（現在'+seen.size+'個）。');
+        if(Object.keys(combined.manual_photo_edits).length!==129||
+           Object.values(combined.manual_photo_edits).filter(v=>!v.deleted).length!==126||
+           Object.keys(combined.manual_origin_edits).length!==12)
+          throw Error('復元セットの写真・由来件数が一致しません。');
+      }
+      const backup=combined;
+      notice.textContent='手動写真の保存形式を確認しています…';
       const incoming=normalizeEdits(backup.manual_photo_edits||{});
       if(Object.keys(incoming).length!==Object.keys(backup.manual_photo_edits||{}).length)
         throw Error('手動写真の形式が正しくありません。');
@@ -67,6 +105,7 @@
       notice.textContent='端末に手動写真'+restored+'枠・由来'+Object.keys(origins).length+
         '件を復元しました。Driveとの同期を確認しています…';
       window.__COLOR_RESTORE_IMPORT_ACTIVE=false;
+      drive.changed();
       if(drive.valid()){
         await drive.sync();
         notice.textContent='復元とDrive同期が完了しました。写真'+restored+'枠復元・既存保持'+existing+
