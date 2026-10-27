@@ -42,4 +42,14 @@ Run `node --test tests/*.test.cjs` from the repository root. Tests cover the rea
 
 Service workers use new versioned caches, network-first same-origin app resources, skipWaiting/clients.claim and registration with updateViaCache:none. Each worker only removes its own old cache namespace. The root worker does not substitute the word application for the plant/color applications.
 
+## Complete original-photo migration audit
+
+The v2 private asset catalogue now maps all 1047 registrations to the original 940 SHA-256 hashes, including all 107 duplicate-suppression flags, MIME, byte size, dimensions and orientation. `scripts/build-private-catalogue.py` verifies the original bytes before emitting metadata; it does not alter or publish photographs.
+
+`colors/asset-migration.js` validates every supplied source file before an upload. It discovers existing Drive blobs by SHA-256, uploads each unique image once, and then **bypasses IndexedDB** to download every image from Drive and verify MIME, byte length and SHA-256. A saved local upload or cached image cannot count as remote verification. Migration checkpoints are cached locally and written privately to Drive after each batch. Partial failures do not produce a completed result; restarting reuses verified server-side content. A separate full-verification button works on a device with no original files and no image cache.
+
+Successful sync also writes a deduplicated private photo manifest containing original registrations, Drive file IDs, manual images, deletion/restoration tombstones and image conflict records. The result export separates uploaded, reused, verified, failed and pending counts. The test suite now includes 27 simulated checks, including interrupted migration and corruption of remote bytes while the cache remains correct.
+
+Actual status remains **0/940 images transferred by this task, 0/940 downloaded and verified on real Drive**. Google Cloud Console still displays “Site Unavailable”; the public OAuth client ID is still empty. No existing Drive folders, source images, manual edits or study records have been deleted. Source-data verification and simulated tests do not satisfy real migration or physical PC/phone acceptance criteria.
+
 Still required: real Google Cloud configuration; issued OAuth client ID; actual Google consent; original private image transfer; real existing Supabase/local/Drive migration validation; physical PC↔phone tests including Safari; existing manually edited data verification. Never report these as completed based on the simulated tests.

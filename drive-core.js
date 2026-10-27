@@ -98,7 +98,7 @@
     async function list(query) {
       const files = []; let next = '';
       do {
-        const p = new URLSearchParams({ spaces: 'appDataFolder', q: query + ' and trashed=false', pageSize: '1000', fields: 'nextPageToken,files(id,name,md5Checksum,appProperties)' });
+        const p = new URLSearchParams({ spaces: 'appDataFolder', q: query + ' and trashed=false', pageSize: '1000', fields: 'nextPageToken,files(id,name,md5Checksum,sha256Checksum,size,mimeType,appProperties)' });
         if (next) p.set('pageToken', next);
         const page = await (await request(API + 'files?' + p)).json(); files.push(...(page.files || [])); next = page.nextPageToken || '';
       } while (next);
@@ -111,11 +111,11 @@
       return (await request('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,md5Checksum', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body })).json();
     }
     const queryKind = kind => "appProperties has { key='namespace' and value='" + cfg.namespace + "' } and appProperties has { key='kind' and value='" + kind + "' }";
-    async function putBlobImpl(blob) {
+    async function putBlobImpl(blob, options = {}) {
       if (!(blob instanceof Blob) || !/^image\/(png|jpeg|webp|gif)$/.test(blob.type)) throw new Error('画像形式を確認できません。');
       const hash = await digest(await blob.arrayBuffer());
       const key = state.account + ':' + hash;
-      const known = await cache.get('blobs', 'ref:' + key);
+      const known = options.fresh ? null : await cache.get('blobs', 'ref:' + key);
       if (known) return known;
       const matches = await list(queryKind('image') + " and appProperties has { key='sha256' and value='" + hash + "' }");
       const file = matches[0] || await create('image-' + hash, blob, { kind: 'image', sha256: hash });
@@ -123,14 +123,14 @@
       await cache.put('blobs', 'ref:' + key, ref); await cache.put('blobs', ref, blob);
       return ref;
     }
-    function putBlob(blob) {
+    function putBlob(blob, options = {}) {
       // Serialize content-address lookups in this tab; no duplicate upload on repeated captures.
-      const result = blobQueue.catch(() => {}).then(() => putBlobImpl(blob)); blobQueue = result; return result;
+      const result = blobQueue.catch(() => {}).then(() => putBlobImpl(blob, options)); blobQueue = result; return result;
     }
-    async function getBlob(ref) {
+    async function getBlob(ref, options = {}) {
       const parts = String(ref).match(/^gdrive:([\w-]+):([a-f0-9]{64})$/);
       if (!parts) throw new Error('Drive画像参照が不正です。');
-      const existing = await cache.get('blobs', ref); if (existing) return existing;
+      const existing = options.fresh ? null : await cache.get('blobs', ref); if (existing) return existing;
       const response = await request(API + 'files/' + encodeURIComponent(parts[1]) + '?alt=media');
       const blob = await response.blob();
       if (await digest(await blob.arrayBuffer()) !== parts[2]) throw new Error('Drive画像の検証に失敗しました。');
@@ -251,6 +251,7 @@
         await write; await persist();
         break;
       }
+      await cfg.afterSync?.(materialize(state.events), api);
       if (state.pending.length) { timer = setTimeout(() => sync().catch(error), 1500); setStatus('接続済み', '新しい変更を同期待ちです。'); }
       else { const n = materialize(state.events).conflicts.length; setStatus('同期済み', n ? '同期しました。競合' + n + '件の両方の内容を履歴に保持しました。「競合・バックアップ保存」で確認できます。' : '同期しました。'); }
     }
@@ -307,7 +308,7 @@
     function onReturn() { if (document.visibilityState !== 'visible' || Date.now() - lastFocus < 15000) return; lastFocus = Date.now(); if (valid()) sync().catch(() => {}); else if (cfg.primary()) expire(); }
     window.addEventListener('focus', onReturn); document.addEventListener('visibilitychange', onReturn); window.addEventListener('online', onReturn);
     window.addEventListener('storage', e => { if (cfg.storageKeys?.includes(e.key)) { cfg.reload?.(); changed(); } });
-    const api = { ready, changed, sync, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };
+    const api = { ready, changed, sync, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, view: () => state ? clone(materialize(state.events)) : {data:{},deleted:{},conflicts:[]}, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };
     setStatus('未接続', cfg.primary() ? 'Googleに再接続してください。Supabase同期は停止中です。' : '接続後にDriveへ移行します。');
     ready.catch(error); return Object.freeze(api);
   }
