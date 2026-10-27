@@ -182,6 +182,9 @@
     recoverManual.disabled = true;
     try {
       await sync.ready;
+      // Pull the newest Drive journals first so a new/cleared phone can see
+      // deleted-photo history before deciding what is safe to restore.
+      await sync.sync();
       const result = await sync.recoverDeletedPrefix('photo:', { onlyIfAbsent: true });
       await sync.sync();
       toast(result ? result + '件の手動写真履歴を復元しました。' : '復元できる手動写真履歴は見つかりませんでした。');
