@@ -323,8 +323,11 @@
     return { ok, manual_origin_edits: clone(records) };
   }
   function applyCloudRecords(input) {
-    const incoming = validateRecords(input || {}), merged = mergeRecords(records, incoming, true);
-    records = Object.fromEntries(Object.keys(incoming).map(id => [id, merged[id]]));
+    // Cloud absence must never erase a device's saved manual origin edit.
+    // Explicit "元の調査文に戻す" is represented by a mode:"original" record,
+    // so merging is sufficient; shrinking to only incoming keys is destructive.
+    const incoming = validateRecords(input || {});
+    records = mergeRecords(records, incoming, true);
     render(); return persist().then(ok => {if(!ok)throw new Error('由来編集の端末保存に失敗しました。');});
   }
   window.ColorOriginEditor = Object.freeze({ applyCloudRecords, ready, open: openEditor, text: valueText,
