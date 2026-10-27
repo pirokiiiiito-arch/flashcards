@@ -2,12 +2,26 @@
 (function () {
   'use strict';
   const F = window.FlashcardsDrive, E = window.ColorOriginEditor;
-  let assetRefs = {}, cataloguePromise, migrationBusy = false, migrationRunner, imageUrls = new Map();
+  let assetRefs = {}, cataloguePromise, migrationBusy = false, migrationRunner, imageUrls = new Map(), catalogueSlots = new Map();
+  const builtinSlotPhoto = slotPhoto;
+  // The private manifest is the authoritative review47 slot→image map.
+  // Manual edits still win; otherwise use the manifest path so every registered
+  // private image has an <img> element that can later be resolved from Drive.
+  slotPhoto = function (index, role) {
+    const key = `${CARD_IDS[index]}:${role}`;
+    const current = builtinSlotPhoto(index, role);
+    if (own(manualEdits, key)) return current;
+    const row = catalogueSlots.get(key);
+    if (!row || row.suppressed_duplicate) return current;
+    return { ...(current || {}), url: row.original_asset_path, manifest_asset: true };
+  };
   const localAssetKey = 'colors1000_private_asset_refs_v3';
   const settingsKey = 'colors1000_user_settings_v3';
   const settings = ['origin', 'cat', 'query', 'mode', 'shuffled', 'order', 'index', 'page'];
   const ready = (async () => {
     await readyImages; await E.ready;
+    const catalogue = await loadCatalogue();
+    catalogueSlots = new Map(catalogue.registrations.map(row => [row.photo_id, row]));
     assetRefs = await sync.cache.get('states', localAssetKey) || {};
     try { const saved = JSON.parse(localStorage.getItem(settingsKey) || '{}'); for (const k of settings) if (k in saved) state[k] = saved[k]; } catch {}
     render();
