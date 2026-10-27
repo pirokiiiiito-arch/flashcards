@@ -1,0 +1,38 @@
+name: Storage-free mobile viewer checks
+on:
+  push:
+    branches: [main, fix/mobile-storage-free-view]
+    paths:
+      - 'drive-readonly.js'
+      - 'readonly-guard.js'
+      - 'plants/readonly-adapter.js'
+      - 'colors/readonly-adapter.js'
+      - 'tools/build-storage-free-view.py'
+      - 'tests/storage-free-view.test.cjs'
+      - '.github/workflows/storage-free-view-tests.yml'
+permissions:
+  contents: read
+jobs:
+  readonly-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build ordinary apps first
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          sha256sum drive-core.js drive-sync.js index.html plants/index.html plants/drive-sync.js colors/index.html colors/app-main.js colors/drive-sync.js colors/origin-editor.js colors/data/review47-progress.b64 colors/private-assets-manifest.json > /tmp/before-view-build.sha
+      - name: Build isolated storage-free viewers
+        run: |
+          python3 tools/build-storage-free-view.py
+          sha256sum --check /tmp/before-view-build.sha
+      - name: Verify GET-only receiving and browser storage failure cases
+        run: |
+          node --check drive-readonly.js
+          node --check readonly-guard.js
+          node --check plants/readonly-adapter.js
+          node --check colors/readonly-adapter.js
+          node --test tests/storage-free-view.test.cjs
+          node --test tests/word-network*.test.cjs tests/plant-color-network.test.cjs
