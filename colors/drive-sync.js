@@ -61,7 +61,7 @@
     },
     apply: prepared => {
       const x = window.scrollX, y = window.scrollY, flipped = state.flipped;
-      manualEdits = prepared.photos; progress = prepared.study; assetRefs = prepared.assets;
+      manualEdits = prepared.photos; progress = prepared.study; assetRefs = { ...assetRefs, ...prepared.assets };
       for (const k of settings) if (k in prepared.prefs) state[k] = prepared.prefs[k];
       state.flipped = flipped;
       localStorage.setItem('colors1000_verified_progress', JSON.stringify(progress));
@@ -70,9 +70,34 @@
       render(); window.scrollTo(x, y); return Promise.all(writes);
     },
     afterSync: async (view, api) => {
-      const catalogue = await loadCatalogue(), refs = {};
-      for (const [k, v] of Object.entries(view.data)) if (k.startsWith('asset:')) refs[k.slice(6)] = v;
+      const catalogue = await loadCatalogue();
+      // Static review47 assets are immutable. Rebuild their refs from Drive by SHA-256
+      // instead of trusting one device's journal/cache. This makes a new phone, a cleared
+      // cache, or a stale journal self-healing after Google Drive reconnect.
+      const files = await api.list(api.queryKind('image'));
+      const byHash = new Map();
+      for (const file of files) {
+        const hash = file.appProperties?.sha256;
+        if (hash && /^[a-f0-9]{64}$/.test(hash) && (!file.sha256Checksum || file.sha256Checksum === hash)) {
+          const prev = byHash.get(hash);
+          if (!prev || file.id.localeCompare(prev.id) < 0) byHash.set(hash, file);
+        }
+      }
+      let recovered = 0;
+      for (const [path, spec] of Object.entries(catalogue.files)) {
+        const remote = byHash.get(spec.sha256);
+        if (!remote) continue;
+        const ref = 'gdrive:' + remote.id + ':' + spec.sha256;
+        if (assetRefs[path] !== ref) assetRefs[path] = ref;
+        recovered++;
+      }
+      if (recovered === catalogue.counts.unique_images) {
+        await api.cache.put('states', localAssetKey, assetRefs);
+      }
+      const refs = {};
+      for (const [path, ref] of Object.entries(assetRefs)) refs[path] = ref;
       await ColorAssetMigration.publish(catalogue, refs, view, api);
+      showPrivateImages();
     },
     onStatus: status => { if (status === '同期済み') showPrivateImages(); }
   };
