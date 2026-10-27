@@ -129,12 +129,12 @@
   const sync = F.install(cfg); window.ColorDriveSync = sync;
   function dataURL(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); }); }
   const oldPersist = persistEdits;
-  persistEdits = async function () { const r = await oldPersist.apply(this, arguments); sync.changed(); return r; };
+  persistEdits = async function () { const r = await oldPersist.apply(this, arguments); if(!window.__COLOR_RESTORE_IMPORT_ACTIVE) sync.changed(); return r; };
   const oldMark = mark;
   mark = function () { const r = oldMark.apply(this, arguments); sync.changed(); return r; };
   const oldRender = render;
   render = function () { const r = oldRender.apply(this, arguments); showPrivateImages(); return r; };
-  document.addEventListener('colors-origin-changed', () => sync.changed());
+  document.addEventListener('colors-origin-changed', () => { if(!window.__COLOR_RESTORE_IMPORT_ACTIVE) sync.changed(); });
   document.addEventListener('change', e => { if (['origin', 'search'].includes(e.target.id)) settingsChanged(); });
   document.addEventListener('click', e => { if (['shuffle', 'reset', 'modeStudy', 'modeList'].includes(e.target.closest('button')?.id)) settingsChanged(); });
   function settingsChanged() { localStorage.setItem(settingsKey, JSON.stringify(Object.fromEntries(settings.map(k => [k, state[k]])))); sync.changed(); }
