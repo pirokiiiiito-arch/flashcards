@@ -31,6 +31,10 @@
     primary: () => localStorage.getItem('colors1000_drive_primary_v3') === '1',
     enablePrimary: () => localStorage.setItem('colors1000_drive_primary_v3', '1'),
     read, toCloudValue, isEditing: () => migrationBusy || !!document.getElementById('originEditorDialog')?.open,
+    // In this app an origin key is never intentionally deleted: "元の調査文に戻す"
+    // is stored as mode:"original". Therefore a tombstoned origin key is an old sync bug
+    // and can be safely restored from its latest non-deleted journal revision.
+    repair: async api => { await api.recoverDeletedPrefix('origin:'); },
     timestamps: () => {
       const out = {};
       for (const [k, v] of Object.entries(manualEdits)) out['photo:' + k] = v.updated_at || '';
