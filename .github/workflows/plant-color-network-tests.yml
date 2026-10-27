@@ -1,0 +1,36 @@
+name: Plant and color network checks
+on:
+  push:
+    branches: [main, fix/plant-color-network-v2]
+    paths:
+      - 'plants/**'
+      - 'colors/**'
+      - 'tools/build-plant-color-network.py'
+      - 'tests/plant-color-network.test.cjs'
+      - '.github/workflows/plant-color-network-tests.yml'
+permissions:
+  contents: read
+jobs:
+  network-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Existing image copy safety tests
+        run: node --test tests/plant-drive-image-copy.test.cjs
+      - name: Build plant and color network entries
+        run: python3 tools/build-plant-color-network.py
+      - name: Syntax and non-destructive mobile sync tests
+        run: |
+          node --check plants/drive-sync.js
+          node --check plants/network-support.js
+          node --check plants/service-worker.js
+          node --check colors/app-main.js
+          node --check colors/drive-sync.js
+          node --check colors/network-support.js
+          node --check colors/data/review47-loader.js
+          node --check colors/service-worker.js
+          node --test tests/plant-color-network.test.cjs
+      - name: Confirm original word sync and research are unchanged
+        run: git diff --exit-code -- drive-core.js drive-sync.js index.html word-network-recovery.js colors/data/review47-progress.b64 colors/private-assets-manifest.json
