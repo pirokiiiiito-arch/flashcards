@@ -1,0 +1,33 @@
+name: Plant Drive image safety tests
+on:
+  push:
+    branches: [main, fix/plant-all-images-drive]
+    paths:
+      - 'plants/drive-sync.js'
+      - 'plants/drive-image-copy.js'
+      - 'plants/service-worker.js'
+      - 'tests/plant-drive-image-copy.test.cjs'
+      - '.github/workflows/plant-drive-image-tests.yml'
+  pull_request:
+    paths:
+      - 'plants/**'
+      - 'tests/plant-drive-image-copy.test.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  image-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check JavaScript syntax
+        run: |
+          node --version
+          node --check plants/drive-image-copy.js
+          node --check plants/drive-sync.js
+          node --check plants/service-worker.js
+      - name: Test copying, SHA verification, failure preservation and concurrent edits
+        run: node --test tests/plant-drive-image-copy.test.cjs
