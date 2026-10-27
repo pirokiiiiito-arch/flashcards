@@ -17,7 +17,7 @@
     for (const [k, v] of Object.entries(manualEdits)) data['photo:' + k] = structuredClone(v);
     for (const [k, v] of Object.entries(E.getRecords())) data['origin:' + k] = v;
     for (const [k, v] of Object.entries(progress)) data['study:' + k] = v;
-    for (const [k, v] of Object.entries(assetRefs)) data['asset:' + k] = v;
+    // Static review47 asset refs are local cache only. They are rebuilt from Drive SHA metadata.
     for (const k of settings) data['setting:' + k] = structuredClone(state[k]);
     return data;
   }
