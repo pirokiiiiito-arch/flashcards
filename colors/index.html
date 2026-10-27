@@ -324,12 +324,12 @@ $('importResearch').onclick=()=>$('importFile').click();$('importFile').onchange
 const readyImages=(async()=>{const embedded=makeProgressExport(false);manualEdits=normalizeEdits(embedded.manual_photo_edits||{});if(embedded.study_progress)progress={...validateStudyProgress(embedded.study_progress),...progress};try{imageDb=await openImageDb();const saved=normalizeEdits(await dbRead());for(const [key,value]of Object.entries(saved)){if(!manualEdits[key]||String(value.updated_at)>=String(manualEdits[key].updated_at))manualEdits[key]=value;}}catch{}render();})();
 render();
 
-</script><script src="origin-editor.js"></script>
+</script><script src="origin-editor.js?v=2"></script>
 <script src="manual-edit-compat.js"></script>
 <script src="../drive-config.js?v=3"></script>
 <script src="../drive-core.js?v=4"></script>
 <script src="asset-migration.js?v=1"></script>
-<script src="drive-sync.js?v=5"></script>
+<script src="drive-sync.js?v=6"></script>
 <script id="colors1000-nav-top-script">
 /* Color cards: preserve the current scroll position for Previous/Next.
  * Only the Flip button keeps the older navigation-alignment behavior.
