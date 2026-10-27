@@ -205,6 +205,31 @@
         state.seen[result.id] = result.md5Checksum || ''; state.pending = state.pending.filter(id => !ids.includes(id)); await persist();
       }
     }
+    async function recoverDeletedPrefix(prefix) {
+      await ready;
+      const view = materialize(state.events);
+      const grouped = new Map();
+      for (const e of Object.values(state.events)) {
+        if (!e || typeof e.key !== 'string' || !e.key.startsWith(prefix)) continue;
+        if (!grouped.has(e.key)) grouped.set(e.key, []);
+        grouped.get(e.key).push(e);
+      }
+      let restored = 0;
+      for (const [key, list] of grouped) {
+        if (!(key in view.deleted) || key in view.data) continue;
+        const candidates = list.filter(e => !e.deleted && e.value != null)
+          .sort((a,b) => Number(a.clock||0)-Number(b.clock||0) || String(a.id).localeCompare(String(b.id)));
+        const prior = candidates[candidates.length - 1];
+        if (!prior) continue;
+        const parents = heads(state.events).get(key)?.map(e => e.id) || [];
+        const e = newEvent(key, prior.value, false, parents);
+        append(e);
+        restored++;
+      }
+      if (restored) await persist();
+      return restored;
+    }
+
     async function doSync() {
       await ready; await captureQueue; await capture();
       if (!valid()) { const e = new Error('「接続して同期」でGoogleに接続してください。'); e.auth = true; throw e; }
@@ -236,6 +261,7 @@
       }
       const legacyData = await cfg.migrate?.(api, materialize(state.events));
       if (legacyData) await importValues(legacyData.data, 'supabase', legacyData.timestamps, legacyData.deleted);
+      await cfg.repair?.(api, materialize(state.events));
       await captureQueue; await capture(); await push(); await pull();
       // A user may save while an image is downloading. Rebuild the apply plan if that occurs.
       for (let attempt = 0; attempt < 4; attempt++) {
@@ -308,7 +334,7 @@
     function onReturn() { if (document.visibilityState !== 'visible' || Date.now() - lastFocus < 15000) return; lastFocus = Date.now(); if (valid()) sync().catch(() => {}); else if (cfg.primary()) expire(); }
     window.addEventListener('focus', onReturn); document.addEventListener('visibilitychange', onReturn); window.addEventListener('online', onReturn);
     window.addEventListener('storage', e => { if (cfg.storageKeys?.includes(e.key)) { cfg.reload?.(); changed(); } });
-    const api = { ready, changed, sync, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, view: () => state ? clone(materialize(state.events)) : {data:{},deleted:{},conflicts:[]}, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };
+    const api = { ready, changed, sync, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, recoverDeletedPrefix, view: () => state ? clone(materialize(state.events)) : {data:{},deleted:{},conflicts:[]}, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };
     setStatus('未接続', cfg.primary() ? 'Googleに再接続してください。Supabase同期は停止中です。' : '接続後にDriveへ移行します。');
     ready.catch(error); return Object.freeze(api);
   }
