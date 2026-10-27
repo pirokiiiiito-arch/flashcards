@@ -17,7 +17,7 @@ function contextFor(file){
  const el=id=>elements[id]||(elements[id]={className:'',innerHTML:'',classList:{toggle(){}},querySelectorAll(){return [];}});
  const CARDS=Array.from({length:1000},(_,i)=>({name:'色'+(i+1),hex:'#334455',origin:'jp'}));
  const CARD_IDS=CARDS.map((_,i)=>'color-'+String(i+1).padStart(4,'0'));
- const ctx={console,URL,structuredClone,CARDS,CARD_IDS,manualEdits:{},PRIVATE_PHOTO_MAP:{},ORIGIN_PHOTO_RENDER_CACHE:{},USAGE_PHOTO_ATTRIBUTIONS:{},
+ const ctx={console,URL,structuredClone,CARDS,CARD_IDS,manualEdits:{},progress:{},PRIVATE_PHOTO_MAP:{},ORIGIN_PHOTO_RENDER_CACHE:{},USAGE_PHOTO_ATTRIBUTIONS:{},
    VALID_SLOT_KEYS:new Set(CARD_IDS.flatMap(id=>roles.map(role=>id+':'+role))),
    ROLE_LABELS:{origin:'由来・名前のイメージ',interior:'インテリア',fashion:'ファッション',product:'プロダクト',palette:'配色'},
    state:{flipped:true},$ : el,research:()=>({}),effectiveColor:c=>({...c,rgb:[51,68,85]}),displayColorReferenceMarkup:()=>'',
