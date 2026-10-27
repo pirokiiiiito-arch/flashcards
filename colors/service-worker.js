@@ -1,5 +1,5 @@
-const CACHE = 'colors1000-review47-drive3-v7';
-const STATIC = ['./index.html', './research-data.js?v=3', './progress-data.js?v=3', './origin-editor.js?v=2', './manual-edit-compat.js', './drive-sync.js?v=9', './asset-migration.js?v=1', './private-assets-manifest.json?v=2', '../drive-core.js?v=6', '../drive-config.js?v=3'];
+const CACHE = 'colors1000-review47-drive3-v8';
+const STATIC = ['./index.html', './research-data.js?v=3', './progress-data.js?v=3', './origin-editor.js?v=2', './manual-edit-compat.js', './drive-sync.js?v=10', './asset-migration.js?v=1', './private-assets-manifest.json?v=2', '../drive-core.js?v=6', '../drive-config.js?v=3'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('colors1000-review47-drive3-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
