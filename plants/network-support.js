@@ -22,7 +22,7 @@
       // working photograph. Never infer deletion from missing cloud fields.
       if(v.startsWith('idb:')&&previous&&v!==previous)return previous;
       return v;
-    }))).sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0||a.id.localeCompare(b.id));
+    }))).sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0)||a.id.localeCompare(b.id));
   }
   function counts(view,list,getImages){
     const imgs=list.flatMap(c=>getImages(c)).filter(Boolean);
