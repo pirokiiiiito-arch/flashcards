@@ -1,0 +1,35 @@
+name: Color palette restoration checks
+on:
+  push:
+    branches: [main, fix/restore-color-palette-photos]
+    paths:
+      - 'colors/**'
+      - 'tools/**'
+      - 'tests/color-palette-restoration.test.cjs'
+      - '.github/workflows/color-palette-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  palette-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing editor and storage-free pages
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          node --test tests/word-network*.test.cjs tests/plant-color-network.test.cjs tests/storage-free-view.test.cjs
+      - name: Restore fifth palette slot without changing saved data
+        run: python3 tools/restore-color-palette.py
+      - name: Check editor, viewer, and photo rendering
+        run: |
+          node --check colors/app-main.js
+          node --check colors/app-view.js
+          node --check colors/data/review47-loader.js
+          node --check colors/data/review47-view-loader.js
+          node --check colors/service-worker.js
+          node --test tests/color-palette-restoration.test.cjs
