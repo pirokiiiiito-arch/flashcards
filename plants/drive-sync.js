@@ -1,26 +1,58 @@
-/* Plant text and three independent immutable image registers. */
-(function () {
+/* Plant text and three independent immutable image registers.
+ * All image sources, including existing external URLs, are copied privately. */
+(async function () {
   'use strict';
-  const F = window.FlashcardsDrive;
+  if (window.PlantDriveSync) return;
+  if (!window.PlantDriveImageCopy) await new Promise((resolve, reject) => {
+    const s = document.createElement('script'); s.src = './drive-image-copy.js?v=1';
+    s.onload = resolve; s.onerror = () => reject(Error('画像コピー機能を読み込めません。ページを再読み込みしてください。'));
+    document.head.appendChild(s);
+  });
+  const F = window.FlashcardsDrive, P = window.PlantDriveImageCopy;
   const bodyKey = c => 'card:' + c.id;
   const imageKey = (c, i) => 'image:' + c.id + ':' + i;
   const clean = c => ({ id: c.id, group: c.group, name: c.name, description: c.description, sort_order: Number(c.sort_order) || 0, updated_at: c.updated_at || null });
+  const originalSave = saveCards;
+  let sync;
+  const controls = document.querySelector('.toolbar') || document.body;
+  const copyStatus = document.createElement('p'); copyStatus.id = 'plantDriveImageCopyStatus'; copyStatus.setAttribute('role','status');
+  copyStatus.style.cssText = 'width:100%;margin:6px 0;font-size:12px;line-height:1.6;white-space:pre-wrap';
+  const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'btn'; retry.textContent = '全画像をDriveへコピー／再試行';
+  const reportButton = document.createElement('button'); reportButton.type = 'button'; reportButton.className = 'btn'; reportButton.textContent = '画像コピー結果を保存';
+  controls.append(retry, reportButton, copyStatus);
+  const copier = P.create({
+    getCards: () => cards, getImages, resolveImage: v => resolveImageValue(v), isEditing: () => editing,
+    replaceIfCurrent: (id, index, source, ref) => {
+      if (editing) return false;
+      const at = cards.findIndex(c => c.id === id); if (at < 0) return false;
+      const imgs = getImages(cards[at]); if (imgs[index] !== source) return false;
+      const previous = cards[at]; imgs[index] = ref; cards[at] = withImages(previous, imgs);
+      try { originalSave(); } catch (e) { cards[at] = previous; throw e; }
+      return true;
+    },
+    changed: () => sync.changed(),
+    onProgress: s => {
+      copyStatus.textContent = '登録画像 ' + s.total + '枠 ／ Drive参照 ' + s.drive + '枠 ／ 未コピー ' + s.pending + '枠 ／ 失敗 ' + s.failed + '枠' + (s.phase ? '\n' + s.phase : '');
+      retry.disabled = s.busy;
+    }
+  });
   function values(list) {
     const result = {};
     for (const c of list) { result[bodyKey(c)] = clean(c); getImages(c).forEach((v, i) => { if (v) result[imageKey(c, i)] = v; }); }
     return result;
   }
   const ready = (async () => { await plantBootReady; for (const c of cards) if (!c.id) c.id = 'legacy-' + await F.digest(c.group + '\u0000' + c.name); })();
-  async function toCloudValue(k, v, api) {
-    if (!k.startsWith('image:') || typeof v !== 'string' || !/^(idb:|data:image\/)/.test(v)) return v;
-    const data = await resolveImageValue(v);
-    if (!data) throw new Error('この端末に画像が見つかりません。元のPCでDriveへ接続してください。画像参照は保持しました。');
-    return api.putBlob(await dataUrlToBlob(data));
+  async function toCloudValue(k, v) {
+    if (!k.startsWith('image:') || typeof v !== 'string') return v;
+    const ref = await copier.convert(k, v);
+    // An unresolved device-only ref must not replace a working cloud image.
+    if (ref === v && /^(idb:|data:image\/|blob:)/.test(v)) throw Error('端末の画像をDriveへ保存できません。元のPCの画像を保持しています。「画像コピー結果を保存」で確認してください。');
+    return ref;
   }
   const cfg = {
     namespace: 'plant-flashcards', toolbar: '.toolbar', primary: plantDrivePrimary, ready,
     storageKeys: [STORAGE_KEY], reload: () => { if (!editing) { cards = loadCards(); updateCounts(); if (currentGroup) { rebuildOrder(); render(); } } },
-    read: () => values(cards), isEditing: () => editing,
+    read: () => values(cards), isEditing: () => editing || copier.busy,
     enablePrimary: async () => { localStorage.setItem('plant_drive_primary_v1', '1'); await Promise.allSettled([...legacyImageRequests]); updateImageSyncStatus(); },
     timestamps: () => { let m = {}; try { m = JSON.parse(localStorage.getItem('plant_gdrive_meta_v2') || '{}'); } catch {} return Object.fromEntries(Object.entries(m.updated || {}).map(([k, v]) => ['card:' + k, v])); },
     tombstones: () => { let m = {}; try { m = JSON.parse(localStorage.getItem('plant_gdrive_meta_v2') || '{}'); } catch {} return Object.fromEntries(Object.entries(m.deleted || {}).map(([k, v]) => ['card:' + k, v])); },
@@ -70,16 +102,42 @@
         const at = order.findIndex(i => cards[i]?.id === id); if (at >= 0) pos = at; render(back);
       }
     },
-    onStatus: (s, message) => { if (plantDrivePrimary()) { imageSyncStatus.textContent = '画像Drive同期：' + s; imageSyncStatus.title = message || s; } }
+    // Older journals may already contain URLs with no pending edit. Upgrade those
+    // after reconciliation, then capture ordinary child events for the next push.
+    afterSync: async () => {
+      await copier.sweep();
+      if (currentGroup && !editing) { const back = !!stage.querySelector('.show-back'); render(back); }
+    },
+    onStatus: (s, message) => {
+      const progress = copier.summary();
+      if (plantDrivePrimary()) { imageSyncStatus.textContent = '画像Drive同期：' + s + (progress.pending ? '（画像コピー未完了 ' + progress.pending + '枠）' : ''); imageSyncStatus.title = message || s; }
+    }
   };
-  const sync = F.install(cfg); window.PlantDriveSync = sync;
-  const oldSave = saveCards;
-  saveCards = function () { const r = oldSave(); sync.changed(); return r; };
+  sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);
+  window.PlantDriveImageCopyStatus = Object.freeze({summary:copier.summary, report:copier.report});
+  saveCards = function () { const r = originalSave(); sync.changed(); return r; };
   const oldResolve = resolveImageValue;
   resolveImageValue = async function (v) {
     if (!String(v || '').startsWith('gdrive:')) return oldResolve(v);
     const local = await getStoredImage('drive:' + v); if (local) return local;
     const data = await blobToDataUrl(await sync.getBlob(v)); await putStoredImage('drive:' + v, data); return data;
   };
+  retry.onclick = async () => {
+    copier.retry();
+    if (!sync.valid()) { sync.open(); return; }
+    if (editing) { copyStatus.textContent += '\nカードの編集を保存してから再試行してください。'; return; }
+    retry.disabled = true;
+    try { await sync.sync(); await sync.sync(); }
+    catch (e) { copyStatus.textContent += '\n' + (e.message || String(e)); }
+    finally { retry.disabled = false; }
+  };
+  reportButton.onclick = () => {
+    const body = { ...copier.report(), sync:sync.status() };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(body,null,2)], {type:'application/json'}));
+    const a = document.createElement('a'); a.href = url; a.download = 'plant-drive-image-copy-report.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url),3000);
+  };
   imageSyncStatus.onclick = () => sync.open();
-})();
+})().catch(e => {
+  const p = document.createElement('p'); p.setAttribute('role','alert'); p.textContent = '植物のDrive同期を開始できません：' + (e.message || String(e)) + '。保存データは削除していません。';
+  (document.querySelector('.toolbar') || document.body).appendChild(p);
+});
