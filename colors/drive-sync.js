@@ -50,7 +50,7 @@
       return { data, timestamps };
     } }],
     prepareApply: async (view, api) => {
-      const photos = {}, origins = {}, study = {}, assets = {}, prefs = {};
+      const photos = {}, origins = {}, study = {}, assets = {}, prefs = {}, photoDeleted = [];
       for (const [k, val] of Object.entries(view.data)) {
         const at = k.indexOf(':'), type = k.slice(0, at), id = k.slice(at + 1), v = structuredClone(val);
         if (type === 'photo') {
@@ -61,11 +61,18 @@
         else if (type === 'asset') assets[id] = v;
         else if (type === 'setting' && settings.includes(id)) prefs[id] = v;
       }
-      return { photos: normalizeEdits(photos), origins: E.validateRecords(origins), study: validateStudyProgress(study), assets, prefs };
+      for (const k of Object.keys(view.deleted || {})) if (k.startsWith('photo:')) photoDeleted.push(k.slice(6));
+      return { photos: normalizeEdits(photos), photoDeleted, origins: E.validateRecords(origins), study: validateStudyProgress(study), assets, prefs };
     },
     apply: prepared => {
       const x = window.scrollX, y = window.scrollY, flipped = state.flipped;
-      manualEdits = prepared.photos; progress = prepared.study; assetRefs = { ...assetRefs, ...prepared.assets };
+      // Missing cloud keys are not deletions. Merge remote edits into local state and
+      // remove only keys with an explicit Drive tombstone.
+      const mergedPhotos = { ...manualEdits, ...prepared.photos };
+      for (const id of prepared.photoDeleted || []) delete mergedPhotos[id];
+      manualEdits = mergedPhotos;
+      progress = { ...progress, ...prepared.study };
+      assetRefs = { ...assetRefs, ...prepared.assets };
       for (const k of settings) if (k in prepared.prefs) state[k] = prepared.prefs[k];
       state.flipped = flipped;
       localStorage.setItem('colors1000_verified_progress', JSON.stringify(progress));
@@ -142,10 +149,11 @@
   }
   const upload = document.createElement('button'); upload.className = 'btn'; upload.type = 'button'; upload.textContent = '既存940写真を非公開Driveへ登録';
   const verify = document.createElement('button'); verify.className = 'btn'; verify.type = 'button'; verify.textContent = '940写真をDriveから全件検証';
+  const recoverManual = document.createElement('button'); recoverManual.className = 'btn'; recoverManual.type = 'button'; recoverManual.textContent = '以前追加した写真を復元';
   const report = document.createElement('button'); report.className = 'btn'; report.type = 'button'; report.textContent = '写真移行の結果を保存';
   const indicator = document.createElement('p'); indicator.id='colorImageMigrationStatus';indicator.setAttribute('role','status');indicator.style.cssText='font-size:12px;line-height:1.6;margin:8px 0';indicator.textContent='既存940写真：Driveへの全件転送・検証は未実施です。';
   const picker = document.createElement('input'); picker.type = 'file'; picker.multiple = true; picker.setAttribute('webkitdirectory', ''); picker.hidden = true;
-  (document.querySelector('.toolbar .controls') || document.body).append(upload, verify, report, picker, indicator);
+  (document.querySelector('.toolbar .controls') || document.body).append(upload, verify, recoverManual, report, picker, indicator);
   upload.onclick = () => { if (!sync.valid()) { sync.open(); return; } picker.click(); };
   function progressText(p) {
     const c=p.counts;indicator.textContent=`既存写真 ${c.total}：転送 ${c.uploaded}／既存利用 ${c.skipped_existing}／Drive再取得・SHA一致 ${c.verified}／失敗 ${c.failed}／未検証 ${c.pending}`+(p.complete?'（全件検証成功）':p.blocker?' — '+p.blocker:'');
@@ -168,6 +176,18 @@
   }
   picker.onchange=()=>runMigration(picker.files,false);
   verify.onclick=()=>runMigration([],true);
+  recoverManual.onclick = async () => {
+    if (!sync.valid()) { sync.open(); return; }
+    if (!window.confirm('Driveの履歴から、現在空欄になっている手動写真だけを復元します。現在表示中の手動写真は上書きしません。続けますか？')) return;
+    recoverManual.disabled = true;
+    try {
+      await sync.ready;
+      const result = await sync.recoverDeletedPrefix('photo:', { onlyIfAbsent: true });
+      await sync.sync();
+      toast(result ? result + '件の手動写真履歴を復元しました。' : '復元できる手動写真履歴は見つかりませんでした。');
+    } catch (e) { toast(e.message || '手動写真を復元できませんでした。'); }
+    finally { recoverManual.disabled = false; }
+  };
   report.onclick=async()=>{
     await sync.ready;const catalogue=await loadCatalogue(),state=migrationRunner?.status()||await sync.cache.get('states','colors1000-migration:'+sync.account);
     const body={schema:'colors1000-migration-result-v2',saved_at:new Date().toISOString(),migration:state||{complete:false,phase:'not_started',counts:{total:940,uploaded:0,verified:0,failed:0,skipped_existing:0,pending:940}},manifest:ColorAssetMigration.manifest(catalogue,assetRefs,sync.view())};
