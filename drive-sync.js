@@ -15,7 +15,8 @@
   const cfg = {
     namespace: 'word-flashcards', toolbar: '.topbar', primary: wordDrivePrimary,
     storageKeys: [KEY], reload: () => { if (!editing) { cards = loadCards(); rebuildOrder(); render(); } },
-    read, isEditing: () => editing,
+    read, isEditing: () => editing || !!window.__WORD_RECOVERY_ACTIVE,
+    onStatus: () => { window.WordDriveRecovery?.refresh(); },
     enablePrimary: async () => {
       localStorage.setItem('word_drive_primary_v1', '1'); stopSyncLoop();
       await Promise.allSettled([...legacyRequests]); updateSyncUI();
@@ -56,4 +57,12 @@
   const sync = F.install(cfg); window.WordDriveSync = sync;
   const originalSave = saveCards;
   saveCards = function () { for (const c of cards) if (!c.id) c.id = crypto.randomUUID(); const out = originalSave(); sync.changed(); return out; };
+  const recoveryScript = document.createElement('script');
+  recoveryScript.src = './word-recovery.js?v=1';
+  recoveryScript.onerror = () => {
+    const p = document.createElement('p'); p.setAttribute('role','alert');
+    p.textContent = '単語の救出機能を読み込めません。保存データは変更していません。ページを再読み込みしてください。';
+    (document.querySelector('.topbar') || document.body).appendChild(p);
+  };
+  document.head.appendChild(recoveryScript);
 })();
