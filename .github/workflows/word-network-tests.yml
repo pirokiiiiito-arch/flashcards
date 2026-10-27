@@ -1,0 +1,26 @@
+name: Word network recovery checks
+on:
+  push:
+    branches: [main, fix/word-network-recovery]
+    paths:
+      - 'drive-sync.js'
+      - 'word-network-recovery.js'
+      - 'server/word-network-handler.mjs'
+      - 'tests/word-network-merge.test.cjs'
+      - '.github/workflows/word-network-tests.yml'
+permissions:
+  contents: read
+jobs:
+  recovery-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax checks
+        run: |
+          node --check drive-sync.js
+          node --check word-network-recovery.js
+          node --check server/word-network-handler.mjs
+      - name: Offline merge safety tests
+        run: node --test tests/word-network-merge.test.cjs
