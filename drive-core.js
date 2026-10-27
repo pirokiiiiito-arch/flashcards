@@ -205,7 +205,7 @@
         state.seen[result.id] = result.md5Checksum || ''; state.pending = state.pending.filter(id => !ids.includes(id)); await persist();
       }
     }
-    async function recoverDeletedPrefix(prefix) {
+    async function recoverDeletedPrefix(prefix, options = {}) {
       await ready;
       const view = materialize(state.events);
       const grouped = new Map();
@@ -216,6 +216,8 @@
       }
       let restored = 0;
       for (const [key, list] of grouped) {
+        // Never overwrite a currently live value. Recovery only revives keys whose
+        // current materialized head is a tombstone.
         if (!(key in view.deleted) || key in view.data) continue;
         const candidates = list.filter(e => !e.deleted && e.value != null)
           .sort((a,b) => Number(a.clock||0)-Number(b.clock||0) || String(a.id).localeCompare(String(b.id)));
