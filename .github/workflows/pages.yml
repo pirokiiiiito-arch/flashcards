@@ -21,8 +21,20 @@ jobs:
           node --check drive-sync.js
           node --check word-network-recovery.js
           node --test tests/word-network*.test.cjs
+          node --test tests/plant-drive-image-copy.test.cjs
       - name: Generate versioned word app entries
         run: python3 tools/build-word-network.py
+      - name: Build and check plant and color network entries
+        run: |
+          python3 tools/build-plant-color-network.py
+          node --check plants/drive-sync.js
+          node --check plants/network-support.js
+          node --check colors/app-main.js
+          node --check colors/drive-sync.js
+          node --check colors/network-support.js
+          node --check colors/data/review47-loader.js
+          node --test tests/plant-color-network.test.cjs
+          git diff --exit-code -- drive-core.js drive-sync.js word-network-recovery.js colors/data/review47-progress.b64 colors/private-assets-manifest.json
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
