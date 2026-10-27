@@ -1,13 +1,16 @@
 name: Word network recovery checks
 on:
   push:
-    branches: [main, fix/word-network-recovery]
+    branches: [main, fix/word-network-recovery, fix/word-network-zero-v2]
     paths:
       - 'drive-sync.js'
       - 'word-network-recovery.js'
       - 'server/word-network-handler.mjs'
-      - 'tests/word-network-merge.test.cjs'
+      - 'tests/word-network*.test.cjs'
+      - 'tools/build-word-network.py'
+      - 'service-worker.js'
       - '.github/workflows/word-network-tests.yml'
+      - '.github/workflows/pages.yml'
 permissions:
   contents: read
 jobs:
@@ -22,5 +25,8 @@ jobs:
           node --check drive-sync.js
           node --check word-network-recovery.js
           node --check server/word-network-handler.mjs
-      - name: Offline merge safety tests
-        run: node --test tests/word-network-merge.test.cjs
+          node --check service-worker.js
+      - name: Offline recovery flow and merge tests
+        run: node --test tests/word-network*.test.cjs
+      - name: Build versioned word app entries without touching user data
+        run: python3 tools/build-word-network.py
