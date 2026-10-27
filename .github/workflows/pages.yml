@@ -35,6 +35,16 @@ jobs:
           node --check colors/data/review47-loader.js
           node --test tests/plant-color-network.test.cjs
           git diff --exit-code -- drive-core.js drive-sync.js word-network-recovery.js colors/data/review47-progress.b64 colors/private-assets-manifest.json
+      - name: Build and check isolated storage-free viewers
+        run: |
+          sha256sum drive-core.js drive-sync.js index.html plants/index.html plants/drive-sync.js colors/index.html colors/app-main.js colors/drive-sync.js colors/origin-editor.js colors/data/review47-progress.b64 colors/private-assets-manifest.json > /tmp/before-view-build.sha
+          python3 tools/build-storage-free-view.py
+          sha256sum --check /tmp/before-view-build.sha
+          node --check drive-readonly.js
+          node --check readonly-guard.js
+          node --check plants/readonly-adapter.js
+          node --check colors/readonly-adapter.js
+          node --test tests/storage-free-view.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
