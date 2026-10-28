@@ -1,0 +1,54 @@
+name: Quiet automatic study sync checks
+on:
+  push:
+    branches: [main, fix/study-quiet-auto-sync]
+    paths:
+      - 'study-quiet-sync.js'
+      - 'tools/build-quiet-study-sync.py'
+      - 'tests/study-quiet-sync.test.cjs'
+      - 'tests/browser-study-quiet-sync.cjs'
+      - 'tests/browser-study-auto-save.cjs'
+      - '.github/workflows/study-quiet-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  study-quiet-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build prior apps and run their regression tests
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          node --test tests/word-network*.test.cjs tests/plant-color-network.test.cjs tests/storage-free-view.test.cjs
+          python3 tools/restore-color-palette.py
+          node --test tests/color-palette-restoration.test.cjs
+          python3 tools/build-local-photo-view.py
+          node --test tests/local-photo-view.test.cjs
+          python3 tools/protect-local-names.py
+          node --test tests/name-retention.test.cjs
+          python3 tools/align-plant-order.py
+          node --test tests/plant-normal-order.test.cjs
+          python3 tools/build-quiet-word-sync.py
+          node --test tests/word-quiet-sync.test.cjs
+      - name: Build quiet plant and color update paths
+        run: |
+          python3 tools/build-quiet-study-sync.py
+          node --check study-quiet-sync.js
+          node --check plants/drive-sync.js
+          node --check plants/local-adapter.js
+          node --check colors/drive-sync.js
+          node --check colors/local-adapter.js
+          node --check colors/origin-editor.js
+          node --check colors/origin-editor-view.js
+          node --check colors/data/review47-local-loader-v2.js
+          node --check plants/drive-view-worker.js
+          node --check colors/drive-view-worker.js
+          node --test tests/study-quiet-sync.test.cjs tests/service-worker.test.cjs
+      - name: Verify real browser automatic receiving and local image retention
+        run: node tests/browser-study-quiet-sync.cjs
