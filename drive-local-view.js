@@ -11,6 +11,7 @@
     let snapshot=null,last={status:'端末保存を確認中',detail:''},running=null,owner='',bytes=0;
     const memory=new Map(),pending=new Map();
     const stats={savedImages:0,reusedImages:0,failedSaves:0};
+    const legacy=options.legacy||root.DriveLegacyView?.createReader();
     const store=options.store||root.DriveViewCache.createStore({onWarning:message=>onCache({durable:false,message})});
     async function get(key){try{return await store.get(prefix+key);}catch{return null;}}
     async function put(key,value){
@@ -37,23 +38,52 @@
     };
     const factory=options.baseFactory||root.DriveReadOnlyBase.createTransport;
     const base=factory({...options,journalCache,onStatus:setStatus});
+    async function savedSnapshot(account){
+      const stored=await get('snapshot:'+account),body=stored?.body;
+      if(body?.schema!=='flashcards-local-view-v1'||body.namespace!==namespace||body.clientId!==clientId||body.account!==account||!body.view?.data||!Array.isArray(body.imageFiles)||stored.hash!==await hash(body))return null;
+      return body;
+    }
     const ready=(async()=>{
-      const pointer=await get('last-account');if(typeof pointer?.account!=='string'||!pointer.account)return null;
-      const stored=await get('snapshot:'+pointer.account),body=stored?.body;
-      if(body?.schema!=='flashcards-local-view-v1'||body.namespace!==namespace||body.clientId!==clientId||body.account!==pointer.account||!body.view?.data||!Array.isArray(body.imageFiles)||stored.hash!==await hash(body))return null;
-      owner=body.account;snapshot=body;setStatus('保存済みで閲覧','端末の保存済みデータを復元しました。');return {...structuredClone(body),cached:true};
+      const pointer=await get('last-account');
+      let body=typeof pointer?.account==='string'&&pointer.account?await savedSnapshot(pointer.account):null;
+      if(!body&&legacy){
+        const old=await legacy.snapshot(namespace,core);
+        if(old&&(!pointer?.account||pointer.account===old.account)){
+          // A missing pointer must not replace a newer snapshot with old data.
+          body=await savedSnapshot(old.account);
+          if(!body){
+            body={schema:'flashcards-local-view-v1',namespace,clientId,account:old.account,email:'',view:old.view,imageFiles:old.imageFiles,journals:0,source:old.source,saved_at:new Date().toISOString()};
+            if(await put('snapshot:'+body.account,{body,hash:await hash(body)}))await put('last-account',{account:body.account});
+          }
+        }
+      }
+      if(!body)return null;
+      owner=body.account;snapshot=body;setStatus('保存済みで閲覧','端末に残っている名前・写真の登録情報を復元しました。');return {...structuredClone(body),cached:true};
     })();
+    function retainSaved(previous,incoming){
+      if(!previous)return incoming;
+      const data={...structuredClone(previous.data||{}),...incoming.data};
+      const deleted={...structuredClone(previous.deleted||{}),...incoming.deleted};
+      for(const key of Object.keys(incoming.data||{}))delete deleted[key];
+      for(const key of Object.keys(incoming.deleted||{}))delete data[key];
+      return {...incoming,data,deleted};
+    }
     function sync(){
       if(running)return running;
       running=(async()=>{
         await ready;const result=await base.sync();checkOwner(result.account);
         if(typeof result.account!=='string'||!result.account||!result.view?.data||!Array.isArray(result.imageFiles))throw Error('表示データの保存形式を確認できません。');
-        const body={schema:'flashcards-local-view-v1',namespace,clientId,account:result.account,email:result.email||'',view:result.view,imageFiles:result.imageFiles,journals:result.journals||0,saved_at:new Date().toISOString()};
+        for(const [key,value] of Object.entries(result.view.data)){
+          if(namespace==='plant-flashcards'&&key.startsWith('card:')&&(!value||key!=='card:'+value.id||typeof value.name!=='string'||typeof value.description!=='string'))throw Error('植物名の受信形式を確認できません。保存済みの名前を保持しています。');
+        }
+        const view=retainSaved(snapshot?.view,result.view);
+        const imageFiles=[...new Map([...(snapshot?.imageFiles||[]),...result.imageFiles].map(f=>[f.id,f])).values()];
+        const body={schema:'flashcards-local-view-v1',namespace,clientId,account:result.account,email:result.email||'',view,imageFiles,journals:result.journals||0,saved_at:new Date().toISOString()};
         const durable=await put('snapshot:'+body.account,{body,hash:await hash(body)});
-        if(durable)await put('last-account',{account:body.account});
+        const pointerSaved=durable&&await put('last-account',{account:body.account});
         owner=body.account;snapshot=structuredClone(body);
-        if(durable)onCache({durable:true,message:'文字・写真の登録情報を端末保存しました。次回は接続せずに開きます。'});
-        return {...result,cached:false,durable};
+        if(pointerSaved)onCache({durable:true,message:'文字・写真の登録情報を端末保存しました。次回は接続せずに開きます。'});
+        return {...result,view:body.view,imageFiles:body.imageFiles,cached:false,durable:!!pointerSaved};
       })().catch(e=>{setStatus('取得未完了',e.message||String(e));throw e;}).finally(()=>{running=null;});return running;
     }
     function remember(key,blob){
@@ -68,7 +98,11 @@
       if(memory.has(key))return remember(key,memory.get(key));
       if(pending.has(key))return pending.get(key);
       const work=(async()=>{
-        const saved=await get(key);
+        let saved=await get(key);
+        if(!(saved instanceof Blob)&&legacy){
+          const old=await legacy.photo(ref);
+          if(old instanceof Blob&&await core.digest(await old.arrayBuffer())===match[2]){saved=old;await put(key,old);}
+        }
         if(saved instanceof Blob&&await core.digest(await saved.arrayBuffer())===match[2]){
           stats.reusedImages++;onCache({durable:true,message:'保存済み写真を端末から表示しました（Drive再取得なし）。'});return remember(key,saved);
         }
