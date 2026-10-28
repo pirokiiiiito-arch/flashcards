@@ -1,0 +1,45 @@
+name: Plant PC order checks
+on:
+  push:
+    branches: [main, fix/plant-pc-normal-order]
+    paths:
+      - 'plants/**'
+      - 'tools/align-plant-order.py'
+      - 'tests/plant-normal-order.test.cjs'
+      - 'tests/browser-plant-order.cjs'
+      - '.github/workflows/plant-order-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  plant-order-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing screens
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          node --test tests/word-network*.test.cjs tests/plant-color-network.test.cjs tests/storage-free-view.test.cjs
+          python3 tools/restore-color-palette.py
+          node --test tests/color-palette-restoration.test.cjs
+          python3 tools/build-local-photo-view.py
+          node --test tests/local-photo-view.test.cjs
+          python3 tools/protect-local-names.py
+          node --test tests/name-retention.test.cjs
+      - name: Align plant order without changing card/photo data
+        run: |
+          python3 tools/align-plant-order.py
+          node --check plants/normal-order.js
+          node --check plants/pc-order-source.js
+          node --check plants/drive-sync.js
+          node --check plants/local-adapter.js
+          node --test tests/plant-normal-order.test.cjs
+      - name: Test actual rendered order after disconnect and reload
+        run: |
+          node tests/browser-plant-order.cjs
+          node tests/browser-name-retention.cjs
