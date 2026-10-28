@@ -1,0 +1,43 @@
+name: Persistent photo viewer checks
+on:
+  push:
+    branches: [main, fix/persistent-photo-view]
+    paths:
+      - 'drive-view-cache.js'
+      - 'drive-local-view.js'
+      - 'view-shell*.js'
+      - 'tools/build-local-photo-view.py'
+      - 'tests/local-photo-view.test.cjs'
+      - '.github/workflows/local-photo-view-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  local-photo-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing word and plant-color pages
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          node --test tests/word-network*.test.cjs tests/plant-color-network.test.cjs tests/storage-free-view.test.cjs
+          python3 tools/restore-color-palette.py
+          node --test tests/color-palette-restoration.test.cjs
+      - name: Build persistent viewers without changing editors
+        run: python3 tools/build-local-photo-view.py
+      - name: Syntax and persistence regression tests
+        run: |
+          node --check drive-view-cache.js
+          node --check drive-local-view.js
+          node --check drive-local-base.js
+          node --check view-shell.js
+          node --check plants/drive-view-worker.js
+          node --check colors/drive-view-worker.js
+          node --check plants/local-adapter.js
+          node --check colors/local-adapter.js
+          node --check colors/data/review47-local-loader.js
+          node --test tests/local-photo-view.test.cjs
