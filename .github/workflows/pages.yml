@@ -13,6 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,6 +23,7 @@ jobs:
           node --check word-network-recovery.js
           node --test tests/word-network*.test.cjs
           node --test tests/plant-drive-image-copy.test.cjs
+          node --test tests/service-worker.test.cjs
       - name: Generate versioned word app entries
         run: python3 tools/build-word-network.py
       - name: Build and check plant and color network entries
@@ -67,6 +69,12 @@ jobs:
           node --check colors/drive-view-worker.js
           node --check colors/data/review47-local-loader.js
           node --test tests/local-photo-view.test.cjs
+      - name: Preserve names and verify browser restart behavior
+        run: |
+          python3 tools/protect-local-names.py
+          node --check drive-legacy-view.js
+          node --test tests/name-retention.test.cjs
+          node tests/browser-name-retention.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
