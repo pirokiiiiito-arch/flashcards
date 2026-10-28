@@ -1,0 +1,42 @@
+name: Quiet word sync checks
+on:
+  push:
+    branches: [main, fix/word-quiet-background-sync]
+    paths:
+      - 'word-quiet-sync.js'
+      - 'tools/build-quiet-word-sync.py'
+      - 'tests/*word-quiet*'
+      - '.github/workflows/word-quiet-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  quiet-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing applications unchanged
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          node --test tests/word-network*.test.cjs tests/plant-color-network.test.cjs tests/storage-free-view.test.cjs
+          python3 tools/restore-color-palette.py
+          node --test tests/color-palette-restoration.test.cjs
+          python3 tools/build-local-photo-view.py
+          node --test tests/local-photo-view.test.cjs
+          python3 tools/protect-local-names.py
+          python3 tools/align-plant-order.py
+      - name: Quiet word UI and preservation checks
+        run: |
+          python3 tools/build-quiet-word-sync.py
+          node --check word-quiet-sync.js
+          node --check drive-sync.js
+          node --check word-recovery.js
+          node --check service-worker.js
+          node --test tests/word-quiet-sync.test.cjs tests/service-worker.test.cjs
+      - name: Desktop and smartphone-sized browser layout tests
+        run: node tests/browser-word-quiet-sync.cjs
