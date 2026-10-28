@@ -37,17 +37,23 @@
     const address=key=>origin+'/flashcards/__private_view_cache_v1__/'+encodeURIComponent(key);
     async function cacheRead(key){
       if(!caches)return null;
-      const response=await (await caches.open('flashcards-view-private-v1')).match(address(key));
-      if(!response)return null;
-      const rev=Number(response.headers.get('x-cache-revision'));if(!Number.isFinite(rev))return null;
-      const value=response.headers.get('x-cache-kind')==='blob'?await response.blob():await response.json();
-      return {revision:rev,value};
+      let latest=null;
+      // Read both generations without deleting either. The new name cannot
+      // match an older word worker's overbroad "flashcards-v" cleanup prefix.
+      for(const name of ['flashcards-private-view-v2','flashcards-view-private-v1']){
+        const response=await (await caches.open(name)).match(address(key));
+        if(!response)continue;
+        const rev=Number(response.headers.get('x-cache-revision'));if(!Number.isFinite(rev))continue;
+        if(latest&&latest.revision>=rev)continue;
+        const value=response.headers.get('x-cache-kind')==='blob'?await response.blob():await response.json();
+        latest={revision:rev,value};
+      }
+      return latest;
     }
     async function get(key){
       let a=null,b=null;
       try{a=await transaction('readonly',s=>s.get(key));}catch{}
       try{b=await cacheRead(key);}catch{}
-      // The fallback may contain a newer copy after an earlier quota failure.
       const latest=!a?b:!b?a:a.revision>=b.revision?a:b;
       return latest?.value??null;
     }
@@ -61,7 +67,7 @@
         if(!caches||skipCacheWrite)throw Error('CacheStorage unavailable');
         const blob=value instanceof Blob;
         const response=new Response(blob?value:JSON.stringify(value),{headers:{'Content-Type':blob?(value.type||'application/octet-stream'):'application/json','x-cache-kind':blob?'blob':'json','x-cache-revision':String(entry.revision)}});
-        await (await caches.open('flashcards-view-private-v1')).put(address(key),response);
+        await (await caches.open('flashcards-private-view-v2')).put(address(key),response);
         return {durable:true,backend:'CacheStorage'};
       }catch{skipCacheWrite=true;onWarning('端末への継続保存ができません。このページでは表示を続けますが、閉じた後の再表示は保証できません。保存済みデータは削除していません。');return {durable:false,backend:'memory'};}
     }
