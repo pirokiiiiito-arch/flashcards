@@ -93,6 +93,21 @@ jobs:
           node --check service-worker.js
           node --test tests/word-quiet-sync.test.cjs tests/service-worker.test.cjs
           node tests/browser-word-quiet-sync.cjs
+      - name: Quiet automatic plant and color synchronization
+        run: |
+          python3 tools/build-quiet-study-sync.py
+          node --check study-quiet-sync.js
+          node --check plants/drive-sync.js
+          node --check plants/local-adapter.js
+          node --check colors/drive-sync.js
+          node --check colors/local-adapter.js
+          node --check colors/origin-editor.js
+          node --check colors/origin-editor-view.js
+          node --check colors/data/review47-local-loader-v2.js
+          node --check plants/drive-view-worker.js
+          node --check colors/drive-view-worker.js
+          node --test tests/study-quiet-sync.test.cjs tests/service-worker.test.cjs
+          node tests/browser-study-quiet-sync.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
