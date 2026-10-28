@@ -1,0 +1,41 @@
+name: Name and photo retention checks
+on:
+  push:
+    branches: [main, fix/preserve-names-and-photo-cache]
+    paths:
+      - 'drive-*.js'
+      - 'service-worker.js'
+      - 'tools/**'
+      - 'tests/*name*'
+      - '.github/workflows/name-retention-tests.yml'
+permissions:
+  contents: read
+jobs:
+  retention-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build and verify existing screens
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          node --test tests/word-network*.test.cjs tests/plant-color-network.test.cjs tests/storage-free-view.test.cjs tests/service-worker.test.cjs
+          python3 tools/restore-color-palette.py
+          node --test tests/color-palette-restoration.test.cjs
+          python3 tools/build-local-photo-view.py
+          node --test tests/local-photo-view.test.cjs
+      - name: Build name-preserving viewers and check cache boundaries
+        run: |
+          python3 tools/protect-local-names.py
+          node --check drive-legacy-view.js
+          node --check drive-local-view.js
+          node --check drive-view-cache.js
+          node --test tests/name-retention.test.cjs
+      - name: Browser restart and authentication-expiry tests with synthetic data only
+        run: |
+          command -v google-chrome
+          node tests/browser-name-retention.cjs
