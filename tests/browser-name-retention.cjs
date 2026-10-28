@@ -43,17 +43,18 @@ async function scenario(app,{legacy=false,cacheOnly=false}={}){
  });
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  const child=cp.spawn(process.env.CHROME_PATH||'google-chrome',['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
- let ws;const errors=[],external=[];
+ let ws,evaluate;const errors=[],external=[];
  try{
   child.on('error',e=>errors.push(e.message));await until(()=>fs.existsSync(path.join(profile,'DevToolsActivePort')),'Chrome debugger');
   const port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];
   const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json(),target=targets.find(x=>x.type==='page');
   ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.addEventListener('open',r,{once:true});ws.addEventListener('error',j,{once:true});});
-  let seq=0;const pending=new Map();
+  let seq=0,loads=0;const pending=new Map();
   const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}));});
   ws.addEventListener('message',event=>{
    const msg=JSON.parse(event.data);
    if(msg.id){const p=pending.get(msg.id);pending.delete(msg.id);if(msg.error)p?.reject(Error(msg.error.message));else p?.resolve(msg.result);return;}
+   if(msg.method==='Page.loadEventFired')loads++;
    if(msg.method==='Runtime.exceptionThrown')errors.push(msg.params.exceptionDetails.exception?.description||msg.params.exceptionDetails.text);
    if(msg.method==='Fetch.requestPaused'){
     const {requestId,request}=msg.params;
@@ -61,30 +62,39 @@ async function scenario(app,{legacy=false,cacheOnly=false}={}){
     else{external.push(request.url);send('Fetch.failRequest',{requestId,errorReason:'Aborted'}).catch(()=>{});}
    }
   });
-  const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
+  evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
+  const navigate=async(method,params)=>{const before=loads;await send(method,params);await until(()=>loads>before,'page load event');};
   await send('Runtime.enable');await send('Page.enable');await send('Fetch.enable',{patterns:[{urlPattern:'http*',requestStage:'Request'}]});
   await send('Page.addScriptToEvaluateOnNewDocument',{source:bootstrap(app,cacheOnly)});
   if(legacy){
-   await send('Page.navigate',{url:origin+'/__fixture__'});await until(()=>evaluate('!!window.__fixture'),'fixture startup');
+   await navigate('Page.navigate',{url:origin+'/__fixture__'});
    await evaluate(`new Promise((resolve,reject)=>{const r=indexedDB.open('flashcards_drive_cache_v3',1);r.onupgradeneeded=()=>{r.result.createObjectStore('states');r.result.createObjectStore('blobs');};r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction(['states','blobs'],'readwrite');tx.objectStore('states').put({account:'synthetic-owner',events:Object.fromEntries(__fixture.events.map(e=>[e.id,e])),snapshot:{},initialized:true},${JSON.stringify(app==='plants'?'plant-flashcards':'colors1000-review47')});tx.objectStore('blobs').put(new Blob([Uint8Array.from(atob(__fixture.png),c=>c.charCodeAt(0))],{type:'image/png'}),__fixture.picture);tx.oncomplete=()=>{db.close();localStorage.setItem('__test_offline','1');resolve(true);};tx.onerror=()=>reject(tx.error);};})`);
   }
-  await send('Page.navigate',{url:origin+'/flashcards/'+app+'/saved-view.html'});
+  await navigate('Page.navigate',{url:origin+'/flashcards/'+app+'/saved-view.html'});
   const api=app==='plants'?'PlantDriveSync':'ColorDriveSync';
   await until(()=>evaluate('typeof window.'+api+"==='object'"),app+' API startup');
   if(!legacy)await evaluate("[...document.querySelectorAll('[data-drive-readonly-controls] button')].find(b=>b.textContent.includes('初回接続')).click()");
-  await until(()=>evaluate(`${api}.status().cached`),'saved names loaded');
+  const applied=app==='plants'?"cards.some(c=>c.id==='test-plant')":"!!manualEdits['color-0001:palette']";
+  await until(()=>evaluate(`${api}.status().cached&&(${applied})`),'saved data applied');
   const show=app==='plants'?'render(true)':'jump(0);flip()';await evaluate(show);
   const nameExpr=app==='plants'?"document.querySelector('.front-name')?.textContent":"document.querySelector('#back h2')?.textContent";
   const expected=app==='plants'?'保存確認用の植物名':await evaluate('CARDS[0].name');assert.equal(await evaluate(nameExpr),expected);
   const imgExpr=app==='plants'?"document.querySelector('.image-box img')":"document.querySelector('[data-photo-slot=\"color-0001:palette\"] img')";
+  await until(()=>evaluate(`!!(${imgExpr})`),'image element');await evaluate(`(${imgExpr}).scrollIntoView({block:'center'})`);
   await until(()=>evaluate(`!!(${imgExpr}?.naturalWidth>0)`),'saved photograph displayed');
   await evaluate(`localStorage.setItem('__test_offline','1');${api}.disconnect();`);await evaluate(show);assert.equal(await evaluate(nameExpr),expected);
-  await send('Page.reload',{ignoreCache:false});
-  await until(()=>evaluate(`!!window.${api}&&${api}.status().cached`),'restart without authentication');
-  await evaluate(show);assert.equal(await evaluate(nameExpr),expected);await until(()=>evaluate(`!!(${imgExpr}?.naturalWidth>0)`),'photo after restart');
+  await navigate('Page.reload',{ignoreCache:false});
+  await until(()=>evaluate(`!!window.${api}&&${api}.status().cached&&(${applied})`),'restart without authentication');
+  await evaluate(show);assert.equal(await evaluate(nameExpr),expected);
+  await until(()=>evaluate(`!!(${imgExpr})`),'restored image element');await evaluate(`(${imgExpr}).scrollIntoView({block:'center'})`);
+  await until(()=>evaluate(`!!(${imgExpr}?.naturalWidth>0)`),'photo after restart');
   assert.equal(await evaluate(api+'.valid()'),false);assert.deepEqual(await evaluate('__driveRequests'),[],'cached reload must not access Drive');
   assert.deepEqual(errors,[],'no page runtime errors');assert.ok(!external.some(x=>x.startsWith('https://www.googleapis.com')),'no real Google request');
   console.log('PASS browser:',app,legacy?'legacy archive':'fresh save',cacheOnly?'CacheStorage fallback':'IndexedDB','name + photo + expired token + reload');
+ }catch(e){
+  console.error('Browser diagnostics',app,errors);
+  if(evaluate)console.error(await evaluate("({status:window.ColorDriveSync?.status()||window.PlantDriveSync?.status(),images:[...document.images].map(i=>({src:i.src,alt:i.alt,width:i.naturalWidth}))})").catch(()=>null));
+  throw e;
  }finally{
   try{ws?.close();}catch{}child.kill('SIGTERM');server.closeAllConnections();await new Promise(r=>server.close(r));await sleep(150);fs.rmSync(profile,{recursive:true,force:true,maxRetries:3,retryDelay:100});
  }
