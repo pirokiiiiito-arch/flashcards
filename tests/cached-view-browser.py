@@ -1,4 +1,7 @@
-"""Real browser regression with synthetic data, no real Google credentials."""
+"""Real browser regression with synthetic data, no real Google credentials.
+Auth is injected before page scripts so service-worker interception differences
+cannot accidentally load the real GIS service. All cache assertions stay real.
+"""
 import argparse,hashlib,json,pathlib,struct,threading,zlib
 from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import urlparse,parse_qs
@@ -18,6 +21,7 @@ gis="window.__mockPrepared=0;window.__mockClicked=0;window.google={accounts:{oau
 results=[]
 with sync_playwright() as p:
  browser=getattr(p,args.engine).launch(headless=True);context=browser.new_context(viewport={'width':390,'height':844});calls=[]
+ context.add_init_script(gis)
  def route(r):
   u=urlparse(r.request.url)
   if u.hostname=='127.0.0.1':r.continue_();return
