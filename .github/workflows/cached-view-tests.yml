@@ -1,0 +1,60 @@
+name: Persistent mobile photo cache checks
+on:
+  push:
+    branches: [main, fix/persistent-mobile-photo-cache]
+    paths:
+      - 'drive-view-cache.js'
+      - 'drive-local-view.js'
+      - 'tools/build-cached-view.py'
+      - 'tests/cached-view*'
+      - '.github/workflows/cached-view-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing pages and cache upgrade
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-cached-view.py
+      - name: Check cache code and preserved editors
+        run: |
+          node --check drive-view-cache.js
+          node --check drive-local-view.js
+          node --check drive-cached.js
+          node --check plants/service-worker.js
+          node --check colors/service-worker.js
+          node --test tests/cached-view.test.cjs
+  browser:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build local synthetic test site
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-cached-view.py
+      - name: Install pinned browser test runner
+        run: |
+          python3 -m pip install playwright==1.55.0
+          python3 -m playwright install --with-deps ${{ matrix.engine }}
+      - name: Real IndexedDB reload, disconnect, and offline photo checks
+        run: python3 tests/cached-view-browser.py --engine ${{ matrix.engine }}
