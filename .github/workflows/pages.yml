@@ -54,6 +54,19 @@ jobs:
           node --check colors/data/review47-view-loader.js
           node --check colors/service-worker.js
           node --test tests/color-palette-restoration.test.cjs
+      - name: Build and test local-first photo viewers
+        run: |
+          python3 tools/build-local-photo-view.py
+          node --check drive-view-cache.js
+          node --check drive-local-view.js
+          node --check drive-local-base.js
+          node --check view-shell.js
+          node --check plants/local-adapter.js
+          node --check colors/local-adapter.js
+          node --check plants/drive-view-worker.js
+          node --check colors/drive-view-worker.js
+          node --check colors/data/review47-local-loader.js
+          node --test tests/local-photo-view.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
