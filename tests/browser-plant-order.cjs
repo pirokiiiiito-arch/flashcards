@@ -4,6 +4,7 @@
 const fs=require('node:fs'),Module=require('node:module'),path=require('node:path');
 let s=fs.readFileSync('tests/browser-name-retention.cjs','utf8');
 function one(a,b){if(s.split(a).length!==2)throw Error('Browser order test anchor changed: '+a.slice(0,80));s=s.replace(a,b);}
+one("origin+'/flashcards/'+app+'/saved-view.html'","origin+'/flashcards/'+app+'/pc-order-view.html'");
 one('function bootstrap(app,cacheOnly){','let pcOrderFixture=false;\nfunction bootstrap(app,cacheOnly){');
 one("if(app==='plants'){add('card:test-plant',{id:'test-plant',name:'保存確認用の植物名',description:'検証用の説明',group:'angiosperm',sort_order:1});add('image:test-plant:0',ref);}",`if(app==='plants'){
   const rows=[['seed-angiosperm-10','テスト10'],['test-plant','追加確認用'],['seed-angiosperm-2','アイヌタチツボスミレ'],['seed-angiosperm-1','アイズシモツケ']];
