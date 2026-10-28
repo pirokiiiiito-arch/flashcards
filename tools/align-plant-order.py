@@ -1,7 +1,6 @@
 """Run last, after protect-local-names.py. Plant ordering only.
-The default sequence is reconstructed from the SAME source files and duplicate
-rules as the PC boot loader. A PC-authored ID sequence overrides that fallback.
-No private data is bundled, and no names, descriptions or image bytes change.
+Use the PC boot source sequence as fallback; explicit PC order has priority.
+No private data is bundled and no names, descriptions or image bytes change.
 """
 from pathlib import Path
 import json,hashlib,re
@@ -32,8 +31,7 @@ ids=[c['id'] for c in rows]
 if len(set(ids))!=len(ids):raise RuntimeError('Duplicate plant source IDs')
 if rows[0]['name']!='アイズシモツケ':raise RuntimeError('PC first card changed')
 if len(rows)!=9891 or sum(c['group']=='angiosperm' for c in rows)!=8621:raise RuntimeError('PC source counts changed; do not guess ordering')
-write('plants/source-order.js','/* Generated from the existing public PC seed-loading sequence, without re-sorting. */\n(function(root){const ids='+json.dumps(ids,ensure_ascii=False,separators=(',',':'))+';root.PLANT_SOURCE_ORDER=Object.freeze(ids);if(typeof module!=="undefined"&&module.exports)module.exports=ids;})(typeof window!=="undefined"?window:globalThis);\n')
-# Keep a single normal-order journal entry separate from all card/image values.
+write('plants/source-order.js','/* Existing public PC seed-loading sequence, without re-sorting. */\n(function(root){const ids='+json.dumps(ids,ensure_ascii=False,separators=(',',':'))+';root.PLANT_SOURCE_ORDER=Object.freeze(ids);if(typeof module!=="undefined"&&module.exports)module.exports=ids;})(typeof window!=="undefined"?window:globalThis);\n')
 p=read('plants/drive-sync.js')
 p=one(p,'  if (window.PlantDriveSync) return;','  if (window.PlantDriveSync) return;\n  const O=window.PlantNormalOrder, orderSource=window.PlantPcOrderSource.create();')
 p=one(p,'  function values(list) {','  function values(list, includeOrder=true) {')
@@ -49,8 +47,6 @@ p=one(p,'    onStatus: (s, message) => {','    onStatus: (s, message) => {\n    
 p=one(p,'  sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);','  sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);orderSource.attach(sync);')
 p=one(p,'  saveCards = function () { const r = originalSave(); sync.changed(); return r; };','  saveCards = function () { const r = originalSave(); if(!sync.applying)orderSource.capture(cards); sync.changed(); return r; };')
 write('plants/drive-sync.js',p)
-# Both network-only and saved viewers use the same ordering policy. They do not
-# write order records, so an empty/new phone cannot replace the PC sequence.
 for path in ['plants/readonly-adapter.js','plants/local-adapter.js']:
     p=read(path)
     p=one(p,'  let stats={cards:0,assigned:0,drive:0,files:0},urls=new Map(),sequence=0;','  let stats={cards:0,assigned:0,drive:0,files:0},urls=new Map(),sequence=0,normalOrderRecord=null;')
@@ -67,7 +63,12 @@ for path in ['plants/index.html','plants/plant-sync-v2.html','plants/drive-view.
     p=p.replace('./drive-sync.js?v=network2','./drive-sync.js?v=pcorder1').replace('./local-adapter.js?v=1','./local-adapter.js?v=pcorder1')
     p=one(p,'<body>','<body>\n<p style="margin:8px 16px;font:13px system-ui">植物の通常順：PC基準 修正1</p>')
     write(path,p)
-# Cache versions and allowlists are updated, without deleting private archives.
+# A fresh entry avoids an older exact-URL worker serving an outdated HTML page.
+# It uses the same account/namespace/cache keys, not a new user data archive.
+p=one(read('plants/saved-view.html'),'../view-shell-v2.js?v=2','./order-view-shell.js?v=pcorder1')
+write('plants/pc-order-view.html',p)
+s=one(read('view-shell-v2.js'),"['drive-view.html','saved-view.html']","['drive-view.html','saved-view.html','pc-order-view.html']")
+write('plants/order-view-shell.js',s)
 p=read('plants/service-worker.js')
 p=one(p,'plant-flashcards-v31-network2','plant-flashcards-v32-pcorder1')
 p=one(p,'./drive-sync.js?v=network2','./drive-sync.js?v=pcorder1')
@@ -78,7 +79,7 @@ p=one(p,'flashcards-local-view-shell-v2-','flashcards-local-view-shell-v3-pcorde
 p=p.replace('./local-adapter.js?v=1','./local-adapter.js?v=pcorder1')
 m=re.search(r'^const ASSETS=(\[.*\]);$',p,re.M)
 if not m:raise RuntimeError('Viewer asset list missing')
-assets=json.loads(m.group(1))+['./source-order.js?v=pcorder1','./normal-order.js?v=pcorder1']
+assets=json.loads(m.group(1))+['./source-order.js?v=pcorder1','./normal-order.js?v=pcorder1','./pc-order-view.html','./order-view-shell.js?v=pcorder1']
 p=p[:m.start(1)]+json.dumps(assets)+p[m.end(1):]
 write('plants/drive-view-worker.js',p)
 after={p:sha(p) for p in protected}
