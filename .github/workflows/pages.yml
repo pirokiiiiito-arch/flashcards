@@ -75,6 +75,15 @@ jobs:
           node --check drive-legacy-view.js
           node --test tests/name-retention.test.cjs
           node tests/browser-name-retention.cjs
+      - name: Align plant order with the PC and verify saved browsing
+        run: |
+          python3 tools/align-plant-order.py
+          node --check plants/normal-order.js
+          node --check plants/pc-order-source.js
+          node --check plants/drive-sync.js
+          node --check plants/local-adapter.js
+          node --test tests/plant-normal-order.test.cjs
+          node tests/browser-plant-order.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
