@@ -40,7 +40,7 @@ function bootstrap(){return `(()=>{
 async function scenario(width,height){
  const profile=fs.mkdtempSync(path.join(os.tmpdir(),'quiet-word-'));
  const server=http.createServer((req,res)=>{
-  let pathname=new URL(req.url,'http://localhost').pathname;if(pathname==='/flashcards/')pathname+='/index.html';
+  let pathname=new URL(req.url,'http://localhost').pathname;if(pathname==='/flashcards/')pathname+='index.html';
   const p=path.resolve(ROOT,decodeURIComponent(pathname.replace(/^\/flashcards\//,'')));
   if(!pathname.startsWith('/flashcards/')||!p.startsWith(ROOT+path.sep)||!fs.existsSync(p)||!fs.statSync(p).isFile()){res.writeHead(404);res.end();return;}
   const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml'};
@@ -61,7 +61,7 @@ async function scenario(width,height){
    if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);
    if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;send(request.url.startsWith(origin+'/')?'Fetch.continueRequest':'Fetch.failRequest',request.url.startsWith(origin+'/')?{requestId}:{requestId,errorReason:'Aborted'}).catch(()=>{});}
   });
-  evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
+  evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression:'{'+expression+'}',awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
   await send('Runtime.enable');await send('Page.enable');await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<600});
   await send('Fetch.enable',{patterns:[{urlPattern:'http*',requestStage:'Request'}]});await send('Page.addScriptToEvaluateOnNewDocument',{source:bootstrap()});
   await send('Page.navigate',{url:origin+'/flashcards/word-sync-v2.html?quiet=1'});
