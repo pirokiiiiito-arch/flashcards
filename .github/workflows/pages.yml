@@ -84,6 +84,15 @@ jobs:
           node --check plants/local-adapter.js
           node --test tests/plant-normal-order.test.cjs
           node tests/browser-plant-order.cjs
+      - name: Keep word synchronization outside the reading layout
+        run: |
+          python3 tools/build-quiet-word-sync.py
+          node --check word-quiet-sync.js
+          node --check drive-sync.js
+          node --check word-recovery.js
+          node --check service-worker.js
+          node --test tests/word-quiet-sync.test.cjs tests/service-worker.test.cjs
+          node tests/browser-word-quiet-sync.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
