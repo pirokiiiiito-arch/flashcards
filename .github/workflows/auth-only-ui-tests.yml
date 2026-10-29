@@ -1,0 +1,40 @@
+name: Authentication-only UI checks
+on:
+  push:
+    branches: [main, fix/authentication-only-ui]
+    paths:
+      - 'auth-only-ui.*'
+      - 'tools/build-auth-only-ui.py'
+      - 'tests/*auth-only-ui*'
+      - '.github/workflows/auth-only-ui-tests.yml'
+permissions:
+  contents: read
+jobs:
+  auth-only-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing applications
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-local-photo-view.py
+          python3 tools/protect-local-names.py
+          python3 tools/align-plant-order.py
+          python3 tools/build-quiet-word-sync.py
+          python3 tools/build-quiet-study-sync.py
+          python3 tools/repair-photo-resume.py
+      - name: Apply authentication-only display and verify preservation
+        run: |
+          python3 tools/build-auth-only-ui.py
+          node --check auth-only-ui.js
+          node --check word-quiet-sync.js
+          node --check study-quiet-sync.js
+          node --test tests/auth-only-ui.test.cjs tests/service-worker.test.cjs
+      - name: Test auth prompts, automatic saving, layout and cached photographs in Chrome
+        run: node tests/browser-auth-only-ui.cjs
