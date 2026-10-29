@@ -1,0 +1,35 @@
+name: Reliable authentication entry checks
+on:
+  push:
+    branches: [main, fix/reliable-auth-entry]
+permissions:
+  contents: read
+jobs:
+  auth-entry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing applications and photo recovery
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-local-photo-view.py
+          python3 tools/protect-local-names.py
+          python3 tools/align-plant-order.py
+          python3 tools/build-quiet-word-sync.py
+          python3 tools/build-quiet-study-sync.py
+          python3 tools/repair-photo-resume.py
+          node --test tests/photo-resume.test.cjs
+      - name: Build and check reliable authentication entry
+        run: |
+          python3 tools/build-auth-only-ui.py
+          node --check auth-only-ui.js
+          node --check tests/browser-auth-entry.cjs
+          node --test tests/auth-only-ui.test.cjs tests/service-worker.test.cjs
+      - name: Mobile startup failures, offline hints, reconnect and cached photos
+        run: node tests/browser-auth-entry.cjs
