@@ -120,6 +120,14 @@ jobs:
           node --test tests/photo-resume.test.cjs
           node tests/browser-photo-reconnect.cjs
           node tests/browser-study-quiet-sync.cjs
+      - name: Display only required authentication controls
+        run: |
+          python3 tools/build-auth-only-ui.py
+          node --check auth-only-ui.js
+          node --check word-quiet-sync.js
+          node --check study-quiet-sync.js
+          node --test tests/auth-only-ui.test.cjs tests/service-worker.test.cjs
+          node tests/browser-auth-only-ui.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
