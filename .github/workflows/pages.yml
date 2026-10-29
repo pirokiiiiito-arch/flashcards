@@ -127,7 +127,7 @@ jobs:
           node --check word-quiet-sync.js
           node --check study-quiet-sync.js
           node --test tests/auth-only-ui.test.cjs tests/service-worker.test.cjs
-          node tests/browser-auth-only-ui.cjs
+          node tests/browser-auth-entry.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
