@@ -1,0 +1,33 @@
+name: Mobile photo reconnect checks
+on:
+  push:
+    branches: [fix/mobile-photo-reconnect]
+permissions:
+  contents: read
+jobs:
+  reconnect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build published applications
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-local-photo-view.py
+          python3 tools/protect-local-names.py
+          python3 tools/align-plant-order.py
+          python3 tools/build-quiet-word-sync.py
+          python3 tools/build-quiet-study-sync.py
+      - name: Apply image-resume repair when present
+        run: |
+          if [ -f tools/repair-photo-resume.py ]; then python3 tools/repair-photo-resume.py; fi
+          if [ -f tests/photo-resume.test.cjs ]; then node --test tests/photo-resume.test.cjs; fi
+      - name: Failed photo followed by unchanged sync
+        run: node tests/browser-photo-reconnect.cjs
+      - name: Ordinary automatic receiving and saved browsing still work
+        run: node tests/browser-study-quiet-sync.cjs
