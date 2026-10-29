@@ -6,6 +6,7 @@ on:
       - 'auth-only-ui.*'
       - 'tools/build-auth-only-ui.py'
       - 'tests/*auth-only-ui*'
+      - 'tests/browser-auth-entry.cjs'
       - '.github/workflows/auth-only-ui-tests.yml'
 permissions:
   contents: read
@@ -36,5 +37,5 @@ jobs:
           node --check word-quiet-sync.js
           node --check study-quiet-sync.js
           node --test tests/auth-only-ui.test.cjs tests/service-worker.test.cjs
-      - name: Test auth prompts, automatic saving, layout and cached photographs in Chrome
-        run: node tests/browser-auth-only-ui.cjs
+      - name: Auth access, automatic saving, missing scripts and saved photos
+        run: node tests/browser-auth-entry.cjs
