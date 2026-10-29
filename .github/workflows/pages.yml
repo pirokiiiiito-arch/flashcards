@@ -108,6 +108,18 @@ jobs:
           node --check colors/drive-view-worker.js
           node --test tests/study-quiet-sync.test.cjs tests/service-worker.test.cjs
           node tests/browser-study-quiet-sync.cjs
+      - name: Retry failed mobile pictures without rebuilding cards
+        run: |
+          python3 tools/repair-photo-resume.py
+          node --check plants/photo-resume.js
+          node --check plants/local-adapter.js
+          node --check colors/local-adapter.js
+          node --check photo-view-shell.js
+          node --check plants/drive-view-worker.js
+          node --check colors/drive-view-worker.js
+          node --test tests/photo-resume.test.cjs
+          node tests/browser-photo-reconnect.cjs
+          node tests/browser-study-quiet-sync.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
