@@ -1,0 +1,21 @@
+/* Keep ordinary reading controls; suppress only routine synchronization UI. */
+html[data-auth-only-sync] #wordQuietStatus,
+html[data-auth-only-sync] .study-quiet-row,
+html[data-auth-only-sync] #syncBtn,
+html[data-auth-only-sync] #imageSyncStatus,
+html[data-auth-only-sync] [data-sync-build-note]{display:none!important}
+/* Delayed diagnostic elements stay hidden before the existing tidy hook runs. */
+html[data-auth-only-sync] .topbar>#wordNetworkBuild,
+html[data-auth-only-sync] .topbar>#wordNetworkSync,
+html[data-auth-only-sync] .topbar>#wordRecoverMissing,
+html[data-auth-only-sync] .topbar>#wordDriveDataStatus,
+html[data-auth-only-sync] .topbar>#wordNetworkProgress,
+html[data-auth-only-sync] .topbar>#wordRecoveryResult,
+html[data-auth-only-sync] .topbar>#wordRecoveryLoadError,
+html[data-auth-only-sync] .toolbar #plantNetworkStatus:not(dialog *),
+html[data-auth-only-sync] .toolbar #colorNetworkStatus:not(dialog *){display:none!important}
+.auth-only-prompt{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:90;max-width:calc(100vw - 24px)}
+.auth-only-prompt[hidden]{display:none!important}
+.auth-only-button{font:inherit!important;font-size:14px!important;line-height:1.5!important;padding:10px 14px!important;max-width:100%;border:1px solid #cbd1d9!important;border-radius:12px!important;background:#fff!important;color:#1f2937!important;box-shadow:0 3px 14px #0002;cursor:pointer}
+.auth-only-dialog{box-sizing:border-box;width:min(480px,92vw);max-height:85vh;overflow:auto;border:1px solid #cbd1d9;border-radius:16px;padding:20px;background:#fff;color:#1f2937;font:16px/1.6 system-ui}
+.auth-only-dialog:not([open]){display:none}.auth-only-dialog::backdrop{background:#18233388}.auth-only-dialog h2{font-size:20px;margin:0 0 12px}.auth-only-dialog button{font:inherit;margin:6px 8px 0 0;padding:9px 12px;border:1px solid #cbd1d9;border-radius:8px;cursor:pointer}
