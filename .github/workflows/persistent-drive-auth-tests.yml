@@ -4,6 +4,19 @@ on:
     branches: [feature/persistent-drive-login]
     paths:
       - 'server/drive-auth/**'
+      - 'persistent-drive-auth.js'
+      - 'drive-login.html'
+      - 'drive-login.js'
+      - 'drive-core.js'
+      - 'drive-readonly.js'
+      - 'auth-only-ui.js'
+      - 'index.html'
+      - 'plants/index.html'
+      - 'colors/index.html'
+      - 'colors/data/review47-loader.js'
+      - 'service-worker.js'
+      - 'plants/service-worker.js'
+      - 'colors/service-worker.js'
       - '.github/workflows/persistent-drive-auth-tests.yml'
   workflow_dispatch:
 permissions:
@@ -19,10 +32,48 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Check standalone server module syntax
-        run: node --check server/drive-auth/broker.mjs
+      - name: Check authentication module syntax
+        run: |
+          node --check server/drive-auth/broker.mjs
+          node --check persistent-drive-auth.js
+          node --check drive-login.js
+          node --check drive-core.js
+          node --check drive-readonly.js
+          node --check auth-only-ui.js
       - name: Test refresh, account binding, active-session verification and redaction
         run: node --test server/drive-auth/*.test.mjs
+      - name: Verify client wiring is additive and ordered
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const word=fs.readFileSync('index.html','utf8');
+          const plant=fs.readFileSync('plants/index.html','utf8');
+          const color=fs.readFileSync('colors/data/review47-loader.js','utf8');
+          const login=fs.readFileSync('drive-login.html','utf8');
+          for (const [name,text] of [['word',word],['plant',plant]]) {
+            const auth=text.indexOf('persistent-drive-auth.js');
+            const core=text.indexOf('drive-core.js');
+            const ui=text.indexOf('auth-only-ui.js');
+            assert.ok(auth>=0&&core>auth&&ui>core,name+' auth scripts must load in order');
+          }
+          assert.ok(color.indexOf('../persistent-drive-auth.js')>=0);
+          assert.ok(color.indexOf('../drive-core.js')>color.indexOf('../persistent-drive-auth.js'));
+          assert.ok(color.indexOf('../auth-only-ui.js')>color.indexOf('./drive-sync.js'));
+          assert.ok(login.includes('./persistent-drive-auth.js?v=1'));
+          assert.ok(login.includes('./drive-login.js?v=1'));
+          const core=fs.readFileSync('drive-core.js','utf8');
+          assert.ok(core.includes('root.PersistentDriveAuth'));
+          assert.ok(core.includes('button.hidden = true; prepareAuth();'));
+          const ui=fs.readFileSync('auth-only-ui.js','utf8');
+          assert.ok(ui.includes('root.PersistentDriveAuth.required?.()'));
+          const callback=fs.readFileSync('drive-login.js','utf8');
+          assert.ok(callback.includes("crypto.subtle.digest('SHA-256'"));
+          assert.ok(callback.includes("history.replaceState"));
+          assert.ok(callback.includes("flashcards-drive-connected"));
+          assert.ok(!callback.includes('client_secret'));
+          console.log('Client wiring, PKCE callback and auth-only presentation verified.');
+          NODE
       - name: Verify server-only grants without reading any credentials
         run: |
           node --input-type=module <<'NODE'
