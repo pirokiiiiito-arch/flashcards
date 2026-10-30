@@ -45,7 +45,7 @@ p=one(p,'    prepareApply: async view => window.PlantNetworkSupport.plan(view, c
 p=one(p,'    apply: list => {','    apply: prepared => {\n      const list=prepared.list;orderSource.accept(prepared.record);')
 p=one(p,'    onStatus: (s, message) => {','    onStatus: (s, message) => {\n      orderSource.status(s);')
 p=one(p,'  sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);','  sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);orderSource.attach(sync);')
-p=one(p,'  saveCards = function () { const r = originalSave(); sync.changed(); if (sync.valid()) queueMicrotask(async () => { try { await sync.sync(); if (sync.valid()) await sync.sync(); } catch {} }); return r; };','  saveCards = function () { const r = originalSave(); if(!sync.applying)orderSource.capture(cards); sync.changed(); if (sync.valid()) queueMicrotask(async () => { try { await sync.sync(); if (sync.valid()) await sync.sync(); } catch {} }); return r; };')
+p=one(p,'  saveCards = function () { const r = originalSave(); sync.changed(); if (sync.valid()) queueMicrotask(async () => { try { copier.retry(); await copier.sweep(); await sync.sync(); if (sync.status().pending && sync.valid()) await sync.sync(); } catch {} }); return r; };','  saveCards = function () { const r = originalSave(); if(!sync.applying)orderSource.capture(cards); sync.changed(); if (sync.valid()) queueMicrotask(async () => { try { copier.retry(); await copier.sweep(); await sync.sync(); if (sync.status().pending && sync.valid()) await sync.sync(); } catch {} }); return r; };')
 write('plants/drive-sync.js',p)
 for path in ['plants/readonly-adapter.js','plants/local-adapter.js']:
     p=read(path)
