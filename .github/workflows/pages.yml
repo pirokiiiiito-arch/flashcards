@@ -8,7 +8,7 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: "pages-v4"
+  group: "pages-v5"
   cancel-in-progress: true
 jobs:
   build:
