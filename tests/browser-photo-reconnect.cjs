@@ -4,8 +4,11 @@
 const fs=require('node:fs'),Module=require('node:module'),path=require('node:path');
 let s=fs.readFileSync('tests/browser-name-retention.cjs','utf8');
 function one(a,b){if(s.split(a).length!==2)throw Error('Photo reconnect test anchor changed: '+a.slice(0,100));s=s.replace(a,b);}
-one('window.__fixture={events,picture,png,hash};','window.__fixture={events,picture,png,hash,blockPhoto:true,photoFailures:0};');
+one('window.__fixture={events,picture,png,hash};','window.__fixture={events,picture,png,hash,blockPhoto:true,photoFailures:0,newJournal:null};');
 one("   if(url.pathname.endsWith('/test-picture'))return new Response", "   if(url.pathname.endsWith('/test-picture')&&__fixture.blockPhoto){__fixture.photoFailures++;return new Response('Synthetic temporary failure',{status:503});}\n   if(url.pathname.endsWith('/test-picture'))return new Response");
+one(`   if(url.pathname.endsWith('/files'))return json({files:url.searchParams.get('q').includes("value='journal'")?[{id:'test-journal',md5Checksum:'unchanged-test-journal'}]:[{id:'test-picture',appProperties:{sha256:hash},sha256Checksum:hash,mimeType:'image/png'}]});`,
+`   if(url.pathname.endsWith('/files'))return json({files:url.searchParams.get('q').includes("value='journal'")?[{id:'test-journal',md5Checksum:'unchanged-test-journal'},...(__fixture.newJournal?[{id:'test-journal-new',md5Checksum:'new-plant-journal'}]:[])]:[{id:'test-picture',appProperties:{sha256:hash},sha256Checksum:hash,mimeType:'image/png'}]});`);
+one("   if(url.pathname.endsWith('/test-journal'))return json", "   if(url.pathname.endsWith('/test-journal-new'))return json({schema:'flashcards-drive-journal-v3',namespace:app==='plants'?'plant-flashcards':'colors1000-review47',events:[__fixture.newJournal]});\\n   if(url.pathname.endsWith('/test-journal'))return json");
 one("origin+'/flashcards/'+app+'/saved-view.html'","origin+'/flashcards/'+app+'/photo-view.html'");
 one("  if(!legacy)await evaluate(\"[...document.querySelectorAll('[data-drive-readonly-controls] button')].find(b=>b.textContent.includes('初回接続')).click()\");", "  if(!legacy)await evaluate(\"document.getElementById((window.PlantDriveSync?'plants':'colors')+'QuietDetails').showModal();[...document.querySelectorAll('[data-drive-readonly-controls] button')].find(b=>b.textContent.includes('初回接続')).click();document.getElementById((window.PlantDriveSync?'plants':'colors')+'QuietDetails').close()\");");
 const before="  await until(()=>evaluate(`!!(${imgExpr})`),'image element');await evaluate(`(${imgExpr}).scrollIntoView({block:'center'})`);\n  await until(()=>evaluate(`!!(${imgExpr}?.naturalWidth>0)`),'saved photograph displayed');";
@@ -26,7 +29,7 @@ const after=[
 "  assert.equal(await evaluate(nameExpr),expected,'retry preserves the current name');",
 "  await until(()=>evaluate(`${api}.status().stats.savedImages>0`),'recovered photo is persistently cached');",
 "  if(app==='plants'){",
-"    await evaluate(`__fixture.events.push({id:'auto-new-plant-event',key:'card:auto-new-plant',value:{id:'auto-new-plant',name:'自動受信テスト植物',description:'自動受信検証',group:'angiosperm',sort_order:999},parents:[],clock:999,deleted:false});`);",
+"    await evaluate(`__fixture.newJournal={id:'auto-new-plant-event',key:'card:auto-new-plant',value:{id:'auto-new-plant',name:'自動受信テスト植物',description:'自動受信検証',group:'angiosperm',sort_order:999},parents:[],clock:999,deleted:false};`);",
 "    await sleep(5200);await evaluate(`window.dispatchEvent(new Event('focus'))`);",
 "    await until(()=>evaluate(`cards.some(c=>c.id==='auto-new-plant')`),'photo-view automatically receives a newly added plant');",
 "  }",
