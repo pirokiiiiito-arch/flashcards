@@ -62,10 +62,10 @@ s=one(s,"      if (state.pending.length) { timer = setTimeout(() => sync().catch
       }""")
 s=one(s,'    async function importValues(values, source, timestamps = {}, tombstones = {}) {',"""    async function republish(keys) {
       await ready; await captureQueue; await capture();
-      const current = await cfg.read(), pendingKeys = new Set(state.pending.map(id => state.events[id]?.key).filter(Boolean));
+      const current = await cfg.read();
       const basis = state.basis || {}; let added = 0;
       for (const key of new Set(keys || [])) {
-        if (pendingKeys.has(key) || !(key in current)) continue;
+        if (!(key in current)) continue;
         const e = newEvent(key, current[key], false, basis[key] || []);
         append(e); basis[key] = [e.id]; added++;
       }
