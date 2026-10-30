@@ -83,6 +83,6 @@ p=re.sub(r"const CACHE = '[^']+';","const CACHE = 'colors1000-review47-drive3-ne
 p=one(p,"'./data/review47-loader.js?v=3'","'./data/review47-loader.js?v=network2', './network-support.js?v=2', './color-sync-v2.html'")
 p=one(p,"'./app-main.js?v=1'","'./app-main.js?v=network2'")
 p=one(p,"'./drive-sync.js?v=13'","'./drive-sync.js?v=network2'")
-p=one(p,"'../drive-core.js?v=6'","'../drive-core.js?v=color-network2'")
+p=one(p,"'../drive-core.js?v=persist1'","'../drive-core.js?v=color-network2'")
 write('colors/service-worker.js',p)
 print('Plant and color network v2 builds complete. No user data or shared word sync changed.')
