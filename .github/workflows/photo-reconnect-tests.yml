@@ -4,6 +4,10 @@ on:
     branches: [main, fix/mobile-photo-reconnect]
     paths:
       - 'plants/drive-sync.js'
+      - 'plants/index.html'
+      - 'plants/network-support.js'
+      - 'tools/build-plant-color-network.py'
+      - 'tests/plant-color-network.test.cjs'
       - 'study-quiet-sync.js'
       - 'tools/repair-photo-resume.py'
       - 'tools/align-plant-order.py'
