@@ -18,6 +18,7 @@ jobs:
           persist-credentials: false
       - name: Build the previously published application
         run: |
+          node --test tests/plant-drive-image-copy.test.cjs
           python3 tools/build-word-network.py
           python3 tools/build-plant-color-network.py
           python3 tools/build-storage-free-view.py
@@ -40,7 +41,7 @@ jobs:
           node --check plants/drive-sync.js
           node --check plants/legacy-photo-source.js
           node --check plants/service-worker.js
-          node --test tests/plant-transfer-queue.test.cjs tests/plant-drive-image-copy.test.cjs tests/service-worker.test.cjs
+          node --test tests/plant-transfer-queue.test.cjs tests/service-worker.test.cjs
       - name: Verify automatic transfer and fresh smartphone receiving
         run: |
           node tests/browser-plant-transfer-queue.cjs
