@@ -41,6 +41,14 @@ test('external http image URL can publish as a phone fallback while device-only 
  assert.ok(built.includes("/^(idb:|data:image\\/|blob:)/.test(String(v))"));
  assert.ok(built.includes("!/^https?:\\/\\//i.test(String(ref))"));
 });
+test('focused card image references can be requeued without bulk-resending the whole deck',()=>{
+ const coreText=fs.readFileSync('plants/drive-transfer-core.js','utf8');
+ const syncText=fs.readFileSync('plants/drive-sync.js','utf8');
+ assert.ok(coreText.includes('async function republish(keys)'));
+ assert.ok(coreText.includes('pendingKeys.has(key)'));
+ assert.ok(syncText.includes('sync?.republish'));
+ assert.ok(syncText.includes('republishedCards'));
+});
 test('only the plant editor selects the specialized queue core',()=>{
  for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('./drive-transfer-core.js?v=queue1'));assert.ok(s.includes('./drive-sync.js?v=queue1'));}
  const report=JSON.parse(fs.readFileSync('plants/transfer-queue-build.json','utf8'));for(const [p,hash] of Object.entries(report.protected_sha256))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'),hash,p);
