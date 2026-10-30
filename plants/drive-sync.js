@@ -107,16 +107,6 @@
     // after reconciliation, then capture ordinary child events for the next push.
     afterSync: async () => {
       await copier.sweep();
-      if (sync?.republish && currentGroup && !editing) {
-        const current = cards[currentIndex()];
-        if (current && !republishedCards.has(current.id)) {
-          const keys = getImages(current).map((value, i) => value ? imageKey(current, i) : '').filter(Boolean);
-          if (keys.length) {
-            republishedCards.add(current.id);
-            try { await sync.republish(keys); } catch (e) { republishedCards.delete(current.id); throw e; }
-          }
-        }
-      }
       if (currentGroup && !editing) { const back = !!stage.querySelector('.show-back'); render(back); }
     },
     onStatus: (s, message) => {
@@ -126,6 +116,31 @@
   };
   sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);
   window.PlantDriveImageCopyStatus = Object.freeze({summary:copier.summary, report:copier.report});
+  const originalRenderForImageShare = render;
+  async function publishVisibleCardImages(){
+    if (!sync?.valid() || editing || !currentGroup) return;
+    const current = cards[currentIndex()];
+    if (!current || republishedCards.has(current.id)) return;
+    const keys = getImages(current).map((value, i) => value ? imageKey(current, i) : '').filter(Boolean);
+    if (!keys.length) return;
+    republishedCards.add(current.id);
+    try {
+      copier.retry();
+      await copier.sweep();
+      await sync.republish?.(keys);
+      await sync.sync();
+      if (sync.status().pending && sync.valid()) await sync.sync();
+    } catch (e) {
+      republishedCards.delete(current.id);
+      throw e;
+    }
+  }
+  render = function(){
+    const out = originalRenderForImageShare.apply(this, arguments);
+    queueMicrotask(() => publishVisibleCardImages().catch(() => {}));
+    return out;
+  };
+  queueMicrotask(() => publishVisibleCardImages().catch(() => {}));
   saveCards = function () { const r = originalSave(); sync.changed(); if (sync.valid()) queueMicrotask(async () => { try { copier.retry(); await copier.sweep(); await sync.sync(); if (sync.status().pending && sync.valid()) await sync.sync(); } catch {} }); return r; };
   const oldResolve = resolveImageValue;
   resolveImageValue = async function (v) {
