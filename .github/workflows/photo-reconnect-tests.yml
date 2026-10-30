@@ -7,6 +7,7 @@ on:
       - 'plants/index.html'
       - 'plants/network-support.js'
       - 'tools/build-plant-color-network.py'
+      - 'tools/build-storage-free-view.py'
       - 'tests/plant-color-network.test.cjs'
       - 'study-quiet-sync.js'
       - 'tools/repair-photo-resume.py'
