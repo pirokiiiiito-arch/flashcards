@@ -296,6 +296,7 @@
     const input = dialog.querySelector('[data-client]'), messageEl = dialog.querySelector('[data-status]'), connect = dialog.querySelector('[data-connect]');
     const configured = () => root.FLASHCARDS_DRIVE_CONFIG?.clientId || localStorage.getItem(CLIENT_KEY) || '';
     function loadGIS() {
+      if (root.PersistentDriveAuth) return Promise.resolve();
       if (root.google?.accounts?.oauth2) return Promise.resolve();
       if (!gisPromise) gisPromise = new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = resolve; s.onerror = () => { gisPromise = null; reject(new Error('Google認証を読み込めません。')); }; document.head.appendChild(s); });
       return gisPromise;
@@ -304,12 +305,14 @@
       connect.disabled = true;
       try {
         await loadGIS();
+        const oauth = root.PersistentDriveAuth || root.google?.accounts?.oauth2;
+        if (!oauth) throw new Error('Google認証を読み込めません。');
         const id = input.value.trim();
         if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id)) { setStatus('未接続', 'OAuthクライアントIDが未設定です。Google Cloudで発行後に設定します。'); return; }
         localStorage.setItem(CLIENT_KEY, id);
-        tokenClient = root.google.accounts.oauth2.initTokenClient({ client_id: id, scope: SCOPE, include_granted_scopes: false, callback: async response => {
+        tokenClient = oauth.initTokenClient({ client_id: id, scope: SCOPE, include_granted_scopes: false, callback: async response => {
           if (response.error) return error(new Error(response.error_description || response.error));
-          if (!response.access_token || !root.google.accounts.oauth2.hasGrantedAllScopes(response, SCOPE)) return error(new Error('Drive専用データ領域への許可を確認できません。'));
+          if (!response.access_token || !oauth.hasGrantedAllScopes(response, SCOPE)) return error(new Error('Drive専用データ領域への許可を確認できません。'));
           token = response.access_token; expires = Date.now() + Number(response.expires_in || 3600) * 1000;
           clearTimeout(expiryTimer); expiryTimer = setTimeout(expire, Math.max(0, expires - Date.now() - 30000));
           try { await cfg.enablePrimary(); setStatus('接続済み'); await sync(); } catch (e) { error(e); }
@@ -317,7 +320,12 @@
         connect.disabled = false;
       } catch (e) { error(e); }
     }
-    function open() { input.value = configured(); input.hidden = !!root.FLASHCARDS_DRIVE_CONFIG?.clientId; if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', ''); setStatus(status, detail); prepareAuth(); }
+    function open() {
+      if (root.PersistentDriveAuth) { root.PersistentDriveAuth.open(); return; }
+      input.value = configured(); input.hidden = !!root.FLASHCARDS_DRIVE_CONFIG?.clientId;
+      if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', '');
+      setStatus(status, detail); prepareAuth();
+    }
     button.onclick = open; input.onchange = prepareAuth;
     connect.onclick = () => {
       if (!(location.protocol === 'https:' || (location.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(location.hostname)))) return error(new Error('HTTPSのページから接続してください。'));
@@ -326,7 +334,7 @@
       tokenClient.requestAccessToken({ prompt: '' });
     };
     dialog.querySelector('[data-now]').onclick = () => sync().catch(() => {});
-    dialog.querySelector('[data-off]').onclick = () => { token = ''; expires = 0; clearTimeout(timer); clearTimeout(expiryTimer); setStatus('未接続', 'この端末を切断しました。Driveデータと端末の変更は保持し、Supabaseは停止したままです。'); };
+    dialog.querySelector('[data-off]').onclick = () => { token = ''; expires = 0; clearTimeout(timer); clearTimeout(expiryTimer); root.PersistentDriveAuth?.pause?.(); setStatus('未接続', 'この端末の自動接続を停止しました。Driveデータと端末の変更は保持しています。'); };
     dialog.querySelector('[data-close]').onclick = () => dialog.close ? dialog.close() : dialog.removeAttribute('open');
     dialog.querySelector('[data-backup]').onclick = async () => {
       await ready; await captureQueue; const backup = { schema: SCHEMA, namespace: cfg.namespace, saved_at: new Date().toISOString(), device_id: device, ...clone(state), ...materialize(state.events), local: await cfg.read() };
@@ -337,7 +345,8 @@
     window.addEventListener('focus', onReturn); document.addEventListener('visibilitychange', onReturn); window.addEventListener('online', onReturn);
     window.addEventListener('storage', e => { if (cfg.storageKeys?.includes(e.key)) { cfg.reload?.(); changed(); } });
     const api = { ready, changed, sync, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, recoverDeletedPrefix, view: () => state ? clone(materialize(state.events)) : {data:{},deleted:{},conflicts:[]}, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };
-    setStatus('未接続', cfg.primary() ? 'Googleに再接続してください。Supabase同期は停止中です。' : '接続後にDriveへ移行します。');
+    if (root.PersistentDriveAuth) { button.hidden = true; prepareAuth(); }
+    setStatus('未接続', root.PersistentDriveAuth ? '自動接続を確認しています。' : (cfg.primary() ? 'Googleに再接続してください。Supabase同期は停止中です。' : '接続後にDriveへ移行します。'));
     ready.catch(error); return Object.freeze(api);
   }
   root.FlashcardsDrive = Object.freeze({ install, stable, digest, heads, materialize, schema: SCHEMA, scope: SCOPE });

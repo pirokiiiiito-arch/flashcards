@@ -135,22 +135,24 @@
     async function prepare(){
       connect.disabled=true;
       try{
-        if(!root.google?.accounts?.oauth2){
+        if(!root.PersistentDriveAuth&&!root.google?.accounts?.oauth2){
           if(!gisPromise)gisPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=resolve;s.onerror=()=>{gisPromise=null;reject(Error('Google認証を読み込めません。通信状況を確認してください。'));};document.head.appendChild(s);});
           await gisPromise;
         }
+        const oauth=root.PersistentDriveAuth||root.google?.accounts?.oauth2;
+        if(!oauth)throw Error('Google認証を読み込めません。');
         const id=root.FLASHCARDS_DRIVE_CONFIG?.clientId;
         if(!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id||''))throw Error('Google認証の設定を読み込めません。');
-        client=root.google.accounts.oauth2.initTokenClient({client_id:id,scope:SCOPE,include_granted_scopes:false,
+        client=oauth.initTokenClient({client_id:id,scope:SCOPE,include_granted_scopes:false,
           callback:async response=>{
-            if(response.error||!response.access_token||!root.google.accounts.oauth2.hasGrantedAllScopes(response,SCOPE)){transport.setStatus('認証未完了','Google Driveの許可を確認できません。');return;}
+            if(response.error||!response.access_token||!oauth.hasGrantedAllScopes(response,SCOPE)){transport.setStatus('認証未完了','Google Driveの許可を確認できません。');return;}
             transport.authorize(response.access_token,response.expires_in);
             try{await sync();}catch(_){/* status already visible */}
           },error_callback:e=>transport.setStatus('未接続',e.type==='popup_closed'?'Google認証画面が閉じられました。':'Googleの認証画面を開けません。ブラウザから接続してください。')});
         connect.disabled=false;
       }catch(e){transport.setStatus('認証準備エラー',e.message||String(e));}
     }
-    function open(){box.scrollIntoView?.({block:'start',behavior:'smooth'});if(!client)prepare();}
+    function open(){if(root.PersistentDriveAuth){root.PersistentDriveAuth.open();return;}box.scrollIntoView?.({block:'start',behavior:'smooth'});if(!client)prepare();}
     connect.onclick=()=>{if(client)client.requestAccessToken({prompt:''});};
     refresh.onclick=()=>{if(!transport.valid()){open();transport.setStatus('未接続','「接続して表示」を押してください。');return;}sync().catch(()=>{});};
     const api=Object.freeze({...transport,open,sync,get account(){return transport.account;},get imageFiles(){return transport.imageFiles;}});

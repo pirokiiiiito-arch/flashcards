@@ -4,7 +4,7 @@
 (function(root){
   'use strict';
   const entries=new Map();let readinessTimer=null;
-  function required(api){try{return !api||typeof api.valid!=='function'||!api.valid();}catch{return true;}}
+  function required(api){try{if(root.PersistentDriveAuth){if(root.PersistentDriveAuth.required?.())return true;return false;}return !api||typeof api.valid!=='function'||!api.valid();}catch{return true;}}
   function close(dialog){if(!dialog?.open)return;if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open');}
   function show(dialog){if(dialog.showModal){if(!dialog.open)dialog.showModal();}else dialog.setAttribute('open','');}
   function refresh(api){

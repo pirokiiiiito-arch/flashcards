@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2f66e8">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.webmanifest">\n<link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <title>単語帳</title>
 <style>
 :root{--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--border:#d9e1ec;--accent:#2f66e8;--soft:#edf2f8;--green:#2e9d57}
@@ -548,6 +548,8 @@ if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.ser
 
 </script>
 <script src="./drive-config.js?v=3"></script>
-<script src="./drive-core.js?v=3"></script>
+<script src="./persistent-drive-auth.js?v=1"></script>
+<script src="./drive-core.js?v=persist1"></script>
 <script src="./drive-sync.js?v=3"></script>
+<script src="./auth-only-ui.js?v=persist1"></script>
 </body></html>
