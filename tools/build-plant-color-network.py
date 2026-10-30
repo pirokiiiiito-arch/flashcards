@@ -22,7 +22,7 @@ def write(path,text):Path(path).write_text(text,encoding='utf-8')
 # Plant cards: keep cloud absence distinct from an explicit deletion.
 p=read('plants/drive-sync.js')
 p=block(p,'    prepareApply: async view => {','    apply: list => {',
-        "    prepareApply: async view => window.PlantNetworkSupport.plan(view, cards, getImages, withImages),\n")
+        "    prepareApply: async view => window.PlantNetworkSupport.plan(view, cards, getImages, withImages, sync?.pendingValues?.('image:') || {}),\n")
 p=one(p,'    afterSync: async () => {\n      await copier.sweep();','    afterSync: async () => {\n      await copier.sweep();\n      window.PlantNetworkSupport.complete(sync);')
 p=one(p,'    onStatus: (s, message) => {','    onStatus: (s, message) => {\n      window.PlantNetworkSupport.update(s, message);')
 p=one(p,"    const local = await getStoredImage('drive:' + v); if (local) return local;",
