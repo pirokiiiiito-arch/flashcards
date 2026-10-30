@@ -2,7 +2,7 @@
 local data keys, network recovery, automatic sync timing, and Drive protocol.
 """
 from pathlib import Path
-import hashlib,json
+import hashlib,json,re
 R=Path(__file__).resolve().parents[1]
 def read(p):return (R/p).read_text(encoding='utf-8')
 def write(p,s):(R/p).write_text(s,encoding='utf-8')
