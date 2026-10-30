@@ -53,7 +53,10 @@ test('focused card image references can be requeued without bulk-resending the w
  assert.ok(coreText.includes('async function republish(keys)'));
  assert.ok(!coreText.includes('pendingKeys.has(key)'));
  assert.ok(coreText.includes('pendingKeys: () => state ? [...new Set(state.pending.map(id => state.events[id]?.key).filter(Boolean))] : []'));
- assert.ok(syncText.includes('await sync.sync();\n      copier.retry();'));
+ assert.ok(coreText.includes('await pull();'));
+ assert.ok(coreText.includes('const current = await cfg.read(), currentHeads = heads(state.events);'));
+ assert.ok(coreText.includes("const parents = currentHeads.get(key)?.map(e => e.id) || basis[key] || [];"));
+ assert.ok(!syncText.includes('await sync.sync();\n      copier.retry();'));
  assert.ok(syncText.includes('sync.republish?.(keys)'));
  assert.ok(syncText.includes('republishedCards'));
  assert.ok(syncText.includes('publishVisibleCardImages'));
@@ -64,6 +67,6 @@ test('focused card image references can be requeued without bulk-resending the w
  assert.ok(syncText.includes('setTimeout(() => publishVisibleCardImages().catch(() => {}), 60000)'));
 });
 test('only the plant editor selects the specialized queue core',()=>{
- for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('./drive-transfer-core.js?v=queue1'));assert.ok(s.includes('./drive-sync.js?v=queue1')||s.includes('./drive-sync.js?v=authsettled7'));}
+ for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('./drive-transfer-core.js?v=queue1'));assert.ok(s.includes('./drive-sync.js?v=queue1')||s.includes('./drive-sync.js?v=authsettled8'));}
  const report=JSON.parse(fs.readFileSync('plants/transfer-queue-build.json','utf8'));for(const [p,hash] of Object.entries(report.protected_sha256))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'),hash,p);
 });
