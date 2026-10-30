@@ -70,9 +70,18 @@ for path in ['index.html','word-sync-v2.html']:
     s=one(s,'<script src="./drive-sync.js?v=20261028-quiet1"></script>','<script src="./word-quiet-sync.js?v=20261028-quiet1"></script>\n<script src="./drive-sync.js?v=20261028-quiet1"></script>')
     write(path,s)
 s=read('service-worker.js')
-s=one(s,"const CACHE = 'flashcards-v18-private-cache-safe';","const CACHE = 'flashcards-v19-quiet-word-sync';")
-s=one(s,"const BUILD = '20261028-network2';","const BUILD = '20261028-quiet1';")
-s=one(s,"'./word-sync-v2.html',","'./word-sync-v2.html', './word-quiet-sync.js?v=' + BUILD,")
+s,n=re.subn(r"const CACHE = '[^']+';","const CACHE = 'flashcards-v20-quiet-word-sync';",s,count=1)
+if n!=1:raise RuntimeError('Root worker cache declaration changed')
+s,n=re.subn(r"const BUILD = '[^']+';","const BUILD = '20261028-quiet1';",s,count=1)
+if n!=1:raise RuntimeError('Root worker build declaration changed')
+# Keep the persistent-auth resources already present, and add the generated word
+# alias/quiet module without depending on an obsolete exact STATIC layout.
+if "'./word-sync-v2.html'" not in s:
+    s=one(s,"'./index.html',","'./index.html', './word-sync-v2.html', './word-quiet-sync.js?v=' + BUILD,")
+elif "'./word-quiet-sync.js?v=' + BUILD" not in s:
+    s=one(s,"'./word-sync-v2.html',","'./word-sync-v2.html', './word-quiet-sync.js?v=' + BUILD,")
+s=re.sub(r"'\./drive-core\.js\?v=[^']+'","'./drive-core.js?v=' + BUILD",s,count=1)
+s=re.sub(r"'\./drive-sync\.js\?v=[^']+'","'./drive-sync.js?v=' + BUILD",s,count=1)
 write('service-worker.js',s)
 after={p:sha(p) for p in protected}
 if before!=after:raise RuntimeError('Protected data, authentication, or another app changed')
