@@ -49,6 +49,12 @@ test('plant edit control is above the card while add and delete stay below',()=>
  assert.ok(!p.includes('actions.append(add,edit,del)'));
  assert.ok(!p.includes('cardShell'));
 });
+test('plant back uses page scrolling instead of a nested scroll area',()=>{
+ const p=fs.readFileSync('plants/index.html','utf8');
+ assert.ok(p.includes('.back{display:none;background:var(--back);align-items:flex-start;overflow:visible}'));
+ assert.ok(p.includes('.card.show-back .back{display:flex;position:relative;inset:auto;min-height:470px;max-height:none;overflow:visible}'));
+ assert.ok(!p.includes('max-height:calc(100vh - 24px);overflow-y:auto'));
+});
 test('plant card number stays in the top-right clear of description text',()=>{
  const p=fs.readFileSync('plants/index.html','utf8');
  assert.ok(p.includes('.number{position:absolute;right:24px;top:18px;'));
