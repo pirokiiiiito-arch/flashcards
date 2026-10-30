@@ -115,7 +115,7 @@
   };
   sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);
   window.PlantDriveImageCopyStatus = Object.freeze({summary:copier.summary, report:copier.report});
-  saveCards = function () { const r = originalSave(); sync.changed(); if (sync.valid()) queueMicrotask(() => sync.sync().catch(() => {})); return r; };
+  saveCards = function () { const r = originalSave(); sync.changed(); if (sync.valid()) queueMicrotask(async () => { try { await sync.sync(); if (sync.valid()) await sync.sync(); } catch {} }); return r; };
   const oldResolve = resolveImageValue;
   resolveImageValue = async function (v) {
     if (!String(v || '').startsWith('gdrive:')) return oldResolve(v);
