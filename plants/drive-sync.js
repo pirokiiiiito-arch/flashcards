@@ -126,9 +126,6 @@
     if (!keys.length) return;
     republishedCards.add(current.id);
     try {
-      // Pull first so republished image events descend from any remote tombstone
-      // instead of remaining concurrent with it (concurrent deletions win).
-      await sync.sync();
       copier.retry();
       await copier.sweep();
       await sync.republish?.(keys);
