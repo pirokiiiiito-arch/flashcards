@@ -31,13 +31,13 @@ p=one(p,"await putStoredImage('drive:' + v, data); return data;", "await putStor
 write('plants/drive-sync.js',p)
 p=read('plants/index.html')
 p=one(p,'<script src="./drive-sync.js?v=3"></script>',
-      '<script src="./network-support.js?v=2"></script>\n<script src="./drive-sync.js?v=network2"></script>')
+      '<script src="./network-support.js?v=3"></script>\n<script src="./drive-sync.js?v=network2"></script>')
 p=one(p,'../drive-core.js?v=persist1','../drive-core.js?v=plant-network2')
 p=one(p,'<body>','<body>\n<p style="padding:8px 16px;font:13px system-ui">植物ネット同期 修正版2</p>')
 write('plants/index.html',p);write('plants/plant-sync-v2.html',p)
 p=read('plants/service-worker.js')
 p=re.sub(r"const CACHE = '[^']+';","const CACHE = 'plant-flashcards-v31-network2';",p,count=1)
-p=one(p,"'./drive-sync.js?v=3'","'./drive-sync.js?v=network2', './network-support.js?v=2', './plant-sync-v2.html'")
+p=one(p,"'./drive-sync.js?v=3'","'./drive-sync.js?v=network2', './network-support.js?v=3', './plant-sync-v2.html'")
 p=one(p,"'../drive-core.js?v=persist1'","'../drive-core.js?v=plant-network2'")
 write('plants/service-worker.js',p)
 
