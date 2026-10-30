@@ -11,6 +11,7 @@ on:
       - 'tools/unblock-plant-transfers.py'
       - 'tools/settle-plant-auth-ui.py'
       - 'tests/plant-transfer-queue.test.cjs'
+      - 'tests/plant-auth-settled.test.cjs'
       - 'tests/photo-resume.test.cjs'
       - 'tests/browser-photo-reconnect.cjs'
       - '.github/workflows/photo-reconnect-tests.yml'
