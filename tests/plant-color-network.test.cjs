@@ -40,13 +40,14 @@ test('color embedded photo input remains supported and unrelated keys stay exclu
  assert.equal(result.x.data_url,url);assert.equal(Object.keys(result).length,1);
  assert.equal(C.isDrive('javascript:alert(1)'),false);
 });
-test('plant card edit controls stay completely separate from the card element',()=>{
+test('plant edit control is above the card while add and delete stay below',()=>{
  const p=fs.readFileSync('plants/index.html','utf8');
  assert.ok(p.includes('.stage{min-height:470px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px}'));
- assert.ok(p.includes('card.append(front,back,num);stage.append(card,actions);'));
+ assert.ok(p.includes('editActions.append(edit);actions.append(add,del);'));
+ assert.ok(p.includes('card.append(front,back,num);stage.append(editActions,card,actions);'));
  assert.ok(p.includes('.actions{width:min(720px,100%);display:flex;'));
+ assert.ok(!p.includes('actions.append(add,edit,del)'));
  assert.ok(!p.includes('cardShell'));
- assert.ok(!p.includes('card.append(front,back,actions,num)'));
 });
 test('published entry aliases use the new scripts on the same origin',()=>{
  const p=fs.readFileSync('plants/plant-sync-v2.html','utf8'),c=fs.readFileSync('colors/color-sync-v2.html','utf8');
