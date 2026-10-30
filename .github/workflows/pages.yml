@@ -154,6 +154,11 @@ jobs:
           node --check plants/service-worker.js
           node --test tests/plant-auth-settled.test.cjs tests/service-worker.test.cjs
           node tests/browser-plant-auth-settled.cjs
+      - name: Show plant descriptions above photographs
+        run: |
+          python3 tools/plant-description-first.py
+          node tests/browser-plant-description-first.cjs
+          node --test tests/service-worker.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
