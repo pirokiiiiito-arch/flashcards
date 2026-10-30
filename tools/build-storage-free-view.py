@@ -51,7 +51,7 @@ start="    for(const name of [";end=']) await script(name);'
 if l.count(start)!=1 or l.count(end)!=1:raise RuntimeError('Loader scripts changed')
 a=l.index(start);b=l.index(end,a)+len(end)
 l=l[:a]+"""    for(const name of ['./network-support.js?v=2','./app-view.js?v=1','./origin-editor-view.js?v=1',
-      '../drive-config.js?v=3','../drive-core.js?v=readonly1','../drive-readonly.js?v=1',
+      '../drive-config.js?v=3','../persistent-drive-auth.js?v=1','../drive-core.js?v=readonly1','../drive-readonly.js?v=1',
       './readonly-adapter.js?v=1','./nav-top.js?v=1','../readonly-guard.js?v=1']) await script(name);"""+l[b:]
 l=one(l,'    window.ColorNetworkSupport.installExport();\n','')
 write('colors/data/review47-view-loader.js',l)
