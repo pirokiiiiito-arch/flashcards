@@ -3,7 +3,7 @@
   'use strict';
   const own=(o,k)=>Object.prototype.hasOwnProperty.call(o||{},k);
   const isDrive=v=>/^gdrive:[\w-]+:[a-f0-9]{64}$/.test(String(v||''));
-  function plan(view,current,getImages,withImages){
+  function plan(view,current,getImages,withImages,pendingImages={}){
     const rows=new Map(current.map(c=>[c.id,{...c}]));
     for(const k of Object.keys(view.deleted||{}))if(k.startsWith('card:'))rows.delete(k.slice(5));
     for(const [k,c] of Object.entries(view.data||{})){
@@ -13,7 +13,11 @@
     }
     const local=new Map(current.map(c=>[c.id,c]));
     return [...rows.values()].map(c=>withImages(c,[0,1,2].map(i=>{
-      const k='image:'+c.id+':'+i,previous=getImages(local.get(c.id)||c)[i]||'';
+      const k='image:'+c.id+':'+i,previous=getImages(local.get(c.id)||c)[i]||'',pending=String(pendingImages[k]||'');
+      // A durable unsent device photo is authoritative on this PC until it has
+      // been copied to Drive. This also repairs a card whose localStorage ref
+      // was cleared by an older sync while the IndexedDB image remained.
+      if(/^(idb:|data:image\/|blob:)/.test(pending))return pending;
       if(own(view.deleted,k)){
         if(/^(idb:|data:image\/|blob:)/.test(previous))return previous;
         return '';
