@@ -45,7 +45,11 @@ for path in ['colors/drive-view.html','colors/saved-view.html','colors/auto-view
     write(path,s)
 # Fresh entry for devices controlled by an older cache-first exact-path worker.
 # Private data keys and account namespace are IDENTICAL to auto-view.html.
-for app in ['plants','colors']:write(app+'/photo-view.html',read(app+'/auto-view.html'))
+for app in ['plants','colors']:
+    page=read(app+'/auto-view.html')
+    # Keep pinch zoom available while suppressing Safari's double-tap zoom.
+    page=one(page,'</head>','<style id="photo-view-double-tap-guard">html{touch-action:manipulation}</style>\n</head>')
+    write(app+'/photo-view.html',page)
 s=one(read('study-view-shell.js'),"['drive-view.html','saved-view.html','pc-order-view.html','auto-view.html']","['drive-view.html','saved-view.html','pc-order-view.html','auto-view.html','photo-view.html']")
 write('photo-view-shell.js',s)
 for app in ['plants','colors']:
