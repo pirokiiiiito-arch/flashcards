@@ -47,8 +47,24 @@ for path in ['colors/drive-view.html','colors/saved-view.html','colors/auto-view
 # Private data keys and account namespace are IDENTICAL to auto-view.html.
 for app in ['plants','colors']:
     page=read(app+'/auto-view.html')
-    # Keep pinch zoom available while suppressing Safari's double-tap zoom.
-    page=one(page,'</head>','<style id="photo-view-double-tap-guard">html{touch-action:manipulation}</style>\n</head>')
+    # iPhone Safari/Chrome: keep one-finger scrolling, block double-tap and pinch zoom.
+    page=re.sub(r'<meta name="viewport"[^>]*>', '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">', page, count=1)
+    zoom_guard='''<style id="photo-view-zoom-guard">html,body{touch-action:pan-x pan-y;-ms-touch-action:pan-x pan-y}</style>
+<script id="photo-view-zoom-guard-js">
+(function(){
+  var lastTouchEnd=0;
+  document.addEventListener('gesturestart',function(e){e.preventDefault();},{passive:false});
+  document.addEventListener('gesturechange',function(e){e.preventDefault();},{passive:false});
+  document.addEventListener('gestureend',function(e){e.preventDefault();},{passive:false});
+  document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1)e.preventDefault();},{passive:false});
+  document.addEventListener('touchend',function(e){
+    var now=Date.now();
+    if(now-lastTouchEnd<=350)e.preventDefault();
+    lastTouchEnd=now;
+  },{passive:false});
+})();
+</script>'''
+    page=one(page,'</head>',zoom_guard+'\n</head>')
     write(app+'/photo-view.html',page)
 s=one(read('study-view-shell.js'),"['drive-view.html','saved-view.html','pc-order-view.html','auto-view.html']","['drive-view.html','saved-view.html','pc-order-view.html','auto-view.html','photo-view.html']")
 write('photo-view-shell.js',s)
