@@ -1,4 +1,11 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>1000色の色名カード</title><style>
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><script>
+(()=>{try{
+  const q=new URLSearchParams(location.search);
+  const phone=(navigator.maxTouchPoints||0)>0&&matchMedia('(max-width:900px)').matches;
+  const viewer=location.pathname.endsWith('/photo-view.html');
+  if(phone&&!viewer&&!q.has('editor'))location.replace('./photo-view.html');
+}catch{}})();
+</script><title>1000色の色名カード</title><style>
 :root{color-scheme:light;--ink:#18263c;--muted:#60728b;--line:#dbe4ee;--bg:#f4f7fb;--accent:#2d65d9;--soft:#eaf2ff}*{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg)}
 header{padding:22px max(18px,calc((100vw - 1280px)/2));background:white;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center}
