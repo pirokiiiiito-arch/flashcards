@@ -35,15 +35,15 @@ jobs:
           python3 tools/align-plant-order.py
           python3 tools/build-quiet-word-sync.py
           python3 tools/build-quiet-study-sync.py
+      - name: Apply image-resume repair when present
+        run: |
+          if [ -f tools/repair-photo-resume.py ]; then python3 tools/repair-photo-resume.py; fi
+          if [ -f tests/photo-resume.test.cjs ]; then node --test tests/photo-resume.test.cjs; fi
           python3 tools/build-auth-only-ui.py
           python3 tools/repair-plant-source.py
           python3 tools/unblock-plant-transfers.py
           python3 tools/settle-plant-auth-ui.py
           node --test tests/plant-transfer-queue.test.cjs tests/plant-auth-settled.test.cjs
-      - name: Apply image-resume repair when present
-        run: |
-          if [ -f tools/repair-photo-resume.py ]; then python3 tools/repair-photo-resume.py; fi
-          if [ -f tests/photo-resume.test.cjs ]; then node --test tests/photo-resume.test.cjs; fi
       - name: Failed photo followed by unchanged sync and automatic new-card receive
         timeout-minutes: 2
         run: node tests/browser-photo-reconnect.cjs
