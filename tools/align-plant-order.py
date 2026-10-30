@@ -37,9 +37,9 @@ p=one(p,'  if (window.PlantDriveSync) return;','  if (window.PlantDriveSync) ret
 p=one(p,'  function values(list) {','  function values(list, includeOrder=true) {')
 p=one(p,'    const result = {};','    const result = {};\n    const normalOrder=orderSource.read(); if(includeOrder&&normalOrder)result[O.KEY]=normalOrder;')
 p=one(p,'const data = values(raw.cards), times = {};','const data = values(raw.cards,false), times = {};')
-p=one(p,'    prepareApply: async view => window.PlantNetworkSupport.plan(view, cards, getImages, withImages),',"""    prepareApply: async view => {
+p=one(p,"    prepareApply: async view => window.PlantNetworkSupport.plan(view, cards, getImages, withImages, sync?.pendingValues?.('image:') || {}),", """    prepareApply: async view => {
       const record=O.validate(view.data[O.KEY]||null);
-      const list=window.PlantNetworkSupport.plan(view,cards,getImages,withImages);
+      const list=window.PlantNetworkSupport.plan(view,cards,getImages,withImages,sync?.pendingValues?.('image:') || {});
       return {list:O.ordered(list,record||orderSource.read(),{preferredIds:cards.map(c=>c.id)}),record};
     },""")
 p=one(p,'    apply: list => {','    apply: prepared => {\n      const list=prepared.list;orderSource.accept(prepared.record);')
