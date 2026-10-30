@@ -6,6 +6,7 @@ on:
       - 'plants/drive-sync.js'
       - 'study-quiet-sync.js'
       - 'tools/repair-photo-resume.py'
+      - 'tools/align-plant-order.py'
       - 'tests/photo-resume.test.cjs'
       - 'tests/browser-photo-reconnect.cjs'
       - '.github/workflows/photo-reconnect-tests.yml'
