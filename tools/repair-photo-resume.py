@@ -49,19 +49,27 @@ for app in ['plants','colors']:
     page=read(app+'/auto-view.html')
     # iPhone Safari/Chrome: keep one-finger scrolling, block double-tap and pinch zoom.
     page=re.sub(r'<meta name="viewport"[^>]*>', '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">', page, count=1)
-    zoom_guard='''<style id="photo-view-zoom-guard">html,body{touch-action:pan-x pan-y;-ms-touch-action:pan-x pan-y}</style>
+    zoom_guard='''<style id="photo-view-zoom-guard">html,body,body *{touch-action:pan-y!important;-ms-touch-action:pan-y!important}</style>
 <script id="photo-view-zoom-guard-js">
 (function(){
-  var lastTouchEnd=0;
-  document.addEventListener('gesturestart',function(e){e.preventDefault();},{passive:false});
-  document.addEventListener('gesturechange',function(e){e.preventDefault();},{passive:false});
-  document.addEventListener('gestureend',function(e){e.preventDefault();},{passive:false});
-  document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1)e.preventDefault();},{passive:false});
+  var lastTouchEnd=0,activePointers=new Set();
+  function stop(e){e.preventDefault();}
+  document.addEventListener('dblclick',stop,{capture:true,passive:false});
+  document.addEventListener('gesturestart',stop,{capture:true,passive:false});
+  document.addEventListener('gesturechange',stop,{capture:true,passive:false});
+  document.addEventListener('gestureend',stop,{capture:true,passive:false});
+  document.addEventListener('touchstart',function(e){if(e.touches&&e.touches.length>1)e.preventDefault();},{capture:true,passive:false});
+  document.addEventListener('touchmove',function(e){if(e.touches&&e.touches.length>1)e.preventDefault();},{capture:true,passive:false});
   document.addEventListener('touchend',function(e){
     var now=Date.now();
-    if(now-lastTouchEnd<=350)e.preventDefault();
+    if(now-lastTouchEnd<=400)e.preventDefault();
     lastTouchEnd=now;
-  },{passive:false});
+  },{capture:true,passive:false});
+  document.addEventListener('pointerdown',function(e){if(e.pointerType==='touch')activePointers.add(e.pointerId);},{capture:true,passive:false});
+  document.addEventListener('pointermove',function(e){if(e.pointerType==='touch'&&activePointers.size>1)e.preventDefault();},{capture:true,passive:false});
+  function dropPointer(e){activePointers.delete(e.pointerId);}
+  document.addEventListener('pointerup',dropPointer,true);
+  document.addEventListener('pointercancel',dropPointer,true);
 })();
 </script>'''
     page=one(page,'</head>',zoom_guard+'\n</head>')
@@ -70,7 +78,7 @@ s=one(read('study-view-shell.js'),"['drive-view.html','saved-view.html','pc-orde
 write('photo-view-shell.js',s)
 for app in ['plants','colors']:
     path=app+'/drive-view-worker.js';s=read(path)
-    s=one(s,'flashcards-study-quiet-shell-v1-','flashcards-photo-resume-shell-v3-')
+    s=one(s,'flashcards-study-quiet-shell-v1-','flashcards-photo-resume-shell-v4-')
     s=s.replace('./local-adapter.js?v=studyquiet1','./local-adapter.js?v=photoresume1').replace('./readonly-adapter.js?v=studyquiet1','./readonly-adapter.js?v=photoresume1').replace('./data/review47-local-loader-v2.js?v=studyquiet1','./data/review47-local-loader-v2.js?v=photoresume1').replace('../study-view-shell.js?v=1','../photo-view-shell.js?v=1')
     m=re.search(r'^const ASSETS=(\[.*\]);$',s,re.M)
     if not m:raise RuntimeError('Viewer worker assets missing')
