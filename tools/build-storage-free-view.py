@@ -23,7 +23,7 @@ p=section(p,'const plantBootReady=(async()=>{','</script>\n<script src="../drive
           'const plantBootReady=Promise.resolve();\nupdateCounts();\n')
 p=one(p,'    bindImagePaste(imageBox,savePastedImage);','    // Pasting is disabled in the read-only page.')
 p=one(p,'      imageBox.replaceChildren(img);\n    });','      imageBox.replaceChildren(img);\n    }).catch(e=>{imageBox.textContent=e.message||"写真を取得できません";});')
-p=one(p,'<script src="./network-support.js?v=2"></script>','<script src="../drive-readonly.js?v=1"></script>')
+p=one(p,'<script src="./network-support.js?v=3"></script>','<script src="../drive-readonly.js?v=1"></script>')
 p=one(p,'<script src="./drive-sync.js?v=network2"></script>','<script src="./readonly-adapter.js?v=1"></script>\n<script src="../readonly-guard.js?v=1"></script>')
 p=p.replace('植物ネット同期 修正版2','植物・保存不要の閲覧版')
 p=re.sub(r'<script src="https://cdn.jsdelivr.net/npm/xlsx@[^\"]+"></script>','',p)
