@@ -1,6 +1,6 @@
 """Run last after repair-plant-source.py. Plant-editor queue repair only.
 An unavailable photograph stays pending locally; independent edits may publish.
-Never publish idb/data/blob/external references as a successfully copied photo.
+Never publish idb/data/blob device-only references; http/https may fall back to the original URL when private copying is blocked.
 The working word/color core, auth, data keys, viewer and source permissions stay unchanged.
 """
 from pathlib import Path
@@ -62,8 +62,12 @@ s=one(s,"      if (state.pending.length) { timer = setTimeout(() => sync().catch
       }""")
 write('plants/drive-transfer-core.js',s)
 s=read('plants/drive-sync.js')
-s=one(s,"    if (ref === v && /^(idb:|data:image\\/|blob:)/.test(v)) throw Error('端末の画像をDriveへ保存できません。元のPCの画像を保持しています。「画像コピー結果を保存」で確認してください。');", """    if (v && !P.isDrive(ref)) {
+s=one(s,"    if (ref === v && /^(idb:|data:image\\/|blob:)/.test(v)) throw Error('端末の画像をDriveへ保存できません。元のPCの画像を保持しています。「画像コピー結果を保存」で確認してください。');", """    if (v && !P.isDrive(ref) && /^(idb:|data:image\/|blob:)/.test(String(v))) {
       const e = Error('この写真はまだDriveへ転送できません。元画像は端末に保持し、他の追加画像は送信します。');
+      e.plantPhotoDeferred = true; throw e;
+    }
+    if (v && !P.isDrive(ref) && !/^https?:\/\//i.test(String(ref))) {
+      const e = Error('この写真参照はスマホへ共有できません。元画像は端末に保持しています。');
       e.plantPhotoDeferred = true; throw e;
     }""")
 write('plants/drive-sync.js',s)
