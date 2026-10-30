@@ -131,6 +131,11 @@
       await sync.republish?.(keys);
       await sync.sync();
       if (sync.status().pending && sync.valid()) await sync.sync();
+      const stillPending = new Set(sync.pendingKeys?.() || []);
+      if (keys.some(key => stillPending.has(key))) {
+        republishedCards.delete(current.id);
+        setTimeout(() => publishVisibleCardImages().catch(() => {}), 60000);
+      }
     } catch (e) {
       republishedCards.delete(current.id);
       throw e;
