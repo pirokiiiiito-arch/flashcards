@@ -1,0 +1,48 @@
+name: Plant image queue checks
+on:
+  push:
+    branches: [main, fix/plant-transfer-no-head-blocking]
+    paths:
+      - 'tools/unblock-plant-transfers.py'
+      - 'tests/*plant-transfer-queue*'
+      - '.github/workflows/plant-transfer-queue-tests.yml'
+permissions:
+  contents: read
+jobs:
+  plant-image-queue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build the previously published application
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-local-photo-view.py
+          python3 tools/protect-local-names.py
+          python3 tools/align-plant-order.py
+          python3 tools/build-quiet-word-sync.py
+          python3 tools/build-quiet-study-sync.py
+          python3 tools/repair-photo-resume.py
+          python3 tools/build-auth-only-ui.py
+          python3 tools/repair-plant-source.py
+          node --test tests/plant-source-repair.test.cjs
+      - name: Reproduce unavailable photo blocking other additions
+        run: EXPECT_BLOCKED=1 node tests/browser-plant-transfer-queue.cjs
+      - name: Build and validate isolated plant transfer queue
+        run: |
+          python3 tools/unblock-plant-transfers.py
+          node --check plants/drive-transfer-core.js
+          node --check plants/drive-sync.js
+          node --check plants/legacy-photo-source.js
+          node --check plants/service-worker.js
+          node --test tests/plant-transfer-queue.test.cjs tests/plant-drive-image-copy.test.cjs tests/service-worker.test.cjs
+      - name: Verify automatic transfer and fresh smartphone receiving
+        run: |
+          node tests/browser-plant-transfer-queue.cjs
+          node tests/browser-plant-source.cjs
+          node tests/browser-auth-entry.cjs
