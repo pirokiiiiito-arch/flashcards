@@ -136,6 +136,16 @@ jobs:
           node --check plants/service-worker.js
           node --test tests/plant-source-repair.test.cjs tests/service-worker.test.cjs
           node tests/browser-plant-source.cjs
+      - name: Keep unavailable photos from blocking new registrations
+        run: |
+          EXPECT_BLOCKED=1 node tests/browser-plant-transfer-queue.cjs
+          python3 tools/unblock-plant-transfers.py
+          node --check plants/drive-transfer-core.js
+          node --check plants/drive-sync.js
+          node --check plants/legacy-photo-source.js
+          node --test tests/plant-transfer-queue.test.cjs tests/service-worker.test.cjs
+          node tests/browser-plant-transfer-queue.cjs
+          node tests/browser-plant-source.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
