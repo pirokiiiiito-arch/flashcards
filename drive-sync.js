@@ -64,6 +64,15 @@
     afterSync: async view => (await networkRecovery()).verifyApplied(view, await read())
   };
   const sync = F.install(cfg); window.WordDriveSync = sync;
+  // Pull remote word changes even when this device is only reading. Saving already
+  // pushes automatically; this completes the opposite direction (phone -> PC).
+  const pullRemote = () => {
+    if (document.visibilityState !== 'visible' || !sync.valid() || editing) return;
+    sync.sync().catch(() => {});
+  };
+  window.setInterval(pullRemote, 15000);
+  window.addEventListener('pageshow', pullRemote);
+  window.addEventListener('online', pullRemote);
   window.WordNetworkBuild = '20261028-network2';
   const originalSave = saveCards;
   saveCards = function () { for (const c of cards) if (!c.id) c.id = crypto.randomUUID(); const out = originalSave(); sync.changed(); return out; };
