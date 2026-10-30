@@ -62,11 +62,17 @@ s=one(s,"      if (state.pending.length) { timer = setTimeout(() => sync().catch
       }""")
 s=one(s,'    async function importValues(values, source, timestamps = {}, tombstones = {}) {',"""    async function republish(keys) {
       await ready; await captureQueue; await capture();
-      const current = await cfg.read();
+      if (!valid()) { const e = new Error('Google Driveへ再接続してください。'); e.auth = true; throw e; }
+      // Refresh immutable journals without applying the remote view to local cards.
+      // This preserves the PC photo while letting a new registration descend from
+      // any remote tombstone/current head instead of remaining concurrent with it.
+      await pull();
+      const current = await cfg.read(), currentHeads = heads(state.events);
       const basis = state.basis || {}; let added = 0;
       for (const key of new Set(keys || [])) {
         if (!(key in current)) continue;
-        const e = newEvent(key, current[key], false, basis[key] || []);
+        const parents = currentHeads.get(key)?.map(e => e.id) || basis[key] || [];
+        const e = newEvent(key, current[key], false, parents);
         append(e); basis[key] = [e.id]; added++;
       }
       state.basis = basis;
