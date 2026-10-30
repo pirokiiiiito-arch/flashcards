@@ -9,9 +9,14 @@ test('plant cloud absence is not a local card or photograph deletion',()=>{
  const before=JSON.stringify(current),result=P.plan({data:{},deleted:{}},current,images,withImages);
  assert.equal(result.length,1);assert.deepEqual(result[0].images,current[0].images);assert.equal(JSON.stringify(current),before);
 });
-test('explicit plant card and slot tombstones remain effective',()=>{
- const result=P.plan({data:{},deleted:{'card:two':{},'image:one:1':{}}},[plant('one',[ref,ref,'']),plant('two')],images,withImages);
- assert.equal(result.length,1);assert.equal(result[0].images[0],ref);assert.equal(result[0].images[1],'');
+test('explicit plant card tombstones remain effective while unsent device photos survive stale slot tombstones',()=>{
+ const result=P.plan({data:{},deleted:{'card:two':{},'image:one:1':{},'image:one:2':{}}},[plant('one',[ref,ref,'idb:plantimg:one:2:x']),plant('two')],images,withImages);
+ assert.equal(result.length,1);assert.equal(result[0].images[0],ref);assert.equal(result[0].images[1],'');assert.equal(result[0].images[2],'idb:plantimg:one:2:x');
+});
+test('pending device photo registration restores a locally cleared slot',()=>{
+ const pending={'image:one:0':'idb:plantimg:one:0:recover'};
+ const result=P.plan({data:{'card:one':plant('one')},deleted:{'image:one:0':{}}},[plant('one')],images,withImages,pending);
+ assert.equal(result[0].images[0],pending['image:one:0']);
 });
 test('plant remote cards and photos can populate a fresh device',()=>{
  const result=P.plan({data:{'card:one':plant('one'),'image:one:2':ref},deleted:{}},[],images,withImages);
@@ -63,7 +68,7 @@ test('plant card number stays in the top-right clear of description text',()=>{
 });
 test('published entry aliases use the new scripts on the same origin',()=>{
  const p=fs.readFileSync('plants/plant-sync-v2.html','utf8'),c=fs.readFileSync('colors/color-sync-v2.html','utf8');
- assert.ok(p.includes('network-support.js?v=2'));assert.ok(p.includes('drive-sync.js?v=network2'));
+ assert.ok(p.includes('network-support.js?v=3'));assert.ok(p.includes('drive-sync.js?v=network2'));
  assert.ok(c.includes('review47-loader.js?v=network2'));
  assert.equal(p,fs.readFileSync('plants/index.html','utf8'));assert.equal(c,fs.readFileSync('colors/index.html','utf8'));
  for(const text of [p,c])for(const m of text.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())new vm.Script(m[1]);
