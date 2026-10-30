@@ -14,6 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Browser regressions run in dedicated CI; Pages only builds and verifies artifacts.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,7 +75,6 @@ jobs:
           python3 tools/protect-local-names.py
           node --check drive-legacy-view.js
           node --test tests/name-retention.test.cjs
-          node tests/browser-name-retention.cjs
       - name: Align plant order with the PC and verify saved browsing
         run: |
           python3 tools/align-plant-order.py
@@ -83,7 +83,6 @@ jobs:
           node --check plants/drive-sync.js
           node --check plants/local-adapter.js
           node --test tests/plant-normal-order.test.cjs
-          node tests/browser-plant-order.cjs
       - name: Keep word synchronization outside the reading layout
         run: |
           python3 tools/build-quiet-word-sync.py
@@ -92,7 +91,6 @@ jobs:
           node --check word-recovery.js
           node --check service-worker.js
           node --test tests/word-quiet-sync.test.cjs tests/service-worker.test.cjs
-          node tests/browser-word-quiet-sync.cjs
       - name: Quiet automatic plant and color synchronization
         run: |
           python3 tools/build-quiet-study-sync.py
@@ -107,9 +105,6 @@ jobs:
           node --check plants/drive-view-worker.js
           node --check colors/drive-view-worker.js
           node --test tests/study-quiet-sync.test.cjs tests/service-worker.test.cjs
-      - name: Verify quiet study sync in browser
-        timeout-minutes: 2
-        run: node tests/browser-study-quiet-sync.cjs
       - name: Retry failed mobile pictures without rebuilding cards
         run: |
           python3 tools/repair-photo-resume.py
@@ -120,9 +115,6 @@ jobs:
           node --check plants/drive-view-worker.js
           node --check colors/drive-view-worker.js
           node --test tests/photo-resume.test.cjs
-      - name: Verify photo reconnect in browser
-        timeout-minutes: 2
-        run: node tests/browser-photo-reconnect.cjs
       - name: Display only required authentication controls
         run: |
           python3 tools/build-auth-only-ui.py
@@ -130,7 +122,6 @@ jobs:
           node --check word-quiet-sync.js
           node --check study-quiet-sync.js
           node --test tests/auth-only-ui.test.cjs tests/service-worker.test.cjs
-          node tests/browser-auth-entry.cjs
       - name: Recover missing plant photo source assignments
         run: |
           python3 tools/repair-plant-source.py
@@ -138,17 +129,13 @@ jobs:
           node --check plants/drive-sync.js
           node --check plants/service-worker.js
           node --test tests/plant-source-repair.test.cjs tests/service-worker.test.cjs
-          node tests/browser-plant-source.cjs
       - name: Keep unavailable photos from blocking new registrations
         run: |
-          EXPECT_BLOCKED=1 node tests/browser-plant-transfer-queue.cjs
           python3 tools/unblock-plant-transfers.py
           node --check plants/drive-transfer-core.js
           node --check plants/drive-sync.js
           node --check plants/legacy-photo-source.js
           node --test tests/plant-transfer-queue.test.cjs tests/service-worker.test.cjs
-          node tests/browser-plant-transfer-queue.cjs
-          node tests/browser-plant-source.cjs
       - name: Hide obsolete old-source auth after successful photo sync
         run: |
           python3 tools/settle-plant-auth-ui.py
@@ -156,11 +143,9 @@ jobs:
           node --check plants/drive-sync.js
           node --check plants/service-worker.js
           node --test tests/plant-auth-settled.test.cjs tests/service-worker.test.cjs
-          node tests/browser-plant-auth-settled.cjs
       - name: Show plant descriptions above photographs
         run: |
           python3 tools/plant-description-first.py
-          node tests/browser-plant-description-first.cjs
           node --test tests/service-worker.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
