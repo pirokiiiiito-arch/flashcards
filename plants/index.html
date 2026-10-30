@@ -46,7 +46,7 @@ h1{margin:0;font-size:28px}
 .face{position:absolute;inset:0;background:#fff;border:1px solid var(--border);border-radius:26px;box-shadow:0 16px 36px rgba(27,54,39,.07);padding:68px 24px 28px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .front{top:6px;bottom:168px;padding:42px 14px 16px}
 .back{display:none;background:var(--back);align-items:flex-start;overflow-y:auto}
-.card.show-back{height:auto;min-height:470px}.card.show-back .front{display:none}.card.show-back .back{display:flex;position:relative;inset:auto;min-height:470px;overflow:visible}
+.card.show-back{height:auto;min-height:470px}.card.show-back .front{display:none}.card.show-back .back{display:flex;position:relative;inset:auto;min-height:470px;max-height:calc(100vh - 24px);overflow-y:auto}
 .label{position:absolute;left:26px;top:24px;color:var(--muted);font-size:14px;font-weight:800}
 .actions{position:absolute;right:20px;top:18px;z-index:10;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .small{padding:8px 11px;border-radius:10px;background:#fff;border:1px solid var(--border);font-weight:750}
