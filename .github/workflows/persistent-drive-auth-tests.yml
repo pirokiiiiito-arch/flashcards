@@ -1,0 +1,38 @@
+name: Persistent Drive authentication preparation
+on:
+  push:
+    branches: [feature/persistent-drive-login]
+    paths:
+      - 'server/drive-auth/**'
+      - '.github/workflows/persistent-drive-auth-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auth-preparation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check standalone server module syntax
+        run: node --check server/drive-auth/broker.mjs
+      - name: Test account binding, PKCE, automatic refresh, revocation and redaction
+        run: node --test server/drive-auth/broker.test.mjs
+      - name: Verify server-only grants and explicit non-production status
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const sql=fs.readFileSync('server/drive-auth/schema.sql','utf8');
+          assert.match(sql,/revoke all on function public\.flashcards_drive_auth_store\(text,uuid,jsonb\) from public, anon, authenticated/);
+          assert.match(sql,/grant execute on function public\.flashcards_drive_auth_store\(text,uuid,jsonb\) to service_role/);
+          assert.equal((sql.match(/enable row level security/g)||[]).length,2);
+          assert.match(sql,/security definer set search_path = ''/);
+          assert.match(sql,/Backend service role required/);
+          const readme=fs.readFileSync('server/drive-auth/README.md','utf8');
+          assert.ok(readme.includes('SQLは未適用、Edge Functionは未デプロイ'));
+          assert.ok(readme.includes('切替前に必要な残作業（未完了）'));
+          console.log('Server-only schema guards and unfinished-rollout documentation verified. No deployment performed.');
+          NODE
