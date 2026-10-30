@@ -44,6 +44,6 @@ test('viewer, auth, word app, source datasets, color cards and storage remain id
 });
 test('PC entry includes versioned repair and regular save still schedules sync',()=>{
  for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('legacy-photo-source.js?v=1'));assert.ok(s.includes('drive-sync.js?v=plantsource1'));}
- const s=fs.readFileSync('plants/drive-sync.js','utf8');assert.ok(s.includes('legacySource.migrate(api,view)'));assert.ok(s.includes('legacySource.resolve(v)'));assert.ok(s.includes('sync.changed(); return r;'));
+ const s=fs.readFileSync('plants/drive-sync.js','utf8');assert.ok(s.includes('legacySource.migrate(api,view)'));assert.ok(s.includes('legacySource.resolve(v)'));assert.ok(s.includes('sync.changed(); if (sync.valid()) queueMicrotask(() => sync.sync().catch(() => {})); return r;'));
  assert.ok(!s.includes("if (view.data[marker]) return null"));
 });
