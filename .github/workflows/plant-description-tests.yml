@@ -1,0 +1,40 @@
+name: Plant description-first layout checks
+on:
+  push:
+    branches: [main, ui/plant-description-first]
+    paths:
+      - 'tools/plant-description-first.py'
+      - 'tests/browser-plant-description-first.cjs'
+      - '.github/workflows/plant-description-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  plant-description:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build current applications without changing data
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-local-photo-view.py
+          python3 tools/protect-local-names.py
+          python3 tools/align-plant-order.py
+          python3 tools/build-quiet-word-sync.py
+          python3 tools/build-quiet-study-sync.py
+          python3 tools/repair-photo-resume.py
+          python3 tools/build-auth-only-ui.py
+          python3 tools/repair-plant-source.py
+          python3 tools/unblock-plant-transfers.py
+          python3 tools/settle-plant-auth-ui.py
+      - name: Move descriptions before photographs and verify desktop/mobile
+        run: |
+          python3 tools/plant-description-first.py
+          node tests/browser-plant-description-first.cjs
+          node --test tests/service-worker.test.cjs
