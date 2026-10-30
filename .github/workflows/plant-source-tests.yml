@@ -1,0 +1,44 @@
+name: Plant source recovery checks
+on:
+  push:
+    branches: [main, fix/plant-source-rescan]
+    paths:
+      - 'plants/legacy-photo-source.js'
+      - 'tools/repair-plant-source.py'
+      - 'tests/plant-source-repair.test.cjs'
+      - 'tests/browser-plant-source.cjs'
+      - '.github/workflows/plant-source-tests.yml'
+      - '.github/workflows/pages.yml'
+permissions:
+  contents: read
+jobs:
+  plant-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build existing apps
+        run: |
+          python3 tools/build-word-network.py
+          python3 tools/build-plant-color-network.py
+          python3 tools/build-storage-free-view.py
+          python3 tools/restore-color-palette.py
+          python3 tools/build-local-photo-view.py
+          python3 tools/protect-local-names.py
+          python3 tools/align-plant-order.py
+          python3 tools/build-quiet-word-sync.py
+          python3 tools/build-quiet-study-sync.py
+          python3 tools/repair-photo-resume.py
+          python3 tools/build-auth-only-ui.py
+      - name: Build and test source transfer
+        run: |
+          python3 tools/repair-plant-source.py
+          node --check plants/legacy-photo-source.js
+          node --check plants/drive-sync.js
+          node --check plants/service-worker.js
+          node --test tests/plant-source-repair.test.cjs tests/service-worker.test.cjs
+          if [ -f tests/browser-plant-source.cjs ]; then node tests/browser-plant-source.cjs; fi
+      - name: Verify viewer authentication and saved images are unaffected
+        run: node tests/browser-auth-entry.cjs
