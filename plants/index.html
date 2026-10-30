@@ -49,6 +49,7 @@ h1{margin:0;font-size:28px}
 .card.show-back{height:auto;min-height:470px}.card.show-back .front{display:none}.card.show-back .back{display:flex;position:relative;inset:auto;min-height:470px;max-height:calc(100vh - 24px);overflow-y:auto}
 .label{position:absolute;left:26px;top:24px;color:var(--muted);font-size:14px;font-weight:800}
 .actions{width:min(720px,100%);display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;padding:0 4px}
+.edit-actions{margin-bottom:0}
 .small{padding:8px 11px;border-radius:10px;background:#fff;border:1px solid var(--border);font-weight:750}
 .small.add{color:var(--green);border-color:#a9c7b4;background:#f4faf6}
 .number{position:absolute;right:24px;top:68px;color:#b3bcb6;font-size:13px}
@@ -569,14 +570,15 @@ function renderCard(item,showBack=false){
   const desc=document.createElement("div");desc.className="desc";desc.textContent=item.description||"説明未登録";
   body.append(desc,left);back.append(bl,body);
 
+  const editActions=document.createElement("div");editActions.className="actions edit-actions";
   const actions=document.createElement("div");actions.className="actions";
   const add=document.createElement("button");add.className="small add";add.textContent="＋追加";
   const edit=document.createElement("button");edit.className="small";edit.textContent="編集";
   const del=document.createElement("button");del.className="small";del.textContent="削除";
-  actions.append(add,edit,del);
+  editActions.append(edit);actions.append(add,del);
 
   const num=document.createElement("div");num.className="number";num.textContent=(pos+1)+" / "+order.length;
-  card.append(front,back,num);stage.append(card,actions);
+  card.append(front,back,num);stage.append(editActions,card,actions);
 
   let sx=0,sy=0,pid=null,moved=false,suppressUntil=0;
   card.addEventListener("pointerdown",e=>{
