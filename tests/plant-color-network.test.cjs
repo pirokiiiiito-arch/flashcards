@@ -40,6 +40,12 @@ test('color embedded photo input remains supported and unrelated keys stay exclu
  assert.equal(result.x.data_url,url);assert.equal(Object.keys(result).length,1);
  assert.equal(C.isDrive('javascript:alert(1)'),false);
 });
+test('plant card edit controls stay outside the card surface',()=>{
+ const p=fs.readFileSync('plants/index.html','utf8');
+ assert.ok(p.includes('.card-shell{width:min(720px,100%);display:grid;gap:10px}'));
+ assert.ok(p.includes('card.append(front,back,num);cardShell.append(card,actions);stage.appendChild(cardShell);'));
+ assert.ok(!p.includes('card.append(front,back,actions,num)'));
+});
 test('published entry aliases use the new scripts on the same origin',()=>{
  const p=fs.readFileSync('plants/plant-sync-v2.html','utf8'),c=fs.readFileSync('colors/color-sync-v2.html','utf8');
  assert.ok(p.includes('network-support.js?v=2'));assert.ok(p.includes('drive-sync.js?v=network2'));
