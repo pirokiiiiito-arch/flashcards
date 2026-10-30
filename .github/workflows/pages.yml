@@ -107,7 +107,9 @@ jobs:
           node --check plants/drive-view-worker.js
           node --check colors/drive-view-worker.js
           node --test tests/study-quiet-sync.test.cjs tests/service-worker.test.cjs
-          node tests/browser-study-quiet-sync.cjs
+      - name: Verify quiet study sync in browser
+        timeout-minutes: 2
+        run: node tests/browser-study-quiet-sync.cjs
       - name: Retry failed mobile pictures without rebuilding cards
         run: |
           python3 tools/repair-photo-resume.py
@@ -118,8 +120,9 @@ jobs:
           node --check plants/drive-view-worker.js
           node --check colors/drive-view-worker.js
           node --test tests/photo-resume.test.cjs
-          node tests/browser-photo-reconnect.cjs
-          node tests/browser-study-quiet-sync.cjs
+      - name: Verify photo reconnect in browser
+        timeout-minutes: 2
+        run: node tests/browser-photo-reconnect.cjs
       - name: Display only required authentication controls
         run: |
           python3 tools/build-auth-only-ui.py
