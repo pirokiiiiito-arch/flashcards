@@ -42,13 +42,15 @@ h1{margin:0;font-size:28px}
 .nav button{min-height:40px;border-radius:14px;background:#fff;border:1px solid var(--border);font-weight:800;font-size:13px}
 .nav .mode{background:var(--green);color:#fff;border-color:var(--green)}
 .stage{min-height:470px;display:flex;align-items:flex-start;justify-content:center}
+.card-shell{width:min(720px,100%);display:grid;gap:10px}
+.card-shell .card{width:100%}
 .card{width:min(720px,100%);height:470px;position:relative;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .face{position:absolute;inset:0;background:#fff;border:1px solid var(--border);border-radius:26px;box-shadow:0 16px 36px rgba(27,54,39,.07);padding:68px 24px 28px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .front{top:6px;bottom:168px;padding:42px 14px 16px}
 .back{display:none;background:var(--back);align-items:flex-start;overflow-y:auto}
 .card.show-back{height:auto;min-height:470px}.card.show-back .front{display:none}.card.show-back .back{display:flex;position:relative;inset:auto;min-height:470px;max-height:calc(100vh - 24px);overflow-y:auto}
 .label{position:absolute;left:26px;top:24px;color:var(--muted);font-size:14px;font-weight:800}
-.actions{position:absolute;right:20px;top:18px;z-index:10;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;padding:0 4px}
 .small{padding:8px 11px;border-radius:10px;background:#fff;border:1px solid var(--border);font-weight:750}
 .small.add{color:var(--green);border-color:#a9c7b4;background:#f4faf6}
 .number{position:absolute;right:24px;top:68px;color:#b3bcb6;font-size:13px}
@@ -80,7 +82,7 @@ h1{margin:0;font-size:28px}
   .front{top:6px;bottom:168px;padding:42px 14px 16px}
   .front .label{top:13px}
   .front-name{font-size:clamp(25px,7vw,38px);line-height:1.18}
-  .actions{right:14px;top:14px}
+  .actions{padding:0 2px}
   .label{left:18px;top:20px}
   .number{right:18px;top:64px}
   .back-body{grid-template-columns:1fr;gap:14px}
@@ -576,7 +578,8 @@ function renderCard(item,showBack=false){
   actions.append(add,edit,del);
 
   const num=document.createElement("div");num.className="number";num.textContent=(pos+1)+" / "+order.length;
-  card.append(front,back,actions,num);stage.appendChild(card);
+  const cardShell=document.createElement("div");cardShell.className="card-shell";
+  card.append(front,back,num);cardShell.append(card,actions);stage.appendChild(cardShell);
 
   let sx=0,sy=0,pid=null,moved=false,suppressUntil=0;
   card.addEventListener("pointerdown",e=>{
