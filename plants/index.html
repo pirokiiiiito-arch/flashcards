@@ -323,6 +323,37 @@ async function getStoredImage(key){
     req.onerror=()=>{const e=req.error;db.close();reject(e||new Error("画像読込に失敗しました"))};
   });
 }
+async function recoverUniqueStoredImageRefs(){
+  let keys=[];
+  try{
+    const db=await openImageDB();
+    keys=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(IMAGE_STORE,"readonly"),req=tx.objectStore(IMAGE_STORE).getAllKeys();
+      req.onsuccess=()=>resolve((req.result||[]).map(String));
+      req.onerror=()=>reject(req.error||new Error("画像一覧を確認できません"));
+      tx.oncomplete=()=>db.close();
+      tx.onabort=()=>db.close();
+    });
+  }catch{return 0}
+  let restored=0;
+  for(let ci=0;ci<cards.length;ci++){
+    const item=cards[ci],imgs=getImages(item);let changed=false;
+    for(let i=0;i<3;i++){
+      if(imgs[i])continue;
+      const prefix="plantimg:"+item.id+":"+i;
+      const matches=keys.filter(k=>k===prefix||k.startsWith(prefix+":"));
+      const exact=matches.includes(prefix)?prefix:"";
+      const chosen=exact||((matches.length===1)?matches[0]:"");
+      if(!chosen)continue;
+      try{
+        if(await getStoredImage(chosen)){imgs[i]="idb:"+chosen;changed=true;restored++;}
+      }catch{}
+    }
+    if(changed)cards[ci]=withImages(item,imgs);
+  }
+  if(restored)saveCards();
+  return restored;
+}
 function storedImageRef(item,index){return "idb:plantimg:"+item.id+":"+index}
 async function storeImageForCard(item,index,value){
   const s=String(value||"");
@@ -1027,6 +1058,7 @@ const plantBootReady=(async()=>{
   await ensureAngiospermExpansion();
   await ensureNonAngioExpansion();
   await migrateInlineImages();
+  await recoverUniqueStoredImageRefs();
   if(!plantDrivePrimary()){await ensureCloudSession();await syncLocalImagesToCloud();}
   updateImageSyncStatus();
   updateCounts();
