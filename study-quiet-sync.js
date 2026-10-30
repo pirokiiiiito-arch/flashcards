@@ -43,7 +43,7 @@
       running=Promise.resolve().then(()=>api.sync()).then(()=>{failures=0;return true;}).catch(e=>{failures++;options.onError?.(e);return false;}).finally(()=>{running=null;schedule();});
       return running;
     }
-    return {start(){stopped=false;schedule();},stop(){stopped=true;clearTimer(timer);},tick,state:()=>({running:!!running,failures,stopped,last})};
+    return {start(){stopped=false;return tick();},stop(){stopped=true;clearTimer(timer);},tick,state:()=>({running:!!running,failures,stopped,last})};
   }
   const entries=new Map(),lastStatus=new Map();
   function status(app,s,message=''){lastStatus.set(app,{s,message});refresh(app);}
