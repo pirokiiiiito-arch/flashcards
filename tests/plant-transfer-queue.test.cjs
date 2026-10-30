@@ -16,6 +16,12 @@ test('newer replacement can publish without erasing its unavailable parent; late
  const e=[event('e1','image:a:0','idb:missing'),event('e2','image:a:0',ref,['e1'])],h=harness(e);await h.c.push();assert.equal(h.writes[0].events[0].parents[0],'e1');
  h.c.cfg.toCloudValue=()=>ref;await h.c.push();assert.equal(h.state.pending.length,0);const remote=Object.fromEntries(h.writes.flatMap(d=>d.events).map(x=>[x.id,x]));assert.equal(core.heads(remote).get('image:a:0')[0].id,'e2');
 });
+test('new image registration can supersede a pulled tombstone when it names the tombstone as parent',()=>{
+ const tomb=event('e1','image:a:0',null,[],true),fresh=event('e2','image:a:0',ref,['e1']);
+ const view=core.materialize({e1:tomb,e2:fresh});
+ assert.equal(view.data['image:a:0'],ref);
+ assert.equal(view.deleted['image:a:0'],undefined);
+});
 test('explicit removal publishes and cannot be resurrected when its old photo is retried',async()=>{
  const h=harness([event('e1','image:a:0','idb:missing'),event('e2','image:a:0',null,['e1'],true)]);await h.c.push();assert.equal(h.writes[0].events[0].deleted,true);h.c.cfg.toCloudValue=()=>ref;await h.c.push();assert.ok(core.materialize(h.state.events).deleted['image:a:0']);
 });
@@ -47,6 +53,7 @@ test('focused card image references can be requeued without bulk-resending the w
  assert.ok(coreText.includes('async function republish(keys)'));
  assert.ok(!coreText.includes('pendingKeys.has(key)'));
  assert.ok(coreText.includes('pendingKeys: () => state ? [...new Set(state.pending.map(id => state.events[id]?.key).filter(Boolean))] : []'));
+ assert.ok(syncText.includes('await sync.sync();\n      copier.retry();'));
  assert.ok(syncText.includes('sync.republish?.(keys)'));
  assert.ok(syncText.includes('republishedCards'));
  assert.ok(syncText.includes('publishVisibleCardImages'));
