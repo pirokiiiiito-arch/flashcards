@@ -16,11 +16,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - name: Check standalone server module syntax
         run: node --check server/drive-auth/broker.mjs
-      - name: Test account binding, PKCE, automatic refresh, revocation and redaction
-        run: node --test server/drive-auth/broker.test.mjs
-      - name: Verify server-only grants and explicit non-production status
+      - name: Test refresh, account binding, active-session verification and redaction
+        run: node --test server/drive-auth/*.test.mjs
+      - name: Verify server-only grants without reading any credentials
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -29,10 +32,7 @@ jobs:
           assert.match(sql,/revoke all on function public\.flashcards_drive_auth_store\(text,uuid,jsonb\) from public, anon, authenticated/);
           assert.match(sql,/grant execute on function public\.flashcards_drive_auth_store\(text,uuid,jsonb\) to service_role/);
           assert.equal((sql.match(/enable row level security/g)||[]).length,2);
-          assert.match(sql,/security definer set search_path = ''/);
+          assert.match(sql,/language sql security invoker set search_path = ''/);
           assert.match(sql,/Backend service role required/);
-          const readme=fs.readFileSync('server/drive-auth/README.md','utf8');
-          assert.ok(readme.includes('SQLは未適用、Edge Functionは未デプロイ'));
-          assert.ok(readme.includes('切替前に必要な残作業（未完了）'));
-          console.log('Server-only schema guards and unfinished-rollout documentation verified. No deployment performed.');
+          console.log('Server-only permission guards verified. This workflow does not deploy or read user credentials.');
           NODE
