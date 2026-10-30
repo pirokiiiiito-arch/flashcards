@@ -107,6 +107,7 @@
     // after reconciliation, then capture ordinary child events for the next push.
     afterSync: async () => {
       await copier.sweep();
+      setTimeout(() => publishVisibleCardImages().catch(() => {}), 0);
       if (currentGroup && !editing) { const back = !!stage.querySelector('.show-back'); render(back); }
     },
     onStatus: (s, message) => {
