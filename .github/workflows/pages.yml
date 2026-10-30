@@ -146,6 +146,14 @@ jobs:
           node --test tests/plant-transfer-queue.test.cjs tests/service-worker.test.cjs
           node tests/browser-plant-transfer-queue.cjs
           node tests/browser-plant-source.cjs
+      - name: Hide obsolete old-source auth after successful photo sync
+        run: |
+          python3 tools/settle-plant-auth-ui.py
+          node --check plants/source-auth-ui.js
+          node --check plants/drive-sync.js
+          node --check plants/service-worker.js
+          node --test tests/plant-auth-settled.test.cjs tests/service-worker.test.cjs
+          node tests/browser-plant-auth-settled.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
