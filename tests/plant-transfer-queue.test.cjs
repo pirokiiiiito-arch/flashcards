@@ -46,12 +46,15 @@ test('focused card image references can be requeued without bulk-resending the w
  const syncText=fs.readFileSync('plants/drive-sync.js','utf8');
  assert.ok(coreText.includes('async function republish(keys)'));
  assert.ok(!coreText.includes('pendingKeys.has(key)'));
+ assert.ok(coreText.includes('pendingKeys: () => state ? [...new Set(state.pending.map(id => state.events[id]?.key).filter(Boolean))] : []'));
  assert.ok(syncText.includes('sync.republish?.(keys)'));
  assert.ok(syncText.includes('republishedCards'));
  assert.ok(syncText.includes('publishVisibleCardImages'));
  assert.ok(syncText.includes('originalRenderForImageShare'));
  assert.ok(syncText.includes('queueMicrotask(() => publishVisibleCardImages()'));
  assert.ok(syncText.includes('setTimeout(() => publishVisibleCardImages().catch(() => {}), 0)'));
+ assert.ok(syncText.includes('keys.some(key => stillPending.has(key))'));
+ assert.ok(syncText.includes('setTimeout(() => publishVisibleCardImages().catch(() => {}), 60000)'));
 });
 test('only the plant editor selects the specialized queue core',()=>{
  for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('./drive-transfer-core.js?v=queue1'));assert.ok(s.includes('./drive-sync.js?v=queue1'));}
