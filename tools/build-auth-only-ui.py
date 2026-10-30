@@ -33,6 +33,11 @@ for path in entries:
     s=read(path);prefix='../' if '/' in path else './'
     s,n=re.subn(r'<html\b(?![^>]*data-auth-only-sync)', '<html data-auth-only-sync="1"',s,count=1)
     if n!=1:raise RuntimeError('HTML root changed: '+path)
+    # Persistent-auth entries may already contain an older auth-only include.
+    # Remove only these presentation resources before adding the canonical v2
+    # include; never touch persistent-drive-auth.js or any credential/session code.
+    s=re.sub(r'<link rel="stylesheet" href="(?:\.\./|\./)auth-only-ui\.css\?v=[^"]+">\s*','',s)
+    s=re.sub(r'<script src="(?:\.\./|\./)auth-only-ui\.js\?v=[^"]+"></script>\s*','',s)
     s=one(s,'<head>', '<head>\n<link rel="stylesheet" href="'+prefix+'auth-only-ui.css?v=2">\n<script src="'+prefix+'auth-only-ui.js?v=2"></script>')
     s=one(s,'<body>','<body>\n'+fallback)
     s=re.sub(r'<p (style="[^\"]*")>((?:写真再読込 修正1|植物の通常順：PC基準 修正1|植物[・ネ]|色名[・ネ])[^<]*)</p>',r'<p data-sync-build-note \1>\2</p>',s)
@@ -41,7 +46,11 @@ for path in entries:
         s=re.sub(r'(data/review47-(?:local-loader-v2|local-loader|view-loader|loader)\.js)\?v=[^\"<>]+',r'\1?v=authentry2',s)
     write(path,s)
 for p in (R/'colors/data').glob('review47-*loader*.js'):
-    rel=str(p.relative_to(R));write(rel,versions(read(rel)))
+    rel=str(p.relative_to(R));loader=versions(read(rel))
+    # The HTML-level canonical auth-only-ui include is sufficient. Avoid running
+    # the presentation controller twice when a pre-persistent loader also lists it.
+    loader=re.sub(r"'\.\./auth-only-ui\.js\?v=[^']+',?",'',loader)
+    write(rel,loader)
 for path in ['service-worker.js','plants/service-worker.js','colors/service-worker.js','plants/drive-view-worker.js','colors/drive-view-worker.js']:
     s=versions(read(path))
     s=re.sub(r'(const CACHE\s*=\s*)\'([^\']+)\'',lambda m:m[1]+repr(m[2]+'-authentry2'),s,count=1)
