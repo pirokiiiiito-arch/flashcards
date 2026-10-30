@@ -2,7 +2,7 @@ const CACHE = 'flashcards-v19-persistent-auth';
 const BUILD = '20261031-persistent-auth1';
 const STATIC = ['./', './index.html', './manifest.webmanifest', './icon.svg', './drive-config.js?v=3', './persistent-drive-auth.js?v=1', './drive-core.js?v=persist1', './drive-sync.js?v=3', './auth-only-ui.js?v=persist1', './auth-only-ui.css?v=persist1', './drive-login.html', './drive-login.js?v=1', './word-recovery.js?v=' + BUILD, './word-network-recovery.js?v=' + BUILD];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => /^flashcards-v\d+(?:-|$)/.test(k) && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => /^flashcards-v\d+(?:-|$)/.test(k) && k !== CACHE && k !== 'flashcards-v18-private-cache-safe').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
   const r = e.request, u = new URL(r.url), scope = new URL(self.registration.scope);
   if (r.method !== 'GET' || u.origin !== scope.origin || !u.pathname.startsWith(scope.pathname)) return;
