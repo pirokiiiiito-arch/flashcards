@@ -49,6 +49,12 @@ test('plant edit control is above the card while add and delete stay below',()=>
  assert.ok(!p.includes('actions.append(add,edit,del)'));
  assert.ok(!p.includes('cardShell'));
 });
+test('plant card number stays in the top-right clear of description text',()=>{
+ const p=fs.readFileSync('plants/index.html','utf8');
+ assert.ok(p.includes('.number{position:absolute;right:24px;top:18px;'));
+ assert.ok(p.includes('.number{right:18px;top:14px}'));
+ assert.ok(!p.includes('top:68px;color:#b3bcb6'));
+});
 test('published entry aliases use the new scripts on the same origin',()=>{
  const p=fs.readFileSync('plants/plant-sync-v2.html','utf8'),c=fs.readFileSync('colors/color-sync-v2.html','utf8');
  assert.ok(p.includes('network-support.js?v=2'));assert.ok(p.includes('drive-sync.js?v=network2'));
