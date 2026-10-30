@@ -14,7 +14,10 @@
     const local=new Map(current.map(c=>[c.id,c]));
     return [...rows.values()].map(c=>withImages(c,[0,1,2].map(i=>{
       const k='image:'+c.id+':'+i,previous=getImages(local.get(c.id)||c)[i]||'';
-      if(own(view.deleted,k))return '';
+      if(own(view.deleted,k)){
+        if(/^(idb:|data:image\/|blob:)/.test(previous))return previous;
+        return '';
+      }
       if(!own(view.data,k))return previous;
       const v=view.data[k];
       if(typeof v!=='string')throw Error('Driveの植物写真参照が不正です。端末データは保持しています。');
