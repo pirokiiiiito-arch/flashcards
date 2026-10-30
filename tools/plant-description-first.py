@@ -30,11 +30,15 @@ before = {path: digest(path) for path in protected}
 updates = {}
 for path in ENTRIES:
     text = read(path)
-    if text.count(OLD) != 1 or NEW in text:
+    old_count, new_count = text.count(OLD), text.count(NEW)
+    if (old_count, new_count) == (1, 0):
+        updates[path] = text.replace(OLD, NEW, 1)
+        if updates[path].replace(NEW, OLD, 1) != text:
+            raise RuntimeError('Unexpected plant content change: ' + path)
+    elif (old_count, new_count) == (0, 1):
+        updates[path] = text
+    else:
         raise RuntimeError('Plant render anchor changed: ' + path)
-    updates[path] = text.replace(OLD, NEW, 1)
-    if updates[path].replace(NEW, OLD, 1) != text:
-        raise RuntimeError('Unexpected plant content change: ' + path)
 for path in WORKERS:
     text, count = re.subn(r"(const CACHE\s*=\s*')([^']+)(')",
                          lambda m: m[1] + m[2] + '-description1' + m[3],
