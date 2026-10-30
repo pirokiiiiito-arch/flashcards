@@ -64,7 +64,7 @@
 .study-quiet-row{box-sizing:border-box!important;display:grid!important;grid-template-columns:minmax(0,1fr) 124px!important;gap:8px!important;width:100%!important;height:46px!important;min-height:46px!important;margin:6px 0!important;align-items:center!important;font-size:13px!important}
 .study-quiet-row>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:22px}.study-quiet-row>button{width:124px!important;height:40px!important;min-height:40px!important;margin:0!important;padding:6px!important;white-space:nowrap!important;font-size:13px!important}.sq-error{color:#a32e25;font-weight:700}
 .study-quiet-dialog{box-sizing:border-box;width:min(740px,94vw);max-height:85vh;overflow:auto;border:1px solid #cbd1d9;border-radius:16px;padding:20px;background:#fff;color:#1f2937}.study-quiet-dialog:not([open]){display:none}.study-quiet-dialog::backdrop{background:#18233388}.study-quiet-tools{display:flex;flex-wrap:wrap;gap:8px}.study-quiet-tools>p,.study-quiet-tools>section{width:100%;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px!important}.study-quiet-dialog button{font:inherit;cursor:pointer}.study-quiet-dialog h2{font-size:21px}
-#imageSyncStatus{display:inline-block;max-width:100%;height:25px;line-height:25px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#imageSyncStatus{display:inline-block!important;visibility:visible!important;opacity:1!important;max-width:100%;min-height:25px;line-height:25px;white-space:normal;overflow:visible}#plantDriveImageCopyStatus{display:block!important;visibility:visible!important;opacity:1!important;width:100%!important;white-space:pre-wrap!important}
 `;document.head.appendChild(style);
     }
     const dialog=document.createElement('dialog');dialog.id=app+'QuietDetails';dialog.className='study-quiet-dialog';dialog.setAttribute('aria-label','同期の詳細');
@@ -78,7 +78,8 @@
     const button=document.createElement('button');button.type='button';button.className='btn';button.textContent='接続・同期の詳細';button.onclick=()=>dialog.showModal();row.append(label,button);toolbar.appendChild(row);
     const ids=new Set(['plantNetworkSync','plantNetworkStatus','plantDriveImageCopyStatus','plantQuietDiagnostics','colorNetworkSync','colorNetworkStatus','colorImageMigrationStatus']);
     const control=/^(Google Drive同期：|全画像をDriveへコピー|画像コピー結果を保存|既存940写真|940写真をDrive|以前追加した写真を復元|写真移行の結果を保存|このPCの通常順をスマホに反映)/;
-    function tidy(){for(const el of [...toolbar.children])if(el!==row&&(ids.has(el.id)||el.classList.contains('drive-readonly-controls')||el.matches('p[role="status"]')||(el.tagName==='BUTTON'&&control.test(el.textContent))))tools.appendChild(el);}
+    const keepPlantDiagnostic=el=>app==='plants'&&(el.id==='plantDriveImageCopyStatus'||(el.tagName==='BUTTON'&&/^(全画像をDriveへコピー|画像コピー結果を保存)/.test(el.textContent)));
+    function tidy(){for(const el of [...toolbar.children])if(el!==row&&!keepPlantDiagnostic(el)&&(ids.has(el.id)||el.classList.contains('drive-readonly-controls')||el.matches('p[role="status"]')||(el.tagName==='BUTTON'&&control.test(el.textContent))))tools.appendChild(el);}
     const entry={api,label,dialog,options};entries.set(app,entry);tidy();
     new MutationObserver(()=>{tidy();refresh(app);}).observe(toolbar,{childList:true});
     new MutationObserver(()=>refresh(app)).observe(tools,{childList:true,subtree:true,characterData:true});
