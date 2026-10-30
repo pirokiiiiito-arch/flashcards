@@ -1,7 +1,14 @@
 name: Mobile photo reconnect checks
 on:
   push:
-    branches: [fix/mobile-photo-reconnect]
+    branches: [main, fix/mobile-photo-reconnect]
+    paths:
+      - 'plants/drive-sync.js'
+      - 'study-quiet-sync.js'
+      - 'tools/repair-photo-resume.py'
+      - 'tests/photo-resume.test.cjs'
+      - 'tests/browser-photo-reconnect.cjs'
+      - '.github/workflows/photo-reconnect-tests.yml'
 permissions:
   contents: read
 jobs:
@@ -27,7 +34,8 @@ jobs:
         run: |
           if [ -f tools/repair-photo-resume.py ]; then python3 tools/repair-photo-resume.py; fi
           if [ -f tests/photo-resume.test.cjs ]; then node --test tests/photo-resume.test.cjs; fi
-      - name: Failed photo followed by unchanged sync
+      - name: Failed photo followed by unchanged sync and automatic new-card receive
+        timeout-minutes: 2
         run: node tests/browser-photo-reconnect.cjs
       - name: Ordinary automatic receiving and saved browsing still work
         run: node tests/browser-study-quiet-sync.cjs
