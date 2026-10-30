@@ -33,7 +33,7 @@ test('built editor refreshes the prompt on login status, image copy, and complet
  const s=fs.readFileSync('plants/drive-sync.js','utf8');assert.ok(s.includes('onAuthRequired:refreshSourceAuth'));
  assert.ok((s.match(/refreshSourceAuth\(\);/g)||[]).length>=3);
  for(const p of ['plants/index.html','plants/plant-sync-v2.html','plants/service-worker.js']){
-  const t=fs.readFileSync(p,'utf8');assert.ok(t.includes('source-auth-ui.js?v=1'),p);assert.ok(t.includes('drive-sync.js?v=authsettled4'),p);
+  const t=fs.readFileSync(p,'utf8');assert.ok(t.includes('source-auth-ui.js?v=1'),p);assert.ok(t.includes('drive-sync.js?v=authsettled5'),p);
  }
 });
 test('photos, names, order, Google auth, old-source reader, transfer and viewers unchanged',()=>{
