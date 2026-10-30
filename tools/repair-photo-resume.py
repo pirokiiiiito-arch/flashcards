@@ -78,7 +78,7 @@ s=one(read('study-view-shell.js'),"['drive-view.html','saved-view.html','pc-orde
 write('photo-view-shell.js',s)
 for app in ['plants','colors']:
     path=app+'/drive-view-worker.js';s=read(path)
-    s=one(s,'flashcards-study-quiet-shell-v1-','flashcards-photo-resume-shell-v6-')
+    s=one(s,'flashcards-study-quiet-shell-v1-','flashcards-photo-resume-shell-v7-')
     s=s.replace('./local-adapter.js?v=studyquiet1','./local-adapter.js?v=photoresume1').replace('./readonly-adapter.js?v=studyquiet1','./readonly-adapter.js?v=photoresume1').replace('./data/review47-local-loader-v2.js?v=studyquiet1','./data/review47-local-loader-v2.js?v=photoresume1').replace('../study-view-shell.js?v=1','../photo-view-shell.js?v=1')
     m=re.search(r'^const ASSETS=(\[.*\]);$',s,re.M)
     if not m:raise RuntimeError('Viewer worker assets missing')
