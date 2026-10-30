@@ -14,6 +14,7 @@
   const clean = c => ({ id: c.id, group: c.group, name: c.name, description: c.description, sort_order: Number(c.sort_order) || 0, updated_at: c.updated_at || null });
   const originalSave = saveCards;
   let sync;
+  const republishedCards = new Set();
   const controls = document.querySelector('.toolbar') || document.body;
   const copyStatus = document.createElement('p'); copyStatus.id = 'plantDriveImageCopyStatus'; copyStatus.setAttribute('role','status');
   copyStatus.style.cssText = 'width:100%;margin:6px 0;font-size:12px;line-height:1.6;white-space:pre-wrap';
@@ -106,6 +107,16 @@
     // after reconciliation, then capture ordinary child events for the next push.
     afterSync: async () => {
       await copier.sweep();
+      if (sync?.republish && currentGroup && !editing) {
+        const current = cards[currentIndex()];
+        if (current && !republishedCards.has(current.id)) {
+          const keys = getImages(current).map((value, i) => value ? imageKey(current, i) : '').filter(Boolean);
+          if (keys.length) {
+            republishedCards.add(current.id);
+            try { await sync.republish(keys); } catch (e) { republishedCards.delete(current.id); throw e; }
+          }
+        }
+      }
       if (currentGroup && !editing) { const back = !!stage.querySelector('.show-back'); render(back); }
     },
     onStatus: (s, message) => {
