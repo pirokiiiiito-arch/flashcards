@@ -25,7 +25,12 @@ const after=[
 "  assert.ok(await evaluate('Math.abs(scrollY-window.__photoScroll)<2'),'retry preserves page scroll');",
 "  assert.equal(await evaluate(nameExpr),expected,'retry preserves the current name');",
 "  await until(()=>evaluate(`${api}.status().stats.savedImages>0`),'recovered photo is persistently cached');",
-"  console.log('PASS unchanged-metadata image recovery:',app);"
+"  if(app==='plants'){",
+"    await evaluate(`__fixture.events.push({id:'auto-new-plant-event',key:'card:auto-new-plant',value:{id:'auto-new-plant',name:'自動受信テスト植物',description:'自動受信検証',group:'angiosperm',sort_order:999},parents:[],clock:999,deleted:false});`);",
+"    await sleep(5200);await evaluate(`window.dispatchEvent(new Event('focus'))`);",
+"    await until(()=>evaluate(`cards.some(c=>c.id==='auto-new-plant')`),'photo-view automatically receives a newly added plant');",
+"  }",
+"  console.log('PASS unchanged-metadata image recovery + automatic receive:',app);"
 ].join('\n');
 one(before,after);
 one("(async()=>{await scenario('plants');await scenario('colors');await scenario('plants',{cacheOnly:true});await scenario('plants',{legacy:true});await scenario('colors',{legacy:true});})()", "(async()=>{const failures=[];for(const app of ['plants','colors']){try{await scenario(app);}catch(e){failures.push(app+': '+e.message);}}if(failures.length)throw Error(failures.join('\\n'));})()");
