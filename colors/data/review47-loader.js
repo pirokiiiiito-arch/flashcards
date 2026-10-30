@@ -35,8 +35,8 @@
     window.RESEARCH_DATA=Object.fromEntries(data.cards.map(c=>[c.name,c.research]));
     hint.textContent='カードの機能を読み込んでいます…';
     for(const name of ['./app-main.js?v=1','./origin-editor.js?v=2','./manual-edit-compat.js',
-      '../drive-config.js?v=3','../drive-core.js?v=6','./asset-migration.js?v=1',
-      './drive-sync.js?v=13','./recovery-import.js?v=2','./nav-top.js?v=1']) await script(name);
+      '../drive-config.js?v=3','../persistent-drive-auth.js?v=1','../drive-core.js?v=persist1','./asset-migration.js?v=1',
+      './drive-sync.js?v=13','../auth-only-ui.js?v=persist1','./recovery-import.js?v=2','./nav-top.js?v=1']) await script(name);
     hint.remove();
   } catch(error){
     hint.textContent='1000色の復元データを読み込めません: '+(error?.message||String(error));
