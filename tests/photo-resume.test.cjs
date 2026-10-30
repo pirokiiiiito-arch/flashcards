@@ -36,7 +36,7 @@ test('editing is never disturbed and data objects are never rewritten',async()=>
 test('viewers and offline asset lists include versioned reconnect repairs',()=>{
  for(const p of ['plants/auto-view.html','plants/photo-view.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('photo-resume.js?v=1'));assert.ok(s.includes('local-adapter.js?v=photoresume1'));}
  for(const p of ['colors/auto-view.html','colors/photo-view.html'])assert.ok(fs.readFileSync(p,'utf8').includes('review47-local-loader-v2.js?v=photoresume1'));
- for(const app of ['plants','colors']){const s=fs.readFileSync(app+'/drive-view-worker.js','utf8');assert.ok(s.includes('./photo-view.html'));assert.ok(s.includes('flashcards-photo-resume-shell-v6-'));}
+ for(const app of ['plants','colors']){const s=fs.readFileSync(app+'/drive-view-worker.js','utf8');assert.ok(s.includes('./photo-view.html'));assert.ok(s.includes('flashcards-photo-resume-shell-v7-'));}
  for(const p of ['plants/photo-view.html','colors/photo-view.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('id="photo-view-zoom-guard"'));assert.ok(s.includes('maximum-scale=1,user-scalable=no'));assert.ok(s.includes('touch-action:pan-y!important'));assert.ok(s.includes("e.touches.length>1"));assert.ok(s.includes("gesturestart"));assert.ok(s.includes("dblclick"));assert.ok(s.includes("activePointers"));}
  assert.ok(fs.readFileSync('colors/local-adapter.js','utf8').includes('N.renderImages(api,refs).catch'));
 });
