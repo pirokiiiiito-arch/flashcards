@@ -28,7 +28,7 @@ for path in ['colors/local-adapter.js','colors/readonly-adapter.js']:
     write(path,s)
 for path in ['plants/drive-view.html','plants/saved-view.html','plants/pc-order-view.html','plants/auto-view.html']:
     s=read(path)
-    s=one(s,'<script src="../study-quiet-sync.js?v=1"></script>','<script src="./photo-resume.js?v=1"></script>\n<script src="../study-quiet-sync.js?v=1"></script>')
+    s=one(s,'<script src="../study-quiet-sync.js?v=2"></script>','<script src="./photo-resume.js?v=1"></script>\n<script src="../study-quiet-sync.js?v=2"></script>')
     s=s.replace('./local-adapter.js?v=studyquiet1','./local-adapter.js?v=photoresume1')
     s=s.replace('../study-view-shell.js?v=1','../photo-view-shell.js?v=1')
     s=one(s,'<head>','<head>\n<meta name="photo-resume-build" content="1">')
