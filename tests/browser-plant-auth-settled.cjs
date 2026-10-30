@@ -2,10 +2,13 @@
 'use strict';
 const fs=require('node:fs'),Module=require('node:module'),path=require('node:path');
 let s=fs.readFileSync('tests/browser-plant-source.cjs','utf8');
+const clockAnchor=" const card={id:'seed-one'";
+if(s.split(clockAnchor).length!==2)throw Error('Source clock fixture changed');
+s=s.replace(clockAnchor," const authNow=Date.now;window.__authTimeOffset=0;Date.now=()=>authNow()+window.__authTimeOffset;\n"+clockAnchor);
 const anchor="   remoteSnapshot=await evaluate('__fixture.files');";
 if(s.split(anchor).length!==2)throw Error('Source browser fixture changed');
 const extra=String.raw`
-   await evaluate("cloudSession=null;localStorage.removeItem(CLOUD_SESSION_KEY);const originalNow=Date.now;Date.now=()=>originalNow()+61000");
+   await evaluate("cloudSession=null;localStorage.removeItem(CLOUD_SESSION_KEY);window.__authTimeOffset=61000");
    await evaluate('PlantDriveSync.sync()');
    const authResult=await evaluate("({valid:PlantDriveSync.valid(),photos:getImages(cards[0]),source:PlantLegacyPhotoStatus(),prompts:[...document.querySelectorAll('.auth-only-prompt')].filter(x=>!x.hidden).map(x=>x.textContent)})");
    assert.equal(authResult.valid,true,'Google remains authenticated');
@@ -15,7 +18,7 @@ const extra=String.raw`
     console.log('REPRODUCED: synced photos plus expired OLD session show unnecessary authentication');
    }else{
     assert.equal(authResult.prompts.length,0,'no obsolete source-auth prompt after all photos synced');
-    await evaluate('render(true)');
+    await evaluate('openGroup("angiosperm");render(true)');
     await until(()=>evaluate('document.querySelectorAll(".image-box img").length===3&&[...document.querySelectorAll(".image-box img")].every(i=>i.naturalWidth>0)'),'photos still displayed');
     await evaluate("document.querySelector('dialog [data-off]').click()");
     await until(()=>evaluate("!document.querySelector('#plantsAuthRequired').hidden"),'genuinely expired Google auth is still requested');
