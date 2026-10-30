@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>
+(()=>{try{
+  const q=new URLSearchParams(location.search);
+  const phone=(navigator.maxTouchPoints||0)>0&&matchMedia('(max-width:900px)').matches;
+  const viewer=location.pathname.endsWith('/photo-view.html');
+  if(phone&&!viewer&&!q.has('editor'))location.replace('./photo-view.html');
+}catch{}})();
+</script>
 <meta name="theme-color" content="#2f7d5a">
 <link rel="manifest" href="./manifest.webmanifest">\n<link rel="stylesheet" href="../auth-only-ui.css?v=persist1">
 <title>植物単語帳</title>
@@ -45,8 +53,7 @@ h1{margin:0;font-size:28px}
 .face{position:absolute;inset:0;background:#fff;border:1px solid var(--border);border-radius:26px;box-shadow:0 16px 36px rgba(27,54,39,.07);padding:68px 24px 28px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .front{top:6px;bottom:168px;padding:42px 14px 16px}
 .back{display:none;background:var(--back);align-items:flex-start;overflow-y:auto}
-.card.show-back{height:auto;min-height:470px}
-.card.show-back .front{display:none}.card.show-back .back{display:flex;position:relative;inset:auto;min-height:470px;overflow:visible}
+.card.show-back .front{display:none}.card.show-back .back{display:flex}
 .label{position:absolute;left:26px;top:24px;color:var(--muted);font-size:14px;font-weight:800}
 .actions{position:absolute;right:20px;top:18px;z-index:10;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .small{padding:8px 11px;border-radius:10px;background:#fff;border:1px solid var(--border);font-weight:750}
@@ -74,8 +81,6 @@ h1{margin:0;font-size:28px}
   .home-grid{grid-template-columns:1fr}
   .stage{min-height:430px}
   .card{height:430px}
-  .card.show-back{height:auto;min-height:430px}
-  .card.show-back .back{min-height:430px}
   .face{padding:66px 16px 24px}
   .front{top:6px;bottom:168px;padding:42px 14px 16px}
   .front .label{top:13px}
