@@ -102,12 +102,12 @@ def versions(text,names):
         text=re.sub(r'('+re.escape(name)+r')\?[^\s\'\"<>\],]+',lambda m:m[1]+'?v=studyquiet1',text)
     return text
 for path in ['plants/index.html','plants/plant-sync-v2.html','plants/drive-view.html','plants/saved-view.html','plants/pc-order-view.html']:
-    p=one(read(path),'<script src="../drive-config.js?v=3"></script>','<script src="../study-quiet-sync.js?v=1"></script>\n<script src="../drive-config.js?v=3"></script>')
+    p=one(read(path),'<script src="../drive-config.js?v=3"></script>','<script src="../study-quiet-sync.js?v=2"></script>\n<script src="../drive-config.js?v=3"></script>')
     p=versions(p,['./drive-sync.js','./local-adapter.js','./readonly-adapter.js'])
     p=re.sub(r'<script src="(?:\.\./view-shell-v2.js\?v=2|\./order-view-shell.js\?v=pcorder1)"></script>','<script src="../study-view-shell.js?v=1"></script>',p)
     write(path,p)
 for path in ['colors/data/review47-loader.js','colors/data/review47-view-loader.js','colors/data/review47-local-loader.js','colors/data/review47-local-loader-v2.js']:
-    p=one(read(path),'    for(const name of [',"    for(const name of ['../study-quiet-sync.js?v=1',")
+    p=one(read(path),'    for(const name of [',"    for(const name of ['../study-quiet-sync.js?v=2',")
     p=versions(p,['./drive-sync.js','./local-adapter.js','./readonly-adapter.js','./origin-editor.js','./origin-editor-view.js'])
     p=p.replace('../view-shell-v2.js?v=2','../study-view-shell.js?v=1')
     write(path,p)
@@ -126,7 +126,7 @@ for app in ['plants','colors']:
     p=p.replace('../view-shell-v2.js?v=2','../study-view-shell.js?v=1')
     m=re.search(r'^const ASSETS=(\[.*\]);$',p,re.M)
     if not m:raise RuntimeError('Viewer asset list changed')
-    assets=json.loads(m[1])+['./auto-view.html','../study-quiet-sync.js?v=1','../study-view-shell.js?v=1']
+    assets=json.loads(m[1])+['./auto-view.html','../study-quiet-sync.js?v=2','../study-view-shell.js?v=1']
     p=p[:m.start(1)]+json.dumps(list(dict.fromkeys(assets)))+p[m.end(1):];write(path,p)
 for app in ['plants','colors']:
     path=app+'/service-worker.js';p=read(path)
@@ -135,7 +135,7 @@ for app in ['plants','colors']:
     # Existing STATIC lists are public application files only.
     anchor="'./index.html'"
     if p.count(anchor)<1:raise RuntimeError('Worker entry missing')
-    p=p.replace(anchor,anchor+", '../study-quiet-sync.js?v=1'",1);write(path,p)
+    p=p.replace(anchor,anchor+", '../study-quiet-sync.js?v=2'",1);write(path,p)
 after={p:sha(p) for p in protected}
 if before!=after:raise RuntimeError('Protected word/data/auth/cache file changed')
 write('study-quiet-build.json',json.dumps({'schema':'study-quiet-auto-v1','interval_ms':15000,'protected_sha256':after,'drive_auth_changed':False,'storage_keys_changed':False,'private_photos_published':False},ensure_ascii=False,indent=2)+'\n')
