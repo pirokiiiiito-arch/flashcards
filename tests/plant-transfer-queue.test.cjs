@@ -36,6 +36,11 @@ test('fallback is available when the local IndexedDB reader rejects, not only wh
  const reader=S.create({url:'https://example.invalid',publicKey:'public-test',getSession:async()=>({access_token:'test',user:{id:'owner'}}),getCards:()=>[{id:'plant',images:['idb:missing']}],getImages:c=>c.images,resolveLocal:async()=>{throw Error('IndexedDB unavailable');},getApi:()=>({request:async()=>({json:async()=>({user:{emailAddress:'owner@example.invalid'}})})}),fetch:async url=>{if(url.endsWith('/auth/v1/user'))return new Response(JSON.stringify({id:'owner',email:'owner@example.invalid'}));sourceReads++;return new Response(blob);},toDataURL:async()=> 'data:image/png;base64,test'});
  assert.equal(await reader.resolve('idb:missing'),'data:image/png;base64,test');assert.equal(sourceReads,1);
 });
+test('external http image URL can publish as a phone fallback while device-only refs stay deferred',()=>{
+ const built=fs.readFileSync('plants/drive-sync.js','utf8');
+ assert.ok(built.includes("/^(idb:|data:image\\/|blob:)/.test(String(v))"));
+ assert.ok(built.includes("!/^https?:\\/\\//i.test(String(ref))"));
+});
 test('only the plant editor selects the specialized queue core',()=>{
  for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('./drive-transfer-core.js?v=queue1'));assert.ok(s.includes('./drive-sync.js?v=queue1'));}
  const report=JSON.parse(fs.readFileSync('plants/transfer-queue-build.json','utf8'));for(const [p,hash] of Object.entries(report.protected_sha256))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'),hash,p);
