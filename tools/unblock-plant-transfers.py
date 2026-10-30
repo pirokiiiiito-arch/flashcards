@@ -60,6 +60,22 @@ s=one(s,"      if (state.pending.length) { timer = setTimeout(() => sync().catch
         timer = setTimeout(() => sync().catch(error), remaining ? 60000 : 1500);
         setStatus(remaining ? '画像送信待ち' : '接続済み', remaining ? '取得できない写真 '+remaining+'枠を端末に保持しています。他の追加・編集は送信しました。認証と通信が戻ると自動再試行します。' : '新しい変更を同期待ちです。');
       }""")
+s=one(s,'    async function importValues(values, source, timestamps = {}, tombstones = {}) {',"""    async function republish(keys) {
+      await ready; await captureQueue; await capture();
+      const current = await cfg.read(), pendingKeys = new Set(state.pending.map(id => state.events[id]?.key).filter(Boolean));
+      const basis = state.basis || {}; let added = 0;
+      for (const key of new Set(keys || [])) {
+        if (pendingKeys.has(key) || !(key in current)) continue;
+        const e = newEvent(key, current[key], false, basis[key] || []);
+        append(e); basis[key] = [e.id]; added++;
+      }
+      state.basis = basis;
+      if (added) { await persist(); clearTimeout(timer); if (valid()) timer = setTimeout(() => sync().catch(error), 0); }
+      return added;
+    }
+    async function importValues(values, source, timestamps = {}, tombstones = {}) {""")
+s=one(s,'const api = { ready, changed, sync, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, recoverDeletedPrefix, view: () => state ? clone(materialize(state.events)) : {data:{},deleted:{},conflicts:[]}, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };',
+        'const api = { ready, changed, sync, republish, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, recoverDeletedPrefix, view: () => state ? clone(materialize(state.events)) : {data:{},deleted:{},conflicts:[]}, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };')
 write('plants/drive-transfer-core.js',s)
 s=read('plants/drive-sync.js')
 s=one(s,"    if (ref === v && /^(idb:|data:image\\/|blob:)/.test(v)) throw Error('端末の画像をDriveへ保存できません。元のPCの画像を保持しています。「画像コピー結果を保存」で確認してください。');", """    if (v && !P.isDrive(ref) && /^(idb:|data:image\/|blob:)/.test(String(v))) {
