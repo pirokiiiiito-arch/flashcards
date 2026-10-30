@@ -46,7 +46,7 @@ test('focused card image references can be requeued without bulk-resending the w
  const syncText=fs.readFileSync('plants/drive-sync.js','utf8');
  assert.ok(coreText.includes('async function republish(keys)'));
  assert.ok(coreText.includes('pendingKeys.has(key)'));
- assert.ok(syncText.includes('sync?.republish'));
+ assert.ok(syncText.includes('sync.republish?.(keys)'));
  assert.ok(syncText.includes('republishedCards'));
  assert.ok(syncText.includes('publishVisibleCardImages'));
  assert.ok(syncText.includes('originalRenderForImageShare'));
