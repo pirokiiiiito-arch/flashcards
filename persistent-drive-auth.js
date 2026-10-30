@@ -3,6 +3,7 @@
  * or photograph storage is read, overwritten or cleared by this module. */
 (function(root){
  'use strict';
+ const LIVE_ORIGIN='https://pirokiiiiito-arch.github.io';
  const URL_BASE='https://himtyybslzzwsfmgdivx.supabase.co';
  const PUBLIC_KEY='sb_publishable_tUa2O6wln22qdUk97worCg_Z3vL5bZO';
  const ENDPOINT=URL_BASE+'/functions/v1/drive-auth';
@@ -157,7 +158,9 @@
   root.addEventListener('storage',e=>{if(e.key===SIGNAL_KEY||e.key===SESSION_KEY)controller.resume().catch(()=>{});});
   root.addEventListener('message',e=>{if(e.origin===root.location.origin&&e.data?.type==='flashcards-drive-connected')controller.resume().catch(()=>{});});
  }
- root.PersistentDriveAuthFactory=Object.freeze({createController,SESSION_KEY,SCOPE,ENDPOINT,SIGNAL_KEY,message});
+ root.PersistentDriveAuthFactory=Object.freeze({createController,SESSION_KEY,SCOPE,ENDPOINT,SIGNAL_KEY,LIVE_ORIGIN,message});
  if(typeof module!=='undefined'&&module.exports)module.exports=root.PersistentDriveAuthFactory;
- if(root.document)start();
+ // The broker accepts only the production Pages origin. Do not start a client
+ // that cannot be authenticated on localhost or unrelated mirrors.
+ if(root.document&&root.location?.origin===LIVE_ORIGIN)start();
 })(typeof window!=='undefined'?window:globalThis);
