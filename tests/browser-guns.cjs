@@ -75,12 +75,29 @@ async function run(){
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'nine gun categories');
    assert.equal(await evaluate('GunDeck.getCards().length'),35);
    assert.equal(await evaluate("document.querySelector('[data-group=shotgun]').textContent.includes('ショットガン')"),true);
+   const categoryLayout=await evaluate("(()=>{const items=[...document.querySelectorAll('#groupGrid .category-tile')],bounds=items.map(el=>el.getBoundingClientRect());return {columns:getComputedStyle(document.querySelector('#groupGrid')).gridTemplateColumns,stacked:bounds.slice(1).every((b,i)=>b.top>=bounds[i].bottom-1),widths:bounds.map(b=>b.width)}})()");
+   assert.equal(categoryLayout.stacked,true,'Categories must each occupy their own vertical row on desktop');
+   assert.equal(categoryLayout.columns.trim().split(/\\s+/).length,1,'Categories must use a single grid column');
+   assert.ok(categoryLayout.widths.every(width=>width>400),'Vertical categories should be full-width rows');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
+   const desktopFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
+   assert.ok(desktopFont<=34,'Gun name should stay at or below 34px on desktop');
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),true);
+   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+   const mobileLayout=await evaluate("(()=>{const rows=[...document.querySelectorAll('#groupGrid .category-tile')].map(x=>x.getBoundingClientRect());return {font:parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize),columns:getComputedStyle(document.querySelector('#groupGrid')).gridTemplateColumns}})()");
+   assert.ok(mobileLayout.font<=29,'Gun name must remain compact on mobile');
+   assert.equal(mobileLayout.columns.trim().split(/\\s+/).length,1,'Mobile categories use one vertical column');
+   await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot').length"),3);
+   const photoLayout=await evaluate("(()=>{const photos=[...document.querySelectorAll('#photoGrid .photo-slot')].map(el=>el.getBoundingClientRect()),frames=[...document.querySelectorAll('#photoGrid .photo-frame')].map(el=>el.getBoundingClientRect()),description=document.querySelector('#backDescription').getBoundingClientRect(),back=document.querySelector('#cardBack').getBoundingClientRect();return {count:photos.length,belowDescription:photos[0].top>description.bottom-1,stacked:photos.slice(1).every((rect,i)=>rect.top>=photos[i].bottom-1),fullWidth:frames.every(rect=>rect.width>400),aspect:frames[0].width/frames[0].height,contained:photos[2].bottom<=back.bottom+1};})()");
+   assert.equal(photoLayout.belowDescription,true,'All photo slots must appear below the gun description');
+   assert.equal(photoLayout.stacked,true,'Three photos must form a vertical stack, not horizontal columns');
+   assert.equal(photoLayout.fullWidth,true,'Each photo must span the card width like plant photos');
+   assert.ok(photoLayout.aspect>1.7&&photoLayout.aspect<1.9,'Each photo uses a 16:9 frame');
+   assert.equal(photoLayout.contained,true,'The back card must expand to contain photo three');
    assert.ok((await evaluate("document.querySelector('#backDescription').textContent")).includes('ショットガン'));
    await evaluate("document.querySelector('#editCardBtn').click()");
    assert.equal(await evaluate("document.querySelector('#editorDialog').open"),true);
@@ -115,7 +132,7 @@ async function run(){
    assert.equal(custom,'revolver');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: katakana name, English Google search, preserved photo after English-name migration, new Japanese user card');
+   console.log('PASS browser guns: vertical categories desktop/mobile, compact front, 3 vertically stacked plant-style back photos, English search and stored data');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
