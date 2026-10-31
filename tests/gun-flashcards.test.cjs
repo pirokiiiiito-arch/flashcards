@@ -234,7 +234,8 @@ test('vertical categories and root-sized katakana-only word card with plant-styl
  assert.ok(css.includes('#cardBack{min-height:360px;padding:106px 23px 24px'),'Back must use the same outer width and grow for three photographs');
  assert.ok(css.includes('.navigation{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:10px;width:min(670px,100%);max-width:670px'),'Four buttons must fit the same 670px deck navigation');
  assert.ok(css.includes('.navigation>.btn{display:grid;place-items:center;min-width:0;min-height:54px'),'Nav height must match root 54px buttons');
- assert.ok(css.includes('.navigation>#normalBtn[aria-pressed="true"],.navigation>#shuffleBtn[aria-pressed="true"]{background:#2d9d58'),'Only the selected mode should be green');
+ assert.ok(css.includes('.navigation>#normalBtn[aria-pressed="true"]{background:#2d9d58'),'Selected Normal remains green');
+ assert.ok(css.includes('.navigation>#shuffleBtn{background:#2f66e8;color:#fff;border:1px solid #2f66e8'),'Shuffle stays blue in both modes');
  assert.ok(css.includes('.card-chrome{position:absolute;top:19px'),'In-card controls stay inside the smaller frame');
  assert.ok(css.includes('.back-maker-meta{display:flex;align-items:center;gap:9px'),'Maker and country flag appear together in the top-left chrome');
  assert.ok(css.includes('.back-country-flag{display:block;width:36px;height:24px;object-fit:contain'),'The flag should be an actual thumbnail image, not an emoji font');
@@ -324,12 +325,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v19'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v20'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=17'));
- assert.ok(sw.includes('./style.css?v=17'));
+ assert.ok(html.includes('./style.css?v=18'));
+ assert.ok(sw.includes('./style.css?v=18'));
  assert.ok(html.includes('./extended-models.js?v=1'));
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
