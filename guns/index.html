@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#263b45">
 <meta name="description" content="銃器の歴史とモデル名を学ぶ分類別フラッシュカード。画像はGoogle英語検索から手動登録。">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./style.css?v=4">
+<link rel="stylesheet" href="./style.css?v=5">
 <title>銃器図鑑カード｜分類別フラッシュカード</title>
 </head>
 <body>
@@ -64,9 +64,8 @@
       </div>
       <article id="flashCard" class="flash-card" role="button" tabindex="0" aria-label="カードを裏返す" aria-pressed="false">
         <div id="cardFront" class="card-face">
-          <p class="card-kicker">FIREARM NAME</p>
           <h3 id="frontName">銃の名前</h3>
-          <p class="face-tip">クリック・タップで裏面へ</p>
+          <p id="frontEnglish" class="front-english" lang="en"></p>
         </div>
         <div id="cardBack" class="card-face" hidden>
           <div class="back-topline">
@@ -108,6 +107,7 @@
     <div class="editor-fields">
       <label>分類<select id="editCategory" required></select></label>
       <label>銃の名前（表・裏にカタカナで表示）<input id="editName" type="text" maxlength="180" required placeholder="例：コルト・パイソン"></label>
+      <label>製品名（英語・表のカタカナ名の下に小さく表示）<input id="editEnglishName" type="text" maxlength="180" lang="en" placeholder="例：Colt Python"></label>
       <label>Google画像検索用の英語名・キーワード
         <div class="search-row"><input id="editSearch" type="text" maxlength="240" placeholder="例：Colt Python revolver photos" required><button id="editGoogleBtn" class="btn light" type="button">英語で画像検索</button></div>
       </label>
@@ -125,8 +125,8 @@
   </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
-<script src="./data.js?v=2"></script>
-<script src="./app.js?v=4"></script>
+<script src="./data.js?v=3"></script>
+<script src="./app.js?v=5"></script>
 <script src="../drive-config.js?v=3"></script>
 <script src="../persistent-drive-auth.js?v=1"></script>
 <script src="./drive-transfer-core.js?v=1"></script>
