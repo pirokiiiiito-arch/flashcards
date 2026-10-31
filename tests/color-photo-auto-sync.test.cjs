@@ -71,7 +71,7 @@ function rig({initial={},offline=false,connected=true,remoteFail=false,pending=[
   };
   return {
     ctx,manualEdits,sync,remoteData,events,flush,tick,timers,statusEl,republished,errors,
-    get counts(){return {saves,changed,syncs,queued:ctx.window.ColorPhotoAutoStatus.pending(),timer:timers.size}},
+    get counts(){return {saves,changed,syncs,queued:Array.from(ctx.window.ColorPhotoAutoStatus.pending()),timer:timers.size}},
     connect:()=>{connected=true;offline=false;ctx.navigator.onLine=true;events.online?.();},
     fail:value=>{remoteFail=value;}
   };
