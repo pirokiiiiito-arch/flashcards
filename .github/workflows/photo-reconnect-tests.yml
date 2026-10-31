@@ -17,6 +17,8 @@ on:
       - 'tools/settle-plant-auth-ui.py'
       - 'tests/plant-transfer-queue.test.cjs'
       - 'tests/plant-auth-settled.test.cjs'
+      - 'tests/plant-photo-retry.test.cjs'
+      - 'tests/plant-photo-auto-sync.test.cjs'
       - 'tests/photo-resume.test.cjs'
       - 'tests/browser-photo-reconnect.cjs'
       - '.github/workflows/photo-reconnect-tests.yml'
@@ -50,6 +52,7 @@ jobs:
           python3 tools/unblock-plant-transfers.py
           python3 tools/settle-plant-auth-ui.py
           node --test tests/plant-transfer-queue.test.cjs tests/plant-auth-settled.test.cjs
+          node --test tests/plant-photo-retry.test.cjs tests/plant-photo-auto-sync.test.cjs
       - name: Failed photo followed by unchanged sync and automatic new-card receive
         timeout-minutes: 2
         run: node tests/browser-photo-reconnect.cjs
