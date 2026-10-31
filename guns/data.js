@@ -53,7 +53,7 @@
   // The visible name is Japanese katakana; Google Images always uses the
   // original English model name. IDs and photo keys never change.
   const SEEDS = Object.freeze(ITEMS.map((x,i)=>Object.freeze({
-    id:'gun-'+String(i+1).padStart(4,'0'), category:x[0],name:x[3],description:x[2],
+    id:'gun-'+String(i+1).padStart(4,'0'), category:x[0],name:x[3],name_en:x[1],description:x[2],
     search:x[1]+' '+(CATEGORIES.find(c=>c.id===x[0])?.en||'firearm')+' photos',
     images:['','',''],source:'starter'
   })));
@@ -74,13 +74,16 @@
     // search query without modifying the persisted record in-place.
     const name=legacy && oldName===legacy.english ? legacy.katakana : oldName;
     if(!name)return null;
+    // Stable seed IDs restore the precise English model name even when an
+    // older local backup/Drive journal has no separate English field.
+    const name_en=String(input.name_en||legacy?.english||'').trim().slice(0,180);
     const category=CATEGORY_IDS.has(input.category)?input.category:'other';
     const images=Array.from({length:3},(_,i)=>{
       const v=Array.isArray(input.images)?input.images[i]:'';
       const s=typeof v==='string'?v.trim():'';
       return /^(idb:gunimg:|gdrive:[\w-]+:[a-f0-9]{64}$|https?:\/\/)/i.test(s)?s:'';
     });
-    return {id,category,name,description:String(input.description||'').slice(0,6000),
+    return {id,category,name,name_en,description:String(input.description||'').slice(0,6000),
       search:String(input.search||legacy?.search||name).trim().slice(0,240),images,
       source:input.source==='starter'?'starter':'user'};
   }
