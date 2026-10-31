@@ -22,6 +22,19 @@
   let automaticPhotoRunning = false, automaticPhotoNextAttempt = 0;
   let automaticPhotoDelay = 30000;
   const controls = document.querySelector('.toolbar') || document.body;
+  // Normal plant study should not reflow or display rapidly changing Drive
+  // counts, retry messages or historical conflict logs. Move those controls
+  // into an explicit dialog while the existing automatic sync/copy continues.
+  const diagnostics = document.createElement('dialog');
+  diagnostics.id = 'plantDrivePhotoDiagnostics';
+  diagnostics.setAttribute('aria-label', '植物の同期・画像コピーの詳細');
+  diagnostics.style.cssText = 'box-sizing:border-box;width:min(650px,94vw);max-width:82vh;overflow:auto;padding:20px;border:1px solid #c8d8ce;border-radius:16px;background:#fff;color:#17231d;box-shadow:0 14px 55px #12332644';
+  const diagnosticsTitle = document.createElement('h2');
+  diagnosticsTitle.textContent = '同期・画像コピーの詳細';
+  diagnosticsTitle.style.cssText = 'font-size:19px;margin:0 0 12px';
+  const diagnosticsNote = document.createElement('p');
+  diagnosticsNote.textContent = '写真のコピーとGoogle Drive同期は自動で進みます。失敗した元写真はPCに保持し、ここから結果の保存や再試行ができます。';
+  diagnosticsNote.style.cssText = 'font-size:12px;line-height:1.7;margin:0 0 12px;color:#52695a';
   const copyStatus = document.createElement('p'); copyStatus.id = 'plantDriveImageCopyStatus'; copyStatus.setAttribute('role','status');
   copyStatus.style.cssText = 'width:100%;margin:6px 0;font-size:12px;line-height:1.6;white-space:pre-wrap';
   const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'btn'; retry.textContent = '全画像をDriveへコピー／再試行';
@@ -30,7 +43,27 @@
   retryFeedback.id = 'plantDriveRetryFeedback';
   retryFeedback.setAttribute('aria-live', 'polite');
   retryFeedback.style.cssText = 'width:100%;white-space:pre-wrap;line-height:1.6;font-size:13px;color:#245a41';
-  controls.append(retry, reportButton, copyStatus, retryFeedback);
+  const diagnosticActions = document.createElement('div');
+  diagnosticActions.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:12px 0';
+  diagnosticActions.append(retry, reportButton);
+  const closeDiagnostics = document.createElement('button');
+  closeDiagnostics.type = 'button'; closeDiagnostics.className = 'btn';
+  closeDiagnostics.textContent = '閉じる';
+  closeDiagnostics.onclick = () => diagnostics.close();
+  // Reparent the old live status indicator: it is still updated and can
+  // initiate manual Drive authorization, but no longer moves the card header.
+  diagnostics.append(diagnosticsTitle, diagnosticsNote);
+  if (imageSyncStatus) diagnostics.appendChild(imageSyncStatus);
+  diagnostics.append(copyStatus, retryFeedback, diagnosticActions, closeDiagnostics);
+  document.body.appendChild(diagnostics);
+  const detailButton = document.createElement('button');
+  detailButton.type = 'button'; detailButton.className = 'btn';
+  detailButton.id = 'plantDrivePhotoDetailsButton';
+  detailButton.textContent = '同期の詳細';
+  detailButton.setAttribute('aria-controls', diagnostics.id);
+  detailButton.setAttribute('aria-haspopup', 'dialog');
+  detailButton.onclick = () => { if (!diagnostics.open) diagnostics.showModal(); };
+  controls.append(detailButton);
   let recoveryBusy = false;
   const copier = P.create({
     getCards: () => cards, getImages, resolveImage: v => resolveImageValue(v), isEditing: () => editing,
