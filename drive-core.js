@@ -311,7 +311,10 @@
         await loadGIS();
         const oauth = root.PersistentDriveAuth || root.google?.accounts?.oauth2;
         if (!oauth) throw new Error('Google認証を読み込めません。');
-        const id = input.value.trim();
+        // Normal startup does not open the dialog, so its input starts empty.
+        // Resolve the configured public client ID before registering the token listener.
+        const id = input.value.trim() || configured();
+        input.value = id;
         if (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(id)) { setStatus('未接続', 'OAuthクライアントIDが未設定です。Google Cloudで発行後に設定します。'); return; }
         localStorage.setItem(CLIENT_KEY, id);
         tokenClient = oauth.initTokenClient({ client_id: id, scope: SCOPE, include_granted_scopes: false, callback: async response => {
