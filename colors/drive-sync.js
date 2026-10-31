@@ -157,10 +157,17 @@
   function dataURL(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); }); }
   // Queue only user-edited photo slots. Built-in review47 assets (940 original
   // files), origins, learning progress, and card ordering remain unchanged.
-  const photoFingerprint = record => record ? JSON.stringify([
-    String(record.data_url || ''), !!record.deleted,
-    String(record.updated_at || ''), String(record.label || '')
-  ]) : '';
+  const photoFingerprint = record => {
+    if (!record) return '';
+    const source = String(record.data_url || '');
+    // Avoid keeping another full in-memory copy of an embedded photograph.
+    const sourceKey = source.startsWith('data:image/') ?
+      'embedded:' + (record.sha256 || record.pixel_sha256 ||
+        [source.length, source.slice(0, 80), source.slice(-80)].join(':')) : source;
+    return JSON.stringify([sourceKey, !!record.deleted,
+      String(record.updated_at || ''), String(record.label || ''),
+      String(record.sha256 || '')]);
+  };
   const photoSnapshot = () => Object.fromEntries(
     Object.entries(manualEdits).map(([slot, record]) => [slot, photoFingerprint(record)])
   );
@@ -223,9 +230,17 @@
         const view = sync.view();
         for (const key of keys) {
           const current = activePhoto(key), remote = view.data[key];
-          if (!current || photoFingerprint(current) !== batch.get(key)) continue;
-          if (!remaining.has(key) && remote && /^gdrive:[\\w-]+:[a-f0-9]{64}$/.test(String(remote.data_url || '')) &&
-              current.updated_at === remote.updated_at) autoPhotoPending.delete(key);
+          if (!current || !remote || remaining.has(key) ||
+              !/^gdrive:[\w-]+:[a-f0-9]{64}$/.test(String(remote.data_url || ''))) continue;
+          const recorded = JSON.parse(batch.get(key));
+          // The normal sync is allowed to replace a local data URL with a
+          // verified Drive ref. A newer user edit must remain queued.
+          if (String(current.updated_at || '') === recorded[2] &&
+              String(current.label || '') === recorded[3] &&
+              String(remote.updated_at || '') === recorded[2] &&
+              String(remote.data_url) === String(current.data_url) &&
+              (!current.sha256 || current.sha256 === remote.sha256))
+            autoPhotoPending.delete(key);
         }
         autoPhotoDelay = autoPhotoPending.size ? Math.min(300000, autoPhotoDelay * 2) : 30000;
         setPhotoStatus(autoPhotoPending.size ?
