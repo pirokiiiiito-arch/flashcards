@@ -16,6 +16,8 @@ protected=['drive-core.js','drive-config.js','drive-sync.js','index.html','word-
 before={p:sha(p) for p in protected}
 # Separate derived core: no change to word/color behavior or persisted schema.
 s=read('drive-core.js')
+s=one(s,'        const id = input.value.trim();',
+      "        // This plant-only core must register for the already-authorized broker\'s token at startup.\\n        // The OAuth input is blank until the legacy dialog opens; use the public configured ID instead.\\n        const id = (root.FLASHCARDS_DRIVE_CONFIG?.clientId || input.value || localStorage.getItem(CLIENT_KEY) || '').trim();")
 s=one(s,'    let localSnapshot = {};',"    let localSnapshot = {};\n    const deferredPhotoKeys = new Set();\n    const deferPhoto = e => e?.plantPhotoDeferred === true && !e.auth;")
 s=one(s,'        if (!deleted) value = await cfg.toCloudValue(key, value, api);',"""        if (!deleted) {
           try { value = await cfg.toCloudValue(key, value, api); }
@@ -101,14 +103,14 @@ s=one(s,"   const local=await o.resolveLocal(value);if(local||!String(value).sta
 write('plants/legacy-photo-source.js',s)
 for path in ['plants/index.html','plants/plant-sync-v2.html']:
     s=read(path)
-    s,n=re.subn(r'<script src="\.\./drive-core.js\?v=[^"]+"></script>', '<script src="./drive-transfer-core.js?v=queue1"></script>',s)
+    s,n=re.subn(r'<script src="\.\./drive-core.js\?v=[^"]+"></script>', '<script src="./drive-transfer-core.js?v=queue2"></script>',s)
     if n!=1:raise RuntimeError('Plant core entry changed: '+path)
     s=one(s,'./drive-sync.js?v=plantsource1','./drive-sync.js?v=queue1')
     s=one(s,'./legacy-photo-source.js?v=1','./legacy-photo-source.js?v=queue1')
     write(path,s)
 s=read('plants/service-worker.js')
 s=one(s,'plant-flashcards-v34-source1','plant-flashcards-v35-queue1')
-s=one(s,'../drive-core.js?v=plant-network2','./drive-transfer-core.js?v=queue1')
+s=one(s,'../drive-core.js?v=plant-network2','./drive-transfer-core.js?v=queue2')
 s=one(s,'./drive-sync.js?v=plantsource1','./drive-sync.js?v=queue1')
 s=one(s,'./legacy-photo-source.js?v=1','./legacy-photo-source.js?v=queue1')
 write('plants/service-worker.js',s)
