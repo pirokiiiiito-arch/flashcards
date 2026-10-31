@@ -127,7 +127,7 @@ function restoreCloud(prepared){
 function allFiltered(){
  const query=view.search.toLocaleLowerCase('ja-JP');
  const selected=cards.filter(c=>(view.category==='all'||c.category===view.category) &&
-  (!query||[c.name,c.name_en,c.description,c.search,groupNames[c.category]].some(v=>String(v||'').toLocaleLowerCase('ja-JP').includes(query))));
+  (!query||[c.name,c.name_en,c.maker,c.description,c.search,groupNames[c.category]].some(v=>String(v||'').toLocaleLowerCase('ja-JP').includes(query))));
  if(view.shuffled){
    const orders=new Map(view.shuffleOrder.map((id,i)=>[id,i]));
    return selected.sort((a,b)=>(orders.get(a.id)??1e9)-(orders.get(b.id)??1e9));
@@ -313,7 +313,15 @@ function renderDeck(){
  $('frontName').textContent=card.name;
  $('frontEnglish').textContent=card.name_en||'';
  $('frontEnglish').hidden=!card.name_en;
- $('faceLabel').textContent=view.flipped?'裏・説明と写真':'表・銃名';
+ $('faceLabel').textContent='表・銃名';
+ $('faceLabel').hidden=view.flipped;
+ $('backMakerMeta').hidden=!view.flipped;
+ const country=C.COUNTRIES[card.country]||null;
+ $('backCountryFlag').textContent=country?.flag||'';
+ $('backCountryFlag').hidden=!country;
+ $('backMakerCompany').textContent=card.maker||'製造会社未登録';
+ $('backMakerCountry').textContent=country?.ja||'';
+ $('backMakerMeta').title=country?.ja ? '代表的な製造会社：'+card.maker+'／現在の国旗：'+country.ja : '製造会社';
  $('backName').textContent=card.name;
  $('backDescription').textContent=card.description||'説明はまだ登録されていません。「この銃を編集」から入力できます。';
  $('cardFront').hidden=view.flipped;$('cardBack').hidden=!view.flipped;
@@ -361,6 +369,12 @@ function makeSelects(){
    for(const group of groups){
      const option=document.createElement('option');option.value=group.id;option.textContent=group.ja;el.appendChild(option);
    }
+ }
+ const makerCountry=$('editMakerCountry');makerCountry.replaceChildren();
+ const unset=document.createElement('option');unset.value='';unset.textContent='国を選択';makerCountry.append(unset);
+ for(const [code,info] of Object.entries(C.COUNTRIES)){
+   const option=document.createElement('option');option.value=code;
+   option.textContent=info.flag+' '+info.ja;makerCountry.append(option);
  }
 }
 function editorPreview(index){
@@ -434,11 +448,13 @@ async function pasteFromClipboard(index){
  }catch(e){$('editorMessage').textContent=e.message||'Ctrl+Vで貼り付けてください。';}
 }
 function openEditor(card){
- editorCard=card?{...card,images:[...card.images]}:{id:'gun-custom-'+(root.crypto?.randomUUID?.()||Date.now().toString(36)),category:view.category==='all'?'revolver':view.category,name:'',name_en:'',description:'',search:'',images:['','',''],source:'user'};
+ editorCard=card?{...card,images:[...card.images]}:{id:'gun-custom-'+(root.crypto?.randomUUID?.()||Date.now().toString(36)),category:view.category==='all'?'revolver':view.category,name:'',name_en:'',maker:'',country:'',description:'',search:'',images:['','',''],source:'user'};
  dirtyEditor=false;activePaste=0;photoRefs=[...editorCard.images];
  $('editorTitle').textContent=card?'銃のカードを編集':'銃を新しく追加';
  $('editCategory').value=editorCard.category;$('editName').value=editorCard.name;
  $('editEnglishName').value=editorCard.name_en||'';
+ $('editMaker').value=editorCard.maker||'';
+ $('editMakerCountry').value=editorCard.country||'';
  $('editSearch').value=editorCard.search;$('editDescription').value=editorCard.description;
  $('editorMessage').textContent='写真を選んだ後、最後に「カードを保存」を押してください。';
  const list=$('editorPhotos');list.replaceChildren();
@@ -455,11 +471,12 @@ function saveEditor(event){
  event.preventDefault();
  if(!editorCard)return;
  const name=$('editName').value.trim(),name_en=$('editEnglishName').value.trim(),search=$('editSearch').value.trim();
+ const maker=$('editMaker').value.trim(),country=$('editMakerCountry').value;
  if(!name){$('editorMessage').textContent='銃の名前を入力してください。';return;}
  if(name_en&&!englishSearchTerm(name_en)){$('editorMessage').textContent='英語の製品名には日本語を入力しないでください。';$('editEnglishName').focus();return;}
  if(!englishSearchTerm(search)){$('editorMessage').textContent='Google画像検索用の英語名を入力してください（カタカナは検索欄に入れません）。';$('editSearch').focus();return;}
  const old=cards.find(c=>c.id===editorCard.id);
- const card=C.sanitizeCard({...editorCard,category:$('editCategory').value,name,name_en,
+ const card=C.sanitizeCard({...editorCard,category:$('editCategory').value,name,name_en,maker,country,
    search,description:$('editDescription').value.trim(),images:photoRefs,source:'user'});
  if(!card){$('editorMessage').textContent='入力内容を確認してください。';return;}
  const changedImages=[];
