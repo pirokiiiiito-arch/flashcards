@@ -103,6 +103,13 @@ async function run(){
    assert.equal(photoLayout.fullWidth,true,'Each photo must span the card width like plant photos');
    assert.ok(photoLayout.aspect>1.7&&photoLayout.aspect<1.9,'Each photo uses a 16:9 frame');
    assert.equal(photoLayout.contained,true,'The back card must expand to contain photo three');
+   const searchPosition=await evaluate("(()=>{const button=document.querySelector('#googleSearchBtn'),photos=document.querySelector('#photoGrid'),box=button.getBoundingClientRect();return {visible:!button.hidden&&box.width>80&&box.height>30,abovePhotos:box.bottom<photos.getBoundingClientRect().top};})()");
+   assert.equal(searchPosition.visible,true,'English Google search must be visible near the top of the back');
+   assert.equal(searchPosition.abovePhotos,true,'Search must be above, not below, three large pictures');
+   assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions').length"),3);
+   assert.equal(await evaluate("document.querySelectorAll('#photoGrid [data-paste-slot]').length"),3);
+   assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions button').length"),6);
+   assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions input[type=file]').length"),3);
    assert.ok((await evaluate("document.querySelector('#backDescription').textContent")).includes('ショットガン'));
    await evaluate("document.querySelector('#editCardBtn').click()");
    assert.equal(await evaluate("document.querySelector('#editorDialog').open"),true);
@@ -114,6 +121,19 @@ async function run(){
    await until(()=>evaluate("document.querySelector('#photoGrid img')?.naturalWidth>0"),'registered picture displayed');
    const photo=await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[0]");
    assert.match(photo,/^idb:gunimg:/);
+   // Google image copy + Ctrl+V directly into photo 2 without opening the editor.
+   const pasteResult=await evaluate("(()=>{const frame=document.querySelector('#photoGrid [data-paste-slot=\"2\"]'),bytes=Uint8Array.from(atob('"+png+"'),x=>x.charCodeAt(0)),file=new File([bytes],'copied-photo.png',{type:'image/png'}),clipboard=new DataTransfer();clipboard.items.add(file);frame.focus();const paste=new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:clipboard});frame.dispatchEvent(paste);return {prevented:paste.defaultPrevented,focused:document.activeElement===frame}})()");
+   assert.equal(pasteResult.prevented,true,'Ctrl+V picture paste must suppress inserting a raw HTML image');
+   await until(()=>evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[1].startsWith('idb:gunimg:')"),'copy/paste directly to photo 2');
+   assert.equal(await evaluate("document.querySelector('#editorDialog').open"),false,'Direct clipboard paste must not require an editor');
+   await until(()=>evaluate("document.querySelectorAll('#photoGrid img').length>=2"),'pasted photo appears on back');
+   // A photo can also be selected from a file directly on the back.
+   await evaluate("(()=>{const input=document.querySelectorAll('#photoGrid .photo-slot-actions input[type=file]')[2],bytes=Uint8Array.from(atob('"+png+"'),x=>x.charCodeAt(0)),file=new File([bytes],'chosen-photo.png',{type:'image/png'}),transfer=new DataTransfer();transfer.items.add(file);input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()");
+   await until(()=>evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[2].startsWith('idb:gunimg:')"),'file directly to photo 3');
+   const allPhotos=await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images");
+   assert.equal(allPhotos.length,3);
+   assert.ok(allPhotos.every(ref=>ref.startsWith('idb:gunimg:')),'All three photo slots use durable local image references');
+
    await evaluate("window.open=(url)=>{window.__englishSearch=url;return {opener:null}};document.querySelector('#googleSearchBtn').click()");
    const search=await evaluate('window.__englishSearch');
    assert.ok(search.startsWith('https://www.google.com/search?tbm=isch&q='));
@@ -127,6 +147,8 @@ async function run(){
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name"),'レミントン・モデル870');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').search.includes('Remington')"),true);
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[0]"),photo,'Migration must preserve the original stored image ref');
+   assert.deepEqual(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images"),allPhotos,
+     'All directly pasted/photo-file image slots must survive reload and English-name migration');
    await evaluate("document.querySelector('[data-group=shotgun]').click();document.querySelector('#flipBtn').click()");
    await until(()=>evaluate("document.querySelector('#photoGrid img')?.naturalWidth>0"),'registered picture restored after restart');
    await evaluate("document.querySelector('#addBtn').click();document.querySelector('#editCategory').value='revolver';document.querySelector('#editName').value='テスト・モデル';document.querySelector('#editSearch').value='historical revolver photo';document.querySelector('#editDescription').value='A saved catalog entry.';document.querySelector('#saveEditBtn').click();");
@@ -137,7 +159,7 @@ async function run(){
    assert.equal(custom,'revolver');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: vertical categories desktop/mobile, compact front, 3 vertically stacked plant-style back photos, English search and stored data');
+   console.log('PASS browser guns: prominent English search, image-slot Ctrl+V/file paste, all three durable photos and preserved data');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
