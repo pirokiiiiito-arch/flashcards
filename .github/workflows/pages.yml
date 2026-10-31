@@ -158,6 +158,16 @@ jobs:
         run: |
           python3 tools/plant-description-first.py
           node --test tests/service-worker.test.cjs
+      - name: Build and validate categorized firearm cards
+        run: |
+          python3 tools/build-gun-flashcards.py
+          node --check guns/data.js
+          node --check guns/app.js
+          node --check guns/drive-sync.js
+          node --check guns/image-copy.js
+          node --check guns/drive-transfer-core.js
+          node --check guns/service-worker.js
+          node --test tests/gun-flashcards.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
