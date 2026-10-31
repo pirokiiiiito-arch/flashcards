@@ -15,6 +15,12 @@
   const originalSave = saveCards;
   let sync;
   const republishedCards = new Set();
+  // Only user-registered photo keys are automatically republished. A received
+  // remote tombstone must never become a new local registration.
+  const automaticPhotoRegistrations = new Map();
+  let savedPhotoValues = new Map(), automaticPhotoTimer = null;
+  let automaticPhotoRunning = false, automaticPhotoNextAttempt = 0;
+  let automaticPhotoDelay = 30000;
   const controls = document.querySelector('.toolbar') || document.body;
   const copyStatus = document.createElement('p'); copyStatus.id = 'plantDriveImageCopyStatus'; copyStatus.setAttribute('role','status');
   copyStatus.style.cssText = 'width:100%;margin:6px 0;font-size:12px;line-height:1.6;white-space:pre-wrap';
@@ -34,6 +40,7 @@
       const imgs = getImages(cards[at]); if (imgs[index] !== source) return false;
       const previous = cards[at]; imgs[index] = ref; cards[at] = withImages(previous, imgs);
       try { originalSave(); } catch (e) { cards[at] = previous; throw e; }
+      savedPhotoValues.set(imageKey(cards[at], index), ref);
       return true;
     },
     changed: () => sync.changed(),
@@ -112,12 +119,19 @@
     // after reconciliation, then capture ordinary child events for the next push.
     afterSync: async () => {
       await copier.sweep();
+      // Revisit only durable unsent image registrations on reconnect.
+      enqueueDurablePhotoRegistrations();
+      scheduleAutomaticPhotoRegistration(900);
       setTimeout(() => publishVisibleCardImages().catch(() => {}), 0);
       if (currentGroup && !editing) { const back = !!stage.querySelector('.show-back'); render(back); }
     },
     onStatus: (s, message) => {
       const progress = copier.summary();
       if (plantDrivePrimary()) { imageSyncStatus.textContent = '画像Drive同期：' + s + (progress.pending ? '（画像コピー未完了 ' + progress.pending + '枠）' : ''); imageSyncStatus.title = message || s; }
+      if (sync && ['同期済み','接続済み','画像送信待ち'].includes(s)) {
+        enqueueDurablePhotoRegistrations();
+        scheduleAutomaticPhotoRegistration(900);
+      }
     }
   };
   sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);
@@ -152,14 +166,93 @@
     return out;
   };
   queueMicrotask(() => publishVisibleCardImages().catch(() => {}));
-  saveCards = function () { const r = originalSave(); sync.changed(); if (sync.valid()) queueMicrotask(async () => { try { copier.retry(); await copier.sweep(); await sync.sync(); if (sync.status().pending && sync.valid()) await sync.sync(); } catch {} }); return r; };
+  function currentPhotoValues() {
+    const out = new Map();
+    for (const c of cards) getImages(c).forEach((value, index) => {
+      if (value) out.set(imageKey(c, index), value);
+    });
+    return out;
+  }
+  function enqueueDurablePhotoRegistrations() {
+    if (!sync?.pendingKeys) return;
+    const local = currentPhotoValues();
+    for (const key of sync.pendingKeys()) {
+      if (key.startsWith('image:') && local.has(key) && !automaticPhotoRegistrations.has(key))
+        automaticPhotoRegistrations.set(key, local.get(key));
+    }
+  }
+  function scheduleAutomaticPhotoRegistration(delay = 650) {
+    if (!automaticPhotoRegistrations.size) return;
+    clearTimeout(automaticPhotoTimer);
+    automaticPhotoTimer = setTimeout(async () => {
+      automaticPhotoTimer = null;
+      if (automaticPhotoRunning || recoveryBusy || copier.busy || editing ||
+          navigator.onLine === false || document.visibilityState === 'hidden') {
+        scheduleAutomaticPhotoRegistration(15000); return;
+      }
+      if (!sync?.valid() && window.PersistentDriveAuth?.state?.().phase !== 'connected') {
+        scheduleAutomaticPhotoRegistration(30000); return;
+      }
+      automaticPhotoRunning = true;
+      const batch = new Map(automaticPhotoRegistrations);
+      try {
+        await retryPlantPhotos('自動', batch);
+        const local = currentPhotoValues(), remaining = new Set(sync.pendingKeys?.() || []);
+        for (const [key, expected] of batch) {
+          const value = local.get(key);
+          // An old job must not acknowledge a replacement that was registered
+          // while it was running; leave that newer registration in the queue.
+          if (!value) automaticPhotoRegistrations.delete(key);
+          else if (automaticPhotoRegistrations.get(key) === expected &&
+                   P.isDrive(value) && !remaining.has(key))
+            automaticPhotoRegistrations.delete(key);
+        }
+        automaticPhotoDelay = automaticPhotoRegistrations.size ?
+          Math.min(300000, Math.max(30000, automaticPhotoDelay * 2)) : 30000;
+      } finally {
+        automaticPhotoRunning = false;
+        automaticPhotoNextAttempt = Date.now() + automaticPhotoDelay;
+        if (automaticPhotoRegistrations.size)
+          scheduleAutomaticPhotoRegistration(automaticPhotoDelay);
+      }
+    }, Math.max(delay, automaticPhotoNextAttempt - Date.now(), 0));
+  }
+  savedPhotoValues = currentPhotoValues();
+  saveCards = function () {
+    const r = originalSave();
+    const current = currentPhotoValues();
+    if (!sync.applying) {
+      for (const [key, value] of current)
+        if (savedPhotoValues.get(key) !== value)
+          automaticPhotoRegistrations.set(key, value);
+      for (const key of savedPhotoValues.keys())
+        if (!current.has(key)) automaticPhotoRegistrations.delete(key);
+    }
+    savedPhotoValues = current;
+    sync.changed(); // Captured in the durable local queue even when offline.
+    if (automaticPhotoRegistrations.size && !sync.applying)
+      scheduleAutomaticPhotoRegistration(650);
+    else if (sync.valid())
+      queueMicrotask(() => sync.sync().catch(() => {}));
+    return r;
+  };
+  ready.then(() => {
+    // A previous session's unsent image events survive a browser restart.
+    enqueueDurablePhotoRegistrations();
+    scheduleAutomaticPhotoRegistration(1200);
+  }).catch(() => {});
+  window.addEventListener('online', () => scheduleAutomaticPhotoRegistration(200));
+  window.addEventListener('focus', () => scheduleAutomaticPhotoRegistration(500));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') scheduleAutomaticPhotoRegistration(500);
+  });
   const oldResolve = resolveImageValue;
   resolveImageValue = async function (v) {
     if (!String(v || '').startsWith('gdrive:')) return oldResolve(v);
     const local = await getStoredImage('drive:' + v); if (local) return local;
     const data = await blobToDataUrl(await sync.getBlob(v)); await putStoredImage('drive:' + v, data); return data;
   };
-  async function retryPlantPhotos(origin = '手動') {
+  async function retryPlantPhotos(origin = '手動', requestedKeys = new Map()) {
     if (recoveryBusy || copier.busy) {
       retryFeedback.textContent = '画像のコピー処理が進行中です。画面上部の進捗表示を確認してください。';
       return;
@@ -203,8 +296,18 @@
         const key=imageKey(c,i);
         if (before.has(key) && P.isDrive(v)) copiedKeys.push(key);
       });
-      if (copiedKeys.length && sync.republish) await sync.republish(copiedKeys);
-      retryFeedback.textContent = origin + '：写真 ' + copiedKeys.length + '枠の参照を更新しました。登録情報を同期しています。';
+      // A save may have already converted its source in the normal journal
+      // push. Publish its current registered value against the latest remote
+      // heads even when this sweep copied no additional bytes.
+      const currentRefs = currentPhotoValues();
+      const registeredKeys = [...requestedKeys].filter(([key, expected]) => {
+        const value = currentRefs.get(key) || '';
+        return (value === expected || (before.get(key) === expected && P.isDrive(value))) &&
+          (P.isDrive(value) || /^https?:\\/\\//i.test(value));
+      }).map(([key]) => key);
+      const republishKeys = [...new Set([...copiedKeys, ...registeredKeys])];
+      if (republishKeys.length && sync.republish) await sync.republish(republishKeys);
+      retryFeedback.textContent = origin + '：写真 ' + republishKeys.length + '枠の登録情報を同期しています。';
       await sync.sync();
       if (sync.status().pending && sync.valid()) await sync.sync();
       const result = copier.summary(), state = sync.status();
