@@ -12,13 +12,14 @@ test('gun-card catalogue provides accurate categorized historical starting model
  assert.equal(C.CATEGORIES.length,10);
  for(const category of ['shotgun','revolver','pistol','bolt','semi-rifle','lever','assault','smg','machine-gun'])
    assert.ok(C.SEEDS.some(c=>c.category===category),'Missing category '+category);
- assert.ok(C.SEEDS.some(c=>c.name==='Colt Python'&&c.category==='revolver'));
- assert.ok(C.SEEDS.some(c=>c.name==='Remington Model 870'&&c.category==='shotgun'));
+ assert.ok(C.SEEDS.some(c=>c.name==='コルト・パイソン'&&c.category==='revolver'));
+ assert.ok(C.SEEDS.some(c=>c.name==='レミントン・モデル870'&&c.category==='shotgun'));
  assert.equal(new Set(C.SEEDS.map(c=>c.id)).size,35);
  for(const c of C.SEEDS){
    assert.ok(c.description.length>10);
    assert.ok(c.images.every(v=>v===''),'Every starter photo must be manually selected');
-   assert.ok(/[A-Za-z]/.test(c.search),'Search terms are English');
+   assert.ok(/[ァ-ヶー]/.test(c.name)&&!/[A-Za-z]/.test(c.name),'All starter names are katakana');
+   assert.ok(/[A-Za-z]/.test(c.search)&&!/[ぁ-んァ-ヶ一-龯]/.test(c.search),'Search terms remain English');
  }
 });
 test('user entries remain separately editable and allow only expected image references',()=>{
@@ -34,6 +35,22 @@ test('user entries remain separately editable and allow only expected image refe
  assert.equal(C.sanitizeCard({...extra,category:'unknown'}).category,'other');
  assert.equal(C.sanitizeCard({...extra,images:['javascript:alert(1)','','']}).images[0],'');
  assert.equal(C.sanitizeCard({...extra,name:''}),null);
+});
+test('legacy English seed labels become katakana without losing edited descriptions or registered pictures',()=>{
+ const legacy={id:'gun-0005',category:'revolver',name:'Colt Python',
+   search:'Colt Python revolver photos',description:'保存済みの独自説明',
+   images:['idb:gunimg:gun-0005:0:myphoto','gdrive:oldphoto:'+('b'.repeat(64)),'https://example.org/photo.jpg'],
+   source:'user'};
+ const c=C.mergeCards([legacy]).find(c=>c.id==='gun-0005');
+ assert.equal(c.name,'コルト・パイソン');
+ assert.equal(c.search,'Colt Python revolver photos');
+ assert.equal(c.description,legacy.description);
+ assert.deepEqual(c.images,legacy.images);
+ assert.equal(c.source,'user');
+ const normalized=C.mergeCards([c]).find(row=>row.id===c.id);
+ assert.deepEqual(normalized,c,'Previously normalized names do not change on repeat loads');
+ const userRenamed=C.mergeCards([{...legacy,name:'自分で付けた銃名'}]).find(row=>row.id===legacy.id);
+ assert.equal(userRenamed.name,'自分で付けた銃名','Do not erase an intentionally renamed user card');
 });
 test('front is name-only, back displays description and three manual photo slots',()=>{
  const html=read('index.html'),app=read('app.js');
@@ -53,8 +70,11 @@ test('English Google Images opens from a deliberate click and never downloads au
  assert.ok(source.includes('https://www.google.com/search?tbm=isch&q='));
  assert.ok(source.includes('encodeURIComponent(text)'));
  assert.ok(source.includes("popup=yes,width=1150,height=820"));
- assert.ok(source.includes("if(!/[A-Za-z]/.test(search))"));
+ assert.ok(source.includes('englishSearchTerm(search)'));
+ assert.ok(source.includes("C.SEEDS.find(seed=>seed.id===card.id)?.search"));
  assert.ok(!source.includes("fetch('https://www.google.com/search"));
+ assert.ok(source.includes('return query;'));
+ assert.ok(source.includes('日本語は検索語に使用しません'));
 });
 test('browser storage and JSON backup preserve manually selected picture bytes',()=>{
  const source=read('app.js');
