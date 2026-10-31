@@ -158,6 +158,11 @@ jobs:
         run: |
           python3 tools/plant-description-first.py
           node --test tests/service-worker.test.cjs
+      - name: Keep plant photo copying internal and accessible on request
+        run: |
+          node --check plants/drive-sync.js
+          node --test tests/plant-quiet-photo-diagnostics.test.cjs
+          node tests/browser-plant-quiet-photo-diagnostics.cjs
       - name: Build and validate categorized firearm cards
         run: |
           python3 tools/build-gun-flashcards.py
