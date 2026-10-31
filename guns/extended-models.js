@@ -91,7 +91,7 @@ for(const [category,country,maker,englishBrand,japaneseBrand,codes] of GROUPS){
    }));
  }
 }
-const api=Object.freeze({entries:Object.freeze(entries),target:2000});
+const api=Object.freeze({entries:Object.freeze(entries),target:2000,toKatakana:katakana});
 root.GunExtendedCatalog=api;
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
