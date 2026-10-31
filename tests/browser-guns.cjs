@@ -82,6 +82,9 @@ async function run(){
    const center=await evaluate("(()=>{const grid=document.querySelector('#groupGrid'),rect=grid.getBoundingClientRect(),tiles=[...document.querySelectorAll('.category-tile')];return {offset:Math.abs(rect.left+rect.width/2-document.documentElement.clientWidth/2),aligned:tiles.every(tile=>{const r=tile.getBoundingClientRect(),title=tile.querySelector('.tile-name').getBoundingClientRect(),index=tile.querySelector('.tile-index').getBoundingClientRect(),counter=tile.querySelector('.tile-bottom').getBoundingClientRect();return [title,index,counter].every(part=>Math.abs(part.left+part.width/2-(r.left+r.width/2))<6)})};})()");
    assert.ok(center.offset<5,'Category list must be centered in the page: '+JSON.stringify(center));
    assert.equal(center.aligned,true,'Category labels/counts must be centered within each row');
+   const categoryVertical=await evaluate("(()=>[...document.querySelectorAll('.category-tile')].map(tile=>{const r=tile.getBoundingClientRect(),title=tile.querySelector('.tile-name').getBoundingClientRect(),header=tile.querySelector('.tile-index').getBoundingClientRect(),footer=tile.querySelector('.tile-bottom').getBoundingClientRect();return {name:tile.dataset.group,delta:Math.round(((title.top+title.bottom)-(r.top+r.bottom))/2*100)/100,topGap:Math.round(title.top-header.bottom),bottomGap:Math.round(footer.top-title.bottom),height:Math.round(r.height)};}))()");
+   assert.ok(categoryVertical.every(({delta})=>Math.abs(delta)<2.5),
+     'Category names, including ショットガン, must sit on the vertical centerline: '+JSON.stringify(categoryVertical));
    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
    const mobileCategories=await evaluate("(()=>{const group=document.querySelector('#groupGrid'),tiles=[...group.querySelectorAll('.category-tile')].map(el=>el.getBoundingClientRect());return {columns:getComputedStyle(group).gridTemplateColumns,stacked:tiles.slice(1).every((row,i)=>row.top>=tiles[i].bottom-1),fullWidth:tiles.every(row=>row.width>320)}})()");
    assert.equal(mobileCategories.columns.trim().split(/\s+/).length,1,'Mobile categories must also be one column');
@@ -89,6 +92,9 @@ async function run(){
    assert.equal(mobileCategories.fullWidth,true,'Mobile categories must be readable full-width rows');
    const mobileTileWidth=await evaluate("document.querySelector('.category-tile').getBoundingClientRect().width");
    assert.ok(mobileTileWidth<355&&mobileTileWidth>320,'Mobile category cards should have comfortable side margins: '+mobileTileWidth);
+   const mobileVertical=await evaluate("(()=>[...document.querySelectorAll('.category-tile')].map(tile=>{const r=tile.getBoundingClientRect(),title=tile.querySelector('.tile-name').getBoundingClientRect();return {name:tile.dataset.group,delta:Math.round(((title.top+title.bottom)-(r.top+r.bottom))/2*100)/100};}))()");
+   assert.ok(mobileVertical.every(({delta})=>Math.abs(delta)<2.5),
+     'Category names must stay vertically centered in mobile tiles: '+JSON.stringify(mobileVertical));
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
    const deckCornerAlignment=await evaluate("(()=>{const bar=document.querySelector('.deck-top').getBoundingClientRect(),nav=document.querySelector('.navigation').getBoundingClientRect(),card=document.querySelector('#flashCard').getBoundingClientRect(),back=document.querySelector('#homeBtn').getBoundingClientRect(),filter=document.querySelector('.deck-filter-details>summary').getBoundingClientRect();return {barWidth:bar.width,navWidth:nav.width,backLeft:Math.abs(back.left-card.left),filterRight:Math.abs(filter.right-card.right),barNavLeft:Math.abs(bar.left-nav.left),barNavRight:Math.abs(bar.right-nav.right)};})()");
@@ -224,7 +230,7 @@ async function run(){
      'Custom English model name must survive browser restart');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: aligned category controls with card/nav corners on desktop and mobile, word-card 670×360, photo sync controls intact');
+   console.log('PASS browser guns: category names vertically centered on desktop/mobile, controls aligned, word-card and photos intact');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
