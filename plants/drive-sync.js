@@ -182,7 +182,11 @@
     }
   }
   function scheduleAutomaticPhotoRegistration(delay = 650) {
-    if (!automaticPhotoRegistrations.size) return;
+    if (!automaticPhotoRegistrations.size) {
+      clearTimeout(automaticPhotoTimer);
+      automaticPhotoTimer = null;
+      return;
+    }
     clearTimeout(automaticPhotoTimer);
     automaticPhotoTimer = setTimeout(async () => {
       automaticPhotoTimer = null;
@@ -229,6 +233,10 @@
         if (!current.has(key)) automaticPhotoRegistrations.delete(key);
     }
     savedPhotoValues = current;
+    if (!automaticPhotoRegistrations.size) {
+      clearTimeout(automaticPhotoTimer);
+      automaticPhotoTimer = null;
+    }
     sync.changed(); // Captured in the durable local queue even when offline.
     if (automaticPhotoRegistrations.size && !sync.applying)
       scheduleAutomaticPhotoRegistration(650);
