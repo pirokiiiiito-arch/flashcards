@@ -284,3 +284,20 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
  .back-country-flag{width:28px;height:20px;flex-basis:28px}
  .back-maker-name{font-size:11px}
 }
+
+/* Gun card read-only caret guard v16.
+   A browser may show a blinking text insertion bar on read-only gun names
+   (e.g. when caret browsing has been enabled). This card is a reader, not a
+   text editor. Make all card caret pixels invisible, including the photo
+   paste targets, while preserving focus, Ctrl+V handling and input fields in
+   the separate editor dialog. */
+#flashCard,
+#flashCard *{
+  caret-color:transparent!important;
+}
+#flashCard #frontName,
+#flashCard #backName{
+  -webkit-user-select:none;
+  user-select:none;
+  cursor:default;
+}
