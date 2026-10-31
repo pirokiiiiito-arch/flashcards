@@ -204,9 +204,12 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
 .navigation{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:10px;width:min(670px,100%);max-width:670px;margin:6px auto 16px}
 .navigation>.btn{display:grid;place-items:center;min-width:0;min-height:54px;padding:8px 10px;font-size:17px;line-height:1.25;font-weight:800;border-radius:16px;border:1px solid #cfdaeb;background:#fff;color:#14233a;box-shadow:0 1px 2px #1c36530a}
 .navigation>.btn:hover{background:#f7f9fd}
-.navigation>#normalBtn[aria-pressed="true"],.navigation>#shuffleBtn[aria-pressed="true"]{background:#2d9d58;color:#fff;border:1px solid #2d9d58;box-shadow:none}
-.navigation>#normalBtn[aria-pressed="true"]:hover,.navigation>#shuffleBtn[aria-pressed="true"]:hover{background:#248e4d}
-.navigation>#normalBtn[aria-pressed="false"],.navigation>#shuffleBtn[aria-pressed="false"]{background:#fff;color:#14233a;border-color:#cfdaeb}
+.navigation>#normalBtn[aria-pressed="true"]{background:#2d9d58;color:#fff;border:1px solid #2d9d58;box-shadow:none}
+.navigation>#normalBtn[aria-pressed="true"]:hover{background:#248e4d}
+.navigation>#normalBtn[aria-pressed="false"]{background:#fff;color:#14233a;border-color:#cfdaeb}
+/* Keep Shuffle blue, matching the reference screenshot, whether selected or not. */
+.navigation>#shuffleBtn{background:#2f66e8;color:#fff;border:1px solid #2f66e8;box-shadow:none}
+.navigation>#shuffleBtn:hover{background:#285acc;border-color:#285acc}
 #flashCard,#flashCard.front-compact{position:relative;width:min(670px,100%);max-width:670px;min-height:360px;margin:0 auto;border:1px solid #d4e0ef;border-radius:27px;background:#fff;box-shadow:0 15px 38px #26456712;overflow:visible}
 #flashCard:hover{box-shadow:0 15px 38px #26456716}
 #cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px;max-height:none;padding:74px 24px;border-radius:27px;background:#fff;text-align:center}
