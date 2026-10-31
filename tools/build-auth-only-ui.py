@@ -32,7 +32,10 @@ fallback='''<div id="authStartupFallback" class="auth-only-prompt" data-drive-re
 for path in entries:
     s=read(path);prefix='../' if '/' in path else './'
     s,n=re.subn(r'<html\b(?![^>]*data-auth-only-sync)', '<html data-auth-only-sync="1"',s,count=1)
-    if n!=1:raise RuntimeError('HTML root changed: '+path)
+    # Some committed public entries already carry the same presentation-only
+    # marker. Treat it as the canonical state rather than duplicating it.
+    if n!=1 and not (n==0 and re.search(r'<html\b[^>]*\bdata-auth-only-sync="1"',s)):
+        raise RuntimeError('HTML root changed: '+path)
     # Persistent-auth entries may already contain an older auth-only include.
     # Remove only these presentation resources before adding the canonical v2
     # include; never touch persistent-drive-auth.js or any credential/session code.
