@@ -170,71 +170,95 @@ main{min-height:550px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
 
-/* Word-card reference layout v8: the face itself, not a mockup, matches the
-   supplied large word flashcard. Photo registration and local data stay intact. */
+/* Word-card compact reference layout v9. Match the actual root flashcard footprint
+   (670px x 360px) rather than scaling an oversized 1120px preview. */
 :root{--ink:#1c293a;--muted:#728098;--bg:#f3f6fb;--stroke:#d5dfed;--accent:#2c9b57;--accent-dark:#228348;--accent-soft:#eaf5ef}
 body{background:var(--bg);color:var(--ink)}
-.app-shell{width:min(1120px,calc(100% - 28px))}
+.app-shell{width:min(820px,calc(100% - 24px));margin:16px auto 38px}
+.app-header{gap:10px;padding:8px 0 10px}
+.brand{gap:10px}
+.brand-mark{width:42px;height:42px;font-size:23px;border-radius:12px}
+h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
+.subtitle{font-size:11px}
+.header-actions{gap:5px}
+.header-actions .btn{min-height:34px;font-size:12px;padding:7px 9px;border-radius:9px}
+.sync-strip{display:block;max-width:670px;margin:0 auto 12px;padding:0;background:none;border:0;color:#657789;font-size:11px;line-height:1.4}
+.sync-strip>summary{display:table;margin:0 auto;cursor:pointer;list-style:none;padding:5px 11px;border:1px solid #d7e1ee;border-radius:9px;background:#fff;font-size:11px;font-weight:700}
+.sync-strip>summary::-webkit-details-marker{display:none}
+.sync-strip>summary:before{content:"▸";margin-right:5px;font-size:10px}
+.sync-strip[open]>summary:before{content:"▾"}
+.sync-content{display:flex;flex-wrap:wrap;gap:7px;margin:6px auto 0;padding:8px 10px;border:1px solid #e0e7ef;border-radius:9px;background:#f9fbfe}
+.sync-content span+span:before{content:"·";margin-right:7px;color:#b5c2d0}
 #deckView{width:100%;margin:0 auto}
-.deck-top{margin:6px 0 12px;align-items:center;gap:12px}
-.deck-top #homeBtn{min-height:36px;padding:7px 12px;font-size:12px;background:transparent;border-color:#d4ddea;color:#596b7e}
-.deck-filter-details{margin-left:auto;position:relative;font-size:12px;color:#63758b;max-width:100%}
-.deck-filter-details>summary{cursor:pointer;list-style:none;padding:8px 12px;border:1px solid #d4ddea;background:#fff;border-radius:10px;font-weight:700}
+.deck-top{margin:4px 0 10px;align-items:center;gap:8px}
+.deck-top #homeBtn{min-height:32px;padding:6px 10px;font-size:11px;background:transparent;border-color:#d4ddea;color:#596b7e}
+.deck-filter-details{margin-left:auto;position:relative;font-size:11px;color:#63758b;max-width:100%}
+.deck-filter-details>summary{cursor:pointer;list-style:none;padding:6px 10px;border:1px solid #d4ddea;background:#fff;border-radius:9px;font-weight:700}
 .deck-filter-details>summary::-webkit-details-marker{display:none}
-.deck-filter-details>summary:before{content:"☷";margin-right:7px}
-.deck-filter-details .deck-controls{display:flex;padding:12px 0 3px;justify-content:flex-end;gap:10px}
-.deck-filter-details[open]{min-width:min(450px,100%);}
+.deck-filter-details>summary:before{content:"☷";margin-right:6px}
+.deck-filter-details .deck-controls{display:flex;padding:10px 0 3px;justify-content:flex-end;gap:8px}
+.deck-filter-details[open]{min-width:min(400px,100%)}
 .deck-meta{display:none}
-.navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:16px;width:100%;max-width:none;margin:8px 0 25px}
-.navigation>.btn{display:grid;place-items:center;min-width:0;min-height:72px;padding:14px 12px;font-size:clamp(17px,2.25vw,22px);line-height:1.25;font-weight:800;border-radius:19px;border:1px solid #cfdaeb;background:#fff;color:#14233a;box-shadow:0 1px 2px #1c36530a}
+.navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:10px;width:min(670px,100%);max-width:670px;margin:6px auto 16px}
+.navigation>.btn{display:grid;place-items:center;min-width:0;min-height:54px;padding:8px 10px;font-size:17px;line-height:1.25;font-weight:800;border-radius:16px;border:1px solid #cfdaeb;background:#fff;color:#14233a;box-shadow:0 1px 2px #1c36530a}
 .navigation>.btn:hover{background:#f7f9fd}
 .navigation>#shuffleBtn{background:#2d9d58;color:#fff;border:1px solid #2d9d58;box-shadow:none}
 .navigation>#shuffleBtn:hover{background:#248e4d}
 .navigation>#shuffleBtn[aria-pressed="true"]{background:#1e7d61;border-color:#1e7d61}
-#flashCard,#flashCard.front-compact{position:relative;width:100%;max-width:none;min-height:520px;margin:0 auto;border:1px solid #d4e0ef;border-radius:32px;background:#fff;box-shadow:0 14px 32px #26456710;overflow:visible}
-#flashCard:hover{box-shadow:0 14px 32px #26456713}
-#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:520px;max-height:none;padding:145px 30px 48px;border-radius:32px;background:#fff;text-align:center}
-#frontName{font-size:clamp(30px,5.3vw,62px);font-weight:820;line-height:1.34;letter-spacing:-.025em;max-width:100%;margin:0 0 12px;overflow-wrap:anywhere}
-.front-english{font-size:clamp(15px,2vw,22px);color:#788597;line-height:1.5;font-weight:400;margin:0;max-width:100%;letter-spacing:0}
-.card-chrome{position:absolute;top:30px;left:34px;right:34px;z-index:4;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;pointer-events:none}
+#flashCard,#flashCard.front-compact{position:relative;width:min(670px,100%);max-width:670px;min-height:360px;margin:0 auto;border:1px solid #d4e0ef;border-radius:27px;background:#fff;box-shadow:0 15px 38px #26456712;overflow:visible}
+#flashCard:hover{box-shadow:0 15px 38px #26456716}
+#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px;max-height:none;padding:91px 24px 38px;border-radius:27px;background:#fff;text-align:center}
+#frontName{font-size:clamp(27px,5vw,46px);font-weight:850;line-height:1.3;letter-spacing:-.02em;max-width:100%;margin:0 0 8px;overflow-wrap:anywhere}
+.front-english{font-size:clamp(13px,1.8vw,18px);color:#788597;line-height:1.5;font-weight:400;margin:0;max-width:100%;letter-spacing:0}
+.card-chrome{position:absolute;top:19px;left:25px;right:25px;z-index:4;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;pointer-events:none}
 .card-chrome>*{pointer-events:auto}
-.face-label{font-size:clamp(15px,1.7vw,19px);font-weight:800;color:#697588;white-space:nowrap;margin-top:8px}
-.card-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
-.card-actions>.btn{min-height:47px;padding:9px 15px;border-radius:13px;font-weight:750;font-size:clamp(13px,1.55vw,18px);border:1px solid #d4deeb;color:#1e2c40;background:white}
+.face-label{font-size:16px;font-weight:800;color:#697588;white-space:nowrap;margin-top:6px}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.card-actions>.btn{min-height:35px;padding:6px 10px;border-radius:10px;font-weight:750;font-size:13px;border:1px solid #d4deeb;color:#1e2c40;background:white}
 .card-actions>.card-add{border-color:#b5c9ff;background:#f6f8ff;color:#2869e8}
 .card-actions>.card-edit:hover,.card-actions>.card-delete:hover{background:#f1f5f9}
-.card-number.counter{position:absolute;right:36px;top:108px;z-index:3;pointer-events:none;white-space:nowrap;background:transparent;padding:0;border-radius:0;color:#bac4d4;font-weight:400;font-size:15px;letter-spacing:.02em}
-#cardBack{min-height:520px;padding:154px 32px 35px;background:#fff;border-radius:32px;overflow:visible}
-#cardBack .back-topline{margin-bottom:15px}
+.card-number.counter{position:absolute;right:25px;top:69px;z-index:3;pointer-events:none;white-space:nowrap;background:transparent;padding:0;border-radius:0;color:#bac4d4;font-weight:400;font-size:13px;letter-spacing:.02em}
+#cardBack{min-height:360px;padding:106px 23px 24px;background:#fff;border-radius:27px;overflow:visible}
+#cardBack .back-topline{margin-bottom:12px}
 #cardBack .card-kicker{display:none}
-#cardBack .back-topline h3{font-size:clamp(21px,3vw,30px);line-height:1.35}
-#cardBack .back-topline .btn{font-size:13px}
-.deck-foot{display:block;max-width:none;margin:14px auto 0;color:#74859e;font-size:clamp(12px,1.55vw,15px);text-align:center;line-height:1.6}
+#cardBack .back-topline h3{font-size:clamp(19px,2.7vw,26px);line-height:1.35}
+#cardBack .back-topline .btn{font-size:12px}
+#cardBack .photo-grid{gap:15px}
+#cardBack .photo-help{font-size:11px;padding:8px 11px}
+#cardBack .card-description{font-size:13px;margin:7px 0 16px;padding:11px 14px}
+.deck-foot{display:block;max-width:670px;margin:10px auto 0;color:#74859e;font-size:13px;text-align:center;line-height:1.6}
+.footer{margin-top:25px;padding:14px 1px;font-size:10px}
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 @media(max-width:740px){
- .app-shell{width:min(100% - 18px,700px)}
- .navigation{gap:8px;margin:10px 0 17px}
- .navigation>.btn{font-size:clamp(13px,3.8vw,17px);min-height:55px;padding:9px 5px;border-radius:14px}
- #flashCard,#flashCard.front-compact{min-height:440px;border-radius:22px;width:100%;max-width:none}
- #cardFront,#flashCard.front-compact #cardFront{min-height:440px;padding:135px 20px 40px;border-radius:22px}
- #frontName{font-size:clamp(27px,6.8vw,40px);margin:0 0 9px}
- .front-english{font-size:clamp(14px,3.8vw,17px)}
- .card-chrome{left:15px;right:15px;top:16px;gap:7px;align-items:flex-start}
- .face-label{font-size:12px;line-height:1.4;white-space:normal;margin-top:9px}
- .card-actions{gap:5px}
- .card-actions>.btn{font-size:12px;min-height:35px;padding:6px 8px;border-radius:10px}
- .card-number.counter{right:17px;top:88px;font-size:12px}
- #cardBack{min-height:440px;padding:130px 16px 25px;border-radius:22px}
- .deck-top{margin-bottom:8px}
- .deck-top #homeBtn,.deck-filter-details>summary{font-size:11px;padding:6px 8px}
+ .app-shell{width:min(100% - 18px,700px);margin:10px auto 30px}
+ .app-header{gap:8px;padding:7px 0 8px}
+ .brand-mark{width:38px;height:38px;font-size:20px}
+ h1{font-size:clamp(20px,5.8vw,25px)}
+ .header-actions{width:100%}
+ .header-actions .btn{min-height:32px;font-size:11px;padding:6px 7px;min-width:76px}
+ .sync-strip{margin-bottom:9px}
+ .navigation{gap:7px;margin:5px auto 13px;width:min(100%,670px)}
+ .navigation>.btn{font-size:clamp(13px,3.8vw,15px);min-height:48px;padding:8px 5px;border-radius:12px}
+ #flashCard,#flashCard.front-compact{min-height:320px;border-radius:21px;width:100%;max-width:670px}
+ #cardFront,#flashCard.front-compact #cardFront{min-height:320px;padding:103px 17px 31px;border-radius:21px}
+ #frontName{font-size:clamp(24px,6.5vw,34px);margin:0 0 8px}
+ .front-english{font-size:clamp(12px,3.6vw,15px)}
+ .card-chrome{left:15px;right:15px;top:14px;gap:7px;align-items:flex-start}
+ .face-label{font-size:12px;line-height:1.4;white-space:normal;margin-top:6px}
+ .card-actions{gap:4px}
+ .card-actions>.btn{font-size:11px;min-height:31px;padding:5px 7px;border-radius:8px}
+ .card-number.counter{right:16px;top:70px;font-size:12px}
+ #cardBack{min-height:320px;padding:105px 16px 22px;border-radius:21px}
+ .deck-top{margin-bottom:7px}
+ .deck-top #homeBtn,.deck-filter-details>summary{font-size:11px;padding:5px 8px}
  .deck-filter-details[open]{min-width:0}
  .deck-filter-details .deck-controls{justify-content:flex-start}
- .deck-foot{font-size:11px;margin-top:11px}
+ .deck-foot{font-size:11px;margin-top:9px}
 }
 @media(max-width:380px){
- .card-chrome{left:11px;right:11px;top:12px}
- .card-actions>.btn{font-size:11px;padding:5px 6px}
+ .card-chrome{left:11px;right:11px;top:10px}
+ .card-actions>.btn{font-size:10px;padding:4px 6px}
  .face-label{font-size:11px}
- #cardFront,#flashCard.front-compact #cardFront{padding-top:145px}
- .navigation>.btn{min-height:48px}
+ #cardFront,#flashCard.front-compact #cardFront{padding-top:113px}
+ .navigation>.btn{min-height:45px}
 }
