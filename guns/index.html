@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#263b45">
 <meta name="description" content="銃器の歴史とモデル名を学ぶ分類別フラッシュカード。画像はGoogle英語検索から手動登録。">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./style.css?v=6">
+<link rel="stylesheet" href="./style.css?v=7">
 <title>銃器図鑑カード｜分類別フラッシュカード</title>
 </head>
 <body>
@@ -48,21 +48,36 @@
     <section id="deckView" hidden>
       <div class="deck-top">
         <button id="homeBtn" type="button" class="btn light">← 分類一覧</button>
-        <div class="deck-controls">
-          <label class="control-label">分類
-            <select id="categorySelect" aria-label="表示する分類"></select>
-          </label>
-          <label class="control-label">検索
-            <input id="filterInput" type="search" placeholder="銃の名前・説明" autocomplete="off">
-          </label>
-          <button id="shuffleBtn" type="button" class="btn secondary" aria-pressed="false">シャッフル</button>
-        </div>
+        <details class="deck-filter-details">
+          <summary>分類・検索</summary>
+          <div class="deck-controls">
+            <label class="control-label">分類
+              <select id="categorySelect" aria-label="表示する分類"></select>
+            </label>
+            <label class="control-label">検索
+              <input id="filterInput" type="search" placeholder="銃の名前・説明" autocomplete="off">
+            </label>
+          </div>
+        </details>
       </div>
-      <div class="deck-meta">
+      <nav class="navigation" aria-label="カードの移動と表示順">
+        <button id="prevBtn" type="button" class="btn light">← 戻る</button>
+        <button id="shuffleBtn" type="button" class="btn mode-normal" aria-pressed="false" aria-label="表示順：通常。押すとシャッフル">通常</button>
+        <button id="nextBtn" type="button" class="btn light">次へ →</button>
+      </nav>
+      <div class="deck-meta" hidden>
         <div><p id="categoryCaption" class="eyebrow"></p><h2 id="deckHeading">すべての銃</h2></div>
-        <span id="positionLabel" class="counter" aria-live="polite">0 / 0</span>
       </div>
       <article id="flashCard" class="flash-card" role="button" tabindex="0" aria-label="カードを裏返す" aria-pressed="false">
+        <div class="card-chrome">
+          <strong id="faceLabel" class="face-label">表・銃名</strong>
+          <div class="card-actions">
+            <button id="cardAddBtn" type="button" class="btn card-add">＋追加</button>
+            <button id="editCardBtn" type="button" class="btn card-edit">編集</button>
+            <button id="deleteCardBtn" type="button" class="btn card-delete">削除</button>
+          </div>
+        </div>
+        <span id="positionLabel" class="counter card-number" aria-live="polite">0 / 0</span>
         <div id="cardFront" class="card-face">
           <h3 id="frontName">銃の名前</h3>
           <p id="frontEnglish" class="front-english" lang="en"></p>
@@ -75,7 +90,6 @@
             </div>
             <div class="back-actions">
               <button type="button" class="btn primary" id="googleSearchBtn">Google画像検索（英語）</button>
-              <button id="editCardBtn" type="button" class="btn secondary">この銃を編集</button>
             </div>
           </div>
           <p id="backDescription" class="card-description"></p>
@@ -83,16 +97,9 @@
           <div id="photoGrid" class="photo-grid"></div>
         </div>
       </article>
-      <div class="navigation">
-        <button id="prevBtn" type="button" class="btn light">← 前へ</button>
-        <button id="flipBtn" type="button" class="btn secondary">裏を見る</button>
-        <button id="nextBtn" type="button" class="btn light">次へ →</button>
-      </div>
+      <button id="flipBtn" class="sr-only" type="button">裏を見る</button>
       <p id="emptyMsg" class="empty-text" hidden>該当するカードがありません。検索を変えるか銃を追加してください。</p>
-      <div class="deck-foot">
-        <button id="deleteCardBtn" class="danger-link" type="button">この銃を削除</button>
-        <span>左右の矢印キーで移動 · Enter / Spaceで表裏を切替 · スマホでは左右スワイプ</span>
-      </div>
+      <p class="deck-foot">タップで表・裏を切替。スマホは左スワイプで次へ、右スワイプで戻ります。</p>
     </section>
   </main>
   <footer class="footer">
@@ -126,7 +133,7 @@
 </dialog>
 <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
 <script src="./data.js?v=3"></script>
-<script src="./app.js?v=5"></script>
+<script src="./app.js?v=6"></script>
 <script src="../drive-config.js?v=3"></script>
 <script src="../persistent-drive-auth.js?v=1"></script>
 <script src="./drive-transfer-core.js?v=1"></script>
