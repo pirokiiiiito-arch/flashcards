@@ -104,7 +104,7 @@ h1{margin:0;font-size:28px}
     <button id="importBtn" class="btn">データ読込</button>
     <input id="importFile" class="file" type="file" accept=".json,application/json">
     <button id="excelBtn" class="btn">Excel追加</button>
-    <a id="plantManualReconnectBtn" class="btn" href="./reconnect.html">Google Drive再接続</a>
+    <a id="plantManualReconnectBtn" class="btn" href="./reconnect-check.html">Google Drive再接続</a>
     <input id="excelFile" class="file" type="file" accept=".xlsx,.xls,.csv">
   </div>
 </header>
@@ -944,7 +944,7 @@ document.getElementById("addTopBtn").onclick=showDraft;
 // A normal link remains usable even when the plant synchronization script stalls.
 const plantManualReconnectBtn=document.getElementById("plantManualReconnectBtn");
 if(window.FLASHCARDS_READONLY_VIEW)plantManualReconnectBtn.hidden=true;
-else if(new URLSearchParams(location.search).get("reconnect")==="1")location.replace("./reconnect.html");
+else if(new URLSearchParams(location.search).get("reconnect")==="1")location.replace("./reconnect-check.html");
 
 document.getElementById("exportBtn").onclick=async()=>{
   let exported=[];
