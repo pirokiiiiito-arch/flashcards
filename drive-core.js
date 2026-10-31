@@ -263,7 +263,11 @@
       }
       const legacyData = await cfg.migrate?.(api, materialize(state.events));
       if (legacyData) await importValues(legacyData.data, 'supabase', legacyData.timestamps, legacyData.deleted);
-      await cfg.repair?.(api, materialize(state.events));
+      // Restore explicitly returned local-only keys into the durable journal.
+      // Module repair functions must exclude remote tombstones and edits.
+      const repaired = await cfg.repair?.(api, materialize(state.events));
+      if (repaired?.data && Object.keys(repaired.data).length)
+        await importValues(repaired.data, 'local-repair', repaired.timestamps || {}, repaired.deleted || {});
       await captureQueue; await capture(); await push(); await pull();
       // A user may save while an image is downloading. Rebuild the apply plan if that occurs.
       for (let attempt = 0; attempt < 4; attempt++) {
