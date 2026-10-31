@@ -256,7 +256,7 @@
     }, Math.max(0, delay, autoPhotoRetryAt - Date.now()));
   }
   readyImages.then(() => { savedPhotoSnapshot = photoSnapshot(); }).catch(() => {});
-  sync.ready.then(() => { resumePendingPhotos(); schedulePhotoRegistration(1000); }).catch(() => {});
+  sync.ready?.then(() => { resumePendingPhotos(); schedulePhotoRegistration(1000); }).catch(() => {});
   const oldPersist = persistEdits;
   persistEdits = async function () {
     const applying = sync.applying || !!window.__COLOR_RESTORE_IMPORT_ACTIVE;
@@ -279,12 +279,12 @@
     } else if (sync.valid()) queueMicrotask(() => sync.sync().catch(() => {}));
     return r;
   };
-  window.addEventListener('online', () => { resumePendingPhotos(); schedulePhotoRegistration(250); });
-  window.addEventListener('focus', () => { resumePendingPhotos(); schedulePhotoRegistration(500); });
+  window.addEventListener?.('online', () => { resumePendingPhotos(); schedulePhotoRegistration(250); });
+  window.addEventListener?.('focus', () => { resumePendingPhotos(); schedulePhotoRegistration(500); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') { resumePendingPhotos(); schedulePhotoRegistration(500); }
   });
-  setInterval(() => { resumePendingPhotos(); schedulePhotoRegistration(1000); }, 15000);
+  if (typeof setInterval === 'function') setInterval(() => { resumePendingPhotos(); schedulePhotoRegistration(1000); }, 15000);
   window.ColorPhotoAutoStatus = Object.freeze({
     pending: () => [...autoPhotoPending.keys()],
     snapshot: () => ({ queued: autoPhotoPending.size, message: autoPhotoStatus.textContent, connected: sync.valid() })
