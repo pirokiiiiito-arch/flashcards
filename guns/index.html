@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#263b45">
 <meta name="description" content="銃器の歴史とモデル名を学ぶ分類別フラッシュカード。画像はGoogle英語検索から手動登録。">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./style.css?v=8">
+<link rel="stylesheet" href="./style.css?v=9">
 <title>銃器図鑑カード｜分類別フラッシュカード</title>
 </head>
 <body>
@@ -28,11 +28,14 @@
       <button class="btn primary" id="addBtn" type="button">＋ 銃を追加</button>
     </nav>
   </header>
-  <div class="sync-strip">
-    <span id="localStatus" role="status" aria-live="polite">端末保存を読み込んでいます…</span>
-    <span id="cloudStatus">Drive：接続待ち</span>
-    <span id="photoStatus">写真：確認中</span>
-  </div>
+  <details class="sync-strip" id="syncDetails">
+    <summary>同期状況（詳細）</summary>
+    <div class="sync-content">
+      <span id="localStatus" role="status" aria-live="polite">端末保存を読み込んでいます…</span>
+      <span id="cloudStatus">Drive：接続待ち</span>
+      <span id="photoStatus">写真：確認中</span>
+    </div>
+  </details>
   <main>
     <section id="homeView">
       <div class="section-heading">
