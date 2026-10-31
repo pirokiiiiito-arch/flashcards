@@ -98,7 +98,7 @@ test('English Google Images opens from a deliberate click and never downloads au
  assert.ok(source.includes('return query;'));
  assert.ok(source.includes('日本語は検索語に使用しません'));
 });
-test('vertical categories and large word-style bilingual card with plant-style photo reverse',()=>{
+test('vertical categories and root-sized bilingual word card with plant-style photo reverse',()=>{
  const css=read('style.css');
  const plants=fs.readFileSync('plants/index.html','utf8');
  assert.ok(css.includes('width:min(90%,420px);margin:0 auto'),'Category container must be centered');
@@ -116,16 +116,22 @@ test('vertical categories and large word-style bilingual card with plant-style p
  assert.ok(css.includes('.photo-frame{display:flex')&&css.includes('aspect-ratio:16/9'));
  assert.ok(plants.includes('.image-box{width:100%;aspect-ratio:16/9'));
  assert.match(css,/#cardBack\{cursor:default;display:block;height:auto;overflow:visible\}/);
- assert.ok(css.includes('/* Word-card reference layout v8'),'The actual firearm UI must adopt the supplied word-card layout');
- assert.ok(css.includes('#flashCard,#flashCard.front-compact{position:relative;width:100%;max-width:none;min-height:520px'),'Both sides must use a large common frame');
- assert.ok(css.includes('#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:520px'),'Front should center bilingual title in large card');
- assert.ok(css.includes('#cardBack{min-height:520px;padding:154px 32px 35px'),'Back remains large for three independent photographs');
- assert.ok(css.includes('.navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))'),'The navigation is now three equal large controls');
- assert.ok(css.includes('.navigation>#shuffleBtn{background:#2d9d58'),'Normal mode must use the green word-card button');
- assert.ok(css.includes('.card-chrome{position:absolute;top:30px'),'Add/edit/delete belong inside the card');
- assert.ok(css.includes('.card-number.counter{position:absolute;right:36px;top:108px'),'Card count belongs inside the card');
- assert.ok(read('app.js').includes("classList.remove('front-compact')"),'The old small front must be deactivated');
- assert.ok(read('app.js').includes("view.shuffled?'シャッフル':'通常'"),'Default normal mode must be labeled 通常');
+ const word=fs.readFileSync('index.html','utf8');
+ assert.ok(css.includes('/* Word-card compact reference layout v9'),'Compact gun UI must follow the actual root word-card scale');
+ assert.ok(word.includes('.wrap{width:min(820px,calc(100% - 24px))'),'Word app uses an 820px outer width');
+ assert.ok(word.includes('.card{width:min(670px,100%);height:360px'),'Word app uses a 670px x 360px card');
+ assert.ok(css.includes('.app-shell{width:min(820px,calc(100% - 24px))'),'Gun shell must match root 820px footprint');
+ assert.ok(css.includes('#flashCard,#flashCard.front-compact{position:relative;width:min(670px,100%);max-width:670px;min-height:360px'),'Both gun faces must match root 670px x 360px footprint');
+ assert.ok(css.includes('#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px'),'Front must center bilingual names within the root-size card');
+ assert.ok(css.includes('#cardBack{min-height:360px;padding:106px 23px 24px'),'Back must use the same outer width and grow for three photographs');
+ assert.ok(css.includes('.navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:10px;width:min(670px,100%);max-width:670px'),'Navigation must match root 670px buttons');
+ assert.ok(css.includes('.navigation>.btn{display:grid;place-items:center;min-width:0;min-height:54px'),'Nav height must match root 54px buttons');
+ assert.ok(css.includes('.navigation>#shuffleBtn{background:#2d9d58'),'Normal mode remains green');
+ assert.ok(css.includes('.card-chrome{position:absolute;top:19px'),'In-card controls stay inside the smaller frame');
+ assert.ok(css.includes('.card-number.counter{position:absolute;right:25px;top:69px'),'Card counter fits smaller frame');
+ assert.ok(css.includes('#flashCard,#flashCard.front-compact{min-height:320px;border-radius:21px'),'Mobile frame must be proportional');
+ assert.ok(read('app.js').includes("classList.remove('front-compact')"),'Both sides must have equal width');
+ assert.ok(read('app.js').includes("view.shuffled?'シャッフル':'通常'"),'Default normal mode remains 通常');
 });
 test('English Google image search is above the pictures and each picture supports direct paste',()=>{
  const html=read('index.html'),app=read('app.js'),css=read('style.css');
@@ -156,6 +162,15 @@ test('English Google image search is above the pictures and each picture support
  assert.ok(css.includes(".photo-slot-actions{display:flex;flex-wrap:wrap"));
  assert.ok(css.includes('.photo-frame[contenteditable="true"]'));
 });
+test('moving Drive progress inside a collapsed details panel prevents top-layout jitter',()=>{
+ const html=read('index.html'),css=read('style.css');
+ assert.ok(html.includes('<details class="sync-strip" id="syncDetails">'));
+ assert.ok(html.includes('<summary>同期状況（詳細）</summary>'));
+ assert.ok(html.includes('class="sync-content"'));
+ for(const id of ['localStatus','cloudStatus','photoStatus'])assert.ok(html.includes('id="'+id+'"'));
+ assert.ok(css.includes('.sync-strip>summary{display:table'),'Collapsed details should have a stable small header');
+ assert.ok(css.includes('.sync-content{display:flex;flex-wrap:wrap'),'Statuses are still accessible when expanded');
+});
 test('browser storage and JSON backup preserve manually selected picture bytes',()=>{
  const source=read('app.js');
  for(const part of ["const STORE='gun-flashcards-cards-v1'","DB='gun-flashcards-images-v1'",
@@ -183,12 +198,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v8'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v9'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=8'));
- assert.ok(sw.includes('./style.css?v=8'));
+ assert.ok(html.includes('./style.css?v=9'));
+ assert.ok(sw.includes('./style.css?v=9'));
  assert.ok(html.includes('./data.js?v=3'));
  assert.ok(html.includes('./app.js?v=7'));
  assert.ok(sw.includes('./data.js?v=3'));
