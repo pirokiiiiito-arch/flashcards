@@ -303,15 +303,17 @@ function renderDeck(){
  $('deckHeading').textContent=label;
  $('positionLabel').textContent=card?(view.index+1)+' / '+list.length:'0 / 0';
  $('flashCard').hidden=!card;$('emptyMsg').hidden=!!card;
- $('flashCard').classList.toggle('front-compact',!!card&&!view.flipped);
+ $('flashCard').classList.remove('front-compact');
  $('prevBtn').disabled=$('nextBtn').disabled=$('flipBtn').disabled=!card;
  $('deleteCardBtn').hidden=!card;
  $('shuffleBtn').setAttribute('aria-pressed',String(view.shuffled));
- $('shuffleBtn').textContent=view.shuffled?'シャッフル中 · 戻す':'シャッフル';
+ $('shuffleBtn').textContent=view.shuffled?'シャッフル':'通常';
+ $('shuffleBtn').setAttribute('aria-label',view.shuffled?'表示順：シャッフル。押すと通常':'表示順：通常。押すとシャッフル');
  if(!card)return;
  $('frontName').textContent=card.name;
  $('frontEnglish').textContent=card.name_en||'';
  $('frontEnglish').hidden=!card.name_en;
+ $('faceLabel').textContent=view.flipped?'裏・説明と写真':'表・銃名';
  $('backName').textContent=card.name;
  $('backDescription').textContent=card.description||'説明はまだ登録されていません。「この銃を編集」から入力できます。';
  $('cardFront').hidden=view.flipped;$('cardBack').hidden=!view.flipped;
@@ -551,6 +553,7 @@ function installListeners(){
  $('prevBtn').onclick=()=>move(-1);$('nextBtn').onclick=()=>move(1);$('flipBtn').onclick=flip;
  $('flashCard').onclick=e=>{if(Date.now()<ignoreClickUntil||e.target.closest('button,a,input,select,textarea,img,label,.photo-slot,[contenteditable="true"]'))return;flip()};
  $('flashCard').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===$('flashCard')){e.preventDefault();flip()}};
+ $('cardAddBtn').onclick=e=>{e.stopPropagation();openEditor(null)};
  $('editCardBtn').onclick=e=>{e.stopPropagation();openEditor(current())};
  $('googleSearchBtn').onclick=e=>{e.stopPropagation();const card=current();if(card)englishSearch(googleQuery(card))};
  $('deleteCardBtn').onclick=deleteCard;
