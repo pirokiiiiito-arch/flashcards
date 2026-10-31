@@ -131,17 +131,19 @@ test('legacy English seed labels become katakana without losing edited descripti
  const userRenamed=C.mergeCards([{...legacy,name:'自分で付けた銃名'}]).find(row=>row.id===legacy.id);
  assert.equal(userRenamed.name,'自分で付けた銃名','Do not erase an intentionally renamed user card');
 });
-test('front contains only katakana and a small English model label; back keeps description and three photo slots',()=>{
+test('front displays katakana name only while keeping English model for Google image search and back photos',()=>{
  const html=read('index.html'),app=read('app.js');
  assert.ok(html.includes('分類は方式のおおよその発明・登場順です'));
  assert.match(html,/<div id="cardFront"/);
  assert.match(html,/<h3 id="frontName">/);
- assert.match(html,/<p id="frontEnglish" class="front-english" lang="en"><\/p>/);
+ assert.ok(!html.includes('id="frontEnglish"'),'The front must not render a small English subtitle');
  const front=html.slice(html.indexOf('<div id="cardFront"'),html.indexOf('<div id="cardBack"'));
  assert.ok(!front.includes('FIREARM NAME'));
  assert.ok(!front.includes('クリック・タップで裏面へ'));
- assert.ok(app.includes("$('frontEnglish').textContent=card.name_en||''"));
- assert.ok(app.includes("$('frontEnglish').hidden=!card.name_en"));
+ assert.ok(!app.includes("frontEnglish"),'The front rendering must not address the old subtitle');
+ assert.ok(app.includes("$('frontName').textContent=card.name"),'The katakana name is still rendered');
+ assert.ok(app.includes("function googleQuery(card)"),'English Google Images search remains available');
+ assert.ok(html.includes('製品名（英語・記録用／表面には表示しません）'),'Editor must explain the retained English record does not show on the front');
  assert.match(html,/id="editEnglishName"/);
  assert.match(html,/id="backMakerMeta" class="back-maker-meta" hidden/);
  assert.match(html,/<img id="backCountryFlag" class="back-country-flag" width="36" height="24" alt="" decoding="async" hidden>/);
@@ -200,7 +202,7 @@ test('vertical categories and root-sized bilingual word card with plant-style ph
  assert.ok(css.includes('min-height:72px'),'Desktop tiles should be compact');
  assert.ok(css.includes('min-height:68px'),'Small mobile tiles should be compact');
  assert.ok(css.includes('text-align:center;border:1px solid var(--stroke)'),'Category name must be centered');
- assert.ok(css.includes('.front-english{font-size:clamp(12px,1.5vw,16px)'),'English subtitle must be small');
+ assert.ok(!css.includes('.front-english{'),'No obsolete English subtitle style may remain');
  assert.match(css,/\.category-grid\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
  assert.match(css,/\.category-grid\{grid-template-columns:minmax\(0,1fr\)/);
  assert.match(css,/#frontName\{font-size:clamp\(23px,3\.5vw,34px\)/);
@@ -217,7 +219,8 @@ test('vertical categories and root-sized bilingual word card with plant-style ph
  assert.ok(css.includes('.app-shell{width:min(820px,calc(100% - 24px))'),'Gun shell must match root 820px footprint');
  assert.ok(css.includes('.deck-top{width:min(670px,100%);max-width:670px;margin:4px auto 10px'),'Category controls must align with card and navigation left/right corners');
  assert.ok(css.includes('#flashCard,#flashCard.front-compact{position:relative;width:min(670px,100%);max-width:670px;min-height:360px'),'Both gun faces must match root 670px x 360px footprint');
- assert.ok(css.includes('#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px'),'Front must center bilingual names within the root-size card');
+ assert.ok(css.includes('#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px'),'Front must center the single katakana name within the root-size card');
+ assert.ok(css.includes('padding:74px 24px'),'Symmetric padding centers the single Japanese title');
  assert.ok(css.includes('#cardBack{min-height:360px;padding:106px 23px 24px'),'Back must use the same outer width and grow for three photographs');
  assert.ok(css.includes('.navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:10px;width:min(670px,100%);max-width:670px'),'Navigation must match root 670px buttons');
  assert.ok(css.includes('.navigation>.btn{display:grid;place-items:center;min-width:0;min-height:54px'),'Nav height must match root 54px buttons');
@@ -308,16 +311,16 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v16'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v17'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=15'));
- assert.ok(sw.includes('./style.css?v=15'));
+ assert.ok(html.includes('./style.css?v=16'));
+ assert.ok(sw.includes('./style.css?v=16'));
  assert.ok(html.includes('./data.js?v=6'));
- assert.ok(html.includes('./app.js?v=9'));
+ assert.ok(html.includes('./app.js?v=10'));
  assert.ok(sw.includes('./data.js?v=6'));
- assert.ok(sw.includes('./app.js?v=9'));
+ assert.ok(sw.includes('./app.js?v=10'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
