@@ -16,7 +16,7 @@ function rig({valid=true,account='owner',remote='owner',pending=0,fail=false}={}
  const sync={account,valid:()=>valid,request:async()=>({json:async()=>({user:{permissionId:remote}})}),sync:async()=>{syncs++;if(fail)throw Error('simulated-sync-error')},republish:async keys=>{republished.push(...keys)},status:()=>({pending,detail:'同期テスト'}),pendingKeys:()=>[]};
  const copier={busy:false,retry(){},summary:()=>({drive:sweeps?1:0,pending:sweeps?0:1,failed:0}),async sweep(){sweeps++;cards[0].images[0]=ref;}};
  const ctx={window:{PersistentDriveAuth:{state:()=>({phase:'connected'}),getToken:async()=>{tokens++;valid=true}}},sync,copier,P:{isDrive:v=>v===ref},cards,
-  getImages:c=>c.images,imageKey:(c,i)=>'image:'+c.id+':'+i,editing:false,recoveryBusy:false,retry,retryFeedback,Promise,Map};
+  getImages:c=>c.images,imageKey:(c,i)=>'image:'+c.id+':'+i,currentPhotoValues:()=>new Map(cards.flatMap(c=>c.images.map((v,i)=>['image:'+c.id+':'+i,v]).filter(([,v])=>!!v))),editing:false,recoveryBusy:false,retry,retryFeedback,Promise,Map};
  return {ctx,run:()=>vm.runInNewContext('('+fn+')(\"手動\")',ctx),count:()=>({sweeps,syncs,republished,tokens}),cards,retryFeedback,retry};
 }
 test('PC manual retry explicitly copies photos and republishes current registration key',async()=>{
@@ -32,4 +32,11 @@ test('auth token reactivation is attempted before retrying a known account',asyn
 });
 test('failed remote journal sync preserves completed local photo and gives visible error',async()=>{
  const r=rig({fail:true});await r.run();assert.equal(r.cards[0].images[0],ref);assert.match(r.retryFeedback.textContent,/simulated-sync-error/);assert.equal(r.retry.disabled,false);
+});
+
+test('registered Drive refs are republished even when no copy happens in the sweep',async()=>{
+ const r=rig();r.cards[0].images[0]=ref;
+ await vm.runInNewContext('('+fn+')(\"自動\", new Map([[\"image:plant:0\", \"'+ref+'\"]]))',r.ctx);
+ assert.deepEqual(r.count().republished,['image:plant:0']);
+ assert.equal(r.count().syncs,1);
 });
