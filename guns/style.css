@@ -54,8 +54,8 @@ main{min-height:550px}
 .card-face{padding:30px;min-height:480px}
 /* Only the name-facing side uses the compact card frame; the photo-rich back
    keeps its original generous width and content-driven height. */
-.flash-card.front-compact{width:min(100%,560px);max-width:560px;min-height:250px}
-.flash-card.front-compact #cardFront{min-height:250px;padding:20px 22px}
+.flash-card.front-compact{width:min(100%,480px);max-width:480px;min-height:220px}
+.flash-card.front-compact #cardFront{min-height:220px;padding:18px 20px}
 #cardFront{display:flex;justify-content:center;align-items:center;flex-direction:column;text-align:center;background:linear-gradient(145deg,#fff 7%,#f3f8f8 100%);border-radius:22px}
 #cardFront .card-kicker{margin:0 0 22px}
 #frontName{font-size:clamp(23px,3.5vw,34px);line-height:1.4;letter-spacing:0;overflow-wrap:anywhere;max-width:95%;margin:0 0 18px;font-weight:750}
@@ -140,8 +140,8 @@ main{min-height:550px}
 .control-label select,.control-label input{width:100%}
 .card-face{padding:18px;min-height:390px}
 .flash-card{min-height:390px}
-.flash-card.front-compact{width:92%;max-width:560px;min-height:215px}
-.flash-card.front-compact #cardFront{min-height:215px;padding:16px 18px}
+.flash-card.front-compact{width:92%;max-width:480px;min-height:205px}
+.flash-card.front-compact #cardFront{min-height:205px;padding:16px 18px}
 #frontName{font-size:clamp(21px,5.6vw,29px)}
 .photo-grid{grid-template-columns:minmax(0,1fr);gap:16px}
 .back-topline{flex-wrap:wrap}
