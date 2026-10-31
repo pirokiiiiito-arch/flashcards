@@ -87,7 +87,7 @@ test('color apply plan receives Drive refs without downloading every photograph'
  const el=()=>({style:{},dataset:{},setAttribute(){},append(){},addEventListener(){},querySelector(){return null;},click(){}});
  const toolbar=el(),storage=new Map();
  const catalogue={counts:{unique_images:940,registrations:1047,suppressed_duplicates:107},registrations:[],files:{}};
- const api={cache:{get:async()=>null,put:async()=>{}},changed(){},getBlob:async()=>{downloads++;throw Error('must not preload');},view:()=>({data:{},deleted:{}}),status:()=>({pending:0}),valid:()=>true};
+ const api={applying:true,cache:{get:async()=>null,put:async()=>{}},changed(){},getBlob:async()=>{downloads++;throw Error('must not preload');},view:()=>({data:{},deleted:{}}),status:()=>({pending:0}),valid:()=>true};
  const support={...C,note(){},onStatus(){},renderImages:async()=>{}};
  const E={ready:Promise.resolve(),getRecords:()=>({}),validateRecords:x=>x,applyCloudRecords:async()=>{}};
  const ctx={console,structuredClone,Map,Set,Promise,URL,Blob,setTimeout,clearTimeout,
