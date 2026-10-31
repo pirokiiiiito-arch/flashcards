@@ -188,6 +188,7 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
 .sync-strip>summary:before{content:"▸";margin-right:5px;font-size:10px}
 .sync-strip[open]>summary:before{content:"▾"}
 .sync-content{display:flex;flex-wrap:wrap;gap:7px;margin:6px auto 0;padding:8px 10px;border:1px solid #e0e7ef;border-radius:9px;background:#f9fbfe}
+.sync-strip:not([open])>.sync-content{display:none!important}
 .sync-content span+span:before{content:"·";margin-right:7px;color:#b5c2d0}
 #deckView{width:100%;margin:0 auto}
 .deck-top{margin:4px 0 10px;align-items:center;gap:8px}
