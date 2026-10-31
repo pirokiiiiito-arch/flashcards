@@ -19,7 +19,7 @@ async function run(){
      res.writeHead(404);res.end('not found');return;
    }
    const types={'.js':'text/javascript;charset=utf-8','.css':'text/css','.html':'text/html;charset=utf-8',
-     '.json':'application/json','.webmanifest':'application/manifest+json'};
+     '.json':'application/json','.webmanifest':'application/manifest+json','.svg':'image/svg+xml;charset=utf-8'};
    res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});
    fs.createReadStream(file).pipe(res);
  });
@@ -163,8 +163,13 @@ async function run(){
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
-   const makerMeta=await evaluate("(()=>{const flag=document.querySelector('#backCountryFlag'),name=document.querySelector('#backMakerCompany'),country=document.querySelector('#backMakerCountry'),meta=document.querySelector('#backMakerMeta'),card=document.querySelector('#flashCard').getBoundingClientRect(),header=document.querySelector('.card-chrome').getBoundingClientRect(),buttons=document.querySelector('.card-actions').getBoundingClientRect(),box=meta.getBoundingClientRect();return {flag:flag.textContent,name:name.textContent,country:country.textContent,visible:!meta.hidden,faceHidden:document.querySelector('#faceLabel').hidden,inside:box.left>=card.left&&box.right<=card.right&&box.top>=card.top&&box.bottom<card.bottom,notOverlapping:box.right<=buttons.left+1,metaTop:Math.round(box.top),headerTop:Math.round(header.top)};})()");
-   assert.equal(makerMeta.flag,'🇺🇸');
+   await until(()=>evaluate("document.querySelector('#backCountryFlag')?.naturalWidth>0"),'real US flag SVG image renders');
+   const makerMeta=await evaluate("(()=>{const flag=document.querySelector('#backCountryFlag'),name=document.querySelector('#backMakerCompany'),country=document.querySelector('#backMakerCountry'),meta=document.querySelector('#backMakerMeta'),card=document.querySelector('#flashCard').getBoundingClientRect(),header=document.querySelector('.card-chrome').getBoundingClientRect(),buttons=document.querySelector('.card-actions').getBoundingClientRect(),box=meta.getBoundingClientRect();return {flagTag:flag.tagName,flagSrc:flag.getAttribute('src'),flagAlt:flag.alt,flagPixels:flag.naturalWidth,flagText:flag.textContent,name:name.textContent,country:country.textContent,visible:!meta.hidden,faceHidden:document.querySelector('#faceLabel').hidden,inside:box.left>=card.left&&box.right<=card.right&&box.top>=card.top&&box.bottom<card.bottom,notOverlapping:box.right<=buttons.left+1,metaTop:Math.round(box.top),headerTop:Math.round(header.top)};})()");
+   assert.equal(makerMeta.flagTag,'IMG','The flag must be a real picture, not a Unicode character');
+   assert.equal(makerMeta.flagSrc,'./flags/us.svg');
+   assert.equal(makerMeta.flagAlt,'アメリカの国旗');
+   assert.ok(makerMeta.flagPixels>0,'The SVG flag image must be decoded by Chrome');
+   assert.equal(makerMeta.flagText,'','No emoji flag text should appear');
    assert.equal(makerMeta.name,'Remington Arms');
    assert.equal(makerMeta.country,'アメリカ');
    assert.equal(makerMeta.visible,true);
@@ -259,13 +264,16 @@ async function run(){
    assert.equal(customMaker.maker,'テスト製造会社');
    assert.equal(customMaker.country,'JP');
    await evaluate("document.querySelector('[data-group=revolver]').click();const input=document.querySelector('#filterInput');input.value='テスト・モデル';input.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#flipBtn').click()");
-   assert.equal(await evaluate("document.querySelector('#backCountryFlag').textContent"),'🇯🇵',
-     'Edited custom gun uses its own country flag');
+   await until(()=>evaluate("document.querySelector('#backCountryFlag')?.getAttribute('src')==='./flags/jp.svg' && document.querySelector('#backCountryFlag').naturalWidth>0"),
+     'edited custom gun Japanese flag SVG image loads');
+   assert.equal(await evaluate("document.querySelector('#backCountryFlag').getAttribute('src')"),'./flags/jp.svg',
+     'The selected country must load the corresponding local SVG image');
+   assert.equal(await evaluate("document.querySelector('#backCountryFlag').alt"),'日本の国旗');
    assert.equal(await evaluate("document.querySelector('#backMakerCompany').textContent"),'テスト製造会社',
      'Edited custom gun shows the saved manufacturer at top left');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: 35 maker flags, upper-left Remington manufacturer, editable custom country, stable photo refs and invention order');
+   console.log('PASS browser guns: real local US and Japan SVG flag images, no emoji flags, editable custom maker, all registered photos intact');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
