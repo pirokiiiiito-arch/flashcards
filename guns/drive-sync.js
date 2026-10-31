@@ -10,7 +10,7 @@ await deck.ready;
 const cardKey=c=>'card:'+c.id;
 const imageKey=(c,i)=>'image:'+c.id+':'+i;
 const clean=c=>({id:c.id,name:c.name,name_en:c.name_en||'',category:c.category,description:c.description,
-  search:c.search,source:c.source||'user'});
+  maker:c.maker||'',country:c.country||'',search:c.search,source:c.source||'user'});
 const isDevice=v=>/^(idb:gunimg:|data:image\/|blob:)/.test(String(v||''));
 let sync=null,copyTimer=null,busy=false,delay=30000,nextRetry=0;
 const photoQueue=new Map(),POLL_MS=15000;
