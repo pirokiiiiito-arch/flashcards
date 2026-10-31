@@ -1,9 +1,9 @@
 /* Offline shell for the firearm reference cards. No image blobs or OAuth responses cached publicly. */
-const CACHE='gun-flashcards-static-v13';
+const CACHE='gun-flashcards-static-v14';
 const STATIC=[
- './','./index.html','./style.css?v=12','./data.js?v=4','./app.js?v=7',
+ './','./index.html','./style.css?v=13','./data.js?v=5','./app.js?v=8',
  './manifest.webmanifest','./drive-transfer-core.js?v=1','./image-copy.js?v=1',
- './drive-sync.js?v=1','../drive-config.js?v=3','../persistent-drive-auth.js?v=1'
+ './drive-sync.js?v=2','../drive-config.js?v=3','../persistent-drive-auth.js?v=1'
 ];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(STATIC)).then(()=>self.skipWaiting()));
