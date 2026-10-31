@@ -259,6 +259,17 @@ test('English Google image search is above the pictures and each picture support
  assert.ok(css.includes(".photo-slot-actions{display:flex;flex-wrap:wrap"));
  assert.ok(css.includes('.photo-frame[contenteditable="true"]'));
 });
+test('non-editable gun card titles never display a blinking text caret while image paste still works',()=>{
+ const css=read('style.css'),html=read('index.html'),app=read('app.js');
+ assert.ok(css.includes('/* Gun card read-only caret guard v16'));
+ assert.match(css,/#flashCard,\s*#flashCard \*\{\s*caret-color:transparent!important;/);
+ assert.match(css,/#flashCard #frontName,\s*#flashCard #backName\{\s*-webkit-user-select:none;\s*user-select:none;\s*cursor:default;/);
+ assert.ok(html.includes('id="backName"'),'The read-only title should keep its original text');
+ assert.ok(html.includes('id="frontName"'),'The normal front title remains unchanged');
+ assert.ok(app.includes("frame.contentEditable='true'"),'Paste into photos is still supported');
+ assert.ok(app.includes("frame.addEventListener('paste'"),'Clipboard images still land in a photo slot');
+ assert.ok(html.includes('id="editorDialog"'),'Actual editable form inputs remain outside the read-only card');
+});
 test('moving Drive progress inside a collapsed details panel prevents top-layout jitter',()=>{
  const html=read('index.html'),css=read('style.css');
  assert.ok(html.includes('<details class="sync-strip" id="syncDetails">'));
@@ -297,12 +308,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v15'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v16'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=14'));
- assert.ok(sw.includes('./style.css?v=14'));
+ assert.ok(html.includes('./style.css?v=15'));
+ assert.ok(sw.includes('./style.css?v=15'));
  assert.ok(html.includes('./data.js?v=6'));
  assert.ok(html.includes('./app.js?v=9'));
  assert.ok(sw.includes('./data.js?v=6'));
