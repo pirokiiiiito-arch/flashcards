@@ -16,9 +16,19 @@ protected=['drive-core.js','drive-config.js','drive-sync.js','index.html','word-
 before={p:sha(p) for p in protected}
 # Separate derived core: no change to word/color behavior or persisted schema.
 s=read('drive-core.js')
-s=one(s,'        const id = input.value.trim();',"""        // Plant-only broker: receive the existing authorized token even when the old OAuth dialog has never opened.
+# Newer shared cores already resolve the configured client ID before the dialog
+# opens. Accept that equivalent authorization-safe expression as-is; only older
+# shared cores need the original plant-only bridge substitution.
+old_auth='        const id = input.value.trim();'
+current_auth='        const id = input.value.trim() || configured();'
+if old_auth in s:
+    s=one(s,old_auth,"""        // Plant-only broker: receive the existing authorized token even when the old OAuth dialog has never opened.
         // No credentials, user photos or private storage are modified here.
         const id = (root.FLASHCARDS_DRIVE_CONFIG?.clientId || input.value || localStorage.getItem(CLIENT_KEY) || '').trim();""")
+elif current_auth in s and 'const configured = () => root.FLASHCARDS_DRIVE_CONFIG?.clientId || localStorage.getItem(CLIENT_KEY)' in s:
+    pass # Already configured upstream; do not alter the live word/color auth.
+else:
+    raise RuntimeError('Plant broker authorization source changed unexpectedly')
 s=one(s,'    let localSnapshot = {};',"    let localSnapshot = {};\n    const deferredPhotoKeys = new Set();\n    const deferPhoto = e => e?.plantPhotoDeferred === true && !e.auth;")
 s=one(s,'        if (!deleted) value = await cfg.toCloudValue(key, value, api);',"""        if (!deleted) {
           try { value = await cfg.toCloudValue(key, value, api); }
