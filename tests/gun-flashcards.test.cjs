@@ -103,6 +103,10 @@ test('vertical categories and root-sized bilingual word card with plant-style ph
  const plants=fs.readFileSync('plants/index.html','utf8');
  assert.ok(css.includes('width:min(90%,420px);margin:0 auto'),'Category container must be centered');
  assert.ok(css.includes('justify-items:center'),'Every category tile must center its visible labels');
+ assert.ok(css.includes('grid-template-rows:minmax(max-content,1fr) auto minmax(max-content,1fr)'),'The Japanese category name must be exactly between balanced upper and lower tracks');
+ assert.ok(css.includes('.tile-index{grid-column:1;grid-row:1;align-self:start'),'English classification stays above');
+ assert.ok(css.includes('.tile-name{grid-column:1;grid-row:2;align-self:center'),'The Japanese title is vertically centered');
+ assert.ok(css.includes('.tile-bottom{grid-column:1;grid-row:3;align-self:end'),'The model count stays below');
  assert.ok(css.includes('min-height:72px'),'Desktop tiles should be compact');
  assert.ok(css.includes('min-height:68px'),'Small mobile tiles should be compact');
  assert.ok(css.includes('text-align:center;border:1px solid var(--stroke)'),'Category name must be centered');
@@ -200,12 +204,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v11'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v12'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=11'));
- assert.ok(sw.includes('./style.css?v=11'));
+ assert.ok(html.includes('./style.css?v=12'));
+ assert.ok(sw.includes('./style.css?v=12'));
  assert.ok(html.includes('./data.js?v=3'));
  assert.ok(html.includes('./app.js?v=7'));
  assert.ok(sw.includes('./data.js?v=3'));
