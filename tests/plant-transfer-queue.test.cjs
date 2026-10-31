@@ -67,6 +67,30 @@ test('focused card image references can be requeued without bulk-resending the w
  assert.ok(syncText.includes('setTimeout(() => publishVisibleCardImages().catch(() => {}), 60000)'));
 });
 test('only the plant editor selects the specialized queue core',()=>{
- for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('./drive-transfer-core.js?v=queue1'));assert.ok(s.includes('./drive-sync.js?v=queue1')||s.includes('./drive-sync.js?v=authsettled10'));}
+ for(const p of ['plants/index.html','plants/plant-sync-v2.html']){const s=fs.readFileSync(p,'utf8');assert.ok(s.includes('./drive-transfer-core.js?v=queue2'));assert.ok(s.includes('./drive-sync.js?v=queue1')||s.includes('./drive-sync.js?v=authsettled11'));}
  const report=JSON.parse(fs.readFileSync('plants/transfer-queue-build.json','utf8'));for(const [p,hash] of Object.entries(report.protected_sha256))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex'),hash,p);
+});
+
+test('plant broker auto-binds an already connected token on startup without opening legacy OAuth dialog',async()=>{
+ const start=source.indexOf('    async function prepareAuth() {'),end=source.indexOf('    function open() {',start);
+ assert.ok(start>=0&&end>start,'derived plant token initialization must be present');
+ const scope='https://www.googleapis.com/auth/drive.appdata',publicId='test-public.apps.googleusercontent.com';
+ let registered=0,applied=0,synced=0;const statuses=[];
+ const c={root:{FLASHCARDS_DRIVE_CONFIG:{clientId:publicId},PersistentDriveAuth:{
+   initTokenClient(options){registered++;queueMicrotask(()=>options.callback({access_token:'synthetic-token',expires_in:3600,scope}));return {requestAccessToken(){}};},
+   hasGrantedAllScopes:(response,wanted)=>response.scope===wanted}},
+  connect:{disabled:true},input:{value:''},CLIENT_KEY:'test-client-key',loadGIS:async()=>{},
+  localStorage:{getItem:()=>'',setItem:(key,value)=>{assert.equal(value,publicId)}},
+  SCOPE:scope,token:'',expires:0,expiryTimer:0,clearTimeout:()=>{},setTimeout:()=>1,Date,
+  cfg:{enablePrimary:async()=>{applied++}},setStatus:(value)=>statuses.push(value),
+  sync:async()=>{synced++},error:e=>{throw e},Promise};
+ vm.createContext(c);vm.runInContext(source.slice(start,end),c);
+ await vm.runInContext('prepareAuth()',c);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(registered,1);
+ assert.equal(c.connect.disabled,false);
+ assert.equal(c.token,'synthetic-token');
+ assert.equal(applied,1);
+ assert.equal(synced,1);
+ assert.ok(statuses.includes('接続済み'));
 });
