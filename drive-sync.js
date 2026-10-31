@@ -8,7 +8,15 @@
   function values(list) { return Object.fromEntries(list.map(c => [key(c), clean(c)])); }
   function timestamps(list) { return Object.fromEntries(list.filter(c => c.updated_at).map(c => [key(c), c.updated_at])); }
   async function read() {
-    for (const c of cards) if (!c.id) c.id = 'legacy-' + await F.digest(c.word + '\u0000' + c.meaning);
+    const used = new Set();
+    let normalized = false;
+    for (const c of cards) {
+      if (!c.id) { c.id = 'legacy-' + await F.digest(c.word + '\u0000' + c.meaning); normalized = true; }
+      // Repeated IDs must not collapse two visible cards to one Drive entry.
+      while (used.has(c.id)) { c.id = crypto.randomUUID(); normalized = true; }
+      used.add(c.id);
+    }
+    if (normalized) localStorage.setItem(KEY, JSON.stringify(cards));
     return values(cards);
   }
   function oldMeta() { try { return JSON.parse(localStorage.getItem('word_gdrive_meta_v2') || '{}'); } catch { return {}; } }
@@ -98,6 +106,7 @@
       return (await networkRecovery()).verifyApplied(view, local);
     }
   };
+  window.WordAutoSyncBuild = '20261031-word-auto3';
   const sync = F.install(cfg); window.WordDriveSync = sync;
   // Pull remote word changes even when this device is only reading. Saving already
   // pushes automatically; this completes the opposite direction (phone -> PC).
