@@ -36,9 +36,27 @@
     return data;
   }
   async function toCloudValue(k, v, api) {
-    if (!k.startsWith('photo:') || !v || v.deleted || !String(v.data_url || '').startsWith('data:image/')) return v;
-    const blob = await (await fetch(v.data_url)).blob();
-    return { ...v, data_url: await api.putBlob(blob), sha256: await api.digest(await blob.arrayBuffer()), mime_type: blob.type, size: blob.size };
+    if (!k.startsWith('photo:') || !v || v.deleted) return v;
+    const source = String(v.data_url || '');
+    if (!/^data:image\//.test(source) && !/^https?:\/\//i.test(source)) return v;
+    try {
+      const response = await fetch(source, { mode: 'cors', cache: 'no-store' });
+      if (!response.ok || response.type === 'opaque') throw Error('写真の取得が制限されました（HTTP ' + response.status + '）。');
+      const blob = await response.blob();
+      if (!blob.size || blob.size > 25 * 1024 * 1024 || !/^image\/(png|jpeg|webp|gif)$/.test(blob.type)) throw Error('写真は25MB以下のPNG・JPEG・WebP・GIFにしてください。');
+      const hash = await api.digest(await blob.arrayBuffer());
+      const ref = await api.putBlob(blob);
+      const downloaded = await api.getBlob(ref, { fresh: true });
+      if (hash !== await api.digest(await downloaded.arrayBuffer())) throw Error('Driveの写真検証に失敗しました。');
+      return { ...v, data_url: ref, sha256: hash, mime_type: blob.type, size: blob.size };
+    } catch (error) {
+      // Unsent private source bytes never enter a shared journal. The
+      // specialized color queue retains the original for a later retry.
+      if (error?.auth) throw error;
+      const retry = Error('写真をDriveへ転送できません。元の手動写真はPC内に保持しています：' + (error?.message || String(error)));
+      retry.colorPhotoDeferred = true;
+      throw retry;
+    }
   }
   const cfg = {
     namespace: 'colors1000-review47', toolbar: '.toolbar .controls', ready,
@@ -76,6 +94,15 @@
         else if (type === 'setting' && settings.includes(id)) prefs[id] = v;
       }
       for (const k of Object.keys(view.deleted || {})) if (k.startsWith('photo:')) photoDeleted.push(k.slice(6));
+      // A device-only edit waiting in the durable queue wins over a pulled
+      // tombstone/older image on this PC. Do not change deletion semantics
+      // for photos the user actually removed.
+      for (const [key, pending] of Object.entries(sync?.pendingValues?.('photo:') || {})) {
+        const id = key.slice(6), local = manualEdits[id];
+        if (!local || local.deleted || !pending || pending.deleted) continue;
+        photos[id] = structuredClone(local);
+        const n = photoDeleted.indexOf(id); if (n >= 0) photoDeleted.splice(n, 1);
+      }
       return { photos: normalizeEdits(photos), photoDeleted, origins: E.validateRecords(origins), study: validateStudyProgress(study), assets, prefs };
     },
     apply: prepared => {
@@ -128,8 +155,125 @@
   };
   const sync = F.install(cfg); window.ColorDriveSync = sync;
   function dataURL(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); }); }
+  // Queue only user-edited photo slots. Built-in review47 assets (940 original
+  // files), origins, learning progress, and card ordering remain unchanged.
+  const photoFingerprint = record => record ? JSON.stringify([
+    String(record.data_url || ''), !!record.deleted,
+    String(record.updated_at || ''), String(record.label || '')
+  ]) : '';
+  const photoSnapshot = () => Object.fromEntries(
+    Object.entries(manualEdits).map(([slot, record]) => [slot, photoFingerprint(record)])
+  );
+  let savedPhotoSnapshot = photoSnapshot(), autoPhotoTimer = null;
+  let autoPhotoBusy = false, autoPhotoRetryAt = 0, autoPhotoDelay = 30000;
+  const autoPhotoPending = new Map();
+  const autoPhotoStatus = document.createElement('p');
+  autoPhotoStatus.id = 'colorAutoPhotoStatus';
+  autoPhotoStatus.setAttribute('role', 'status');
+  autoPhotoStatus.style.cssText = 'width:100%;font-size:12px;white-space:pre-wrap;line-height:1.5';
+  autoPhotoStatus.hidden = true;
+  (document.querySelector('.toolbar .controls') || document.body).append(autoPhotoStatus);
+  const setPhotoStatus = message => {
+    autoPhotoStatus.textContent = message || '';
+    autoPhotoStatus.hidden = !message;
+  };
+  const activePhoto = key => {
+    const v = manualEdits[key.slice(6)];
+    return v && !v.deleted && typeof v.data_url === 'string' && v.data_url ? v : null;
+  };
+  function resumePendingPhotos() {
+    for (const key of sync.pendingKeys?.() || []) {
+      if (!key.startsWith('photo:') || autoPhotoPending.has(key)) continue;
+      const record = activePhoto(key);
+      if (record) autoPhotoPending.set(key, photoFingerprint(record));
+    }
+  }
+  function schedulePhotoRegistration(delay = 750) {
+    if (!autoPhotoPending.size) {
+      clearTimeout(autoPhotoTimer); autoPhotoTimer = null; setPhotoStatus('');
+      return;
+    }
+    if (autoPhotoTimer != null) return;
+    autoPhotoTimer = setTimeout(async () => {
+      autoPhotoTimer = null;
+      if (autoPhotoBusy || cfg.isEditing() || document.visibilityState === 'hidden' || navigator.onLine === false) {
+        schedulePhotoRegistration(15000); return;
+      }
+      if (!sync.valid()) {
+        setPhotoStatus('手動写真の送信を保留しています。Google Driveへ再接続すると自動で再試行します。');
+        schedulePhotoRegistration(30000); return;
+      }
+      autoPhotoBusy = true;
+      const batch = new Map(autoPhotoPending);
+      try {
+        await sync.ready;
+        const keys = [...batch.keys()].filter(key => activePhoto(key) && photoFingerprint(activePhoto(key)) === batch.get(key));
+        if (!keys.length) {
+          for (const key of batch.keys()) if (!activePhoto(key)) autoPhotoPending.delete(key);
+          return;
+        }
+        if (!sync.republish || !sync.pendingKeys) throw Error('写真の自動再送機能を読み込めません。');
+        setPhotoStatus('登録した写真 ' + keys.length + '枠をDriveへ自動送信しています。');
+        // This refreshes actual remote heads without applying remote
+        // tombstones over local PC photos before the new registration.
+        await sync.republish(keys);
+        await sync.sync();
+        if (sync.status().pending && sync.valid()) await sync.sync();
+        const remaining = new Set(sync.pendingKeys());
+        const view = sync.view();
+        for (const key of keys) {
+          const current = activePhoto(key), remote = view.data[key];
+          if (!current || photoFingerprint(current) !== batch.get(key)) continue;
+          if (!remaining.has(key) && remote && /^gdrive:[\\w-]+:[a-f0-9]{64}$/.test(String(remote.data_url || '')) &&
+              current.updated_at === remote.updated_at) autoPhotoPending.delete(key);
+        }
+        autoPhotoDelay = autoPhotoPending.size ? Math.min(300000, autoPhotoDelay * 2) : 30000;
+        setPhotoStatus(autoPhotoPending.size ?
+          '手動写真 ' + autoPhotoPending.size + '枠は送信待ちです。元のPC写真を保持し、自動再試行します。' : '');
+      } catch (e) {
+        autoPhotoDelay = Math.min(300000, autoPhotoDelay * 2);
+        setPhotoStatus('手動写真は端末に保持しています。Drive自動同期は再試行待ちです：' + (e?.message || String(e)));
+      } finally {
+        autoPhotoBusy = false;
+        autoPhotoRetryAt = Date.now() + autoPhotoDelay;
+        if (autoPhotoPending.size) schedulePhotoRegistration(autoPhotoDelay);
+      }
+    }, Math.max(0, delay, autoPhotoRetryAt - Date.now()));
+  }
+  readyImages.then(() => { savedPhotoSnapshot = photoSnapshot(); }).catch(() => {});
+  sync.ready.then(() => { resumePendingPhotos(); schedulePhotoRegistration(1000); }).catch(() => {});
   const oldPersist = persistEdits;
-  persistEdits = async function () { const r = await oldPersist.apply(this, arguments); if(!window.__COLOR_RESTORE_IMPORT_ACTIVE) sync.changed(); return r; };
+  persistEdits = async function () {
+    const applying = sync.applying || !!window.__COLOR_RESTORE_IMPORT_ACTIVE;
+    const r = await oldPersist.apply(this, arguments);
+    if (window.__COLOR_RESTORE_IMPORT_ACTIVE) return r;
+    const next = photoSnapshot();
+    if (!applying) for (const [slot, fingerprint] of Object.entries(next)) {
+      if (fingerprint === savedPhotoSnapshot[slot]) continue;
+      const key = 'photo:' + slot;
+      if (activePhoto(key)) autoPhotoPending.set(key, fingerprint);
+      else autoPhotoPending.delete(key);
+    }
+    for (const slot of Object.keys(savedPhotoSnapshot))
+      if (!(slot in next)) autoPhotoPending.delete('photo:' + slot);
+    savedPhotoSnapshot = next;
+    sync.changed();
+    if (autoPhotoPending.size) {
+      autoPhotoRetryAt = 0;
+      schedulePhotoRegistration(750);
+    } else if (sync.valid()) queueMicrotask(() => sync.sync().catch(() => {}));
+    return r;
+  };
+  window.addEventListener('online', () => { resumePendingPhotos(); schedulePhotoRegistration(250); });
+  window.addEventListener('focus', () => { resumePendingPhotos(); schedulePhotoRegistration(500); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { resumePendingPhotos(); schedulePhotoRegistration(500); }
+  });
+  setInterval(() => { resumePendingPhotos(); schedulePhotoRegistration(1000); }, 15000);
+  window.ColorPhotoAutoStatus = Object.freeze({
+    pending: () => [...autoPhotoPending.keys()],
+    snapshot: () => ({ queued: autoPhotoPending.size, message: autoPhotoStatus.textContent, connected: sync.valid() })
+  });
   const oldMark = mark;
   mark = function () { const r = oldMark.apply(this, arguments); sync.changed(); return r; };
   const oldRender = render;
