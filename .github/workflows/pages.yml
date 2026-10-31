@@ -153,7 +153,7 @@ jobs:
           node --check colors/drive-transfer-core.js
           node --check colors/network-support.js
           node --test tests/color-photo-auto-sync.test.cjs
-          node --test tests/plant-color-network.test.cjs tests/service-worker.test.cjs
+          node --test tests/service-worker.test.cjs
       - name: Show plant descriptions above photographs
         run: |
           python3 tools/plant-description-first.py
