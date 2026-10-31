@@ -56,11 +56,11 @@ test('all 35 firearms carry a representative manufacturer and a valid present-da
  assert.equal(C.SEEDS.length,35);
  assert.equal(C.SEEDS[0].maker,'Remington Arms');
  assert.equal(C.SEEDS[0].country,'US');
- assert.equal(C.COUNTRIES.US.flag,'🇺🇸');
+ assert.equal(C.COUNTRIES.US.image,'./flags/us.svg');
  assert.equal(C.SEEDS.find(c=>c.name_en==='Browning Auto-5').country,'BE');
  for(const card of C.SEEDS){
    assert.ok(card.maker.length>3,card.id+' is missing representative manufacturer');
-   assert.ok(C.COUNTRIES[card.country]?.flag,card.id+' is missing the flag of its representative maker');
+   assert.ok(C.COUNTRIES[card.country]?.image,card.id+' is missing its flag image');
    assert.deepEqual(card.images,['','',''],card.id+' starting photos must stay empty');
  }
  const original=C.SEEDS[0];
@@ -82,6 +82,23 @@ test('all 35 firearms carry a representative manufacturer and a valid present-da
  assert.equal(cleared.maker,'','Intentionally blank maker must not be replaced by a default');
  assert.equal(cleared.country,'');
  assert.equal(C.sanitizeCard({...migrated,country:'XX'}).country,'');
+});
+test('all 13 locally bundled SVG country flags are offline-readable image files, not Unicode emoji',()=>{
+ const worker=read('service-worker.js');
+ const countries=Object.values(C.COUNTRIES);
+ assert.equal(countries.length,13);
+ for(const country of countries){
+   assert.match(country.image,/^\.\/flags\/[a-z]{2}\.svg$/);
+   const filename='guns/'+country.image.slice(2);
+   assert.ok(fs.existsSync(filename),'Missing actual flag image: '+filename);
+   const picture=fs.readFileSync(filename,'utf8');
+   assert.match(picture,/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="/);
+   assert.ok(picture.includes('<title>'),'SVG image needs a human-readable label: '+filename);
+   assert.ok(!/<script\b/i.test(picture),'Local flag image cannot contain script');
+   assert.ok(worker.includes("'"+country.image+"'"),'SW must cache flag image for offline use: '+country.image);
+ }
+ assert.ok(!Object.values(C.COUNTRIES).some(c=>Object.prototype.hasOwnProperty.call(c,'flag')),
+   'No country definition should rely on a text/emoji flag');
 });
 test('user entries remain separately editable and allow only expected image references',()=>{
  const extra={id:'gun-custom-abc123',name:'My historical example',category:'revolver',
@@ -127,13 +144,17 @@ test('front contains only katakana and a small English model label; back keeps d
  assert.ok(app.includes("$('frontEnglish').hidden=!card.name_en"));
  assert.match(html,/id="editEnglishName"/);
  assert.match(html,/id="backMakerMeta" class="back-maker-meta" hidden/);
- assert.match(html,/id="backCountryFlag"/);
+ assert.match(html,/<img id="backCountryFlag" class="back-country-flag" width="36" height="24" alt="" decoding="async" hidden>/);
  assert.match(html,/id="backMakerCompany"/);
  assert.match(html,/id="backMakerCountry"/);
  assert.match(html,/id="editMaker"/);
  assert.match(html,/id="editMakerCountry"/);
  assert.ok(app.includes("$('backMakerMeta').hidden=!view.flipped"));
- assert.ok(app.includes("$('backCountryFlag').textContent=country?.flag||''"));
+ assert.ok(app.includes("const flagImage=$('backCountryFlag')"));
+ assert.ok(app.includes("flagImage.setAttribute('src',country.image)"));
+ assert.ok(app.includes("flagImage.alt=country.ja+'の国旗'"));
+ assert.ok(app.includes("option.textContent=info.ja;makerCountry.append(option)"));
+ assert.ok(!app.includes("option.textContent=info.flag"),'Country picker should not render text-emoji flags');
  assert.ok(app.includes("$('backMakerCompany').textContent=card.maker||'製造会社未登録'"));
  assert.ok(app.includes("$('editMaker').value=editorCard.maker||''"));
  assert.ok(app.includes("$('editMakerCountry').value=editorCard.country||''"));
@@ -203,6 +224,7 @@ test('vertical categories and root-sized bilingual word card with plant-style ph
  assert.ok(css.includes('.navigation>#shuffleBtn{background:#2d9d58'),'Normal mode remains green');
  assert.ok(css.includes('.card-chrome{position:absolute;top:19px'),'In-card controls stay inside the smaller frame');
  assert.ok(css.includes('.back-maker-meta{display:flex;align-items:center;gap:9px'),'Maker and country flag appear together in the top-left chrome');
+ assert.ok(css.includes('.back-country-flag{display:block;width:36px;height:24px;object-fit:contain'),'The flag should be an actual thumbnail image, not an emoji font');
  assert.ok(css.includes('.card-number.counter{position:absolute;right:25px;top:69px'),'Card counter fits smaller frame');
  assert.ok(css.includes('#flashCard,#flashCard.front-compact{min-height:320px;border-radius:21px'),'Mobile frame must be proportional');
  assert.ok(read('app.js').includes("classList.remove('front-compact')"),'Both sides must have equal width');
@@ -275,16 +297,16 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v14'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v15'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=13'));
- assert.ok(sw.includes('./style.css?v=13'));
- assert.ok(html.includes('./data.js?v=5'));
- assert.ok(html.includes('./app.js?v=8'));
- assert.ok(sw.includes('./data.js?v=5'));
- assert.ok(sw.includes('./app.js?v=8'));
+ assert.ok(html.includes('./style.css?v=14'));
+ assert.ok(sw.includes('./style.css?v=14'));
+ assert.ok(html.includes('./data.js?v=6'));
+ assert.ok(html.includes('./app.js?v=9'));
+ assert.ok(sw.includes('./data.js?v=6'));
+ assert.ok(sw.includes('./app.js?v=9'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
