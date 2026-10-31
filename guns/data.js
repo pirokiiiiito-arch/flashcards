@@ -1,17 +1,22 @@
 /* Educational firearm-name cards. No images or private user content are bundled. */
 (function(root) {
   'use strict';
+  // Approximate historical emergence of each ACTION / firearm type, oldest
+  // first; NOT the release dates of the 35 individual starter models.
+  // Historical boundaries are approximate (e.g. manually cranked vs.
+  // fully automatic machine guns). Stable IDs and the ITEMS order below must
+  // never be sorted, or existing users' photo references would be affected.
   const CATEGORIES = Object.freeze([
-    {id:'shotgun',ja:'ショットガン',en:'shotgun'},
-    {id:'revolver',ja:'リボルバー',en:'revolver'},
-    {id:'pistol',ja:'自動拳銃',en:'semi automatic pistol'},
-    {id:'bolt',ja:'ボルトアクションライフル',en:'bolt action rifle'},
-    {id:'semi-rifle',ja:'半自動ライフル',en:'semi automatic rifle'},
-    {id:'lever',ja:'レバーアクションライフル',en:'lever action rifle'},
-    {id:'assault',ja:'アサルトライフル',en:'assault rifle'},
-    {id:'smg',ja:'サブマシンガン',en:'submachine gun'},
-    {id:'machine-gun',ja:'機関銃',en:'machine gun'},
-    {id:'other',ja:'その他・未分類',en:'firearm'}
+    {id:'shotgun',ja:'ショットガン',en:'shotgun'},                     // early smoothbore shot-firing arms
+    {id:'revolver',ja:'リボルバー',en:'revolver'},                   // early 1800s
+    {id:'bolt',ja:'ボルトアクションライフル',en:'bolt action rifle'}, // 1820s-1840s
+    {id:'lever',ja:'レバーアクションライフル',en:'lever action rifle'},// mid 1800s
+    {id:'machine-gun',ja:'機関銃',en:'machine gun'},                // 1860s onward; automatic late 1800s
+    {id:'semi-rifle',ja:'半自動ライフル',en:'semi automatic rifle'}, // 1880s
+    {id:'pistol',ja:'自動拳銃',en:'semi automatic pistol'},          // 1890s
+    {id:'smg',ja:'サブマシンガン',en:'submachine gun'},              // 1910s
+    {id:'assault',ja:'アサルトライフル',en:'assault rifle'},          // 1940s, conventional category
+    {id:'other',ja:'その他・未分類',en:'firearm'}                    // always last, unsorted
   ]);
   const ITEMS = [
     ['shotgun','Remington Model 870','米国で1950年に登場したポンプアクション式ショットガン。幅広い用途で知られる代表的なモデル。','レミントン・モデル870'],
