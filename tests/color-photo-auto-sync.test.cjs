@@ -71,7 +71,7 @@ function rig({initial={},offline=false,connected=true,remoteFail=false,pending=[
   };
   return {
     ctx,manualEdits,sync,remoteData,events,flush,tick,timers,statusEl,republished,errors,
-    get counts(){return {saves,changed,syncs,queued:ctx.ColorPhotoAutoStatus.pending(),timer:timers.size}},
+    get counts(){return {saves,changed,syncs,queued:ctx.window.ColorPhotoAutoStatus.pending(),timer:timers.size}},
     connect:()=>{connected=true;offline=false;ctx.navigator.onLine=true;events.online?.();},
     fail:value=>{remoteFail=value;}
   };
@@ -128,6 +128,7 @@ test('durable pending photo registration resumes on reload without user resaving
 test('a newer replacement or a deletion is never acknowledged by an older in-flight send',async()=>{
  const r=rig();await r.flush();
  r.manualEdits[slot]=photo();await r.ctx.persistEdits();
+ r.sync.sync=async()=>{};
  r.sync.republish=async(keys)=>{
    r.republished.push(...keys);
    r.manualEdits[slot]=photo('data:image/png;base64,bmV3','2026-10-31T11:00:00.000Z');
