@@ -32,6 +32,8 @@
       p.textContent = n && cards.length ? 'ネット同期 v2：同期完了\n端末 ' + cards.length + '件 ／ Drive ' + n + '件' : 'ネット同期 v2：単語0件・復旧未完了';
     } else if (p && status === '同期エラー') p.textContent = 'ネット同期 v2：未完了\n' + message;
   }
+  let migrationUnavailable = false;
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o || {}, k);
   const cfg = {
     namespace: 'word-flashcards', toolbar: '.topbar', primary: wordDrivePrimary,
     storageKeys: [KEY], reload: () => { if (!editing) { cards = loadCards(); rebuildOrder(); render(); } },
@@ -51,7 +53,32 @@
       for (const c of list) if (!c.id) c.id = known.get(c.word + '\u0000' + c.meaning) || 'legacy-' + await F.digest(c.word + '\u0000' + c.meaning);
       return { data: values(list), timestamps: { ...timestamps(list), ...Object.fromEntries(Object.entries(raw.updated || {}).map(([k, v]) => ['card:' + k, v])) }, deleted: Object.fromEntries(Object.entries(raw.deleted || {}).map(([k, v]) => ['card:' + k, v])) };
     } }],
-    migrate: async (api, view) => (await networkRecovery()).prepare(api, view, await read()),
+    migrate: async (api, view) => {
+      migrationUnavailable = false;
+      try { return await (await networkRecovery()).prepare(api, view, await read()); }
+      catch (e) {
+        // Historical recovery must not block ordinary sync after a transient error.
+        // Keep account mismatches, permissions and integrity errors blocking.
+        const message = String(e?.message || e);
+        const hasCards = Object.keys(view.data || {}).some(k => k.startsWith('card:'))
+          || Object.keys(await read()).some(k => k.startsWith('card:'));
+        if (!hasCards || e?.auth || [400, 401, 403, 409, 422].includes(Number(e?.status))
+          || /(アカウント|認証|権限|許可|一致|形式|検証|不正)/.test(message)) throw e;
+        migrationUnavailable = true;
+        console.warn('Historical word recovery will be retried; normal Drive sync continues:', message);
+        return null;
+      }
+    },
+    repair: async (_api, view) => {
+      const current = await read(), data = {}, times = {};
+      for (const [k, card] of Object.entries(current)) {
+        // Never resurrect a deletion or overwrite a remote edit.
+        if (!k.startsWith('card:') || own(view.data, k) || own(view.deleted, k)) continue;
+        data[k] = card;
+        if (card.updated_at) times[k] = card.updated_at;
+      }
+      return Object.keys(data).length ? { data, timestamps: times } : null;
+    },
     prepareApply: async view => Object.entries(view.data).filter(([k]) => k.startsWith('card:')).map(([, c]) => c).sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)),
     apply: list => {
       const id = cards[currentIndex()]?.id, back = !!stage.querySelector('.show-back'), shuffled = isShuffled, oldOrder = order.map(i => cards[i]?.id);
@@ -61,7 +88,15 @@
       const at = order.findIndex(i => cards[i]?.id === id); if (at >= 0) pos = at;
       render(); if (back) stage.querySelector('.card')?.classList.add('show-back'); updateSyncUI();
     },
-    afterSync: async view => (await networkRecovery()).verifyApplied(view, await read())
+    afterSync: async view => {
+      const local = await read();
+      if (migrationUnavailable) {
+        if (Object.keys(view.data || {}).some(k => k.startsWith('card:') && !own(local, k)))
+          throw Error('Driveの単語が端末に反映されていません。次の自動同期で再試行します。');
+        return;
+      }
+      return (await networkRecovery()).verifyApplied(view, local);
+    }
   };
   const sync = F.install(cfg); window.WordDriveSync = sync;
   // Pull remote word changes even when this device is only reading. Saving already
@@ -72,10 +107,19 @@
   };
   window.setInterval(pullRemote, 15000);
   window.addEventListener('pageshow', pullRemote);
+  window.addEventListener('focus', pullRemote);
   window.addEventListener('online', pullRemote);
+  document.addEventListener('visibilitychange', pullRemote);
   window.WordNetworkBuild = '20261028-network2';
   const originalSave = saveCards;
-  saveCards = function () { for (const c of cards) if (!c.id) c.id = crypto.randomUUID(); const out = originalSave(); sync.changed(); return out; };
+  saveCards = function () {
+    for (const c of cards) if (!c.id) c.id = crypto.randomUUID();
+    const out = originalSave();
+    sync.changed(); // durable local queue, including while offline
+    // Upload immediately before a phone page is backgrounded.
+    if (!sync.applying && sync.valid()) queueMicrotask(() => sync.sync().catch(() => {}));
+    return out;
+  };
   const toolbar = document.querySelector('.topbar') || document.body;
   const build = document.createElement('p'); build.id = 'wordNetworkBuild'; build.textContent = 'ネット同期 修正版2'; build.style.cssText = 'width:100%;margin:4px 0;font-size:13px'; toolbar.appendChild(build);
   const online = document.createElement('button'); online.type = 'button'; online.className = 'btn';
