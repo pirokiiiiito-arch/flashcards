@@ -121,6 +121,7 @@ test('vertical categories and root-sized bilingual word card with plant-style ph
  assert.ok(word.includes('.wrap{width:min(820px,calc(100% - 24px))'),'Word app uses an 820px outer width');
  assert.ok(word.includes('.card{width:min(670px,100%);height:360px'),'Word app uses a 670px x 360px card');
  assert.ok(css.includes('.app-shell{width:min(820px,calc(100% - 24px))'),'Gun shell must match root 820px footprint');
+ assert.ok(css.includes('.deck-top{width:min(670px,100%);max-width:670px;margin:4px auto 10px'),'Category controls must align with card and navigation left/right corners');
  assert.ok(css.includes('#flashCard,#flashCard.front-compact{position:relative;width:min(670px,100%);max-width:670px;min-height:360px'),'Both gun faces must match root 670px x 360px footprint');
  assert.ok(css.includes('#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px'),'Front must center bilingual names within the root-size card');
  assert.ok(css.includes('#cardBack{min-height:360px;padding:106px 23px 24px'),'Back must use the same outer width and grow for three photographs');
@@ -199,12 +200,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v10'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v11'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=10'));
- assert.ok(sw.includes('./style.css?v=10'));
+ assert.ok(html.includes('./style.css?v=11'));
+ assert.ok(sw.includes('./style.css?v=11'));
  assert.ok(html.includes('./data.js?v=3'));
  assert.ok(html.includes('./app.js?v=7'));
  assert.ok(sw.includes('./data.js?v=3'));
