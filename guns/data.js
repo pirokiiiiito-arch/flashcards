@@ -119,7 +119,7 @@
   const CATALOG_TARGET=2000;
   function modelIdentity(category,english){
     return category+'|'+String(english).normalize('NFKC').toLowerCase()
-      .replace(/[–—]/g,'-').replace(/\\s+/g,' ').trim();
+      .replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
   }
   function extendedId(category,english){
     const identity=modelIdentity(category,english);
