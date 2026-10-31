@@ -152,6 +152,10 @@ async function run(){
    assert.equal(desktopFront.compact,false,'Word-card front must not use the old compact frame');
    assert.ok(desktopFront.width>=650&&desktopFront.width<=675&&desktopFront.height>=355&&desktopFront.height<=385,'Front must use the native 670px×360px word-card footprint: '+JSON.stringify(desktopFront));
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),true);
+   const frontCaret=await evaluate("(()=>{const el=document.querySelector('#frontName'),card=document.querySelector('#flashCard');return {caret:getComputedStyle(el).caretColor,select:getComputedStyle(el).userSelect,cardCaret:getComputedStyle(card).caretColor};})()");
+   assert.ok(/^(?:transparent|rgba\\(0,\\s*0,\\s*0,\\s*0\\))$/i.test(frontCaret.caret),
+     'The gun name must never display a blinking caret: '+JSON.stringify(frontCaret));
+   assert.equal(frontCaret.select,'none','Read-only name should not become an insertion target');
    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
    const mobileCorners=await evaluate("(()=>{const bar=document.querySelector('.deck-top').getBoundingClientRect(),nav=document.querySelector('.navigation').getBoundingClientRect(),card=document.querySelector('#flashCard').getBoundingClientRect(),back=document.querySelector('#homeBtn').getBoundingClientRect(),filter=document.querySelector('.deck-filter-details>summary').getBoundingClientRect();return {barWidth:bar.width,navWidth:nav.width,backLeft:Math.abs(back.left-card.left),filterRight:Math.abs(filter.right-card.right),barNavLeft:Math.abs(bar.left-nav.left),barNavRight:Math.abs(bar.right-nav.right)};})()");
    assert.ok(mobileCorners.backLeft<2&&mobileCorners.filterRight<2&&mobileCorners.barNavLeft<2&&mobileCorners.barNavRight<2,
@@ -163,6 +167,10 @@ async function run(){
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
+   const backCarets=await evaluate("(()=>{const names=['#backName','#backDescription','#backMakerCompany','#flashCard'];return Object.fromEntries(names.map(selector=>[selector,getComputedStyle(document.querySelector(selector)).caretColor]));})()");
+   for(const [name,color] of Object.entries(backCarets))
+     assert.ok(/^(?:transparent|rgba\\(0,\\s*0,\\s*0,\\s*0\\))$/i.test(color),
+       name+' must not show a blinking text caret: '+JSON.stringify(backCarets));
    await until(()=>evaluate("document.querySelector('#backCountryFlag')?.naturalWidth>0"),'real US flag SVG image renders');
    const makerMeta=await evaluate("(()=>{const flag=document.querySelector('#backCountryFlag'),name=document.querySelector('#backMakerCompany'),country=document.querySelector('#backMakerCountry'),meta=document.querySelector('#backMakerMeta'),card=document.querySelector('#flashCard').getBoundingClientRect(),header=document.querySelector('.card-chrome').getBoundingClientRect(),buttons=document.querySelector('.card-actions').getBoundingClientRect(),box=meta.getBoundingClientRect();return {flagTag:flag.tagName,flagSrc:flag.getAttribute('src'),flagAlt:flag.alt,flagPixels:flag.naturalWidth,flagText:flag.textContent,name:name.textContent,country:country.textContent,visible:!meta.hidden,faceHidden:document.querySelector('#faceLabel').hidden,inside:box.left>=card.left&&box.right<=card.right&&box.top>=card.top&&box.bottom<card.bottom,notOverlapping:box.right<=buttons.left+1,metaTop:Math.round(box.top),headerTop:Math.round(header.top)};})()");
    assert.equal(makerMeta.flagTag,'IMG','The flag must be a real picture, not a Unicode character');
@@ -192,6 +200,10 @@ async function run(){
    assert.equal(searchPosition.abovePhotos,true,'Search must be above, not below, three large pictures');
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions').length"),3);
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid [data-paste-slot]').length"),3);
+   const photoCaret=await evaluate("(()=>{const frame=document.querySelector('#photoGrid [data-paste-slot]');return {editable:frame.isContentEditable,caret:getComputedStyle(frame).caretColor};})()");
+   assert.equal(photoCaret.editable,true,'Picture slots must remain editable targets for image paste');
+   assert.ok(/^(?:transparent|rgba\\(0,\\s*0,\\s*0,\\s*0\\))$/i.test(photoCaret.caret),
+     'Paste target caret should also be invisible without interfering with Ctrl+V: '+JSON.stringify(photoCaret));
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions button').length"),3);
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-search button').length"),3);
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions input[type=file]').length"),3);
@@ -273,7 +285,7 @@ async function run(){
      'Edited custom gun shows the saved manufacturer at top left');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: real local US and Japan SVG flag images, no emoji flags, editable custom maker, all registered photos intact');
+   console.log('PASS browser guns: no blinking caret on read-only firearm names, image paste intact, real SVG country flags and saved card data preserved');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
