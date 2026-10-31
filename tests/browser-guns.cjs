@@ -97,11 +97,18 @@ async function run(){
    assert.equal(reference.navAbove,true,'Word-style navigation must be above the card');
    assert.equal(reference.navEqual,true,'Three word-card navigation buttons must have equal widths');
    assert.ok(reference.modeBackground.includes('45, 157, 88')||reference.modeBackground.includes('44, 155, 87'),'Normal mode must be green: '+reference.modeBackground);
-   assert.ok(reference.cardWidth>700&&reference.cardHeight>=500,'Front card must be large like word cards, not narrow: '+JSON.stringify(reference));
+   assert.ok(reference.cardWidth>=650&&reference.cardWidth<=675&&reference.cardHeight>=355&&reference.cardHeight<=385,
+     'Front must match the real root word app ~670×360px, not the oversized mockup: '+JSON.stringify(reference));
    assert.equal(reference.faceLabel,'表・銃名');
    assert.deepEqual(reference.actionLabels,['＋追加','編集','削除']);
    assert.equal(reference.counter,'1 / 4');
    assert.equal(reference.toolbarWithinCard,true,'Add/edit/delete controls must sit inside the white card');
+   const navGeometry=await evaluate("(()=>{const nav=document.querySelector('.navigation'),buttons=[...nav.querySelectorAll('button')],r=nav.getBoundingClientRect();return {width:r.width,height:Math.round(buttons[0].getBoundingClientRect().height),equal:buttons.every(x=>Math.abs(x.getBoundingClientRect().height-buttons[0].getBoundingClientRect().height)<2)}})()");
+   assert.ok(navGeometry.width>=650&&navGeometry.width<=675,'Top buttons should match the real 670px root app navigation: '+JSON.stringify(navGeometry));
+   assert.ok(navGeometry.height>=53&&navGeometry.height<=58&&navGeometry.equal,'Word-app navigation must use compact equal 54px tall buttons');
+   assert.equal(await evaluate("document.querySelector('#syncDetails').open"),false,'Live Drive/image text must be hidden until manually expanded');
+   const syncDimensions=await evaluate("(()=>{const wrapper=document.querySelector('#syncDetails'),summary=wrapper.querySelector('summary'),details=wrapper.querySelector('.sync-content');return {headerHeight:summary.getBoundingClientRect().height,hidden:details.getBoundingClientRect().height===0};})()");
+   assert.ok(syncDimensions.headerHeight<38&&syncDimensions.hidden,'Collapsed sync panel must not jump as photo counts change');
    await evaluate("document.querySelector('#nextBtn').click()");
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'モスバーグ500');
    await evaluate("document.querySelector('#prevBtn').click()");
@@ -114,19 +121,19 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#cardFront').textContent.includes('FIREARM NAME')"),false);
    assert.equal(await evaluate("document.querySelector('#cardFront').textContent.includes('クリック・タップで裏面へ')"),false);
    const frontEnglishSize=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontEnglish')).fontSize)");
-   assert.ok(frontEnglishSize<=22,'The English exact model name must be smaller than the katakana');
+   assert.ok(frontEnglishSize<=18,'The English name must remain a subtle subtitle in the smaller word card');
    const desktopFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
-   assert.ok(desktopFont>=38&&desktopFont<=62,'The main gun name should be large like a word card');
+   assert.ok(desktopFont>=30&&desktopFont<=46,'The gun name must fit the real 670px word-card face');
    assert.ok(desktopFont>frontEnglishSize*1.3,'The katakana product name must remain larger than the English subtitle');
    const desktopFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),rect=card.getBoundingClientRect();return {width:rect.width,height:rect.height,compact:card.classList.contains('front-compact')};})()");
    assert.equal(desktopFront.compact,false,'Word-card front must not use the old compact frame');
-   assert.ok(desktopFront.width>700&&desktopFront.height>=500,'Front card must use the same large card footprint as the word app: '+JSON.stringify(desktopFront));
+   assert.ok(desktopFront.width>=650&&desktopFront.width<=675&&desktopFront.height>=355&&desktopFront.height<=385,'Front must use the native 670px×360px word-card footprint: '+JSON.stringify(desktopFront));
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),true);
    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
    const mobileFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
-   assert.ok(mobileFont>=26&&mobileFont<=40,'Gun name must be readable on mobile');
+   assert.ok(mobileFont>=23&&mobileFont<=35,'Gun name must stay legible in the compact mobile word-card face');
    const mobileFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,viewport:innerWidth};})()");
-   assert.ok(mobileFront.height>=430&&mobileFront.height<=480&&mobileFront.width<mobileFront.viewport,'Word-card front must be large but mobile-friendly: '+JSON.stringify(mobileFront));
+   assert.ok(mobileFront.height>=315&&mobileFront.height<=365&&mobileFront.width<mobileFront.viewport,'Mobile face must match the root app 320px-tall card: '+JSON.stringify(mobileFront));
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
@@ -209,7 +216,7 @@ async function run(){
      'Custom English model name must survive browser restart');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: large word-style bilingual flashcard, equal three-button top nav, green normal mode, in-card actions, mobile and photos intact');
+   console.log('PASS browser guns: exact root-size 670×360 word-card front, 54px nav, 320px mobile, collapsed Drive details, same photos and controls');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
