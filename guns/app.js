@@ -230,14 +230,20 @@ function move(step){
  const list=allFiltered();if(!list.length)return;
  view.index=(view.index+step+list.length)%list.length;view.flipped=false;renderDeck();
 }
+function englishSearchTerm(value){
+ const text=String(value||'').trim();
+ return /[A-Za-z]/.test(text)&&!/[\u3040-\u30ff\u3400-\u9fff]/.test(text);
+}
 function googleQuery(card){
- const category=groups.find(x=>x.id===card.category);
- const base=String(card.search||'').trim()||card.name;
- return base+' '+(category?.en||'firearm')+' images';
+ const query=String(card.search||'').trim();
+ if(englishSearchTerm(query))return query;
+ // Never send a katakana display name as the Google Images query.
+ // Legacy seed cards retain their separate original English model name.
+ return C.SEEDS.find(seed=>seed.id===card.id)?.search||'';
 }
 function englishSearch(query){
  const text=String(query||'').trim();
- if(!/[A-Za-z]/.test(text)){toast('英語の検索キーワードを入力してください。');return;}
+ if(!englishSearchTerm(text)){toast('画像検索用の英語名を入力してください（日本語は検索語に使用しません）。');return;}
  const url='https://www.google.com/search?tbm=isch&q='+encodeURIComponent(text);
  const opened=window.open(url,'_blank','popup=yes,width=1150,height=820');
  if(opened)opened.opener=null;
@@ -291,7 +297,7 @@ function editPhotoSlot(index){
    $('editorMessage').textContent='写真'+(index+1)+'の登録を解除しました。カード保存で確定します。';
  };
  const search=document.createElement('button');search.type='button';search.className='btn light';search.textContent='英語で探す';
- search.onclick=()=>englishSearch($('editSearch').value||$('editName').value+' firearm photos');
+ search.onclick=()=>englishSearch($('editSearch').value);
  controls.append(fileLabel,paste,search,remove);
  const url=document.createElement('input');url.type='url';url.className='url-input';url.placeholder='写真のURLを貼り付け（https://...）';
  url.value=validHttp(photoRefs[index])?photoRefs[index]:'';
@@ -349,7 +355,7 @@ function saveEditor(event){
  if(!editorCard)return;
  const name=$('editName').value.trim(),search=$('editSearch').value.trim();
  if(!name){$('editorMessage').textContent='銃の名前を入力してください。';return;}
- if(!/[A-Za-z]/.test(search)){$('editorMessage').textContent='Google画像検索用の英語名を入力してください。';$('editSearch').focus();return;}
+ if(!englishSearchTerm(search)){$('editorMessage').textContent='Google画像検索用の英語名を入力してください（カタカナは検索欄に入れません）。';$('editSearch').focus();return;}
  const old=cards.find(c=>c.id===editorCard.id);
  const card=C.sanitizeCard({...editorCard,category:$('editCategory').value,name,
    search,description:$('editDescription').value.trim(),images:photoRefs,source:'user'});
@@ -452,7 +458,7 @@ function installListeners(){
  $('closeEditorBtn').onclick=$('cancelEditBtn').onclick=closeEditor;
  $('editorDialog').addEventListener('cancel',e=>{e.preventDefault();closeEditor()});
  $('editorForm').onsubmit=saveEditor;
- $('editGoogleBtn').onclick=()=>englishSearch($('editSearch').value||$('editName').value+' firearm photos');
+ $('editGoogleBtn').onclick=()=>englishSearch($('editSearch').value);
  $('importBtn').onclick=()=>$('importFile').click();
  $('importFile').onchange=e=>{const file=e.target.files?.[0];importBackup(file);e.target.value=''};
  $('backupBtn').onclick=exportBackup;
