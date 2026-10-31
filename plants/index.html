@@ -23,6 +23,7 @@ h1{margin:0;font-size:28px}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap}
 .btn{padding:10px 14px;border-radius:12px;background:#eaf0ec;color:var(--text);font-weight:700}
 .btn.primary{background:var(--green);color:#fff}
+#plantManualReconnectBtn{text-decoration:none;display:inline-block}#plantManualReconnectBtn[hidden]{display:none!important}
 .btn.danger{background:#fff0ef;color:var(--danger)}
 .file{display:none}
 
@@ -103,7 +104,7 @@ h1{margin:0;font-size:28px}
     <button id="importBtn" class="btn">データ読込</button>
     <input id="importFile" class="file" type="file" accept=".json,application/json">
     <button id="excelBtn" class="btn">Excel追加</button>
-    <button id="plantManualReconnectBtn" class="btn" type="button">Google Drive再接続</button>
+    <a id="plantManualReconnectBtn" class="btn" href="./reconnect.html">Google Drive再接続</a>
     <input id="excelFile" class="file" type="file" accept=".xlsx,.xls,.csv">
   </div>
 </header>
@@ -940,19 +941,10 @@ shuffleBtn.onclick=()=>{
   render();
 };
 document.getElementById("addTopBtn").onclick=showDraft;
-// Manual recovery entry: no photo/card mutation. Works when normal sync UI is hidden.
+// A normal link remains usable even when the plant synchronization script stalls.
 const plantManualReconnectBtn=document.getElementById("plantManualReconnectBtn");
 if(window.FLASHCARDS_READONLY_VIEW)plantManualReconnectBtn.hidden=true;
-else{
-  plantManualReconnectBtn.onclick=()=>{
-    if(window.PersistentDriveAuth?.open)window.PersistentDriveAuth.open();
-    else if(window.PlantDriveSync?.open)window.PlantDriveSync.open();
-    else alert("Google Drive接続機能を読み込めません。画面を再読み込みしてください。");
-  };
-  window.addEventListener("load",()=>{
-    if(new URLSearchParams(location.search).get("reconnect")==="1")plantManualReconnectBtn.click();
-  },{once:true});
-}
+else if(new URLSearchParams(location.search).get("reconnect")==="1")location.replace("./reconnect.html");
 
 document.getElementById("exportBtn").onclick=async()=>{
   let exported=[];
