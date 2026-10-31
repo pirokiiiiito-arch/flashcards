@@ -26,6 +26,32 @@ test('gun-card catalogue provides accurate categorized historical starting model
    assert.ok(!c.name_en.endsWith(' photos'),'Product name is not the entire Google search query');
  }
 });
+test('firearm categories follow approximate historical invention order without reassigning model IDs or photo slots',()=>{
+ const order=['shotgun','revolver','bolt','lever','machine-gun','semi-rifle','pistol','smg','assault','other'];
+ assert.deepEqual(C.CATEGORIES.map(c=>c.id),order);
+ assert.deepEqual(C.CATEGORIES.slice(0,9).map(c=>c.ja),[
+  'ショットガン','リボルバー','ボルトアクションライフル',
+  'レバーアクションライフル','機関銃','半自動ライフル',
+  '自動拳銃','サブマシンガン','アサルトライフル'
+ ]);
+ // The 35 model definitions must not be reordered by historical category:
+ // their stable IDs are used by every private photograph reference.
+ assert.deepEqual(C.SEEDS.slice(0,5).map(c=>[c.id,c.category]),[
+  ['gun-0001','shotgun'],['gun-0002','shotgun'],
+  ['gun-0003','shotgun'],['gun-0004','shotgun'],['gun-0005','revolver']
+ ]);
+ assert.deepEqual(C.SEEDS.slice(-3).map(c=>[c.id,c.category]),[
+  ['gun-0033','machine-gun'],['gun-0034','machine-gun'],['gun-0035','machine-gun']
+ ]);
+ const ref='gdrive:photo:'+('c'.repeat(64));
+ const edited={...C.SEEDS[32],description:'ユーザーが編集した説明',
+  images:['idb:gunimg:gun-0033:0:source-photo',ref,'https://example.org/picture.png']};
+ const updated=C.mergeCards([edited]).find(c=>c.id==='gun-0033');
+ assert.equal(updated.description,edited.description);
+ assert.deepEqual(updated.images,edited.images);
+ assert.equal(updated.name,edited.name);
+ assert.equal(updated.category,'machine-gun');
+});
 test('user entries remain separately editable and allow only expected image references',()=>{
  const extra={id:'gun-custom-abc123',name:'My historical example',category:'revolver',
    search:'historical revolver photograph',description:'A user note',
