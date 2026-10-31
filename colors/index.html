@@ -70,12 +70,13 @@ main{max-width:1540px;grid-template-columns:184px minmax(0,1fr);gap:20px;padding
 @media(max-width:650px){.origin-layout{grid-template-columns:1fr;gap:14px}.origin-layout .photo-slot{max-width:100%}.origin-layout .usage-frame{aspect-ratio:16/9}.photo-actions{gap:4px}.photo-actions button,.photo-search a{font-size:10px;padding:6px}.photo-slot h3{font-size:11px}.photo-search{gap:4px}.photo-credit{font-size:9px}.photo-actions .restore{font-size:9px}.usage-grid{gap:8px}.paste-hint{font-size:10px}}
 @media(max-width:650px){.palette-photo-row{max-width:100%;margin-top:18px}.palette-photo-row .usage-frame{aspect-ratio:16/9}.palette-photo-row .photo-slot h3{font-size:12px}}
 
-/* A single button changes order; the visible label always names the active mode. */
-.order-mode-group{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-right:4px}
-.order-current{display:inline-flex;align-items:center;min-height:40px;padding:8px 11px;border:1px solid #cedcec;border-radius:10px;background:#edf3fa;color:#2b4b6d;font-size:13px;font-weight:700}
-.order-current.is-shuffled{background:#f2ebfc;border-color:#d9caef;color:#603e87}
-.order-mode-group .btn{min-width:185px}
-@media(max-width:650px){.order-mode-group{width:100%}.order-mode-group .btn{flex:1;min-width:160px}}
+/* One large order button: green = normal, blue = shuffled. */
+.toolbar.order-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:15px}
+.order-button-row{width:100%;display:flex;justify-content:center}
+#shuffle.order-toggle{display:flex;align-items:center;justify-content:center;width:min(542px,100%);height:135px;padding:12px 24px;border:0;border-radius:40px;background:#2e9d57;color:white;font-size:clamp(29px,4vw,40px);line-height:1.2;font-weight:800;box-shadow:none;flex-shrink:0}
+#shuffle.order-toggle.is-shuffled{background:#2f66e8}
+#shuffle.order-toggle:focus-visible{outline:3px solid #18263c;outline-offset:4px}
+@media(max-width:650px){#shuffle.order-toggle{height:clamp(76px,25vw,135px);border-radius:clamp(25px,8vw,40px);font-size:clamp(27px,8vw,39px)}}
 </style><link rel="stylesheet" href="../auth-only-ui.css?v=persist1"><style id="colors1000-nav-top-style">
 /* Navigation-only update: keep all data, editors and their storage unchanged. */
 #cardNavScrollAnchor{height:0;margin:0;padding:0;scroll-margin-top:0;overflow-anchor:none}
@@ -87,7 +88,7 @@ main{max-width:1540px;grid-template-columns:184px minmax(0,1fr);gap:20px;padding
 </style>
 <style id="munsell-display-style">.color-reference,.color-reference-source{font-size:12px;line-height:1.6;color:var(--muted,#60728b);margin:5px 0 0}.color-appearance code{white-space:nowrap}</style></head><body><header><div><h1>🎨 1000色の色名カード</h1><div class="sub">表：色のみ ／ 裏：色名・名前の由来・5つの画像（由来・実用3分野・配色）</div></div><div class="controls"><div class="mode"><button id="modeStudy" class="active">学習カード</button><button id="modeList">一覧</button></div><input id="search" class="search" placeholder="色名を検索（桜・Cherryなど）" aria-label="色名検索"></div></header>
 <main><aside class="side"><h3>色の系統で絞る</h3><div id="cats" class="categories"></div><div class="small">日本／海外</div><select id="origin"><option value="all">日本＋海外 1000色</option><option value="jp">日本 163色</option><option value="world">海外 837色</option></select><p id="total" class="small"></p></aside><section>
-<div class="toolbar"><div class="controls"><div class="order-mode-group" role="group" aria-label="カードの並び順"><span id="orderState" class="order-current" role="status">現在：通常（色相順）</span><button id="shuffle" class="btn primary" type="button" aria-label="シャッフルに切り替える">🔀 シャッフルする</button></div><button id="saveEdits" class="btn">画像編集を保存</button><button id="exportResearch" class="btn">進捗JSONを保存</button><button id="importResearch" class="btn">進捗JSONを読込</button><input id="importFile" type="file" accept=".json,application/json" hidden></div></div>
+<div class="toolbar order-toolbar"><div class="order-button-row"><button id="shuffle" class="btn order-toggle" type="button" aria-pressed="false" aria-label="通常（色相順）。押すとシャッフルに切り替えます" title="シャッフルに切り替える">通常</button></div><div class="controls"><button id="saveEdits" class="btn">画像編集を保存</button><button id="exportResearch" class="btn">進捗JSONを保存</button><button id="importResearch" class="btn">進捗JSONを読込</button><input id="importFile" type="file" accept=".json,application/json" hidden></div></div>
 <div id="study" class="study"><div class="box"><div class="stageHead"><span id="group"></span><span id="counter"></span></div><div id="cardNavScrollAnchor" aria-hidden="true"></div><div id="cardNavigation" role="group" aria-label="カード操作"><div class="nav"><button id="prev" class="btn">← 前の色</button><button id="flip" class="btn primary">↻ カードをめくる</button><button id="next" class="btn">次の色 →</button></div><p class="hint">色だけを見て名前を考え、カードをめくって確認</p></div><div id="cardArea" class="card-area"><button id="swatch" class="swatch" aria-label="表の色をクリックして裏返す"></button><div id="back" class="back hidden" role="region" tabindex="0" aria-label="色名カードの裏面"></div></div><div class="quick"><button id="known" class="btn">✓ 覚えた</button><button id="missed" class="btn">× 復習する</button><span id="progress" class="small"></span></div></div><div class="bottom"><h3>1000色の見本</h3><p class="small">見本をクリックするとその色へ移動します。</p><div id="palette" class="palette"></div></div></div>
 <div id="listing" class="listing"><h3>色の一覧</h3><p class="small">色見本をクリックすると学習カードを開きます。</p><div id="tiles" class="tiles"></div><div class="page"><button id="pagePrev" class="btn">前のページ</button><span id="pageCounter" class="small"></span><button id="pageNext" class="btn">次のページ</button></div></div>
 <p class="notice">写真は色の参考例です。画像を編集した後は「進捗JSONを保存」で、写真と学習記録をまとめて持ち出せます。次回は「進捗JSONを読込」で引き継げます。</p>
