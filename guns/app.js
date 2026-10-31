@@ -127,7 +127,7 @@ function restoreCloud(prepared){
 function allFiltered(){
  const query=view.search.toLocaleLowerCase('ja-JP');
  const selected=cards.filter(c=>(view.category==='all'||c.category===view.category) &&
-  (!query||[c.name,c.description,c.search,groupNames[c.category]].some(v=>String(v||'').toLocaleLowerCase('ja-JP').includes(query))));
+  (!query||[c.name,c.name_en,c.description,c.search,groupNames[c.category]].some(v=>String(v||'').toLocaleLowerCase('ja-JP').includes(query))));
  if(view.shuffled){
    const orders=new Map(view.shuffleOrder.map((id,i)=>[id,i]));
    return selected.sort((a,b)=>(orders.get(a.id)??1e9)-(orders.get(b.id)??1e9));
@@ -309,7 +309,10 @@ function renderDeck(){
  $('shuffleBtn').setAttribute('aria-pressed',String(view.shuffled));
  $('shuffleBtn').textContent=view.shuffled?'シャッフル中 · 戻す':'シャッフル';
  if(!card)return;
- $('frontName').textContent=card.name;$('backName').textContent=card.name;
+ $('frontName').textContent=card.name;
+ $('frontEnglish').textContent=card.name_en||'';
+ $('frontEnglish').hidden=!card.name_en;
+ $('backName').textContent=card.name;
  $('backDescription').textContent=card.description||'説明はまだ登録されていません。「この銃を編集」から入力できます。';
  $('cardFront').hidden=view.flipped;$('cardBack').hidden=!view.flipped;
  $('flipBtn').textContent=view.flipped?'表を見る':'裏を見る';
@@ -429,10 +432,11 @@ async function pasteFromClipboard(index){
  }catch(e){$('editorMessage').textContent=e.message||'Ctrl+Vで貼り付けてください。';}
 }
 function openEditor(card){
- editorCard=card?{...card,images:[...card.images]}:{id:'gun-custom-'+(root.crypto?.randomUUID?.()||Date.now().toString(36)),category:view.category==='all'?'revolver':view.category,name:'',description:'',search:'',images:['','',''],source:'user'};
+ editorCard=card?{...card,images:[...card.images]}:{id:'gun-custom-'+(root.crypto?.randomUUID?.()||Date.now().toString(36)),category:view.category==='all'?'revolver':view.category,name:'',name_en:'',description:'',search:'',images:['','',''],source:'user'};
  dirtyEditor=false;activePaste=0;photoRefs=[...editorCard.images];
  $('editorTitle').textContent=card?'銃のカードを編集':'銃を新しく追加';
  $('editCategory').value=editorCard.category;$('editName').value=editorCard.name;
+ $('editEnglishName').value=editorCard.name_en||'';
  $('editSearch').value=editorCard.search;$('editDescription').value=editorCard.description;
  $('editorMessage').textContent='写真を選んだ後、最後に「カードを保存」を押してください。';
  const list=$('editorPhotos');list.replaceChildren();
@@ -448,11 +452,12 @@ function closeEditor(){
 function saveEditor(event){
  event.preventDefault();
  if(!editorCard)return;
- const name=$('editName').value.trim(),search=$('editSearch').value.trim();
+ const name=$('editName').value.trim(),name_en=$('editEnglishName').value.trim(),search=$('editSearch').value.trim();
  if(!name){$('editorMessage').textContent='銃の名前を入力してください。';return;}
+ if(name_en&&!englishSearchTerm(name_en)){$('editorMessage').textContent='英語の製品名には日本語を入力しないでください。';$('editEnglishName').focus();return;}
  if(!englishSearchTerm(search)){$('editorMessage').textContent='Google画像検索用の英語名を入力してください（カタカナは検索欄に入れません）。';$('editSearch').focus();return;}
  const old=cards.find(c=>c.id===editorCard.id);
- const card=C.sanitizeCard({...editorCard,category:$('editCategory').value,name,
+ const card=C.sanitizeCard({...editorCard,category:$('editCategory').value,name,name_en,
    search,description:$('editDescription').value.trim(),images:photoRefs,source:'user'});
  if(!card){$('editorMessage').textContent='入力内容を確認してください。';return;}
  const changedImages=[];
