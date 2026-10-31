@@ -78,7 +78,7 @@ async function run(){
    const categoryLayout=await evaluate("(()=>{const items=[...document.querySelectorAll('#groupGrid .category-tile')],bounds=items.map(el=>el.getBoundingClientRect());return {columns:getComputedStyle(document.querySelector('#groupGrid')).gridTemplateColumns,stacked:bounds.slice(1).every((b,i)=>b.top>=bounds[i].bottom-1),widths:bounds.map(b=>b.width)}})()");
    assert.equal(categoryLayout.stacked,true,'Categories must each occupy their own vertical row on desktop');
    assert.equal(categoryLayout.columns.trim().split(/\s+/).length,1,'Categories must use a single grid column');
-   assert.ok(categoryLayout.widths.every(width=>width>400),'Vertical categories should be full-width rows');
+   assert.ok(categoryLayout.widths.every(width=>width>400&&width<=425),'Desktop category cards must be compact (about 420px wide), not full-page: '+JSON.stringify(categoryLayout.widths));
    const center=await evaluate("(()=>{const grid=document.querySelector('#groupGrid'),rect=grid.getBoundingClientRect(),tiles=[...document.querySelectorAll('.category-tile')];return {offset:Math.abs(rect.left+rect.width/2-document.documentElement.clientWidth/2),aligned:tiles.every(tile=>{const r=tile.getBoundingClientRect(),title=tile.querySelector('.tile-name').getBoundingClientRect(),index=tile.querySelector('.tile-index').getBoundingClientRect(),counter=tile.querySelector('.tile-bottom').getBoundingClientRect();return [title,index,counter].every(part=>Math.abs(part.left+part.width/2-(r.left+r.width/2))<6)})};})()");
    assert.ok(center.offset<5,'Category list must be centered in the page: '+JSON.stringify(center));
    assert.equal(center.aligned,true,'Category labels/counts must be centered within each row');
@@ -87,6 +87,8 @@ async function run(){
    assert.equal(mobileCategories.columns.trim().split(/\s+/).length,1,'Mobile categories must also be one column');
    assert.equal(mobileCategories.stacked,true,'Mobile category tiles must appear one below another');
    assert.equal(mobileCategories.fullWidth,true,'Mobile categories must be readable full-width rows');
+   const mobileTileWidth=await evaluate("document.querySelector('.category-tile').getBoundingClientRect().width");
+   assert.ok(mobileTileWidth<355&&mobileTileWidth>320,'Mobile category cards should have comfortable side margins: '+mobileTileWidth);
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
