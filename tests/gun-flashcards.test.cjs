@@ -68,6 +68,16 @@ test('front contains only katakana and a small English model label; back keeps d
  assert.ok(app.includes("$('frontEnglish').textContent=card.name_en||''"));
  assert.ok(app.includes("$('frontEnglish').hidden=!card.name_en"));
  assert.match(html,/id="editEnglishName"/);
+ assert.match(html,/class="navigation" aria-label="カードの移動と表示順"/);
+ assert.match(html,/id="shuffleBtn"[^>]*>通常<\/button>/);
+ assert.match(html,/class="card-chrome"/);
+ assert.match(html,/id="faceLabel" class="face-label">表・銃名</);
+ assert.match(html,/id="cardAddBtn"[^>]*>＋追加<\/button>/);
+ assert.match(html,/id="editCardBtn"[^>]*>編集<\/button>/);
+ assert.match(html,/id="deleteCardBtn"[^>]*>削除<\/button>/);
+ assert.match(html,/id="positionLabel" class="counter card-number"/);
+ assert.match(html,/id="flipBtn" class="sr-only"/);
+ assert.ok(html.includes('タップで表・裏を切替。スマホは左スワイプで次へ'));
  assert.match(html,/<div id="cardBack"/);
  assert.match(html,/id="backDescription"/);
  assert.match(html,/id="photoGrid"/);
@@ -88,7 +98,7 @@ test('English Google Images opens from a deliberate click and never downloads au
  assert.ok(source.includes('return query;'));
  assert.ok(source.includes('日本語は検索語に使用しません'));
 });
-test('vertical category list, compact front type and plant-style three vertically stacked back photos',()=>{
+test('vertical categories and large word-style bilingual card with plant-style photo reverse',()=>{
  const css=read('style.css');
  const plants=fs.readFileSync('plants/index.html','utf8');
  assert.ok(css.includes('width:min(90%,420px);margin:0 auto'),'Category container must be centered');
@@ -106,11 +116,16 @@ test('vertical category list, compact front type and plant-style three verticall
  assert.ok(css.includes('.photo-frame{display:flex')&&css.includes('aspect-ratio:16/9'));
  assert.ok(plants.includes('.image-box{width:100%;aspect-ratio:16/9'));
  assert.match(css,/#cardBack\{cursor:default;display:block;height:auto;overflow:visible\}/);
- assert.ok(css.includes('.flash-card.front-compact{width:min(100%,480px);max-width:480px;min-height:220px}'));
- assert.ok(css.includes('.flash-card.front-compact #cardFront{min-height:220px;padding:18px 20px}'));
- assert.ok(css.includes('.flash-card.front-compact{width:92%;max-width:480px;min-height:205px}'));
- assert.ok(read('app.js').includes("classList.toggle('front-compact',!!card&&!view.flipped)"));
- assert.ok(!css.includes('.flash-card.front-compact #cardBack'),'The back must keep its full width and height');
+ assert.ok(css.includes('/* Word-card reference layout v8'),'The actual firearm UI must adopt the supplied word-card layout');
+ assert.ok(css.includes('#flashCard,#flashCard.front-compact{position:relative;width:100%;max-width:none;min-height:520px'),'Both sides must use a large common frame');
+ assert.ok(css.includes('#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:520px'),'Front should center bilingual title in large card');
+ assert.ok(css.includes('#cardBack{min-height:520px;padding:154px 32px 35px'),'Back remains large for three independent photographs');
+ assert.ok(css.includes('.navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))'),'The navigation is now three equal large controls');
+ assert.ok(css.includes('.navigation>#shuffleBtn{background:#2d9d58'),'Normal mode must use the green word-card button');
+ assert.ok(css.includes('.card-chrome{position:absolute;top:30px'),'Add/edit/delete belong inside the card');
+ assert.ok(css.includes('.card-number.counter{position:absolute;right:36px;top:108px'),'Card count belongs inside the card');
+ assert.ok(read('app.js').includes("classList.remove('front-compact')"),'The old small front must be deactivated');
+ assert.ok(read('app.js').includes("view.shuffled?'シャッフル':'通常'"),'Default normal mode must be labeled 通常');
 });
 test('English Google image search is above the pictures and each picture supports direct paste',()=>{
  const html=read('index.html'),app=read('app.js'),css=read('style.css');
@@ -168,16 +183,16 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v7'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v8'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=6'));
- assert.ok(sw.includes('./style.css?v=6'));
+ assert.ok(html.includes('./style.css?v=8'));
+ assert.ok(sw.includes('./style.css?v=8'));
  assert.ok(html.includes('./data.js?v=3'));
- assert.ok(html.includes('./app.js?v=5'));
+ assert.ok(html.includes('./app.js?v=7'));
  assert.ok(sw.includes('./data.js?v=3'));
- assert.ok(sw.includes('./app.js?v=5'));
+ assert.ok(sw.includes('./app.js?v=7'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
  assert.ok(html.includes('./drive-transfer-core.js?v=1'));
  assert.ok(html.includes('./service-worker.js')===false);
