@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#263b45">
 <meta name="description" content="銃器の歴史とモデル名を学ぶ分類別フラッシュカード。画像はGoogle英語検索から手動登録。">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./style.css?v=18">
+<link rel="stylesheet" href="./style.css?v=19">
 <title>銃器図鑑カード｜分類別フラッシュカード</title>
 </head>
 <body>
@@ -66,8 +66,7 @@
       </div>
       <nav class="navigation" aria-label="カードの移動と表示順">
         <button id="prevBtn" type="button" class="btn light">← 戻る</button>
-        <button id="normalBtn" type="button" class="btn mode-normal" aria-pressed="true" aria-label="通常順で表示">通常</button>
-        <button id="shuffleBtn" type="button" class="btn mode-shuffle" aria-pressed="false" aria-label="ランダム順に並べ替える">シャッフル</button>
+        <button id="modeBtn" type="button" class="btn mode-toggle" aria-pressed="false" aria-label="通常順で表示中。押すとシャッフル順に切り替えます">通常</button>
         <button id="nextBtn" type="button" class="btn light">次へ →</button>
       </nav>
       <div class="deck-meta" hidden>
@@ -150,7 +149,7 @@
 <script src="./extended-models.js?v=1"></script>
 <script src="./extended-variants.js?v=1"></script>
 <script src="./data.js?v=8"></script>
-<script src="./app.js?v=12"></script>
+<script src="./app.js?v=13"></script>
 <script src="../drive-config.js?v=3"></script>
 <script src="../persistent-drive-auth.js?v=1"></script>
 <script src="./drive-transfer-core.js?v=1"></script>

@@ -308,9 +308,11 @@ function renderDeck(){
  $('flashCard').classList.remove('front-compact');
  $('prevBtn').disabled=$('nextBtn').disabled=$('flipBtn').disabled=!card;
  $('deleteCardBtn').hidden=!card;
- // Two explicit, exclusive modes: the green button shows the active order.
- $('normalBtn').setAttribute('aria-pressed',String(!view.shuffled));
- $('shuffleBtn').setAttribute('aria-pressed',String(view.shuffled));
+ // The single button shows the current order and toggles to the other mode.
+ const modeBtn=$('modeBtn');
+ modeBtn.textContent=view.shuffled?'シャッフル':'通常';
+ modeBtn.setAttribute('aria-pressed',String(view.shuffled));
+ modeBtn.setAttribute('aria-label',view.shuffled?'シャッフル順で表示中。押すと通常順に切り替えます':'通常順で表示中。押すとシャッフル順に切り替えます');
  if(!card)return;
  $('frontName').textContent=card.name;
  // The English model name remains in the card data for searching/editing,
@@ -578,8 +580,11 @@ function installListeners(){
  $('homeBtn').onclick=()=>{$('deckView').hidden=true;$('homeView').hidden=false;view.flipped=false;refresh()};
  $('categorySelect').onchange=e=>openCategory(e.target.value);
  $('filterInput').oninput=e=>{view.search=e.target.value.trim();view.index=0;view.flipped=false;if(view.shuffled)shuffleIds();refresh()};
- $('normalBtn').onclick=()=>{if(!view.shuffled)return;view.shuffled=false;view.shuffleOrder=[];view.index=0;view.flipped=false;refresh()};
- $('shuffleBtn').onclick=()=>{view.shuffled=true;view.index=0;view.flipped=false;shuffleIds();refresh()};
+ $('modeBtn').onclick=()=>{
+   view.shuffled=!view.shuffled;view.index=0;view.flipped=false;
+   if(view.shuffled)shuffleIds();else view.shuffleOrder=[];
+   refresh();
+ };
  $('prevBtn').onclick=()=>move(-1);$('nextBtn').onclick=()=>move(1);$('flipBtn').onclick=flip;
  $('flashCard').onclick=e=>{if(Date.now()<ignoreClickUntil||e.target.closest('button,a,input,select,textarea,img,label,.photo-slot,[contenteditable="true"]'))return;flip()};
  $('flashCard').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===$('flashCard')){e.preventDefault();flip()}};
