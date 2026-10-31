@@ -52,6 +52,37 @@ test('firearm categories follow approximate historical invention order without r
  assert.equal(updated.name,edited.name);
  assert.equal(updated.category,'machine-gun');
 });
+test('all 35 firearms carry a representative manufacturer and a valid present-day country flag without changing stored photos',()=>{
+ assert.equal(C.SEEDS.length,35);
+ assert.equal(C.SEEDS[0].maker,'Remington Arms');
+ assert.equal(C.SEEDS[0].country,'US');
+ assert.equal(C.COUNTRIES.US.flag,'🇺🇸');
+ assert.equal(C.SEEDS.find(c=>c.name_en==='Browning Auto-5').country,'BE');
+ for(const card of C.SEEDS){
+   assert.ok(card.maker.length>3,card.id+' is missing representative manufacturer');
+   assert.ok(C.COUNTRIES[card.country]?.flag,card.id+' is missing the flag of its representative maker');
+   assert.deepEqual(card.images,['','',''],card.id+' starting photos must stay empty');
+ }
+ const original=C.SEEDS[0];
+ const previous={id:original.id,category:original.category,name:original.name,
+   name_en:original.name_en,search:original.search,description:'保存していた個別の説明',
+   images:['idb:gunimg:gun-0001:0:old-picture','gdrive:original:'+('a'.repeat(64)),'https://example.org/image.jpg'],
+   source:'user'};
+ const migrated=C.mergeCards([previous]).find(c=>c.id===previous.id);
+ assert.equal(migrated.maker,'Remington Arms','Legacy saved cards recover the maker without overwriting user edits');
+ assert.equal(migrated.country,'US');
+ assert.equal(migrated.description,previous.description);
+ assert.deepEqual(migrated.images,previous.images);
+ const edited=C.mergeCards([{...migrated,maker:'自分で編集した製造会社',country:'JP'}])
+   .find(c=>c.id===previous.id);
+ assert.equal(edited.maker,'自分で編集した製造会社');
+ assert.equal(edited.country,'JP');
+ assert.deepEqual(edited.images,previous.images);
+ const cleared=C.mergeCards([{...migrated,maker:'',country:''}]).find(c=>c.id===previous.id);
+ assert.equal(cleared.maker,'','Intentionally blank maker must not be replaced by a default');
+ assert.equal(cleared.country,'');
+ assert.equal(C.sanitizeCard({...migrated,country:'XX'}).country,'');
+});
 test('user entries remain separately editable and allow only expected image references',()=>{
  const extra={id:'gun-custom-abc123',name:'My historical example',category:'revolver',
    search:'historical revolver photograph',description:'A user note',
@@ -95,6 +126,17 @@ test('front contains only katakana and a small English model label; back keeps d
  assert.ok(app.includes("$('frontEnglish').textContent=card.name_en||''"));
  assert.ok(app.includes("$('frontEnglish').hidden=!card.name_en"));
  assert.match(html,/id="editEnglishName"/);
+ assert.match(html,/id="backMakerMeta" class="back-maker-meta" hidden/);
+ assert.match(html,/id="backCountryFlag"/);
+ assert.match(html,/id="backMakerCompany"/);
+ assert.match(html,/id="backMakerCountry"/);
+ assert.match(html,/id="editMaker"/);
+ assert.match(html,/id="editMakerCountry"/);
+ assert.ok(app.includes("$('backMakerMeta').hidden=!view.flipped"));
+ assert.ok(app.includes("$('backCountryFlag').textContent=country?.flag||''"));
+ assert.ok(app.includes("$('backMakerCompany').textContent=card.maker||'製造会社未登録'"));
+ assert.ok(app.includes("$('editMaker').value=editorCard.maker||''"));
+ assert.ok(app.includes("$('editMakerCountry').value=editorCard.country||''"));
  assert.match(html,/class="navigation" aria-label="カードの移動と表示順"/);
  assert.match(html,/id="shuffleBtn"[^>]*>通常<\/button>/);
  assert.match(html,/class="card-chrome"/);
@@ -160,6 +202,7 @@ test('vertical categories and root-sized bilingual word card with plant-style ph
  assert.ok(css.includes('.navigation>.btn{display:grid;place-items:center;min-width:0;min-height:54px'),'Nav height must match root 54px buttons');
  assert.ok(css.includes('.navigation>#shuffleBtn{background:#2d9d58'),'Normal mode remains green');
  assert.ok(css.includes('.card-chrome{position:absolute;top:19px'),'In-card controls stay inside the smaller frame');
+ assert.ok(css.includes('.back-maker-meta{display:flex;align-items:center;gap:9px'),'Maker and country flag appear together in the top-left chrome');
  assert.ok(css.includes('.card-number.counter{position:absolute;right:25px;top:69px'),'Card counter fits smaller frame');
  assert.ok(css.includes('#flashCard,#flashCard.front-compact{min-height:320px;border-radius:21px'),'Mobile frame must be proportional');
  assert.ok(read('app.js').includes("classList.remove('front-compact')"),'Both sides must have equal width');
@@ -217,6 +260,7 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
  const sync=read('drive-sync.js'),core=read('drive-transfer-core.js'),copy=read('image-copy.js');
  assert.ok(sync.includes("namespace:'gun-flashcards-v1'"));
  assert.ok(sync.includes("name_en:c.name_en||''"),'Save English model name to Drive without changing card IDs or photo keys');
+ assert.ok(sync.includes("maker:c.maker||'',country:c.country||''"),'Maker and flag country must sync without re-registering photos');
  assert.ok(sync.includes('await sync.republish(keys)'));
  assert.ok(sync.includes("account!==sync.account"));
  assert.ok(sync.includes('gunPhotoDeferred'));
@@ -231,16 +275,18 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v13'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v14'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=12'));
- assert.ok(sw.includes('./style.css?v=12'));
- assert.ok(html.includes('./data.js?v=4'));
- assert.ok(html.includes('./app.js?v=7'));
- assert.ok(sw.includes('./data.js?v=4'));
- assert.ok(sw.includes('./app.js?v=7'));
+ assert.ok(html.includes('./style.css?v=13'));
+ assert.ok(sw.includes('./style.css?v=13'));
+ assert.ok(html.includes('./data.js?v=5'));
+ assert.ok(html.includes('./app.js?v=8'));
+ assert.ok(sw.includes('./data.js?v=5'));
+ assert.ok(sw.includes('./app.js?v=8'));
+ assert.ok(html.includes('./drive-sync.js?v=2'));
+ assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
  assert.ok(html.includes('./drive-transfer-core.js?v=1'));
  assert.ok(html.includes('./service-worker.js')===false);
