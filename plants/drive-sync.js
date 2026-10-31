@@ -26,13 +26,6 @@
   retryFeedback.style.cssText = 'width:100%;white-space:pre-wrap;line-height:1.6;font-size:13px;color:#245a41';
   controls.append(retry, reportButton, copyStatus, retryFeedback);
   let recoveryBusy = false;
-  let autoRecoveryAttempted = false;
-  function queueAutoRecovery(syncState) {
-    if (autoRecoveryAttempted || !['同期済み','画像送信待ち','同期エラー'].includes(syncState) || !sync?.valid()) return;
-    if (editing || document.visibilityState === 'hidden' || !copier.summary().pending) return;
-    autoRecoveryAttempted = true;
-    setTimeout(() => retryPlantPhotos('自動'), 250);
-  }
   const copier = P.create({
     getCards: () => cards, getImages, resolveImage: v => resolveImageValue(v), isEditing: () => editing,
     replaceIfCurrent: (id, index, source, ref) => {
@@ -125,7 +118,6 @@
     onStatus: (s, message) => {
       const progress = copier.summary();
       if (plantDrivePrimary()) { imageSyncStatus.textContent = '画像Drive同期：' + s + (progress.pending ? '（画像コピー未完了 ' + progress.pending + '枠）' : ''); imageSyncStatus.title = message || s; }
-      queueAutoRecovery(s);
     }
   };
   sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);
