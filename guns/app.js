@@ -311,8 +311,8 @@ function renderDeck(){
  $('shuffleBtn').setAttribute('aria-label',view.shuffled?'表示順：シャッフル。押すと通常':'表示順：通常。押すとシャッフル');
  if(!card)return;
  $('frontName').textContent=card.name;
- $('frontEnglish').textContent=card.name_en||'';
- $('frontEnglish').hidden=!card.name_en;
+ // The English model name remains in the card data for searching/editing,
+ // but the face intentionally displays only the Japanese katakana title.
  $('faceLabel').textContent='表・銃名';
  $('faceLabel').hidden=view.flipped;
  $('backMakerMeta').hidden=!view.flipped;
