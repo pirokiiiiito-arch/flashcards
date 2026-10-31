@@ -91,8 +91,10 @@ test('English Google Images opens from a deliberate click and never downloads au
 test('vertical category list, compact front type and plant-style three vertically stacked back photos',()=>{
  const css=read('style.css');
  const plants=fs.readFileSync('plants/index.html','utf8');
- assert.ok(css.includes('width:min(100%,820px);margin:0 auto'),'Category container must be centered');
+ assert.ok(css.includes('width:min(90%,420px);margin:0 auto'),'Category container must be centered');
  assert.ok(css.includes('justify-items:center'),'Every category tile must center its visible labels');
+ assert.ok(css.includes('min-height:72px'),'Desktop tiles should be compact');
+ assert.ok(css.includes('min-height:68px'),'Small mobile tiles should be compact');
  assert.ok(css.includes('text-align:center;border:1px solid var(--stroke)'),'Category name must be centered');
  assert.ok(css.includes('.front-english{font-size:clamp(12px,1.5vw,16px)'),'English subtitle must be small');
  assert.match(css,/\.category-grid\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
@@ -166,12 +168,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v6'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v7'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=5'));
- assert.ok(sw.includes('./style.css?v=5'));
+ assert.ok(html.includes('./style.css?v=6'));
+ assert.ok(sw.includes('./style.css?v=6'));
  assert.ok(html.includes('./data.js?v=3'));
  assert.ok(html.includes('./app.js?v=5'));
  assert.ok(sw.includes('./data.js?v=3'));
