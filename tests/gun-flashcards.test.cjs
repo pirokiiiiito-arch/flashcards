@@ -170,7 +170,8 @@ test('front displays katakana name only while keeping English model for Google i
  assert.ok(app.includes("$('editMaker').value=editorCard.maker||''"));
  assert.ok(app.includes("$('editMakerCountry').value=editorCard.country||''"));
  assert.match(html,/class="navigation" aria-label="カードの移動と表示順"/);
- assert.match(html,/id="shuffleBtn"[^>]*>通常<\/button>/);
+ assert.match(html,/id="normalBtn"[^>]*aria-pressed="true"[^>]*>通常<\/button>/);
+ assert.match(html,/id="shuffleBtn"[^>]*aria-pressed="false"[^>]*>シャッフル<\/button>/);
  assert.match(html,/class="card-chrome"/);
  assert.match(html,/id="faceLabel" class="face-label">表・銃名</);
  assert.match(html,/id="cardAddBtn"[^>]*>＋追加<\/button>/);
@@ -231,16 +232,19 @@ test('vertical categories and root-sized katakana-only word card with plant-styl
  assert.ok(css.includes('#cardFront,#flashCard.front-compact #cardFront{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px'),'Front must center the single katakana name within the root-size card');
  assert.ok(css.includes('padding:74px 24px'),'Symmetric padding centers the single Japanese title');
  assert.ok(css.includes('#cardBack{min-height:360px;padding:106px 23px 24px'),'Back must use the same outer width and grow for three photographs');
- assert.ok(css.includes('.navigation{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:10px;width:min(670px,100%);max-width:670px'),'Navigation must match root 670px buttons');
+ assert.ok(css.includes('.navigation{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;gap:10px;width:min(670px,100%);max-width:670px'),'Four buttons must fit the same 670px deck navigation');
  assert.ok(css.includes('.navigation>.btn{display:grid;place-items:center;min-width:0;min-height:54px'),'Nav height must match root 54px buttons');
- assert.ok(css.includes('.navigation>#shuffleBtn{background:#2d9d58'),'Normal mode remains green');
+ assert.ok(css.includes('.navigation>#normalBtn[aria-pressed="true"],.navigation>#shuffleBtn[aria-pressed="true"]{background:#2d9d58'),'Only the selected mode should be green');
  assert.ok(css.includes('.card-chrome{position:absolute;top:19px'),'In-card controls stay inside the smaller frame');
  assert.ok(css.includes('.back-maker-meta{display:flex;align-items:center;gap:9px'),'Maker and country flag appear together in the top-left chrome');
  assert.ok(css.includes('.back-country-flag{display:block;width:36px;height:24px;object-fit:contain'),'The flag should be an actual thumbnail image, not an emoji font');
  assert.ok(css.includes('.card-number.counter{position:absolute;right:25px;top:69px'),'Card counter fits smaller frame');
  assert.ok(css.includes('#flashCard,#flashCard.front-compact{min-height:320px;border-radius:21px'),'Mobile frame must be proportional');
  assert.ok(read('app.js').includes("classList.remove('front-compact')"),'Both sides must have equal width');
- assert.ok(read('app.js').includes("view.shuffled?'シャッフル':'通常'"),'Default normal mode remains 通常');
+ assert.ok(read('app.js').includes("$('normalBtn').setAttribute('aria-pressed',String(!view.shuffled))"),'Normal mode must show selected status');
+ assert.ok(read('app.js').includes("$('shuffleBtn').setAttribute('aria-pressed',String(view.shuffled))"),'Shuffle mode must show selected status');
+ assert.ok(read('app.js').includes("$('normalBtn').onclick=()=>{if(!view.shuffled)return;"),'Normal mode must restore original order explicitly');
+ assert.ok(read('app.js').includes("$('shuffleBtn').onclick=()=>{view.shuffled=true;view.index=0;"),'Shuffle button must randomize without toggling text');
 });
 test('English Google image search is above the pictures and each picture supports direct paste',()=>{
  const html=read('index.html'),app=read('app.js'),css=read('style.css');
@@ -320,20 +324,20 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v18'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v19'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=16'));
- assert.ok(sw.includes('./style.css?v=16'));
+ assert.ok(html.includes('./style.css?v=17'));
+ assert.ok(sw.includes('./style.css?v=17'));
  assert.ok(html.includes('./extended-models.js?v=1'));
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
  assert.ok(sw.includes('./extended-variants.js?v=1'));
  assert.ok(html.includes('./data.js?v=8'));
- assert.ok(html.includes('./app.js?v=11'));
+ assert.ok(html.includes('./app.js?v=12'));
  assert.ok(sw.includes('./data.js?v=8'));
- assert.ok(sw.includes('./app.js?v=11'));
+ assert.ok(sw.includes('./app.js?v=12'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
