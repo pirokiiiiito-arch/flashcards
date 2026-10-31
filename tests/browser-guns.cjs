@@ -76,7 +76,7 @@ async function run(){
    assert.equal(await evaluate('GunDeck.getCards().length'),35);
    assert.equal(await evaluate("document.querySelector('[data-group=shotgun]').textContent.includes('ショットガン')"),true);
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
-   assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'Remington Model 870');
+   assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),true);
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
@@ -90,25 +90,32 @@ async function run(){
    await evaluate("document.querySelector('#saveEditBtn').click()");
    await until(()=>evaluate("!document.querySelector('#editorDialog').open"),'photo edit saved');
    await until(()=>evaluate("document.querySelector('#photoGrid img')?.naturalWidth>0"),'registered picture displayed');
-   const photo=await evaluate("GunDeck.getCards().find(c=>c.name==='Remington Model 870').images[0]");
+   const photo=await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[0]");
    assert.match(photo,/^idb:gunimg:/);
    await evaluate("window.open=(url)=>{window.__englishSearch=url;return {opener:null}};document.querySelector('#googleSearchBtn').click()");
    const search=await evaluate('window.__englishSearch');
    assert.ok(search.startsWith('https://www.google.com/search?tbm=isch&q='));
-   assert.ok(decodeURIComponent(search).includes('Remington'));
+   assert.ok(decodeURIComponent(search).includes('Remington Model 870'));
+   assert.ok(!decodeURIComponent(search).includes('レミントン'),'Google query must be English, not the Japanese display name');
+   // Simulate previously saved English-name seed data; keep the registered
+   // IndexedDB photo reference exactly unchanged through migration.
+   await evaluate("(()=>{const old=JSON.parse(localStorage.getItem('gun-flashcards-cards-v1'));const c=old.cards.find(c=>c.id==='gun-0001');c.name='Remington Model 870';localStorage.setItem('gun-flashcards-cards-v1',JSON.stringify(old));return true})()");
    await navigate('Page.reload',{ignoreCache:false});
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'cards after browser restart');
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name"),'レミントン・モデル870');
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').search.includes('Remington')"),true);
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[0]"),photo,'Migration must preserve the original stored image ref');
    await evaluate("document.querySelector('[data-group=shotgun]').click();document.querySelector('#flipBtn').click()");
    await until(()=>evaluate("document.querySelector('#photoGrid img')?.naturalWidth>0"),'registered picture restored after restart');
-   await evaluate("document.querySelector('#addBtn').click();document.querySelector('#editCategory').value='revolver';document.querySelector('#editName').value='Local Test Model';document.querySelector('#editSearch').value='historical revolver photo';document.querySelector('#editDescription').value='A saved catalog entry.';document.querySelector('#saveEditBtn').click();");
-   await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='Local Test Model')"),'new editable gun saved');
+   await evaluate("document.querySelector('#addBtn').click();document.querySelector('#editCategory').value='revolver';document.querySelector('#editName').value='テスト・モデル';document.querySelector('#editSearch').value='historical revolver photo';document.querySelector('#editDescription').value='A saved catalog entry.';document.querySelector('#saveEditBtn').click();");
+   await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='テスト・モデル')"),'new editable gun saved');
    await navigate('Page.reload',{ignoreCache:false});
-   await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='Local Test Model')"),'user added card retained after restart');
-   const custom=await evaluate("GunDeck.getCards().find(c=>c.name==='Local Test Model')?.category");
+   await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='テスト・モデル')"),'user added card retained after restart');
+   const custom=await evaluate("GunDeck.getCards().find(c=>c.name==='テスト・モデル')?.category");
    assert.equal(custom,'revolver');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: categories, front/back, English image search, image file/IndexedDB, reload, adding custom cards');
+   console.log('PASS browser guns: katakana name, English Google search, preserved photo after English-name migration, new Japanese user card');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
