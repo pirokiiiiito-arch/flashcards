@@ -89,6 +89,28 @@ test('vertical category list, compact front type and plant-style three verticall
  assert.ok(plants.includes('.image-box{width:100%;aspect-ratio:16/9'));
  assert.match(css,/#cardBack\{cursor:default;display:block;height:auto;overflow:visible\}/);
 });
+test('English Google image search is above the pictures and each picture supports direct paste',()=>{
+ const html=read('index.html'),app=read('app.js'),css=read('style.css');
+ assert.ok(html.indexOf('id="googleSearchBtn"')>html.indexOf('id="backName"'));
+ assert.ok(html.indexOf('id="googleSearchBtn"')<html.indexOf('id="photoGrid"'),
+   'Search button must not be hidden below three tall images');
+ assert.ok(html.includes('Google画像検索（英語）'));
+ assert.ok(html.includes('写真1〜3の「画像を貼り付け」'));
+ assert.ok(app.includes("frame.contentEditable='true'"),'The picture box must accept Ctrl+V');
+ assert.ok(app.includes("frame.addEventListener('paste'"));
+ assert.ok(app.includes('clipboardImage(event.clipboardData)'));
+ assert.ok(app.includes("paste.textContent='画像を貼り付け'"));
+ assert.ok(app.includes("search.textContent='Google画像検索（英語）'"));
+ assert.ok(app.includes("fileLabel.textContent='ファイルから登録'"));
+ assert.ok(app.includes("pasteBackPhoto(card.id,i,frame)"));
+ assert.ok(app.includes("saveBackPhoto(card.id,i,file)"));
+ assert.ok(app.includes("update(arr=>{"));
+ assert.ok(app.includes("['image:'+cardId+':'+index],'photo'"));
+ assert.ok(app.includes("getImages(latest)[index]!==expected"));
+ assert.ok(css.includes(".back-actions{display:flex;flex-wrap:wrap"));
+ assert.ok(css.includes(".photo-slot-actions{display:flex;flex-wrap:wrap"));
+ assert.ok(css.includes('.photo-frame[contenteditable="true"]'));
+});
 test('browser storage and JSON backup preserve manually selected picture bytes',()=>{
  const source=read('app.js');
  for(const part of ["const STORE='gun-flashcards-cards-v1'","DB='gun-flashcards-images-v1'",
@@ -115,16 +137,16 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v3'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v4'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=2'));
- assert.ok(sw.includes('./style.css?v=2'));
+ assert.ok(html.includes('./style.css?v=3'));
+ assert.ok(sw.includes('./style.css?v=3'));
  assert.ok(html.includes('./data.js?v=2'));
- assert.ok(html.includes('./app.js?v=2'));
+ assert.ok(html.includes('./app.js?v=3'));
  assert.ok(sw.includes('./data.js?v=2'));
- assert.ok(sw.includes('./app.js?v=2'));
+ assert.ok(sw.includes('./app.js?v=3'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
  assert.ok(html.includes('./drive-transfer-core.js?v=1'));
  assert.ok(html.includes('./service-worker.js')===false);
