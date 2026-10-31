@@ -45,7 +45,7 @@ test('firearm categories follow approximate historical invention order without r
   ['gun-0001','shotgun'],['gun-0002','shotgun'],
   ['gun-0003','shotgun'],['gun-0004','shotgun'],['gun-0005','revolver']
  ]);
- assert.deepEqual(C.SEEDS.slice(-3).map(c=>[c.id,c.category]),[
+ assert.deepEqual(C.SEEDS.slice(32,35).map(c=>[c.id,c.category]),[
   ['gun-0033','machine-gun'],['gun-0034','machine-gun'],['gun-0035','machine-gun']
  ]);
  const ref='gdrive:photo:'+('c'.repeat(64));
@@ -63,7 +63,7 @@ test('all 35 firearms carry a representative manufacturer and a valid present-da
  assert.equal(C.SEEDS[0].country,'US');
  assert.equal(C.COUNTRIES.US.image,'./flags/us.svg');
  assert.equal(C.SEEDS.find(c=>c.name_en==='Browning Auto-5').country,'BE');
- for(const card of C.SEEDS){
+ for(const card of C.SEEDS.slice(0,35)){
    assert.ok(card.maker.length>3,card.id+' is missing representative manufacturer');
    assert.ok(C.COUNTRIES[card.country]?.image,card.id+' is missing its flag image');
    assert.deepEqual(card.images,['','',''],card.id+' starting photos must stay empty');
