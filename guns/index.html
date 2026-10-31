@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#263b45">
+<meta name="description" content="銃器の歴史とモデル名を学ぶ分類別フラッシュカード。画像はGoogle英語検索から手動登録。">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./style.css?v=1">
+<title>銃器図鑑カード｜分類別フラッシュカード</title>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">G</div>
+      <div>
+        <p class="eyebrow">FIREARMS · STUDY CARDS</p>
+        <h1>銃器図鑑カード</h1>
+        <p class="subtitle">表：銃の名前 ／ 裏：説明と写真</p>
+      </div>
+    </div>
+    <nav class="header-actions" aria-label="データ操作">
+      <button class="btn light" id="backupBtn" type="button">データ保存</button>
+      <button class="btn light" id="importBtn" type="button">データ読込</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <button class="btn light" id="syncBtn" type="button">Drive接続・同期</button>
+      <button class="btn primary" id="addBtn" type="button">＋ 銃を追加</button>
+    </nav>
+  </header>
+  <div class="sync-strip">
+    <span id="localStatus" role="status" aria-live="polite">端末保存を読み込んでいます…</span>
+    <span id="cloudStatus">Drive：接続待ち</span>
+    <span id="photoStatus">写真：確認中</span>
+  </div>
+  <main>
+    <section id="homeView">
+      <div class="section-heading">
+        <div><p class="eyebrow">CHOOSE A CATEGORY</p><h2>分類から選ぶ</h2></div>
+        <div class="overview-actions">
+          <button type="button" id="allCardsBtn" class="btn secondary">すべての銃を見る</button>
+        </div>
+      </div>
+      <p class="intro">銃の型式・歴史・特徴を覚えるためのカードです。写真は自動取得せず、英語のGoogle画像検索で探したものを手動で登録します。</p>
+      <div id="groupGrid" class="category-grid"></div>
+      <div class="small-note">最初のカードには例として代表的なモデル名と概要を用意しています。後から自由に追加・編集できます。</div>
+    </section>
+    <section id="deckView" hidden>
+      <div class="deck-top">
+        <button id="homeBtn" type="button" class="btn light">← 分類一覧</button>
+        <div class="deck-controls">
+          <label class="control-label">分類
+            <select id="categorySelect" aria-label="表示する分類"></select>
+          </label>
+          <label class="control-label">検索
+            <input id="filterInput" type="search" placeholder="銃の名前・説明" autocomplete="off">
+          </label>
+          <button id="shuffleBtn" type="button" class="btn secondary" aria-pressed="false">シャッフル</button>
+        </div>
+      </div>
+      <div class="deck-meta">
+        <div><p id="categoryCaption" class="eyebrow"></p><h2 id="deckHeading">すべての銃</h2></div>
+        <span id="positionLabel" class="counter" aria-live="polite">0 / 0</span>
+      </div>
+      <article id="flashCard" class="flash-card" role="button" tabindex="0" aria-label="カードを裏返す" aria-pressed="false">
+        <div id="cardFront" class="card-face">
+          <p class="card-kicker">FIREARM NAME</p>
+          <h3 id="frontName">銃の名前</h3>
+          <p class="face-tip">クリック・タップで裏面へ</p>
+        </div>
+        <div id="cardBack" class="card-face" hidden>
+          <div class="back-topline">
+            <div>
+              <p class="card-kicker">DESCRIPTION & PHOTOS</p>
+              <h3 id="backName"></h3>
+            </div>
+            <button id="editCardBtn" type="button" class="btn secondary">この銃を編集</button>
+          </div>
+          <p id="backDescription" class="card-description"></p>
+          <div id="photoGrid" class="photo-grid"></div>
+          <div class="back-tools">
+            <button type="button" class="btn light" id="googleSearchBtn">Google画像検索（英語）</button>
+            <span class="small-note">検索先で選んだ写真を保存・コピーし、編集画面から登録してください。</span>
+          </div>
+        </div>
+      </article>
+      <div class="navigation">
+        <button id="prevBtn" type="button" class="btn light">← 前へ</button>
+        <button id="flipBtn" type="button" class="btn secondary">裏を見る</button>
+        <button id="nextBtn" type="button" class="btn light">次へ →</button>
+      </div>
+      <p id="emptyMsg" class="empty-text" hidden>該当するカードがありません。検索を変えるか銃を追加してください。</p>
+      <div class="deck-foot">
+        <button id="deleteCardBtn" class="danger-link" type="button">この銃を削除</button>
+        <span>左右の矢印キーで移動 · Enter / Spaceで表裏を切替 · スマホでは左右スワイプ</span>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <span>銃器の名称・歴史を学ぶための資料です。操作や使用方法を案内するものではありません。</span>
+    <a href="../plants/">植物カード</a>
+    <a href="../colors/">色名カード</a>
+  </footer>
+</div>
+<dialog id="editorDialog" class="edit-dialog" aria-labelledby="editorTitle">
+  <form id="editorForm" method="dialog">
+    <div class="editor-head"><div><p class="eyebrow">ADD / EDIT CARD</p><h2 id="editorTitle">銃のカードを編集</h2></div><button class="close-btn" id="closeEditorBtn" type="button" aria-label="閉じる">×</button></div>
+    <div class="editor-fields">
+      <label>分類<select id="editCategory" required></select></label>
+      <label>銃の名前（表に表示）<input id="editName" type="text" maxlength="180" required placeholder="例：Colt Python"></label>
+      <label>Google画像検索用の英語キーワード
+        <div class="search-row"><input id="editSearch" type="text" maxlength="240" placeholder="例：Colt Python revolver photos" required><button id="editGoogleBtn" class="btn light" type="button">英語で画像検索</button></div>
+      </label>
+      <label>銃の説明（裏に表示）<textarea id="editDescription" maxlength="6000" rows="5" placeholder="歴史・メーカー・外観の特徴などを記入"></textarea></label>
+    </div>
+    <div class="editor-photo-intro"><h3>写真を手動で登録</h3><p>Google画像検索で画像を探し、PCに保存してファイルを選ぶか、画像をコピーして「貼り付け」を押してください。URLを入力することもできます。</p></div>
+    <div id="editorPhotos" class="editor-photos"></div>
+    <div class="editor-bottom">
+      <p id="editorMessage" role="status" aria-live="polite"></p>
+      <div class="editor-buttons">
+        <button type="button" id="cancelEditBtn" class="btn light">取消</button>
+        <button type="submit" id="saveEditBtn" class="btn primary">カードを保存</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+<div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+<script src="./data.js?v=1"></script>
+<script src="./app.js?v=1"></script>
+<script src="../drive-config.js?v=3"></script>
+<script src="../persistent-drive-auth.js?v=1"></script>
+<script src="./drive-transfer-core.js?v=1"></script>
+<script src="./image-copy.js?v=1"></script>
+<script src="./drive-sync.js?v=1"></script>
+</body>
+</html>
