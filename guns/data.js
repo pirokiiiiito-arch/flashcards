@@ -106,18 +106,69 @@
     ['GB','Royal Small Arms Factory (Enfield)'],    // Bren (British production)
     ['US',"Colt's Manufacturing Company"]           // M2 Browning (early production)
   ]);
-  // The visible name is Japanese katakana; Google Images always uses the
-  // original English model name. IDs and photo keys never change.
-  const SEEDS = Object.freeze(ITEMS.map((x,i)=>Object.freeze({
-    id:'gun-'+String(i+1).padStart(4,'0'), category:x[0],name:x[3],name_en:x[1],description:x[2],
+  // Preserve the first 35 stable IDs (and all of their private photo keys).
+  // Extended cards use deterministic IDs based on their actual English labels:
+  // adding/reordering the study list must never attach old images to a new gun.
+  const originalSeeds=ITEMS.map((x,i)=>Object.freeze({
+    id:'gun-'+String(i+1).padStart(4,'0'),category:x[0],
+    name:x[3],name_en:x[1],description:x[2],
     country:REPRESENTATIVE_MAKERS[i][0],maker:REPRESENTATIVE_MAKERS[i][1],
     search:x[1]+' '+(CATEGORIES.find(c=>c.id===x[0])?.en||'firearm')+' photos',
     images:['','',''],source:'starter'
-  })));
-  const ORIGINAL_SEED_NAMES = new Map(ITEMS.map((row,i)=>[
-    'gun-'+String(i+1).padStart(4,'0'), {english:row[1],katakana:row[3],
-      search:SEEDS[i].search,country:REPRESENTATIVE_MAKERS[i][0],maker:REPRESENTATIVE_MAKERS[i][1]}
-  ]));
+  }));
+  const CATALOG_TARGET=2000;
+  function modelIdentity(category,english){
+    return category+'|'+String(english).normalize('NFKC').toLowerCase()
+      .replace(/[–—]/g,'-').replace(/\\s+/g,' ').trim();
+  }
+  function extendedId(category,english){
+    const identity=modelIdentity(category,english);
+    let hash=2166136261;
+    for(let i=0;i<identity.length;i++)
+      hash=Math.imul(hash^identity.charCodeAt(i),16777619)>>>0;
+    const slug=String(english).normalize('NFKC').toLowerCase().replace(/[^a-z0-9]+/g,'-')
+      .replace(/^-+|-+$/g,'').slice(0,42).replace(/-+$/g,'');
+    return 'gun-ext-'+category+'-'+slug+'-'+hash.toString(36);
+  }
+  const baseExtended=root.GunExtendedCatalog||
+    (typeof module!=='undefined'&&module.exports?require('./extended-models.js'):null);
+  const variantExtended=root.GunVariantCatalog||
+    (typeof module!=='undefined'&&module.exports?require('./extended-variants.js'):null);
+  const buckets=new Map(CATEGORIES.map(c=>[c.id,[]]));
+  const seen=new Set(originalSeeds.map(c=>modelIdentity(c.category,c.name_en)));
+  const knownIds=new Set(originalSeeds.map(c=>c.id));
+  for(const item of [...(baseExtended?.entries||[]),...(variantExtended?.entries||[])]){
+    if(!item||!buckets.has(item.category)||!item.name_en||!item.name)continue;
+    const identity=modelIdentity(item.category,item.name_en);
+    if(seen.has(identity))continue;
+    const id=extendedId(item.category,item.name_en);
+    if(knownIds.has(id))throw Error('銃器カタログのモデルIDが重複しました: '+id);
+    seen.add(identity);knownIds.add(id);
+    buckets.get(item.category).push(Object.freeze({...item,id,images:['','',''],source:'starter'}));
+  }
+  // Balance the historic categories before the final 2,000-study-card cutoff.
+  // The pool can exceed the target, but only distinct named models become
+  // starter cards. Never invent numbered placeholders or duplicate source names.
+  const selected=new Map(CATEGORIES.map(c=>[c.id,[]]));
+  const countByType=new Map(CATEGORIES.map(c=>[c.id,0]));
+  let remaining=CATALOG_TARGET-originalSeeds.length;
+  while(remaining>0){
+    let added=0;
+    for(const category of CATEGORIES){
+      if(remaining<=0)break;
+      const pool=buckets.get(category.id),index=countByType.get(category.id);
+      if(index>=pool.length)continue;
+      selected.get(category.id).push(pool[index]);
+      countByType.set(category.id,index+1);
+      remaining--;added++;
+    }
+    if(!added)break;
+  }
+  const extendedSeeds=CATEGORIES.flatMap(c=>selected.get(c.id));
+  const SEEDS=Object.freeze([...originalSeeds,...extendedSeeds]);
+  const ORIGINAL_SEED_NAMES=new Map(SEEDS.map(c=>[c.id,{
+    english:c.name_en,katakana:c.name,search:c.search,country:c.country,maker:c.maker
+  }]));
   const CATEGORY_IDS=new Set(CATEGORIES.map(x=>x.id));
   const ID=/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,95}$/;
   function sanitizeCard(input) {
@@ -158,7 +209,8 @@
     }
     return [...items.values()];
   }
-  const api=Object.freeze({CATEGORIES,COUNTRIES,SEEDS,sanitizeCard,mergeCards});
+  const api=Object.freeze({CATEGORIES,COUNTRIES,SEEDS,CATALOG_TARGET,
+    catalogueCount:SEEDS.length,sanitizeCard,mergeCards,modelIdentity,extendedId});
   root.GunCatalog=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
