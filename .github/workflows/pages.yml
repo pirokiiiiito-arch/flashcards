@@ -166,6 +166,8 @@ jobs:
       - name: Build and validate categorized firearm cards
         run: |
           python3 tools/build-gun-flashcards.py
+          node --check guns/extended-models.js
+          node --check guns/extended-variants.js
           node --check guns/data.js
           node --check guns/app.js
           node --check guns/drive-sync.js
@@ -173,6 +175,7 @@ jobs:
           node --check guns/drive-transfer-core.js
           node --check guns/service-worker.js
           node --test tests/gun-flashcards.test.cjs
+          node --test tests/gun-catalog-2000.test.cjs
           node tests/browser-guns.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
