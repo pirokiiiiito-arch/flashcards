@@ -88,9 +88,9 @@ test('vertical category list, compact front type and plant-style three verticall
  assert.ok(css.includes('.photo-frame{display:flex')&&css.includes('aspect-ratio:16/9'));
  assert.ok(plants.includes('.image-box{width:100%;aspect-ratio:16/9'));
  assert.match(css,/#cardBack\{cursor:default;display:block;height:auto;overflow:visible\}/);
- assert.ok(css.includes('.flash-card.front-compact{width:min(100%,560px);max-width:560px;min-height:250px}'));
- assert.ok(css.includes('.flash-card.front-compact #cardFront{min-height:250px;padding:20px 22px}'));
- assert.ok(css.includes('.flash-card.front-compact{width:92%;max-width:560px;min-height:215px}'));
+ assert.ok(css.includes('.flash-card.front-compact{width:min(100%,480px);max-width:480px;min-height:220px}'));
+ assert.ok(css.includes('.flash-card.front-compact #cardFront{min-height:220px;padding:18px 20px}'));
+ assert.ok(css.includes('.flash-card.front-compact{width:92%;max-width:480px;min-height:205px}'));
  assert.ok(read('app.js').includes("classList.toggle('front-compact',!!card&&!view.flipped)"));
  assert.ok(!css.includes('.flash-card.front-compact #cardBack'),'The back must keep its full width and height');
 });
