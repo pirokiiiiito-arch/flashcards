@@ -14,12 +14,16 @@ test('gun-card catalogue provides accurate categorized historical starting model
    assert.ok(C.SEEDS.some(c=>c.category===category),'Missing category '+category);
  assert.ok(C.SEEDS.some(c=>c.name==='コルト・パイソン'&&c.category==='revolver'));
  assert.ok(C.SEEDS.some(c=>c.name==='レミントン・モデル870'&&c.category==='shotgun'));
+ assert.equal(C.SEEDS[0].name_en,'Remington Model 870');
+ assert.equal(C.SEEDS.find(c=>c.name==='コルト・パイソン').name_en,'Colt Python');
  assert.equal(new Set(C.SEEDS.map(c=>c.id)).size,35);
  for(const c of C.SEEDS){
    assert.ok(c.description.length>10);
    assert.ok(c.images.every(v=>v===''),'Every starter photo must be manually selected');
    assert.ok(/[ァ-ヶー]/.test(c.name)&&!/[A-Za-z]/.test(c.name),'All starter names are katakana');
    assert.ok(/[A-Za-z]/.test(c.search)&&!/[ぁ-んァ-ヶ一-龯]/.test(c.search),'Search terms remain English');
+   assert.ok(/[A-Za-z]/.test(c.name_en)&&!/[ぁ-んァ-ヶ一-龯]/.test(c.name_en),'Exact model label is English');
+   assert.ok(!c.name_en.endsWith(' photos'),'Product name is not the entire Google search query');
  }
 });
 test('user entries remain separately editable and allow only expected image references',()=>{
@@ -44,6 +48,7 @@ test('legacy English seed labels become katakana without losing edited descripti
  const c=C.mergeCards([legacy]).find(c=>c.id==='gun-0005');
  assert.equal(c.name,'コルト・パイソン');
  assert.equal(c.search,'Colt Python revolver photos');
+ assert.equal(c.name_en,'Colt Python','Legacy seed recovers English model name without new storage keys');
  assert.equal(c.description,legacy.description);
  assert.deepEqual(c.images,legacy.images);
  assert.equal(c.source,'user');
@@ -52,10 +57,17 @@ test('legacy English seed labels become katakana without losing edited descripti
  const userRenamed=C.mergeCards([{...legacy,name:'自分で付けた銃名'}]).find(row=>row.id===legacy.id);
  assert.equal(userRenamed.name,'自分で付けた銃名','Do not erase an intentionally renamed user card');
 });
-test('front is name-only, back displays description and three manual photo slots',()=>{
+test('front contains only katakana and a small English model label; back keeps description and three photo slots',()=>{
  const html=read('index.html'),app=read('app.js');
  assert.match(html,/<div id="cardFront"/);
  assert.match(html,/<h3 id="frontName">/);
+ assert.match(html,/<p id="frontEnglish" class="front-english" lang="en"><\/p>/);
+ const front=html.slice(html.indexOf('<div id="cardFront"'),html.indexOf('<div id="cardBack"'));
+ assert.ok(!front.includes('FIREARM NAME'));
+ assert.ok(!front.includes('クリック・タップで裏面へ'));
+ assert.ok(app.includes("$('frontEnglish').textContent=card.name_en||''"));
+ assert.ok(app.includes("$('frontEnglish').hidden=!card.name_en"));
+ assert.match(html,/id="editEnglishName"/);
  assert.match(html,/<div id="cardBack"/);
  assert.match(html,/id="backDescription"/);
  assert.match(html,/id="photoGrid"/);
@@ -79,6 +91,10 @@ test('English Google Images opens from a deliberate click and never downloads au
 test('vertical category list, compact front type and plant-style three vertically stacked back photos',()=>{
  const css=read('style.css');
  const plants=fs.readFileSync('plants/index.html','utf8');
+ assert.ok(css.includes('width:min(100%,820px);margin:0 auto'),'Category container must be centered');
+ assert.ok(css.includes('justify-items:center'),'Every category tile must center its visible labels');
+ assert.ok(css.includes('text-align:center;border:1px solid var(--stroke)'),'Category name must be centered');
+ assert.ok(css.includes('.front-english{font-size:clamp(12px,1.5vw,16px)'),'English subtitle must be small');
  assert.match(css,/\.category-grid\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
  assert.match(css,/\.category-grid\{grid-template-columns:minmax\(0,1fr\)/);
  assert.match(css,/#frontName\{font-size:clamp\(23px,3\.5vw,34px\)/);
@@ -135,6 +151,7 @@ test('browser storage and JSON backup preserve manually selected picture bytes',
 test('separate authenticated namespace publishes image bytes only after Drive verification',()=>{
  const sync=read('drive-sync.js'),core=read('drive-transfer-core.js'),copy=read('image-copy.js');
  assert.ok(sync.includes("namespace:'gun-flashcards-v1'"));
+ assert.ok(sync.includes("name_en:c.name_en||''"),'Save English model name to Drive without changing card IDs or photo keys');
  assert.ok(sync.includes('await sync.republish(keys)'));
  assert.ok(sync.includes("account!==sync.account"));
  assert.ok(sync.includes('gunPhotoDeferred'));
@@ -149,16 +166,16 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v5'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v6'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=4'));
- assert.ok(sw.includes('./style.css?v=4'));
- assert.ok(html.includes('./data.js?v=2'));
- assert.ok(html.includes('./app.js?v=4'));
- assert.ok(sw.includes('./data.js?v=2'));
- assert.ok(sw.includes('./app.js?v=4'));
+ assert.ok(html.includes('./style.css?v=5'));
+ assert.ok(sw.includes('./style.css?v=5'));
+ assert.ok(html.includes('./data.js?v=3'));
+ assert.ok(html.includes('./app.js?v=5'));
+ assert.ok(sw.includes('./data.js?v=3'));
+ assert.ok(sw.includes('./app.js?v=5'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
  assert.ok(html.includes('./drive-transfer-core.js?v=1'));
  assert.ok(html.includes('./service-worker.js')===false);
