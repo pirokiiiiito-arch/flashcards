@@ -169,12 +169,82 @@ function refresh(){
  if(!$('homeView').hidden)buildGroups();
  if(!$('deckView').hidden)renderDeck();
 }
+function clipboardImage(clipboard) {
+ const file=[...(clipboard?.files||[])].find(item=>isImageType(item.type));
+ if(file)return file;
+ for(const item of clipboard?.items||[]){
+   if(item.kind==='file'&&isImageType(item.type)){
+     const image=item.getAsFile?.();if(image)return image;
+   }
+ }
+ return null;
+}
+async function saveBackPhoto(cardId,index,blob) {
+ if($('editorDialog').open){toast('編集中のカードを保存・閉じてから写真を貼り付けてください。');return false;}
+ const original=cards.find(card=>card.id===cardId);
+ if(!original||index<0||index>2){toast('カードが切り替わりました。写真の登録先を選び直してください。');return false;}
+ const expected=getImages(original)[index];
+ if(expected&&!window.confirm(original.name+'の写真'+(index+1)+'を新しい写真に差し替えますか？')){
+   return false;
+ }
+ try{
+   // Write the new bytes locally first. Never clear or mutate the old image.
+   const ref=await storeBlob(blob,cardId,index);
+   const latest=cards.find(card=>card.id===cardId);
+   if(!latest||getImages(latest)[index]!==expected){
+     toast('写真の登録先が更新されたため上書きしませんでした。元の写真は保持しています。');
+     return false;
+   }
+   const ok=update(arr=>{
+     const target=arr.find(card=>card.id===cardId);
+     if(!target||getImages(target)[index]!==expected)
+       throw Error('写真の登録先が変更されました');
+     target.images[index]=ref;
+   },['image:'+cardId+':'+index],'photo');
+   if(ok)toast('写真'+(index+1)+'を保存しました。Drive接続中はスマホへ自動同期します。');
+   return ok;
+ }catch(e){
+   toast('写真を保存できませんでした：'+(e.message||String(e)));
+   return false;
+ }
+}
+async function pasteBackPhoto(cardId,index,frame) {
+ frame.focus({preventScroll:true});
+ try{
+   if(!navigator.clipboard?.read)throw Error('クリップボードの読取許可がありません。');
+   const items=await navigator.clipboard.read();
+   for(const item of items){
+     const type=item.types.find(type=>isImageType(type));
+     if(type)return saveBackPhoto(cardId,index,await item.getType(type));
+   }
+   throw Error('クリップボードに画像がありません。');
+ }catch(e){
+   toast('画像をコピーしてから、写真'+(index+1)+'の枠をクリックして Ctrl+V で貼り付けてください（Macは ⌘V）。');
+   frame.focus({preventScroll:true});
+   return false;
+ }
+}
 async function renderPhotos(card,serial){
  clearUrls(displayUrls);
  const grid=$('photoGrid');grid.replaceChildren();
  for(let i=0;i<3;i++){
    const figure=document.createElement('figure');figure.className='photo-slot';
    const frame=document.createElement('div');frame.className='photo-frame';
+   // Like the plant cards: click a picture box and paste an image with Ctrl+V.
+   frame.contentEditable='true';frame.spellcheck=false;frame.tabIndex=0;
+   frame.dataset.pasteSlot=String(i+1);
+   frame.title='この写真欄をクリックして Ctrl+V（Macは ⌘V）で画像を貼り付け';
+   frame.setAttribute('aria-label','写真'+(i+1)+'にコピーした画像を貼り付け');
+   frame.addEventListener('paste',event=>{
+     event.preventDefault();event.stopPropagation();
+     const file=clipboardImage(event.clipboardData);
+     if(file)void saveBackPhoto(card.id,i,file);
+     else toast('画像をコピーしてから、この写真欄で Ctrl+V（Macは ⌘V）してください。');
+   });
+   frame.addEventListener('beforeinput',event=>event.preventDefault());
+   frame.addEventListener('keydown',event=>{
+     if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();}
+   });
    const source=getImages(card)[i];
    if(source){
      const img=document.createElement('img');img.alt=card.name+' 写真'+(i+1);img.loading='lazy';
@@ -190,7 +260,26 @@ async function renderPhotos(card,serial){
      const empty=document.createElement('span');empty.className='photo-empty';empty.textContent='写真未登録';frame.appendChild(empty);
    }
    const cap=document.createElement('figcaption');cap.textContent='写真 '+(i+1);
-   figure.append(frame,cap);grid.appendChild(figure);
+   const tools=document.createElement('div');tools.className='photo-slot-actions';
+   const search=document.createElement('button');search.type='button';search.className='btn secondary';
+   search.textContent='Google画像検索（英語）';
+   search.onclick=event=>{event.stopPropagation();englishSearch(googleQuery(card));};
+   const paste=document.createElement('button');paste.type='button';paste.className='btn primary';
+   paste.textContent='画像を貼り付け';
+   paste.onclick=event=>{event.stopPropagation();void pasteBackPhoto(card.id,i,frame);};
+   const fileLabel=document.createElement('label');fileLabel.className='btn light';
+   fileLabel.textContent='ファイルから登録';
+   const file=document.createElement('input');file.type='file';file.accept='image/png,image/jpeg,image/webp,image/gif';
+   file.setAttribute('aria-label','写真'+(i+1)+'の画像ファイルを選択');
+   file.onchange=async()=>{
+     const selected=file.files?.[0];if(selected)await saveBackPhoto(card.id,i,selected);
+     file.value='';
+   };
+   fileLabel.appendChild(file);
+   const hint=document.createElement('span');hint.className='photo-slot-hint';
+   hint.textContent='写真枠をクリックして Ctrl+V（Macは ⌘V）でも貼り付け可能';
+   tools.append(search,paste,fileLabel);
+   figure.append(frame,cap,tools,hint);grid.appendChild(figure);
  }
 }
 function openImage(url,name){
@@ -449,7 +538,7 @@ function installListeners(){
  $('filterInput').oninput=e=>{view.search=e.target.value.trim();view.index=0;view.flipped=false;if(view.shuffled)shuffleIds();refresh()};
  $('shuffleBtn').onclick=()=>{view.shuffled=!view.shuffled;view.index=0;view.flipped=false;if(view.shuffled)shuffleIds();refresh()};
  $('prevBtn').onclick=()=>move(-1);$('nextBtn').onclick=()=>move(1);$('flipBtn').onclick=flip;
- $('flashCard').onclick=e=>{if(Date.now()<ignoreClickUntil||e.target.closest('button,a,input,select,textarea,img'))return;flip()};
+ $('flashCard').onclick=e=>{if(Date.now()<ignoreClickUntil||e.target.closest('button,a,input,select,textarea,img,label,.photo-slot,[contenteditable="true"]'))return;flip()};
  $('flashCard').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===$('flashCard')){e.preventDefault();flip()}};
  $('editCardBtn').onclick=e=>{e.stopPropagation();openEditor(current())};
  $('googleSearchBtn').onclick=e=>{e.stopPropagation();const card=current();if(card)englishSearch(googleQuery(card))};
