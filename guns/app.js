@@ -260,10 +260,13 @@ async function renderPhotos(card,serial){
      const empty=document.createElement('span');empty.className='photo-empty';empty.textContent='写真未登録';frame.appendChild(empty);
    }
    const cap=document.createElement('figcaption');cap.textContent='写真 '+(i+1);
+   const searchRow=document.createElement('div');searchRow.className='photo-slot-search';
    const tools=document.createElement('div');tools.className='photo-slot-actions';
    const search=document.createElement('button');search.type='button';search.className='btn secondary';
    search.textContent='Google画像検索（英語）';
+   search.setAttribute('aria-label','写真'+(i+1)+'のGoogle画像検索（英語）');
    search.onclick=event=>{event.stopPropagation();englishSearch(googleQuery(card));};
+   searchRow.append(cap,search);
    const paste=document.createElement('button');paste.type='button';paste.className='btn primary';
    paste.textContent='画像を貼り付け';
    paste.onclick=event=>{event.stopPropagation();void pasteBackPhoto(card.id,i,frame);};
@@ -278,8 +281,10 @@ async function renderPhotos(card,serial){
    fileLabel.appendChild(file);
    const hint=document.createElement('span');hint.className='photo-slot-hint';
    hint.textContent='写真枠をクリックして Ctrl+V（Macは ⌘V）でも貼り付け可能';
-   tools.append(search,paste,fileLabel);
-   figure.append(frame,cap,tools,hint);grid.appendChild(figure);
+   tools.append(paste,fileLabel);
+   // One English Google Images search sits immediately above EACH
+   // corresponding picture; clipboard/file controls remain immediately below.
+   figure.append(searchRow,frame,tools,hint);grid.appendChild(figure);
  }
 }
 function openImage(url,name){
@@ -298,6 +303,7 @@ function renderDeck(){
  $('deckHeading').textContent=label;
  $('positionLabel').textContent=card?(view.index+1)+' / '+list.length:'0 / 0';
  $('flashCard').hidden=!card;$('emptyMsg').hidden=!!card;
+ $('flashCard').classList.toggle('front-compact',!!card&&!view.flipped);
  $('prevBtn').disabled=$('nextBtn').disabled=$('flipBtn').disabled=!card;
  $('deleteCardBtn').hidden=!card;
  $('shuffleBtn').setAttribute('aria-pressed',String(view.shuffled));
