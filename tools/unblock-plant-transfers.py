@@ -16,8 +16,9 @@ protected=['drive-core.js','drive-config.js','drive-sync.js','index.html','word-
 before={p:sha(p) for p in protected}
 # Separate derived core: no change to word/color behavior or persisted schema.
 s=read('drive-core.js')
-s=one(s,'        const id = input.value.trim();',
-      "        // This plant-only core must register for the already-authorized broker\'s token at startup.\\n        // The OAuth input is blank until the legacy dialog opens; use the public configured ID instead.\\n        const id = (root.FLASHCARDS_DRIVE_CONFIG?.clientId || input.value || localStorage.getItem(CLIENT_KEY) || '').trim();")
+s=one(s,'        const id = input.value.trim();',"""        // Plant-only broker: receive the existing authorized token even when the old OAuth dialog has never opened.
+        // No credentials, user photos or private storage are modified here.
+        const id = (root.FLASHCARDS_DRIVE_CONFIG?.clientId || input.value || localStorage.getItem(CLIENT_KEY) || '').trim();""")
 s=one(s,'    let localSnapshot = {};',"    let localSnapshot = {};\n    const deferredPhotoKeys = new Set();\n    const deferPhoto = e => e?.plantPhotoDeferred === true && !e.auth;")
 s=one(s,'        if (!deleted) value = await cfg.toCloudValue(key, value, api);',"""        if (!deleted) {
           try { value = await cfg.toCloudValue(key, value, api); }
