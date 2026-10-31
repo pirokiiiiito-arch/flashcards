@@ -170,6 +170,7 @@ test('moving Drive progress inside a collapsed details panel prevents top-layout
  for(const id of ['localStatus','cloudStatus','photoStatus'])assert.ok(html.includes('id="'+id+'"'));
  assert.ok(css.includes('.sync-strip>summary{display:table'),'Collapsed details should have a stable small header');
  assert.ok(css.includes('.sync-content{display:flex;flex-wrap:wrap'),'Statuses are still accessible when expanded');
+ assert.ok(css.includes('.sync-strip:not([open])>.sync-content{display:none!important}'),'Closed status panel must consume zero extra layout space');
 });
 test('browser storage and JSON backup preserve manually selected picture bytes',()=>{
  const source=read('app.js');
@@ -198,12 +199,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v9'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v10'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=9'));
- assert.ok(sw.includes('./style.css?v=9'));
+ assert.ok(html.includes('./style.css?v=10'));
+ assert.ok(sw.includes('./style.css?v=10'));
  assert.ok(html.includes('./data.js?v=3'));
  assert.ok(html.includes('./app.js?v=7'));
  assert.ok(sw.includes('./data.js?v=3'));
