@@ -25,7 +25,7 @@ function rig({initial='',valid=true,connected=true,durable=[],success=true,onlin
  const document={visibilityState:'visible',addEventListener:(name,fn)=>{events[name]=fn;}};
  const navigator={onLine:online};
  const ctx={cards,getImages:c=>c.images,imageKey:(c,i)=>'image:'+c.id+':'+i,originalSave:()=>{saved++},
-   sync,copier,window,document,navigator,Map,Set,Promise,ready:Promise.resolve(),orderSource:{capture:()=>{}},P:{isDrive:value=>/^gdrive:[\\w-]+:[a-f0-9]{64}$/.test(String(value||''))},
+   sync,copier,window,document,navigator,Map,Set,Promise,ready:Promise.resolve(),orderSource:{capture:()=>{}},P:{isDrive:value=>/^gdrive:[\w-]+:[a-f0-9]{64}$/.test(String(value||''))},
    Date:{now:()=>clock},recoveryBusy:false,editing:false,
    automaticPhotoRegistrations:new Map(),savedPhotoValues:new Map(),
    automaticPhotoTimer:null,automaticPhotoRunning:false,automaticPhotoNextAttempt:0,automaticPhotoDelay:30000,
