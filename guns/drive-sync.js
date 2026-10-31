@@ -9,7 +9,7 @@ if(!deck||!Core||!P)throw Error('銃器カードの同期機能を読み込め�
 await deck.ready;
 const cardKey=c=>'card:'+c.id;
 const imageKey=(c,i)=>'image:'+c.id+':'+i;
-const clean=c=>({id:c.id,name:c.name,category:c.category,description:c.description,
+const clean=c=>({id:c.id,name:c.name,name_en:c.name_en||'',category:c.category,description:c.description,
   search:c.search,source:c.source||'user'});
 const isDevice=v=>/^(idb:gunimg:|data:image\/|blob:)/.test(String(v||''));
 let sync=null,copyTimer=null,busy=false,delay=30000,nextRetry=0;
