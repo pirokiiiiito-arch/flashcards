@@ -203,7 +203,7 @@
     if (autoPhotoTimer != null) return;
     autoPhotoTimer = setTimeout(async () => {
       autoPhotoTimer = null;
-      if (autoPhotoBusy || cfg.isEditing() || document.visibilityState === 'hidden' || navigator.onLine === false) {
+      if (autoPhotoBusy || cfg.isEditing() || document.visibilityState === 'hidden' || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
         schedulePhotoRegistration(15000); return;
       }
       if (!sync.valid()) {
