@@ -75,6 +75,13 @@ async function run(){
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'nine gun categories');
    assert.equal(await evaluate('GunDeck.getCards().length'),35);
    assert.equal(await evaluate("document.querySelector('[data-group=shotgun]').textContent.includes('ショットガン')"),true);
+   const inventionOrder=['shotgun','revolver','bolt','lever','machine-gun','semi-rifle','pistol','smg','assault'];
+   const displayedOrder=await evaluate("[...document.querySelectorAll('#groupGrid .category-tile')].map(x=>x.dataset.group)");
+   assert.deepEqual(displayedOrder,inventionOrder,'Home categories must be ordered by approximate historical invention');
+   assert.equal(await evaluate("document.querySelector('#homeView>.small-note').textContent.includes('発明・登場順')"),true);
+   const englishCategoryNumbers=await evaluate("[...document.querySelectorAll('#groupGrid .tile-index')].map(x=>x.textContent.trim().split(' · ')[0])");
+   assert.deepEqual(englishCategoryNumbers,['01','02','03','04','05','06','07','08','09'],
+     'The numbered category badges must follow the new chronology');
    const categoryLayout=await evaluate("(()=>{const items=[...document.querySelectorAll('#groupGrid .category-tile')],bounds=items.map(el=>el.getBoundingClientRect());return {columns:getComputedStyle(document.querySelector('#groupGrid')).gridTemplateColumns,stacked:bounds.slice(1).every((b,i)=>b.top>=bounds[i].bottom-1),widths:bounds.map(b=>b.width)}})()");
    assert.equal(categoryLayout.stacked,true,'Categories must each occupy their own vertical row on desktop');
    assert.equal(categoryLayout.columns.trim().split(/\s+/).length,1,'Categories must use a single grid column');
@@ -89,6 +96,8 @@ async function run(){
    const mobileCategories=await evaluate("(()=>{const group=document.querySelector('#groupGrid'),tiles=[...group.querySelectorAll('.category-tile')].map(el=>el.getBoundingClientRect());return {columns:getComputedStyle(group).gridTemplateColumns,stacked:tiles.slice(1).every((row,i)=>row.top>=tiles[i].bottom-1),fullWidth:tiles.every(row=>row.width>320)}})()");
    assert.equal(mobileCategories.columns.trim().split(/\s+/).length,1,'Mobile categories must also be one column');
    assert.equal(mobileCategories.stacked,true,'Mobile category tiles must appear one below another');
+   assert.deepEqual(await evaluate("[...document.querySelectorAll('#groupGrid .category-tile')].map(x=>x.dataset.group)"),
+     inventionOrder,'Mobile must show exactly the same invention order');
    assert.equal(mobileCategories.fullWidth,true,'Mobile categories must be readable full-width rows');
    const mobileTileWidth=await evaluate("document.querySelector('.category-tile').getBoundingClientRect().width");
    assert.ok(mobileTileWidth<355&&mobileTileWidth>320,'Mobile category cards should have comfortable side margins: '+mobileTileWidth);
@@ -97,6 +106,9 @@ async function run(){
      'Category names must stay vertically centered in mobile tiles: '+JSON.stringify(mobileVertical));
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
+   const dropdownOrder=await evaluate("[...document.querySelector('#categorySelect').options].slice(1).map(x=>x.value)");
+   assert.deepEqual(dropdownOrder,[...inventionOrder,'other'],
+     'Filter dropdown must follow the same history ordering; other stays last');
    const deckCornerAlignment=await evaluate("(()=>{const bar=document.querySelector('.deck-top').getBoundingClientRect(),nav=document.querySelector('.navigation').getBoundingClientRect(),card=document.querySelector('#flashCard').getBoundingClientRect(),back=document.querySelector('#homeBtn').getBoundingClientRect(),filter=document.querySelector('.deck-filter-details>summary').getBoundingClientRect();return {barWidth:bar.width,navWidth:nav.width,backLeft:Math.abs(back.left-card.left),filterRight:Math.abs(filter.right-card.right),barNavLeft:Math.abs(bar.left-nav.left),barNavRight:Math.abs(bar.right-nav.right)};})()");
    assert.ok(deckCornerAlignment.backLeft<2&&deckCornerAlignment.filterRight<2,
      'Category-list and filter outer corners must match the card edges: '+JSON.stringify(deckCornerAlignment));
@@ -209,6 +221,8 @@ async function run(){
    await evaluate("(()=>{const old=JSON.parse(localStorage.getItem('gun-flashcards-cards-v1'));const c=old.cards.find(c=>c.id==='gun-0001');c.name='Remington Model 870';localStorage.setItem('gun-flashcards-cards-v1',JSON.stringify(old));return true})()");
    await navigate('Page.reload',{ignoreCache:false});
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'cards after browser restart');
+   assert.deepEqual(await evaluate("[...document.querySelectorAll('#groupGrid .category-tile')].map(x=>x.dataset.group)"),
+     inventionOrder,'Chronological category order must survive reload without modifying saved photos');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name"),'レミントン・モデル870');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').search.includes('Remington')"),true);
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name_en"),'Remington Model 870');
@@ -230,7 +244,7 @@ async function run(){
      'Custom English model name must survive browser restart');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: category names vertically centered on desktop/mobile, controls aligned, word-card and photos intact');
+   console.log('PASS browser guns: historical invention order on desktop/mobile and reload, stable model IDs/photos, centered cards and photo operations');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
