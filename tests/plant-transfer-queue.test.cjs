@@ -79,7 +79,7 @@ test('plant broker auto-binds an already connected token on startup without open
  const c={root:{FLASHCARDS_DRIVE_CONFIG:{clientId:publicId},PersistentDriveAuth:{
    initTokenClient(options){registered++;queueMicrotask(()=>options.callback({access_token:'synthetic-token',expires_in:3600,scope}));return {requestAccessToken(){}};},
    hasGrantedAllScopes:(response,wanted)=>response.scope===wanted}},
-  connect:{disabled:true},input:{value:''},CLIENT_KEY:'test-client-key',loadGIS:async()=>{},
+  connect:{disabled:true},input:{value:''},CLIENT_KEY:'test-client-key',configured:()=>publicId,loadGIS:async()=>{},
   localStorage:{getItem:()=>'',setItem:(key,value)=>{assert.equal(value,publicId)}},
   SCOPE:scope,token:'',expires:0,expiryTimer:0,expire:()=>{},clearTimeout:()=>{},setTimeout:()=>1,Date,
   cfg:{enablePrimary:async()=>{applied++}},setStatus:(value)=>statuses.push(value),
