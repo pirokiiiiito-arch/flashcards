@@ -25,6 +25,7 @@ jobs:
           node --test tests/word-network*.test.cjs
           node --test tests/plant-drive-image-copy.test.cjs
           node --test tests/service-worker.test.cjs
+          node --test tests/plant-reconnect-status.test.cjs
       - name: Generate versioned word app entries
         run: python3 tools/build-word-network.py
       - name: Build and check plant and color network entries
