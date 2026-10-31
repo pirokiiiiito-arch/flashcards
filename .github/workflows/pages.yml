@@ -144,6 +144,7 @@ jobs:
           node --check plants/drive-sync.js
           node --check plants/service-worker.js
           node --test tests/plant-auth-settled.test.cjs tests/service-worker.test.cjs
+          node --test tests/plant-photo-retry.test.cjs
       - name: Show plant descriptions above photographs
         run: |
           python3 tools/plant-description-first.py
