@@ -17,7 +17,7 @@
       <div>
         <p class="eyebrow">FIREARMS · STUDY CARDS</p>
         <h1>銃器図鑑カード</h1>
-        <p class="subtitle">表：銃の名前 ／ 裏：説明と写真</p>
+        <p class="subtitle">表：カタカナの銃名 ／ 裏：説明と写真</p>
       </div>
     </div>
     <nav class="header-actions" aria-label="データ操作">
@@ -41,7 +41,7 @@
           <button type="button" id="allCardsBtn" class="btn secondary">すべての銃を見る</button>
         </div>
       </div>
-      <p class="intro">銃の型式・歴史・特徴を覚えるためのカードです。写真は自動取得せず、英語のGoogle画像検索で探したものを手動で登録します。</p>
+      <p class="intro">表・裏の銃名はカタカナで表示します。Google画像検索では元の英語モデル名を使い、選んだ写真だけを手動で登録します。</p>
       <div id="groupGrid" class="category-grid"></div>
       <div class="small-note">最初のカードには例として代表的なモデル名と概要を用意しています。後から自由に追加・編集できます。</div>
     </section>
@@ -107,8 +107,8 @@
     <div class="editor-head"><div><p class="eyebrow">ADD / EDIT CARD</p><h2 id="editorTitle">銃のカードを編集</h2></div><button class="close-btn" id="closeEditorBtn" type="button" aria-label="閉じる">×</button></div>
     <div class="editor-fields">
       <label>分類<select id="editCategory" required></select></label>
-      <label>銃の名前（表に表示）<input id="editName" type="text" maxlength="180" required placeholder="例：Colt Python"></label>
-      <label>Google画像検索用の英語キーワード
+      <label>銃の名前（表・裏にカタカナで表示）<input id="editName" type="text" maxlength="180" required placeholder="例：コルト・パイソン"></label>
+      <label>Google画像検索用の英語名・キーワード
         <div class="search-row"><input id="editSearch" type="text" maxlength="240" placeholder="例：Colt Python revolver photos" required><button id="editGoogleBtn" class="btn light" type="button">英語で画像検索</button></div>
       </label>
       <label>銃の説明（裏に表示）<textarea id="editDescription" maxlength="6000" rows="5" placeholder="歴史・メーカー・外観の特徴などを記入"></textarea></label>
@@ -125,8 +125,8 @@
   </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
-<script src="./data.js?v=1"></script>
-<script src="./app.js?v=1"></script>
+<script src="./data.js?v=2"></script>
+<script src="./app.js?v=2"></script>
 <script src="../drive-config.js?v=3"></script>
 <script src="../persistent-drive-auth.js?v=1"></script>
 <script src="./drive-transfer-core.js?v=1"></script>
