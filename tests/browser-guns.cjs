@@ -119,11 +119,12 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
    assert.equal(await evaluate("document.querySelector('#catalogProgress').textContent.includes('2,000')"),true,
      'The source study list shows the 2,000-model target');
-   const reference=await evaluate("(()=>{const nav=document.querySelector('.navigation'),card=document.querySelector('#flashCard'),buttons=[...nav.querySelectorAll('button')],cardRect=card.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),top=card.querySelector('.card-chrome'),actions=top.querySelectorAll('.card-actions button');return {navLabels:buttons.map(x=>x.textContent.trim()),navAbove:navRect.bottom<cardRect.top,navEqual:buttons.every(x=>Math.abs(x.getBoundingClientRect().width-buttons[0].getBoundingClientRect().width)<3),modeBackground:getComputedStyle(document.querySelector('#normalBtn')).backgroundColor,normalPressed:document.querySelector('#normalBtn').getAttribute('aria-pressed'),shufflePressed:document.querySelector('#shuffleBtn').getAttribute('aria-pressed'),cardWidth:cardRect.width,cardHeight:cardRect.height,faceLabel:document.querySelector('#faceLabel').textContent,actionLabels:[...actions].map(x=>x.textContent.trim()),counter:document.querySelector('#positionLabel').textContent,toolbarWithinCard:top.getBoundingClientRect().top>cardRect.top};})()");
+   const reference=await evaluate("(()=>{const nav=document.querySelector('.navigation'),card=document.querySelector('#flashCard'),buttons=[...nav.querySelectorAll('button')],cardRect=card.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),top=card.querySelector('.card-chrome'),actions=top.querySelectorAll('.card-actions button');return {navLabels:buttons.map(x=>x.textContent.trim()),navAbove:navRect.bottom<cardRect.top,navEqual:buttons.every(x=>Math.abs(x.getBoundingClientRect().width-buttons[0].getBoundingClientRect().width)<3),modeBackground:getComputedStyle(document.querySelector('#normalBtn')).backgroundColor,shuffleBackground:getComputedStyle(document.querySelector('#shuffleBtn')).backgroundColor,normalPressed:document.querySelector('#normalBtn').getAttribute('aria-pressed'),shufflePressed:document.querySelector('#shuffleBtn').getAttribute('aria-pressed'),cardWidth:cardRect.width,cardHeight:cardRect.height,faceLabel:document.querySelector('#faceLabel').textContent,actionLabels:[...actions].map(x=>x.textContent.trim()),counter:document.querySelector('#positionLabel').textContent,toolbarWithinCard:top.getBoundingClientRect().top>cardRect.top};})()");
    assert.deepEqual(reference.navLabels,['← 戻る','通常','シャッフル','次へ →']);
    assert.equal(reference.navAbove,true,'Word-style navigation must be above the card');
    assert.equal(reference.navEqual,true,'Four gun-card navigation buttons must have equal widths');
    assert.ok(reference.modeBackground.includes('45, 157, 88')||reference.modeBackground.includes('44, 155, 87'),'Selected normal mode must be green: '+reference.modeBackground);
+   assert.equal(reference.shuffleBackground,'rgb(47, 102, 232)','Shuffle must be blue before random mode is selected');
    assert.equal(reference.normalPressed,'true');
    assert.equal(reference.shufflePressed,'false');
    assert.ok(reference.cardWidth>=650&&reference.cardWidth<=675&&reference.cardHeight>=355&&reference.cardHeight<=385,
@@ -150,7 +151,7 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#normalBtn').getAttribute('aria-pressed')"),'false');
    const chosen=await evaluate("(()=>({normal:getComputedStyle(document.querySelector('#normalBtn')).backgroundColor,shuffle:getComputedStyle(document.querySelector('#shuffleBtn')).backgroundColor}))()");
    assert.notEqual(chosen.shuffle,chosen.normal,'Only shuffle should be highlighted when random order is active');
-   assert.ok(chosen.shuffle.includes('45, 157, 88'),'Shuffle selected state should be green: '+JSON.stringify(chosen));
+   assert.equal(chosen.shuffle,'rgb(47, 102, 232)','Shuffle selected state must match the reference blue: '+JSON.stringify(chosen));
    const shuffledNames=[];
    for(let i=0;i<4;i++){
      shuffledNames.push(await evaluate("document.querySelector('#frontName').textContent"));
