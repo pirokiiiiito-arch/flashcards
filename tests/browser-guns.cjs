@@ -73,7 +73,9 @@ async function run(){
    await send('Fetch.enable',{patterns:[{urlPattern:'http*',requestStage:'Request'}]});
    await navigate('Page.navigate',{url:origin+'/flashcards/guns/index.html'});
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'nine gun categories');
-   assert.equal(await evaluate('GunDeck.getCards().length'),35);
+   assert.equal(await evaluate('GunDeck.getCards().length'),2000);
+   const catalogNames=await evaluate("GunDeck.getCards().map(c=>c.name_en)");
+   assert.equal(new Set(catalogNames).size,2000,'A 2,000-model catalogue must not repeat the exact same English model name');
    assert.equal(await evaluate("document.querySelector('[data-group=shotgun]').textContent.includes('ショットガン')"),true);
    const inventionOrder=['shotgun','revolver','bolt','lever','machine-gun','semi-rifle','pistol','smg','assault'];
    const displayedOrder=await evaluate("[...document.querySelectorAll('#groupGrid .category-tile')].map(x=>x.dataset.group)");
@@ -115,6 +117,8 @@ async function run(){
    assert.ok(deckCornerAlignment.barNavLeft<2&&deckCornerAlignment.barNavRight<2,
      'Category controls must line up with the three-button navigation: '+JSON.stringify(deckCornerAlignment));
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
+   assert.equal(await evaluate("document.querySelector('#catalogProgress').textContent.includes('2,000')"),true,
+     'The source study list shows the 2,000-model target');
    const reference=await evaluate("(()=>{const nav=document.querySelector('.navigation'),card=document.querySelector('#flashCard'),buttons=[...nav.querySelectorAll('button')],cardRect=card.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),top=card.querySelector('.card-chrome'),actions=top.querySelectorAll('.card-actions button');return {navLabels:buttons.map(x=>x.textContent.trim()),navAbove:navRect.bottom<cardRect.top,navEqual:buttons.every(x=>Math.abs(x.getBoundingClientRect().width-buttons[0].getBoundingClientRect().width)<3),modeBackground:getComputedStyle(document.querySelector('#shuffleBtn')).backgroundColor,cardWidth:cardRect.width,cardHeight:cardRect.height,faceLabel:document.querySelector('#faceLabel').textContent,actionLabels:[...actions].map(x=>x.textContent.trim()),counter:document.querySelector('#positionLabel').textContent,toolbarWithinCard:top.getBoundingClientRect().top>cardRect.top};})()");
    assert.deepEqual(reference.navLabels,['← 戻る','通常','次へ →']);
    assert.equal(reference.navAbove,true,'Word-style navigation must be above the card');
@@ -124,7 +128,8 @@ async function run(){
      'Front must match the real root word app ~670×360px, not the oversized mockup: '+JSON.stringify(reference));
    assert.equal(reference.faceLabel,'表・銃名');
    assert.deepEqual(reference.actionLabels,['＋追加','編集','削除']);
-   assert.equal(reference.counter,'1 / 4');
+   assert.match(reference.counter,/^1 \/ [1-9]\d+$/);
+   assert.ok(Number(reference.counter.split(' / ')[1])>=100,'The shotgun category must have a substantial expanded range');
    assert.equal(reference.toolbarWithinCard,true,'Add/edit/delete controls must sit inside the white card');
    const navGeometry=await evaluate("(()=>{const nav=document.querySelector('.navigation'),buttons=[...nav.querySelectorAll('button')],r=nav.getBoundingClientRect();return {width:r.width,height:Math.round(buttons[0].getBoundingClientRect().height),equal:buttons.every(x=>Math.abs(x.getBoundingClientRect().height-buttons[0].getBoundingClientRect().height)<2)}})()");
    assert.ok(navGeometry.width>=650&&navGeometry.width<=675,'Top buttons should match the real 670px root app navigation: '+JSON.stringify(navGeometry));
@@ -266,6 +271,7 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#cardFront').textContent.trim()"),'レミントン・モデル870',
      'Legacy record must retain the katakana-only front');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[0]"),photo,'Migration must preserve the original stored image ref');
+   assert.equal(await evaluate("GunDeck.getCards().length"),2000,'Browser reload preserves the full expanded catalogue');
    assert.deepEqual(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images"),allPhotos,
      'All directly pasted/photo-file image slots must survive reload and English-name migration');
    await evaluate("document.querySelector('#flipBtn').click()");
@@ -291,7 +297,7 @@ async function run(){
      'Edited custom gun shows the saved manufacturer at top left');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: katakana-only centered front, English metadata/search intact, flags, pasted photos and reload preserved');
+   console.log('PASS browser guns: 2000 categorized models, katakana-only fronts, English search, flags, photo paste and reload preserved');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
