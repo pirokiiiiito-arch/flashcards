@@ -60,13 +60,13 @@
   // For historically multi-source models, we identify a representative maker;
   // users can override both fields without modifying their images or IDs.
   const COUNTRIES = Object.freeze({
-    US:{ja:'アメリカ',flag:'🇺🇸'}, BE:{ja:'ベルギー',flag:'🇧🇪'},
-    AT:{ja:'オーストリア',flag:'🇦🇹'}, DE:{ja:'ドイツ',flag:'🇩🇪'},
-    IT:{ja:'イタリア',flag:'🇮🇹'}, GB:{ja:'イギリス',flag:'🇬🇧'},
-    RU:{ja:'ロシア（旧ソ連・ロシア帝国を含む）',flag:'🇷🇺'},
-    IL:{ja:'イスラエル',flag:'🇮🇱'}, CH:{ja:'スイス',flag:'🇨🇭'},
-    CZ:{ja:'チェコ',flag:'🇨🇿'}, FR:{ja:'フランス',flag:'🇫🇷'},
-    JP:{ja:'日本',flag:'🇯🇵'}, CN:{ja:'中国',flag:'🇨🇳'}
+    US:{ja:'アメリカ',image:'./flags/us.svg'}, BE:{ja:'ベルギー',image:'./flags/be.svg'},
+    AT:{ja:'オーストリア',image:'./flags/at.svg'}, DE:{ja:'ドイツ',image:'./flags/de.svg'},
+    IT:{ja:'イタリア',image:'./flags/it.svg'}, GB:{ja:'イギリス',image:'./flags/gb.svg'},
+    RU:{ja:'ロシア（旧ソ連・ロシア帝国を含む）',image:'./flags/ru.svg'},
+    IL:{ja:'イスラエル',image:'./flags/il.svg'}, CH:{ja:'スイス',image:'./flags/ch.svg'},
+    CZ:{ja:'チェコ',image:'./flags/cz.svg'}, FR:{ja:'フランス',image:'./flags/fr.svg'},
+    JP:{ja:'日本',image:'./flags/jp.svg'}, CN:{ja:'中国',image:'./flags/cn.svg'}
   });
   // Aligned with ITEMS by stable ID, never sorted with the visible categories.
   const REPRESENTATIVE_MAKERS = Object.freeze([
