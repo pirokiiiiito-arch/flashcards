@@ -272,6 +272,10 @@
     for (const slot of Object.keys(savedPhotoSnapshot))
       if (!(slot in next)) autoPhotoPending.delete('photo:' + slot);
     savedPhotoSnapshot = next;
+    if (!autoPhotoPending.size) {
+      clearTimeout(autoPhotoTimer); autoPhotoTimer = null;
+      setPhotoStatus('');
+    }
     sync.changed();
     if (autoPhotoPending.size) {
       autoPhotoRetryAt = 0;
