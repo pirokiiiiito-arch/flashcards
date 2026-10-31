@@ -196,9 +196,9 @@
       automaticPhotoRunning = true;
       const batch = new Map(automaticPhotoRegistrations);
       try {
-        await retryPlantPhotos('自動', batch);
+        const completed = await retryPlantPhotos('自動', batch);
         const local = currentPhotoValues(), remaining = new Set(sync.pendingKeys?.() || []);
-        for (const [key, expected] of batch) {
+        if (completed) for (const [key, expected] of batch) {
           const value = local.get(key);
           // An old job must not acknowledge a replacement that was registered
           // while it was running; leave that newer registration in the queue.
@@ -255,11 +255,11 @@
   async function retryPlantPhotos(origin = '手動', requestedKeys = new Map()) {
     if (recoveryBusy || copier.busy) {
       retryFeedback.textContent = '画像のコピー処理が進行中です。画面上部の進捗表示を確認してください。';
-      return;
+      return false;
     }
     if (editing) {
       retryFeedback.textContent = 'カードの編集を保存してから画像送信を再試行してください。';
-      return;
+      return false;
     }
     recoveryBusy = true;
     retry.disabled = true;
@@ -271,7 +271,7 @@
       }
       if (!sync.valid()) {
         retryFeedback.textContent = 'PCの植物カードはまだDrive未接続です。写真を保持したまま「Google Drive再接続」を開いてください。';
-        return;
+        return false;
       }
       const response = await sync.request('https://www.googleapis.com/drive/v3/about?fields=user(permissionId)');
       const account = (await response.json()).user?.permissionId;
@@ -318,9 +318,11 @@
         ' 未完了の画像は元のPCに保持しています。「画像コピー結果を保存」から詳細を保存できます。' :
         ' 画像参照の送信が完了しました。スマホで変更分を同期してください。') +
         (state.detail ? '\n同期状況：' + state.detail : '');
+      return true;
     } catch (e) {
       retryFeedback.textContent = '画像送信はまだ完了していません：' + (e.message || String(e)) +
         '\nPCの元写真・保留データは削除していません。「画像コピー結果を保存」で詳細を確認してください。';
+      return false;
     } finally {
       recoveryBusy = false;
       retry.disabled = copier.busy;
