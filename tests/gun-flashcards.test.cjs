@@ -76,6 +76,19 @@ test('English Google Images opens from a deliberate click and never downloads au
  assert.ok(source.includes('return query;'));
  assert.ok(source.includes('日本語は検索語に使用しません'));
 });
+test('vertical category list, compact front type and plant-style three vertically stacked back photos',()=>{
+ const css=read('style.css');
+ const plants=fs.readFileSync('plants/index.html','utf8');
+ assert.match(css,/\.category-grid\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(css,/\.category-grid\{grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(css,/#frontName\{font-size:clamp\(23px,3\.5vw,34px\)/);
+ assert.match(css,/#frontName\{font-size:clamp\(21px,5\.6vw,29px\)/);
+ assert.match(css,/\.photo-grid\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(css,/\.photo-grid\{grid-template-columns:minmax\(0,1fr\)/);
+ assert.ok(css.includes('.photo-frame{display:flex')&&css.includes('aspect-ratio:16/9'));
+ assert.ok(plants.includes('.image-box{width:100%;aspect-ratio:16/9'));
+ assert.match(css,/#cardBack\{cursor:default;display:block;height:auto;overflow:visible\}/);
+});
 test('browser storage and JSON backup preserve manually selected picture bytes',()=>{
  const source=read('app.js');
  for(const part of ["const STORE='gun-flashcards-cards-v1'","DB='gun-flashcards-images-v1'",
@@ -102,10 +115,12 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v2'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v3'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
+ assert.ok(html.includes('./style.css?v=2'));
+ assert.ok(sw.includes('./style.css?v=2'));
  assert.ok(html.includes('./data.js?v=2'));
  assert.ok(html.includes('./app.js?v=2'));
  assert.ok(sw.includes('./data.js?v=2'));
