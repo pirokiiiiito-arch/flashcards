@@ -20,7 +20,19 @@
   copyStatus.style.cssText = 'width:100%;margin:6px 0;font-size:12px;line-height:1.6;white-space:pre-wrap';
   const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'btn'; retry.textContent = '全画像をDriveへコピー／再試行';
   const reportButton = document.createElement('button'); reportButton.type = 'button'; reportButton.className = 'btn'; reportButton.textContent = '画像コピー結果を保存';
-  controls.append(retry, reportButton, copyStatus);
+  const retryFeedback = document.createElement('div');
+  retryFeedback.id = 'plantDriveRetryFeedback';
+  retryFeedback.setAttribute('aria-live', 'polite');
+  retryFeedback.style.cssText = 'width:100%;white-space:pre-wrap;line-height:1.6;font-size:13px;color:#245a41';
+  controls.append(retry, reportButton, copyStatus, retryFeedback);
+  let recoveryBusy = false;
+  let autoRecoveryAttempted = false;
+  function queueAutoRecovery(syncState) {
+    if (autoRecoveryAttempted || !['同期済み','画像送信待ち','同期エラー'].includes(syncState) || !sync?.valid()) return;
+    if (editing || document.visibilityState === 'hidden' || !copier.summary().pending) return;
+    autoRecoveryAttempted = true;
+    setTimeout(() => retryPlantPhotos('自動'), 250);
+  }
   const copier = P.create({
     getCards: () => cards, getImages, resolveImage: v => resolveImageValue(v), isEditing: () => editing,
     replaceIfCurrent: (id, index, source, ref) => {
@@ -113,6 +125,7 @@
     onStatus: (s, message) => {
       const progress = copier.summary();
       if (plantDrivePrimary()) { imageSyncStatus.textContent = '画像Drive同期：' + s + (progress.pending ? '（画像コピー未完了 ' + progress.pending + '枠）' : ''); imageSyncStatus.title = message || s; }
+      queueAutoRecovery(s);
     }
   };
   sync = F.install(cfg); window.PlantDriveSync = sync; copier.attach(sync);
@@ -154,15 +167,71 @@
     const local = await getStoredImage('drive:' + v); if (local) return local;
     const data = await blobToDataUrl(await sync.getBlob(v)); await putStoredImage('drive:' + v, data); return data;
   };
-  retry.onclick = async () => {
-    copier.retry();
-    if (!sync.valid()) { sync.open(); return; }
-    if (editing) { copyStatus.textContent += '\nカードの編集を保存してから再試行してください。'; return; }
+  async function retryPlantPhotos(origin = '手動') {
+    if (recoveryBusy || copier.busy) {
+      retryFeedback.textContent = '画像のコピー処理が進行中です。画面上部の進捗表示を確認してください。';
+      return;
+    }
+    if (editing) {
+      retryFeedback.textContent = 'カードの編集を保存してから画像送信を再試行してください。';
+      return;
+    }
+    recoveryBusy = true;
     retry.disabled = true;
-    try { await sync.sync(); await sync.sync(); }
-    catch (e) { copyStatus.textContent += '\n' + (e.message || String(e)); }
-    finally { retry.disabled = false; }
-  };
+    try {
+      retryFeedback.textContent = origin + '：Google Driveの接続を確認しています…';
+      if (!sync.valid() && window.PersistentDriveAuth?.state?.().phase === 'connected') {
+        await window.PersistentDriveAuth.getToken();
+        await Promise.resolve();
+      }
+      if (!sync.valid()) {
+        retryFeedback.textContent = 'PCの植物カードはまだDrive未接続です。写真を保持したまま「Google Drive再接続」を開いてください。';
+        return;
+      }
+      const response = await sync.request('https://www.googleapis.com/drive/v3/about?fields=user(permissionId)');
+      const account = (await response.json()).user?.permissionId;
+      if (!account) throw Error('Googleアカウントを確認できません。');
+      if (sync.account && sync.account !== account) throw Error('写真が保存されているPCとは異なるGoogleアカウントです。元のアカウントで接続してください。');
+      if (!sync.account) {
+        // The normal sync establishes and verifies the Drive account before any image upload.
+        await sync.sync();
+        if (!sync.account) throw Error('このPCのDrive同期先をまだ確認できません。');
+      }
+      const before = new Map();
+      for (const c of cards) getImages(c).forEach((v,i) => {
+        if (v && !P.isDrive(v)) before.set(imageKey(c,i),v);
+      });
+      copier.retry();
+      retryFeedback.textContent = origin + '：未コピー画像 ' + before.size + '枠をDriveへ送信・検証しています。';
+      await copier.sweep();
+      // A new image registration must descend from the actual remote heads,
+      // including tombstones; never apply remote deletion to the PC's local photo.
+      const copiedKeys = [];
+      for (const c of cards) getImages(c).forEach((v,i) => {
+        const key=imageKey(c,i);
+        if (before.has(key) && P.isDrive(v)) copiedKeys.push(key);
+      });
+      if (copiedKeys.length && sync.republish) await sync.republish(copiedKeys);
+      retryFeedback.textContent = origin + '：写真 ' + copiedKeys.length + '枠の参照を更新しました。登録情報を同期しています。';
+      await sync.sync();
+      if (sync.status().pending && sync.valid()) await sync.sync();
+      const result = copier.summary(), state = sync.status();
+      const queuedImages = (sync.pendingKeys?.() || []).filter(k => k.startsWith('image:')).length;
+      retryFeedback.textContent = 'コピー再試行結果：Drive参照 ' + result.drive + '枠／未コピー ' + result.pending +
+        '枠／失敗 ' + result.failed + '枠／登録情報の送信保留 ' + queuedImages +
+        '件。' + ((result.pending || result.failed || queuedImages) ?
+        ' 未完了の画像は元のPCに保持しています。「画像コピー結果を保存」から詳細を保存できます。' :
+        ' 画像参照の送信が完了しました。スマホで変更分を同期してください。') +
+        (state.detail ? '\n同期状況：' + state.detail : '');
+    } catch (e) {
+      retryFeedback.textContent = '画像送信はまだ完了していません：' + (e.message || String(e)) +
+        '\nPCの元写真・保留データは削除していません。「画像コピー結果を保存」で詳細を確認してください。';
+    } finally {
+      recoveryBusy = false;
+      retry.disabled = copier.busy;
+    }
+  }
+  retry.onclick = () => retryPlantPhotos('手動');
   reportButton.onclick = () => {
     const body = { ...copier.report(), sync:sync.status() };
     const url = URL.createObjectURL(new Blob([JSON.stringify(body,null,2)], {type:'application/json'}));
