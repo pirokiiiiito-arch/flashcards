@@ -168,6 +168,7 @@ jobs:
           node --check guns/drive-transfer-core.js
           node --check guns/service-worker.js
           node --test tests/gun-flashcards.test.cjs
+          node tests/browser-guns.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
