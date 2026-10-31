@@ -87,7 +87,7 @@ test('device image resolver remains supported', async () => {
 });
 test('adapter installs without changing other apps and uses safe afterSync migration', async () => {
   let cfg;const nodes=[];const rootNode={append(...n){nodes.push(...n);},appendChild(n){nodes.push(n);}};
-  const doc={head:rootNode,body:rootNode,querySelector:()=>rootNode,createElement:() => ({style:{},setAttribute(){},click(){}})};
+  const doc={head:rootNode,body:rootNode,querySelector:()=>rootNode,createElement:() => ({style:{},setAttribute(){},click(){},append(...n){nodes.push(...n);},appendChild(n){nodes.push(n);},showModal(){this.open=true;},close(){this.open=false;}})};
   const r=rig();const api={...r.api,changed(){},open(){},sync:async()=>{},status:()=>({status:'同期済み'})};
   const context={window:null,document:doc,PlantDriveImageCopy:P,FlashcardsDrive:{digest,install:c=>{cfg=c;return api;}},
     cards:[{id:'p',group:'fern',name:'シダ',description:'',images:['','','']}],getImages:c=>c.images,withImages:(c,i)=>({...c,images:i}),saveCards(){},resolveImageValue:async v=>v,
