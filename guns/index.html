@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#263b45">
 <meta name="description" content="銃器の歴史とモデル名を学ぶ分類別フラッシュカード。画像はGoogle英語検索から手動登録。">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./style.css?v=2">
+<link rel="stylesheet" href="./style.css?v=3">
 <title>銃器図鑑カード｜分類別フラッシュカード</title>
 </head>
 <body>
@@ -74,14 +74,14 @@
               <p class="card-kicker">DESCRIPTION & PHOTOS</p>
               <h3 id="backName"></h3>
             </div>
-            <button id="editCardBtn" type="button" class="btn secondary">この銃を編集</button>
+            <div class="back-actions">
+              <button type="button" class="btn primary" id="googleSearchBtn">Google画像検索（英語）</button>
+              <button id="editCardBtn" type="button" class="btn secondary">この銃を編集</button>
+            </div>
           </div>
           <p id="backDescription" class="card-description"></p>
+          <p class="photo-help">英語でGoogle画像検索 → 気に入った写真を「画像をコピー」 → 戻って写真1〜3の「画像を貼り付け」を押してください。うまく貼れない場合は、各欄を選んで Ctrl+V、または「ファイルから登録」も使えます。</p>
           <div id="photoGrid" class="photo-grid"></div>
-          <div class="back-tools">
-            <button type="button" class="btn light" id="googleSearchBtn">Google画像検索（英語）</button>
-            <span class="small-note">検索先で選んだ写真を保存・コピーし、編集画面から登録してください。</span>
-          </div>
         </div>
       </article>
       <div class="navigation">
@@ -126,7 +126,7 @@
 </dialog>
 <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
 <script src="./data.js?v=2"></script>
-<script src="./app.js?v=2"></script>
+<script src="./app.js?v=3"></script>
 <script src="../drive-config.js?v=3"></script>
 <script src="../persistent-drive-auth.js?v=1"></script>
 <script src="./drive-transfer-core.js?v=1"></script>
