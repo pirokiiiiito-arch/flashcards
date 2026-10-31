@@ -55,16 +55,68 @@
     ['machine-gun','Bren','チェコ系設計をもとに英国で開発された軽機関銃。第二次世界大戦期の英軍装備として知られる。','ブレン'],
     ['machine-gun','M2 Browning','ジョン・ブローニング設計に由来する米国の重機関銃。1920年代から続く長い使用歴を持つ。','エムツー・ブローニング']
   ];
+  // The national flag refers to the present-day country of a representative
+  // manufacturer, not every historical production site or an old state flag.
+  // For historically multi-source models, we identify a representative maker;
+  // users can override both fields without modifying their images or IDs.
+  const COUNTRIES = Object.freeze({
+    US:{ja:'アメリカ',flag:'🇺🇸'}, BE:{ja:'ベルギー',flag:'🇧🇪'},
+    AT:{ja:'オーストリア',flag:'🇦🇹'}, DE:{ja:'ドイツ',flag:'🇩🇪'},
+    IT:{ja:'イタリア',flag:'🇮🇹'}, GB:{ja:'イギリス',flag:'🇬🇧'},
+    RU:{ja:'ロシア（旧ソ連・ロシア帝国を含む）',flag:'🇷🇺'},
+    IL:{ja:'イスラエル',flag:'🇮🇱'}, CH:{ja:'スイス',flag:'🇨🇭'},
+    CZ:{ja:'チェコ',flag:'🇨🇿'}, FR:{ja:'フランス',flag:'🇫🇷'},
+    JP:{ja:'日本',flag:'🇯🇵'}, CN:{ja:'中国',flag:'🇨🇳'}
+  });
+  // Aligned with ITEMS by stable ID, never sorted with the visible categories.
+  const REPRESENTATIVE_MAKERS = Object.freeze([
+    ['US','Remington Arms'],                       // Remington 870
+    ['US','O.F. Mossberg & Sons'],                  // Mossberg 500
+    ['US','Winchester Repeating Arms'],             // Winchester 1897
+    ['BE','Fabrique Nationale (FN)'],               // Browning Auto-5 (early Belgian production)
+    ['US',"Colt's Manufacturing Company"],          // Colt Python
+    ['US','Smith & Wesson'],                        // S&W Model 10
+    ['US',"Colt's Manufacturing Company"],          // Colt SAA
+    ['BE','Fabrique d’Armes Nagant'],               // Nagant M1895 (original Belgian manufacturer)
+    ['US','Sturm, Ruger & Co.'],                    // Ruger GP100
+    ['US',"Colt's Manufacturing Company"],          // Colt M1911
+    ['AT','Glock'],                                 // Glock 17
+    ['IT','Beretta'],                               // Beretta 92FS
+    ['DE','J. P. Sauer & Sohn (SIG Sauer)'],        // SIG P226 (German manufacturing)
+    ['DE','Carl Walther'],                          // Walther P38
+    ['DE','Mauser'],                                // Mauser C96
+    ['DE','Mauser'],                                // Karabiner 98k
+    ['GB','Royal Small Arms Factory (Enfield)'],    // Lee-Enfield No. 4
+    ['RU','Tula Arms Plant'],                       // Mosin-Nagant 1891/30 (one major maker)
+    ['US','Springfield Armory'],                    // Springfield M1903
+    ['US','Springfield Armory'],                    // M1 Garand (one major maker)
+    ['RU','Tula Arms Plant'],                       // SKS (early production)
+    ['US','Sturm, Ruger & Co.'],                    // Ruger 10/22
+    ['US','Winchester Repeating Arms'],             // Winchester 1873
+    ['US','Winchester Repeating Arms'],             // Winchester 1894
+    ['US','Marlin Firearms'],                       // Marlin 336
+    ['RU','Izhmash (Izhevsk)'],                     // AK-47 (major Soviet producer)
+    ['US',"Colt's Manufacturing Company"],          // M16A1
+    ['AT','Steyr-Daimler-Puch'],                   // Steyr AUG
+    ['BE','FN Herstal'],                            // FN SCAR-L
+    ['US','Auto-Ordnance'],                         // Thompson M1928
+    ['DE','Heckler & Koch'],                        // MP5
+    ['IL','Israel Military Industries (IMI)'],     // Uzi
+    ['DE','Großfuß'],                              // MG 42 (original manufacturer)
+    ['GB','Royal Small Arms Factory (Enfield)'],    // Bren (British production)
+    ['US',"Colt's Manufacturing Company"]           // M2 Browning (early production)
+  ]);
   // The visible name is Japanese katakana; Google Images always uses the
   // original English model name. IDs and photo keys never change.
   const SEEDS = Object.freeze(ITEMS.map((x,i)=>Object.freeze({
     id:'gun-'+String(i+1).padStart(4,'0'), category:x[0],name:x[3],name_en:x[1],description:x[2],
+    country:REPRESENTATIVE_MAKERS[i][0],maker:REPRESENTATIVE_MAKERS[i][1],
     search:x[1]+' '+(CATEGORIES.find(c=>c.id===x[0])?.en||'firearm')+' photos',
     images:['','',''],source:'starter'
   })));
   const ORIGINAL_SEED_NAMES = new Map(ITEMS.map((row,i)=>[
     'gun-'+String(i+1).padStart(4,'0'), {english:row[1],katakana:row[3],
-      search:SEEDS[i].search}
+      search:SEEDS[i].search,country:REPRESENTATIVE_MAKERS[i][0],maker:REPRESENTATIVE_MAKERS[i][1]}
   ]));
   const CATEGORY_IDS=new Set(CATEGORIES.map(x=>x.id));
   const ID=/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,95}$/;
@@ -82,13 +134,20 @@
     // Stable seed IDs restore the precise English model name even when an
     // older local backup/Drive journal has no separate English field.
     const name_en=String(input.name_en||legacy?.english||'').trim().slice(0,180);
+    // Only older saved seed records that lack these keys receive defaults.
+    // Explicitly cleared or user-edited values must remain unchanged.
+    const maker=Object.prototype.hasOwnProperty.call(input,'maker')
+      ? String(input.maker||'').trim().slice(0,200) : String(legacy?.maker||'');
+    const countrySource=Object.prototype.hasOwnProperty.call(input,'country')
+      ? String(input.country||'').trim().toUpperCase() : String(legacy?.country||'');
+    const country=Object.prototype.hasOwnProperty.call(COUNTRIES,countrySource)?countrySource:'';
     const category=CATEGORY_IDS.has(input.category)?input.category:'other';
     const images=Array.from({length:3},(_,i)=>{
       const v=Array.isArray(input.images)?input.images[i]:'';
       const s=typeof v==='string'?v.trim():'';
       return /^(idb:gunimg:|gdrive:[\w-]+:[a-f0-9]{64}$|https?:\/\/)/i.test(s)?s:'';
     });
-    return {id,category,name,name_en,description:String(input.description||'').slice(0,6000),
+    return {id,category,name,name_en,maker,country,description:String(input.description||'').slice(0,6000),
       search:String(input.search||legacy?.search||name).trim().slice(0,240),images,
       source:input.source==='starter'?'starter':'user'};
   }
@@ -99,7 +158,7 @@
     }
     return [...items.values()];
   }
-  const api=Object.freeze({CATEGORIES,SEEDS,sanitizeCard,mergeCards});
+  const api=Object.freeze({CATEGORIES,COUNTRIES,SEEDS,sanitizeCard,mergeCards});
   root.GunCatalog=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
