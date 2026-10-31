@@ -140,14 +140,18 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#shuffleBtn').textContent"),'シャッフル');
    await evaluate("document.querySelector('#shuffleBtn').click()");
    assert.equal(await evaluate("document.querySelector('#shuffleBtn').textContent"),'通常');
-   assert.equal(await evaluate("document.querySelector('#frontEnglish').textContent"),'Remington Model 870');
+   assert.equal(await evaluate("document.querySelector('#frontEnglish')"),null,
+     'Small English model name must be removed entirely from the card front');
+   const frontText=await evaluate("document.querySelector('#cardFront').textContent.trim()");
+   assert.equal(frontText,'レミントン・モデル870','Only the katakana name belongs on the front');
    assert.equal(await evaluate("document.querySelector('#cardFront').textContent.includes('FIREARM NAME')"),false);
    assert.equal(await evaluate("document.querySelector('#cardFront').textContent.includes('クリック・タップで裏面へ')"),false);
-   const frontEnglishSize=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontEnglish')).fontSize)");
-   assert.ok(frontEnglishSize<=18,'The English name must remain a subtle subtitle in the smaller word card');
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name_en"),'Remington Model 870',
+     'The English name must remain in metadata, separate from the face');
    const desktopFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
-   assert.ok(desktopFont>=30&&desktopFont<=46,'The gun name must fit the real 670px word-card face');
-   assert.ok(desktopFont>frontEnglishSize*1.3,'The katakana product name must remain larger than the English subtitle');
+   assert.ok(desktopFont>=30&&desktopFont<=46,'The katakana name must remain legible within the 670px card');
+   const frontCenter=await evaluate("(()=>{const card=document.querySelector('#flashCard').getBoundingClientRect(),name=document.querySelector('#frontName').getBoundingClientRect();return {deltaY:(name.top+name.height/2)-(card.top+card.height/2),text:name.width}})()");
+   assert.ok(Math.abs(frontCenter.deltaY)<9,'The remaining katakana name must be vertically centered: '+JSON.stringify(frontCenter));
    const desktopFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),rect=card.getBoundingClientRect();return {width:rect.width,height:rect.height,compact:card.classList.contains('front-compact')};})()");
    assert.equal(desktopFront.compact,false,'Word-card front must not use the old compact frame');
    assert.ok(desktopFront.width>=650&&desktopFront.width<=675&&desktopFront.height>=355&&desktopFront.height<=385,'Front must use the native 670px×360px word-card footprint: '+JSON.stringify(desktopFront));
@@ -257,8 +261,10 @@ async function run(){
      'Legacy local photos must retain their ID while manufacturer defaults are restored');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').country"),'US');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
-   assert.equal(await evaluate("document.querySelector('#frontEnglish').textContent"),'Remington Model 870',
-     'English name must be restored from older photo-bearing saved cards');
+   assert.equal(await evaluate("document.querySelector('#frontEnglish')"),null,
+     'Older saved records must not reintroduce an English subtitle on the front');
+   assert.equal(await evaluate("document.querySelector('#cardFront').textContent.trim()"),'レミントン・モデル870',
+     'Legacy record must retain the katakana-only front');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[0]"),photo,'Migration must preserve the original stored image ref');
    assert.deepEqual(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images"),allPhotos,
      'All directly pasted/photo-file image slots must survive reload and English-name migration');
@@ -285,7 +291,7 @@ async function run(){
      'Edited custom gun shows the saved manufacturer at top left');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: no blinking caret on read-only firearm names, image paste intact, real SVG country flags and saved card data preserved');
+   console.log('PASS browser guns: katakana-only centered front, English metadata/search intact, flags, pasted photos and reload preserved');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
