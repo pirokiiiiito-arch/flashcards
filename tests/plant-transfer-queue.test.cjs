@@ -81,7 +81,7 @@ test('plant broker auto-binds an already connected token on startup without open
    hasGrantedAllScopes:(response,wanted)=>response.scope===wanted}},
   connect:{disabled:true},input:{value:''},CLIENT_KEY:'test-client-key',loadGIS:async()=>{},
   localStorage:{getItem:()=>'',setItem:(key,value)=>{assert.equal(value,publicId)}},
-  SCOPE:scope,token:'',expires:0,expiryTimer:0,clearTimeout:()=>{},setTimeout:()=>1,Date,
+  SCOPE:scope,token:'',expires:0,expiryTimer:0,expire:()=>{},clearTimeout:()=>{},setTimeout:()=>1,Date,
   cfg:{enablePrimary:async()=>{applied++}},setStatus:(value)=>statuses.push(value),
   sync:async()=>{synced++},error:e=>{throw e},Promise};
  vm.createContext(c);vm.runInContext(source.slice(start,end),c);
