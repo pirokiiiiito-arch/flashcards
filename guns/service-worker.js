@@ -1,7 +1,7 @@
 /* Offline shell for the firearm reference cards. No image blobs or OAuth responses cached publicly. */
-const CACHE='gun-flashcards-static-v15';
+const CACHE='gun-flashcards-static-v16';
 const STATIC=[
- './','./index.html','./style.css?v=14','./data.js?v=6','./app.js?v=9',
+ './','./index.html','./style.css?v=15','./data.js?v=6','./app.js?v=9',
  './manifest.webmanifest','./drive-transfer-core.js?v=1','./image-copy.js?v=1',
  './drive-sync.js?v=2','../drive-config.js?v=3','../persistent-drive-auth.js?v=1',
  './flags/us.svg','./flags/be.svg','./flags/at.svg','./flags/de.svg','./flags/it.svg','./flags/gb.svg','./flags/ru.svg','./flags/il.svg','./flags/ch.svg','./flags/cz.svg','./flags/fr.svg','./flags/jp.svg','./flags/cn.svg'
