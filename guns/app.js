@@ -456,7 +456,18 @@ function installListeners(){
  $('importBtn').onclick=()=>$('importFile').click();
  $('importFile').onchange=e=>{const file=e.target.files?.[0];importBackup(file);e.target.value=''};
  $('backupBtn').onclick=exportBackup;
- $('syncBtn').onclick=()=>{const api=root.GunDriveSync;if(api?.open)api.open();else toast('Drive同期の読み込みを確認してください。')};
+ $('syncBtn').onclick=async()=>{
+   const api=root.GunDriveSync;
+   if(!api){toast('Drive同期の読み込みを確認してください。');return;}
+   if(!api.valid()&&root.PersistentDriveAuth?.state?.().phase==='connected'){
+     await root.PersistentDriveAuth.getToken().catch(()=>{});
+   }
+   if(api.valid()){
+     toast('Google Driveの変更を確認しています…');
+     try{await api.sync();toast('Google Driveの同期状態を更新しました。');}
+     catch(e){toast('同期は保留中です：'+(e.message||String(e)));}
+   }else api.open();
+ };
  document.addEventListener('keydown',e=>{
    if($('editorDialog').open||!$('homeView').hidden||e.target.matches('input,textarea,select'))return;
    if($('deckView').hidden)return;
