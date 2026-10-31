@@ -8,7 +8,7 @@ const root='guns/';
 const read=name=>fs.readFileSync(root+name,'utf8');
 const C=require('../guns/data.js');
 test('gun-card catalogue provides accurate categorized historical starting models',()=>{
- assert.equal(C.SEEDS.length,35);
+ assert.equal(C.SEEDS.length,2000);
  assert.equal(C.CATEGORIES.length,10);
  for(const category of ['shotgun','revolver','pistol','bolt','semi-rifle','lever','assault','smg','machine-gun'])
    assert.ok(C.SEEDS.some(c=>c.category===category),'Missing category '+category);
@@ -16,7 +16,12 @@ test('gun-card catalogue provides accurate categorized historical starting model
  assert.ok(C.SEEDS.some(c=>c.name==='レミントン・モデル870'&&c.category==='shotgun'));
  assert.equal(C.SEEDS[0].name_en,'Remington Model 870');
  assert.equal(C.SEEDS.find(c=>c.name==='コルト・パイソン').name_en,'Colt Python');
- assert.equal(new Set(C.SEEDS.map(c=>c.id)).size,35);
+ assert.equal(new Set(C.SEEDS.map(c=>c.id)).size,2000);
+ assert.equal(C.CATALOG_TARGET,2000);
+ assert.ok(C.SEEDS.slice(35).every(c=>c.id.startsWith('gun-ext-')));
+ assert.equal(new Set(C.SEEDS.map(c=>C.modelIdentity(c.category,c.name_en))).size,C.SEEDS.length);
+ for(let i=0;i<35;i++)assert.equal(C.SEEDS[i].id,'gun-'+String(i+1).padStart(4,'0'));
+
  for(const c of C.SEEDS){
    assert.ok(c.description.length>10);
    assert.ok(c.images.every(v=>v===''),'Every starter photo must be manually selected');
@@ -53,7 +58,7 @@ test('firearm categories follow approximate historical invention order without r
  assert.equal(updated.category,'machine-gun');
 });
 test('all 35 firearms carry a representative manufacturer and a valid present-day country flag without changing stored photos',()=>{
- assert.equal(C.SEEDS.length,35);
+ assert.equal(C.SEEDS.length,2000);
  assert.equal(C.SEEDS[0].maker,'Remington Arms');
  assert.equal(C.SEEDS[0].country,'US');
  assert.equal(C.COUNTRIES.US.image,'./flags/us.svg');
@@ -105,7 +110,7 @@ test('user entries remain separately editable and allow only expected image refe
    search:'historical revolver photograph',description:'A user note',
    images:['https://example.org/a.jpg','idb:gunimg:gun-custom-abc123:1:testref',
      'gdrive:picture-id:'+('a'.repeat(64))]};
- const merged=C.mergeCards([extra]);assert.equal(merged.length,36);
+ const merged=C.mergeCards([extra]);assert.equal(merged.length,2001);
  const restored=merged.find(c=>c.id===extra.id);
  assert.equal(restored.images[0],extra.images[0]);
  assert.equal(restored.images[1],extra.images[1]);
@@ -134,6 +139,10 @@ test('legacy English seed labels become katakana without losing edited descripti
 test('front displays katakana name only while keeping English model for Google image search and back photos',()=>{
  const html=read('index.html'),app=read('app.js');
  assert.ok(html.includes('分類は方式のおおよその発明・登場順です'));
+ assert.ok(html.includes('2,000モデルを収録'));
+ assert.ok(html.includes('参考候補を含み'));
+ assert.ok(html.includes('id="catalogProgress"'));
+ assert.ok(app.includes("cards.length.toLocaleString('ja-JP')"));
  assert.match(html,/<div id="cardFront"/);
  assert.match(html,/<h3 id="frontName">/);
  assert.ok(!html.includes('id="frontEnglish"'),'The front must not render a small English subtitle');
@@ -190,7 +199,7 @@ test('English Google Images opens from a deliberate click and never downloads au
  assert.ok(source.includes('return query;'));
  assert.ok(source.includes('日本語は検索語に使用しません'));
 });
-test('vertical categories and root-sized bilingual word card with plant-style photo reverse',()=>{
+test('vertical categories and root-sized katakana-only word card with plant-style photo reverse',()=>{
  const css=read('style.css');
  const plants=fs.readFileSync('plants/index.html','utf8');
  assert.ok(css.includes('width:min(90%,420px);margin:0 auto'),'Category container must be centered');
@@ -311,16 +320,20 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v17'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v18'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
  assert.ok(html.includes('./style.css?v=16'));
  assert.ok(sw.includes('./style.css?v=16'));
- assert.ok(html.includes('./data.js?v=6'));
- assert.ok(html.includes('./app.js?v=10'));
- assert.ok(sw.includes('./data.js?v=6'));
- assert.ok(sw.includes('./app.js?v=10'));
+ assert.ok(html.includes('./extended-models.js?v=1'));
+ assert.ok(html.includes('./extended-variants.js?v=1'));
+ assert.ok(sw.includes('./extended-models.js?v=1'));
+ assert.ok(sw.includes('./extended-variants.js?v=1'));
+ assert.ok(html.includes('./data.js?v=8'));
+ assert.ok(html.includes('./app.js?v=11'));
+ assert.ok(sw.includes('./data.js?v=8'));
+ assert.ok(sw.includes('./app.js?v=11'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
