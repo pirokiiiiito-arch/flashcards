@@ -276,7 +276,7 @@
     if (autoPhotoPending.size) {
       autoPhotoRetryAt = 0;
       schedulePhotoRegistration(750);
-    } else if (sync.valid()) queueMicrotask(() => sync.sync().catch(() => {}));
+    } else if (!applying && sync.valid()) queueMicrotask(() => sync.sync().catch(() => {}));
     return r;
   };
   window.addEventListener?.('online', () => { resumePendingPhotos(); schedulePhotoRegistration(250); });
