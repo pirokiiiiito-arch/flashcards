@@ -457,7 +457,7 @@ function installListeners(){
  $('backupBtn').onclick=exportBackup;
  $('syncBtn').onclick=()=>{const api=root.GunDriveSync;if(api?.open)api.open();else toast('Drive同期の読み込みを確認してください。')};
  document.addEventListener('keydown',e=>{
-   if($('editorDialog').open||!$('homeView').hidden===false||e.target.matches('input,textarea,select'))return;
+   if($('editorDialog').open||!$('homeView').hidden||e.target.matches('input,textarea,select'))return;
    if($('deckView').hidden)return;
    if(e.key==='ArrowRight')move(1);else if(e.key==='ArrowLeft')move(-1);
    else if(e.key===' '&&e.target===document.body){e.preventDefault();flip();}
