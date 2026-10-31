@@ -317,8 +317,18 @@ function renderDeck(){
  $('faceLabel').hidden=view.flipped;
  $('backMakerMeta').hidden=!view.flipped;
  const country=C.COUNTRIES[card.country]||null;
- $('backCountryFlag').textContent=country?.flag||'';
- $('backCountryFlag').hidden=!country;
+ const flagImage=$('backCountryFlag');
+ if (country?.image) {
+   // Same-origin, bundled SVG images work offline; never insert a Unicode
+   // flag glyph or load a third-party tracking/image host.
+   if(flagImage.getAttribute('src')!==country.image)flagImage.setAttribute('src',country.image);
+   flagImage.alt=country.ja+'の国旗';
+   flagImage.hidden=!view.flipped;
+ } else {
+   flagImage.removeAttribute('src');
+   flagImage.alt='';
+   flagImage.hidden=true;
+ }
  $('backMakerCompany').textContent=card.maker||'製造会社未登録';
  $('backMakerCountry').textContent=country?.ja||'';
  $('backMakerMeta').title=country?.ja ? '代表的な製造会社：'+card.maker+'／現在の国旗：'+country.ja : '製造会社';
@@ -374,7 +384,7 @@ function makeSelects(){
  const unset=document.createElement('option');unset.value='';unset.textContent='国を選択';makerCountry.append(unset);
  for(const [code,info] of Object.entries(C.COUNTRIES)){
    const option=document.createElement('option');option.value=code;
-   option.textContent=info.flag+' '+info.ja;makerCountry.append(option);
+   option.textContent=info.ja;makerCountry.append(option);
  }
 }
 function editorPreview(index){
