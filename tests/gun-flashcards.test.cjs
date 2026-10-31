@@ -102,10 +102,14 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v1'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v2'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
+ assert.ok(html.includes('./data.js?v=2'));
+ assert.ok(html.includes('./app.js?v=2'));
+ assert.ok(sw.includes('./data.js?v=2'));
+ assert.ok(sw.includes('./app.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
  assert.ok(html.includes('./drive-transfer-core.js?v=1'));
  assert.ok(html.includes('./service-worker.js')===false);
