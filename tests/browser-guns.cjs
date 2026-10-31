@@ -119,11 +119,13 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
    assert.equal(await evaluate("document.querySelector('#catalogProgress').textContent.includes('2,000')"),true,
      'The source study list shows the 2,000-model target');
-   const reference=await evaluate("(()=>{const nav=document.querySelector('.navigation'),card=document.querySelector('#flashCard'),buttons=[...nav.querySelectorAll('button')],cardRect=card.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),top=card.querySelector('.card-chrome'),actions=top.querySelectorAll('.card-actions button');return {navLabels:buttons.map(x=>x.textContent.trim()),navAbove:navRect.bottom<cardRect.top,navEqual:buttons.every(x=>Math.abs(x.getBoundingClientRect().width-buttons[0].getBoundingClientRect().width)<3),modeBackground:getComputedStyle(document.querySelector('#shuffleBtn')).backgroundColor,cardWidth:cardRect.width,cardHeight:cardRect.height,faceLabel:document.querySelector('#faceLabel').textContent,actionLabels:[...actions].map(x=>x.textContent.trim()),counter:document.querySelector('#positionLabel').textContent,toolbarWithinCard:top.getBoundingClientRect().top>cardRect.top};})()");
-   assert.deepEqual(reference.navLabels,['← 戻る','通常','次へ →']);
+   const reference=await evaluate("(()=>{const nav=document.querySelector('.navigation'),card=document.querySelector('#flashCard'),buttons=[...nav.querySelectorAll('button')],cardRect=card.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),top=card.querySelector('.card-chrome'),actions=top.querySelectorAll('.card-actions button');return {navLabels:buttons.map(x=>x.textContent.trim()),navAbove:navRect.bottom<cardRect.top,navEqual:buttons.every(x=>Math.abs(x.getBoundingClientRect().width-buttons[0].getBoundingClientRect().width)<3),modeBackground:getComputedStyle(document.querySelector('#normalBtn')).backgroundColor,normalPressed:document.querySelector('#normalBtn').getAttribute('aria-pressed'),shufflePressed:document.querySelector('#shuffleBtn').getAttribute('aria-pressed'),cardWidth:cardRect.width,cardHeight:cardRect.height,faceLabel:document.querySelector('#faceLabel').textContent,actionLabels:[...actions].map(x=>x.textContent.trim()),counter:document.querySelector('#positionLabel').textContent,toolbarWithinCard:top.getBoundingClientRect().top>cardRect.top};})()");
+   assert.deepEqual(reference.navLabels,['← 戻る','通常','シャッフル','次へ →']);
    assert.equal(reference.navAbove,true,'Word-style navigation must be above the card');
-   assert.equal(reference.navEqual,true,'Three word-card navigation buttons must have equal widths');
-   assert.ok(reference.modeBackground.includes('45, 157, 88')||reference.modeBackground.includes('44, 155, 87'),'Normal mode must be green: '+reference.modeBackground);
+   assert.equal(reference.navEqual,true,'Four gun-card navigation buttons must have equal widths');
+   assert.ok(reference.modeBackground.includes('45, 157, 88')||reference.modeBackground.includes('44, 155, 87'),'Selected normal mode must be green: '+reference.modeBackground);
+   assert.equal(reference.normalPressed,'true');
+   assert.equal(reference.shufflePressed,'false');
    assert.ok(reference.cardWidth>=650&&reference.cardWidth<=675&&reference.cardHeight>=355&&reference.cardHeight<=385,
      'Front must match the real root word app ~670×360px, not the oversized mockup: '+JSON.stringify(reference));
    assert.equal(reference.faceLabel,'表・銃名');
@@ -143,8 +145,29 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
    await evaluate("document.querySelector('#shuffleBtn').click()");
    assert.equal(await evaluate("document.querySelector('#shuffleBtn').textContent"),'シャッフル');
+   assert.equal(await evaluate("document.querySelector('#normalBtn').textContent"),'通常');
+   assert.equal(await evaluate("document.querySelector('#shuffleBtn').getAttribute('aria-pressed')"),'true');
+   assert.equal(await evaluate("document.querySelector('#normalBtn').getAttribute('aria-pressed')"),'false');
+   const chosen=await evaluate("(()=>({normal:getComputedStyle(document.querySelector('#normalBtn')).backgroundColor,shuffle:getComputedStyle(document.querySelector('#shuffleBtn')).backgroundColor}))()");
+   assert.notEqual(chosen.shuffle,chosen.normal,'Only shuffle should be highlighted when random order is active');
+   assert.ok(chosen.shuffle.includes('45, 157, 88'),'Shuffle selected state should be green: '+JSON.stringify(chosen));
+   const shuffledNames=[];
+   for(let i=0;i<4;i++){
+     shuffledNames.push(await evaluate("document.querySelector('#frontName').textContent"));
+     await evaluate("document.querySelector('#nextBtn').click()");
+   }
+   assert.notDeepEqual(shuffledNames,['レミントン・モデル870','モスバーグ500','ウィンチェスター・モデル1897','ブローニング・オート5'],
+     'The shuffle button must actually randomize the model sequence, not merely change color');
    await evaluate("document.querySelector('#shuffleBtn').click()");
-   assert.equal(await evaluate("document.querySelector('#shuffleBtn').textContent"),'通常');
+   assert.equal(await evaluate("document.querySelector('#shuffleBtn').getAttribute('aria-pressed')"),'true',
+     'Pressing shuffle again should keep shuffled mode and reshuffle');
+   await evaluate("document.querySelector('#normalBtn').click()");
+   assert.equal(await evaluate("document.querySelector('#normalBtn').getAttribute('aria-pressed')"),'true');
+   assert.equal(await evaluate("document.querySelector('#shuffleBtn').getAttribute('aria-pressed')"),'false');
+   assert.equal(await evaluate("document.querySelector('#normalBtn').textContent"),'通常');
+   assert.equal(await evaluate("document.querySelector('#shuffleBtn').textContent"),'シャッフル');
+   assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870',
+     'The normal button must restore the original category order');
    assert.equal(await evaluate("document.querySelector('#frontEnglish')"),null,
      'Small English model name must be removed entirely from the card front');
    const frontText=await evaluate("document.querySelector('#cardFront').textContent.trim()");
@@ -169,6 +192,10 @@ async function run(){
    const mobileCorners=await evaluate("(()=>{const bar=document.querySelector('.deck-top').getBoundingClientRect(),nav=document.querySelector('.navigation').getBoundingClientRect(),card=document.querySelector('#flashCard').getBoundingClientRect(),back=document.querySelector('#homeBtn').getBoundingClientRect(),filter=document.querySelector('.deck-filter-details>summary').getBoundingClientRect();return {barWidth:bar.width,navWidth:nav.width,backLeft:Math.abs(back.left-card.left),filterRight:Math.abs(filter.right-card.right),barNavLeft:Math.abs(bar.left-nav.left),barNavRight:Math.abs(bar.right-nav.right)};})()");
    assert.ok(mobileCorners.backLeft<2&&mobileCorners.filterRight<2&&mobileCorners.barNavLeft<2&&mobileCorners.barNavRight<2,
      'On mobile, category controls also align exactly with the card and navigation corners: '+JSON.stringify(mobileCorners));
+   const mobileModes=await evaluate("(()=>{const nav=document.querySelector('.navigation').getBoundingClientRect(),buttons=[...document.querySelectorAll('.navigation button')].map(b=>({label:b.textContent.trim(),rect:b.getBoundingClientRect()}));return {labels:buttons.map(b=>b.label),inside:buttons.every(b=>b.rect.left>=nav.left-1&&b.rect.right<=nav.right+1),singleRow:buttons.every(b=>Math.abs(b.rect.top-buttons[0].rect.top)<1),positive:buttons.every(b=>b.rect.width>55)};})()");
+   assert.deepEqual(mobileModes.labels,['← 戻る','通常','シャッフル','次へ →']);
+   assert.ok(mobileModes.inside&&mobileModes.singleRow&&mobileModes.positive,
+     'All four buttons including Shuffle must fit on one smartphone row: '+JSON.stringify(mobileModes));
    const mobileFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
    assert.ok(mobileFont>=23&&mobileFont<=35,'Gun name must stay legible in the compact mobile word-card face');
    const mobileFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,viewport:innerWidth};})()");
@@ -297,7 +324,7 @@ async function run(){
      'Edited custom gun shows the saved manufacturer at top left');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: 2000 categorized models, katakana-only fronts, English search, flags, photo paste and reload preserved');
+   console.log('PASS browser guns: separate Normal and Shuffle buttons, randomized order and normal restoration, mobile nav, photos and 2000 cards preserved');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
