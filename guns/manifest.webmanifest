@@ -1,0 +1,10 @@
+{
+  "name": "銃器図鑑カード",
+  "short_name": "銃器カード",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#263b45",
+  "icons": []
+}
