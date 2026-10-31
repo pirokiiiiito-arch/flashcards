@@ -91,6 +91,11 @@ async function run(){
    assert.ok(mobileTileWidth<355&&mobileTileWidth>320,'Mobile category cards should have comfortable side margins: '+mobileTileWidth);
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
+   const deckCornerAlignment=await evaluate("(()=>{const bar=document.querySelector('.deck-top').getBoundingClientRect(),nav=document.querySelector('.navigation').getBoundingClientRect(),card=document.querySelector('#flashCard').getBoundingClientRect(),back=document.querySelector('#homeBtn').getBoundingClientRect(),filter=document.querySelector('.deck-filter-details>summary').getBoundingClientRect();return {barWidth:bar.width,navWidth:nav.width,backLeft:Math.abs(back.left-card.left),filterRight:Math.abs(filter.right-card.right),barNavLeft:Math.abs(bar.left-nav.left),barNavRight:Math.abs(bar.right-nav.right)};})()");
+   assert.ok(deckCornerAlignment.backLeft<2&&deckCornerAlignment.filterRight<2,
+     'Category-list and filter outer corners must match the card edges: '+JSON.stringify(deckCornerAlignment));
+   assert.ok(deckCornerAlignment.barNavLeft<2&&deckCornerAlignment.barNavRight<2,
+     'Category controls must line up with the three-button navigation: '+JSON.stringify(deckCornerAlignment));
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
    const reference=await evaluate("(()=>{const nav=document.querySelector('.navigation'),card=document.querySelector('#flashCard'),buttons=[...nav.querySelectorAll('button')],cardRect=card.getBoundingClientRect(),navRect=nav.getBoundingClientRect(),top=card.querySelector('.card-chrome'),actions=top.querySelectorAll('.card-actions button');return {navLabels:buttons.map(x=>x.textContent.trim()),navAbove:navRect.bottom<cardRect.top,navEqual:buttons.every(x=>Math.abs(x.getBoundingClientRect().width-buttons[0].getBoundingClientRect().width)<3),modeBackground:getComputedStyle(document.querySelector('#shuffleBtn')).backgroundColor,cardWidth:cardRect.width,cardHeight:cardRect.height,faceLabel:document.querySelector('#faceLabel').textContent,actionLabels:[...actions].map(x=>x.textContent.trim()),counter:document.querySelector('#positionLabel').textContent,toolbarWithinCard:top.getBoundingClientRect().top>cardRect.top};})()");
    assert.deepEqual(reference.navLabels,['← 戻る','通常','次へ →']);
@@ -130,6 +135,9 @@ async function run(){
    assert.ok(desktopFront.width>=650&&desktopFront.width<=675&&desktopFront.height>=355&&desktopFront.height<=385,'Front must use the native 670px×360px word-card footprint: '+JSON.stringify(desktopFront));
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),true);
    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+   const mobileCorners=await evaluate("(()=>{const bar=document.querySelector('.deck-top').getBoundingClientRect(),nav=document.querySelector('.navigation').getBoundingClientRect(),card=document.querySelector('#flashCard').getBoundingClientRect(),back=document.querySelector('#homeBtn').getBoundingClientRect(),filter=document.querySelector('.deck-filter-details>summary').getBoundingClientRect();return {barWidth:bar.width,navWidth:nav.width,backLeft:Math.abs(back.left-card.left),filterRight:Math.abs(filter.right-card.right),barNavLeft:Math.abs(bar.left-nav.left),barNavRight:Math.abs(bar.right-nav.right)};})()");
+   assert.ok(mobileCorners.backLeft<2&&mobileCorners.filterRight<2&&mobileCorners.barNavLeft<2&&mobileCorners.barNavRight<2,
+     'On mobile, category controls also align exactly with the card and navigation corners: '+JSON.stringify(mobileCorners));
    const mobileFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
    assert.ok(mobileFont>=23&&mobileFont<=35,'Gun name must stay legible in the compact mobile word-card face');
    const mobileFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,viewport:innerWidth};})()");
@@ -216,7 +224,7 @@ async function run(){
      'Custom English model name must survive browser restart');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: exact root-size 670×360 word-card front, 54px nav, 320px mobile, collapsed Drive details, same photos and controls');
+   console.log('PASS browser guns: aligned category controls with card/nav corners on desktop and mobile, word-card 670×360, photo sync controls intact');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
