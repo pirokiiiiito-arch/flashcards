@@ -11,7 +11,7 @@ const listeners=new Set();
 let cards=[],deletedSeeds=new Set(),loaded=false;
 let view={category:'all',search:'',index:0,flipped:false,shuffled:false,shuffleOrder:[]};
 let editorCard=null,editorIndex=0,photoRefs=['','',''],previewUrls=[],displayUrls=[],toastTimer=null;
-let activePaste=0,renderSerial=0,dirtyEditor=false;
+let activePaste=0,renderSerial=0,dirtyEditor=false,ignoreClickUntil=0;
 const validHttp=v=>/^https?:\/\/[^\s]+$/i.test(String(v||''));
 const isDrive=v=>/^gdrive:[\w-]+:[a-f0-9]{64}$/.test(String(v||''));
 const isLocal=v=>/^idb:gunimg:[a-zA-Z0-9_-]+:[0-2]:[a-zA-Z0-9_-]+$/.test(String(v||''));
@@ -162,7 +162,7 @@ function openCategory(id){
  view.category=id;view.index=0;view.flipped=false;view.search='';view.shuffled=false;view.shuffleOrder=[];
  $('filterInput').value='';$('categorySelect').value=id;
  $('homeView').hidden=true;$('deckView').hidden=false;
- refresh();window.scrollTo({top:0,behavior:'instant'});
+ refresh();window.scrollTo({top:0,behavior:'auto'});
 }
 function refresh(){
  if(!loaded)return;
@@ -239,7 +239,8 @@ function englishSearch(query){
  const text=String(query||'').trim();
  if(!/[A-Za-z]/.test(text)){toast('英語の検索キーワードを入力してください。');return;}
  const url='https://www.google.com/search?tbm=isch&q='+encodeURIComponent(text);
- const opened=window.open(url,'_blank','popup=yes,width=1150,height=820,noopener,noreferrer');
+ const opened=window.open(url,'_blank','popup=yes,width=1150,height=820');
+ if(opened)opened.opener=null;
  if(!opened){
    // Browser policies can force tabs; never try to scrape Google or auto-download.
    const anchor=document.createElement('a');anchor.href=url;anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.click();
@@ -442,7 +443,7 @@ function installListeners(){
  $('filterInput').oninput=e=>{view.search=e.target.value.trim();view.index=0;view.flipped=false;if(view.shuffled)shuffleIds();refresh()};
  $('shuffleBtn').onclick=()=>{view.shuffled=!view.shuffled;view.index=0;view.flipped=false;if(view.shuffled)shuffleIds();refresh()};
  $('prevBtn').onclick=()=>move(-1);$('nextBtn').onclick=()=>move(1);$('flipBtn').onclick=flip;
- $('flashCard').onclick=e=>{if(e.target.closest('button,a,input,select,textarea,img'))return;flip()};
+ $('flashCard').onclick=e=>{if(Date.now()<ignoreClickUntil||e.target.closest('button,a,input,select,textarea,img'))return;flip()};
  $('flashCard').onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target===$('flashCard')){e.preventDefault();flip()}};
  $('editCardBtn').onclick=e=>{e.stopPropagation();openEditor(current())};
  $('googleSearchBtn').onclick=e=>{e.stopPropagation();const card=current();if(card)englishSearch(googleQuery(card))};
@@ -473,7 +474,7 @@ function installListeners(){
  $('flashCard').addEventListener('touchend',e=>{
    if(!start||!e.changedTouches.length)return;
    const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y;
-   if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.4){move(dx<0?1:-1);}
+   if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.4){ignoreClickUntil=Date.now()+400;move(dx<0?1:-1);}
    start=null;
  },{passive:true});
  const mark=()=>{if($('editorDialog').open)dirtyEditor=true};
