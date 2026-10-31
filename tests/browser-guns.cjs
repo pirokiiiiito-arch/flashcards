@@ -153,7 +153,7 @@ async function run(){
    assert.ok(desktopFront.width>=650&&desktopFront.width<=675&&desktopFront.height>=355&&desktopFront.height<=385,'Front must use the native 670px×360px word-card footprint: '+JSON.stringify(desktopFront));
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),true);
    const frontCaret=await evaluate("(()=>{const el=document.querySelector('#frontName'),card=document.querySelector('#flashCard');return {caret:getComputedStyle(el).caretColor,select:getComputedStyle(el).userSelect,cardCaret:getComputedStyle(card).caretColor};})()");
-   assert.ok(/^(?:transparent|rgba\\(0,\\s*0,\\s*0,\\s*0\\))$/i.test(frontCaret.caret),
+   assert.ok(/^(?:transparent|rgba\(0,\s*0,\s*0,\s*0\))$/i.test(frontCaret.caret),
      'The gun name must never display a blinking caret: '+JSON.stringify(frontCaret));
    assert.equal(frontCaret.select,'none','Read-only name should not become an insertion target');
    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
@@ -169,7 +169,7 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
    const backCarets=await evaluate("(()=>{const names=['#backName','#backDescription','#backMakerCompany','#flashCard'];return Object.fromEntries(names.map(selector=>[selector,getComputedStyle(document.querySelector(selector)).caretColor]));})()");
    for(const [name,color] of Object.entries(backCarets))
-     assert.ok(/^(?:transparent|rgba\\(0,\\s*0,\\s*0,\\s*0\\))$/i.test(color),
+     assert.ok(/^(?:transparent|rgba\(0,\s*0,\s*0,\s*0\))$/i.test(color),
        name+' must not show a blinking text caret: '+JSON.stringify(backCarets));
    await until(()=>evaluate("document.querySelector('#backCountryFlag')?.naturalWidth>0"),'real US flag SVG image renders');
    const makerMeta=await evaluate("(()=>{const flag=document.querySelector('#backCountryFlag'),name=document.querySelector('#backMakerCompany'),country=document.querySelector('#backMakerCountry'),meta=document.querySelector('#backMakerMeta'),card=document.querySelector('#flashCard').getBoundingClientRect(),header=document.querySelector('.card-chrome').getBoundingClientRect(),buttons=document.querySelector('.card-actions').getBoundingClientRect(),box=meta.getBoundingClientRect();return {flagTag:flag.tagName,flagSrc:flag.getAttribute('src'),flagAlt:flag.alt,flagPixels:flag.naturalWidth,flagText:flag.textContent,name:name.textContent,country:country.textContent,visible:!meta.hidden,faceHidden:document.querySelector('#faceLabel').hidden,inside:box.left>=card.left&&box.right<=card.right&&box.top>=card.top&&box.bottom<card.bottom,notOverlapping:box.right<=buttons.left+1,metaTop:Math.round(box.top),headerTop:Math.round(header.top)};})()");
@@ -202,7 +202,7 @@ async function run(){
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid [data-paste-slot]').length"),3);
    const photoCaret=await evaluate("(()=>{const frame=document.querySelector('#photoGrid [data-paste-slot]');return {editable:frame.isContentEditable,caret:getComputedStyle(frame).caretColor};})()");
    assert.equal(photoCaret.editable,true,'Picture slots must remain editable targets for image paste');
-   assert.ok(/^(?:transparent|rgba\\(0,\\s*0,\\s*0,\\s*0\\))$/i.test(photoCaret.caret),
+   assert.ok(/^(?:transparent|rgba\(0,\s*0,\s*0,\s*0\))$/i.test(photoCaret.caret),
      'Paste target caret should also be invisible without interfering with Ctrl+V: '+JSON.stringify(photoCaret));
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions button').length"),3);
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-search button').length"),3);
