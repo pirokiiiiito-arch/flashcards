@@ -163,6 +163,14 @@ async function run(){
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
+   const makerMeta=await evaluate("(()=>{const flag=document.querySelector('#backCountryFlag'),name=document.querySelector('#backMakerCompany'),country=document.querySelector('#backMakerCountry'),meta=document.querySelector('#backMakerMeta'),card=document.querySelector('#flashCard').getBoundingClientRect(),header=document.querySelector('.card-chrome').getBoundingClientRect(),buttons=document.querySelector('.card-actions').getBoundingClientRect(),box=meta.getBoundingClientRect();return {flag:flag.textContent,name:name.textContent,country:country.textContent,visible:!meta.hidden,faceHidden:document.querySelector('#faceLabel').hidden,inside:box.left>=card.left&&box.right<=card.right&&box.top>=card.top&&box.bottom<card.bottom,notOverlapping:box.right<=buttons.left+1,metaTop:Math.round(box.top),headerTop:Math.round(header.top)};})()");
+   assert.equal(makerMeta.flag,'🇺🇸');
+   assert.equal(makerMeta.name,'Remington Arms');
+   assert.equal(makerMeta.country,'アメリカ');
+   assert.equal(makerMeta.visible,true);
+   assert.equal(makerMeta.faceHidden,true);
+   assert.equal(makerMeta.inside,true,'Flag and manufacturer must be inside upper-left card header: '+JSON.stringify(makerMeta));
+   assert.equal(makerMeta.notOverlapping,true,'Manufacturer must not cover the add/edit/delete controls');
    const desktopBack=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,compact:card.classList.contains('front-compact')};})()");
    assert.equal(desktopBack.compact,false,'Back must not use compact front frame');
    assert.ok(Math.abs(desktopBack.width-desktopFront.width)<4,'Front and back should occupy the same word-card width: front='+JSON.stringify(desktopFront)+' back='+JSON.stringify(desktopBack));
@@ -191,6 +199,8 @@ async function run(){
    await evaluate("document.querySelector('#editCardBtn').click()");
    assert.equal(await evaluate("document.querySelector('#editorDialog').open"),true);
    assert.equal(await evaluate("document.querySelector('#editSearch').value.includes('Remington')"),true);
+   assert.equal(await evaluate("document.querySelector('#editMaker').value"),'Remington Arms');
+   assert.equal(await evaluate("document.querySelector('#editMakerCountry').value"),'US');
    await evaluate("(()=>{const input=document.querySelector('#editorPhotos input[type=file]'),bytes=Uint8Array.from(atob('"+png+"'),x=>x.charCodeAt(0)),file=new File([bytes],'demo.png',{type:'image/png'}),dt=new DataTransfer();dt.items.add(file);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));return true;})()");
    await until(()=>evaluate("document.querySelector('#editorMessage').textContent.includes('この端末に保存')"),'image saved in IndexedDB');
    await evaluate("document.querySelector('#saveEditBtn').click()");
@@ -218,7 +228,7 @@ async function run(){
    assert.ok(!decodeURIComponent(search).includes('レミントン'),'Google query must be English, not the Japanese display name');
    // Simulate previously saved English-name seed data; keep the registered
    // IndexedDB photo reference exactly unchanged through migration.
-   await evaluate("(()=>{const old=JSON.parse(localStorage.getItem('gun-flashcards-cards-v1'));const c=old.cards.find(c=>c.id==='gun-0001');c.name='Remington Model 870';localStorage.setItem('gun-flashcards-cards-v1',JSON.stringify(old));return true})()");
+   await evaluate("(()=>{const old=JSON.parse(localStorage.getItem('gun-flashcards-cards-v1'));const c=old.cards.find(c=>c.id==='gun-0001');c.name='Remington Model 870';delete c.maker;delete c.country;localStorage.setItem('gun-flashcards-cards-v1',JSON.stringify(old));return true})()");
    await navigate('Page.reload',{ignoreCache:false});
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'cards after browser restart');
    assert.deepEqual(await evaluate("[...document.querySelectorAll('#groupGrid .category-tile')].map(x=>x.dataset.group)"),
@@ -226,6 +236,9 @@ async function run(){
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name"),'レミントン・モデル870');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').search.includes('Remington')"),true);
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name_en"),'Remington Model 870');
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').maker"),'Remington Arms',
+     'Legacy local photos must retain their ID while manufacturer defaults are restored');
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').country"),'US');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
    assert.equal(await evaluate("document.querySelector('#frontEnglish').textContent"),'Remington Model 870',
      'English name must be restored from older photo-bearing saved cards');
@@ -234,7 +247,7 @@ async function run(){
      'All directly pasted/photo-file image slots must survive reload and English-name migration');
    await evaluate("document.querySelector('#flipBtn').click()");
    await until(()=>evaluate("document.querySelector('#photoGrid img')?.naturalWidth>0"),'registered picture restored after restart');
-   await evaluate("document.querySelector('#addBtn').click();document.querySelector('#editCategory').value='revolver';document.querySelector('#editName').value='テスト・モデル';document.querySelector('#editEnglishName').value='Test Model';document.querySelector('#editSearch').value='historical revolver photo';document.querySelector('#editDescription').value='A saved catalog entry.';document.querySelector('#saveEditBtn').click();");
+   await evaluate("document.querySelector('#addBtn').click();document.querySelector('#editCategory').value='revolver';document.querySelector('#editName').value='テスト・モデル';document.querySelector('#editEnglishName').value='Test Model';document.querySelector('#editMaker').value='テスト製造会社';document.querySelector('#editMakerCountry').value='JP';document.querySelector('#editSearch').value='historical revolver photo';document.querySelector('#editDescription').value='A saved catalog entry.';document.querySelector('#saveEditBtn').click();");
    await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='テスト・モデル')"),'new editable gun saved');
    await navigate('Page.reload',{ignoreCache:false});
    await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='テスト・モデル')"),'user added card retained after restart');
@@ -242,9 +255,17 @@ async function run(){
    assert.equal(custom,'revolver');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.name==='テスト・モデル').name_en"),'Test Model',
      'Custom English model name must survive browser restart');
+   const customMaker=await evaluate("(()=>{const c=GunDeck.getCards().find(c=>c.name==='テスト・モデル');return {maker:c?.maker,country:c?.country}})()");
+   assert.equal(customMaker.maker,'テスト製造会社');
+   assert.equal(customMaker.country,'JP');
+   await evaluate("document.querySelector('[data-group=revolver]').click();const input=document.querySelector('#filterInput');input.value='テスト・モデル';input.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#flipBtn').click()");
+   assert.equal(await evaluate("document.querySelector('#backCountryFlag').textContent"),'🇯🇵',
+     'Edited custom gun uses its own country flag');
+   assert.equal(await evaluate("document.querySelector('#backMakerCompany').textContent"),'テスト製造会社',
+     'Edited custom gun shows the saved manufacturer at top left');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: historical invention order on desktop/mobile and reload, stable model IDs/photos, centered cards and photo operations');
+   console.log('PASS browser guns: 35 maker flags, upper-left Remington manufacturer, editable custom country, stable photo refs and invention order');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
