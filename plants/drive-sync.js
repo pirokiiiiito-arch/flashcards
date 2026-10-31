@@ -303,7 +303,7 @@
       const registeredKeys = [...requestedKeys].filter(([key, expected]) => {
         const value = currentRefs.get(key) || '';
         return (value === expected || (before.get(key) === expected && P.isDrive(value))) &&
-          (P.isDrive(value) || /^https?:\\/\\//i.test(value));
+          (P.isDrive(value) || /^https?:\/\//i.test(value));
       }).map(([key]) => key);
       const republishKeys = [...new Set([...copiedKeys, ...registeredKeys])];
       if (republishKeys.length && sync.republish) await sync.republish(republishKeys);
