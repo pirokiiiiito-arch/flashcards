@@ -89,13 +89,22 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
    const desktopFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
    assert.ok(desktopFont<=34,'Gun name should stay at or below 34px on desktop');
+   const desktopFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),rect=card.getBoundingClientRect();return {width:rect.width,height:rect.height,compact:card.classList.contains('front-compact')};})()");
+   assert.equal(desktopFront.compact,true,'Name side must activate compact outer card frame');
+   assert.ok(desktopFront.width<=562&&desktopFront.height<=260,'Front card frame must be genuinely small, not merely the text: '+JSON.stringify(desktopFront));
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),true);
    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
    const mobileFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
    assert.ok(mobileFont<=29,'Gun name must remain compact on mobile');
+   const mobileFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,viewport:innerWidth};})()");
+   assert.ok(mobileFront.height<=230&&mobileFront.width<mobileFront.viewport,'Small front card frame must also fit narrow mobile screens');
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
+   const desktopBack=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,compact:card.classList.contains('front-compact')};})()");
+   assert.equal(desktopBack.compact,false,'Back must not use compact front frame');
+   assert.ok(desktopBack.width>desktopFront.width+100,'Back photos must remain much wider than the front');
+   assert.ok(desktopBack.height>desktopFront.height*2,'Back must retain enough height for its three photos');
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot').length"),3);
    const photoLayout=await evaluate("(()=>{const photos=[...document.querySelectorAll('#photoGrid .photo-slot')].map(el=>el.getBoundingClientRect()),frames=[...document.querySelectorAll('#photoGrid .photo-frame')].map(el=>el.getBoundingClientRect()),description=document.querySelector('#backDescription').getBoundingClientRect(),back=document.querySelector('#cardBack').getBoundingClientRect();return {count:photos.length,belowDescription:photos[0].top>description.bottom-1,stacked:photos.slice(1).every((rect,i)=>rect.top>=photos[i].bottom-1),fullWidth:frames.every(rect=>rect.width>400),frameWidths:frames.map(rect=>Math.round(rect.width)),viewportWidth:innerWidth,gridWidth:Math.round(document.querySelector('#photoGrid').getBoundingClientRect().width),backWidth:Math.round(back.width),aspect:frames[0].width/frames[0].height,contained:photos[2].bottom<=back.bottom+1};})()");
    assert.equal(photoLayout.belowDescription,true,'All photo slots must appear below the gun description');
@@ -108,8 +117,14 @@ async function run(){
    assert.equal(searchPosition.abovePhotos,true,'Search must be above, not below, three large pictures');
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions').length"),3);
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid [data-paste-slot]').length"),3);
-   assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions button').length"),6);
+   assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions button').length"),3);
+   assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-search button').length"),3);
    assert.equal(await evaluate("document.querySelectorAll('#photoGrid .photo-slot-actions input[type=file]').length"),3);
+   const perPhotoSearch=await evaluate("(()=>{return [...document.querySelectorAll('#photoGrid .photo-slot')].map((slot,index)=>{const row=slot.querySelector('.photo-slot-search'),button=row?.querySelector('button'),frame=slot.querySelector('.photo-frame');return {index:index+1,label:button?.getAttribute('aria-label'),above:!!row&&row.getBoundingClientRect().bottom<frame.getBoundingClientRect().top+1,order:row===slot.firstElementChild};});})()");
+   assert.equal(perPhotoSearch.length,3);
+   assert.ok(perPhotoSearch.every(x=>x.above&&x.order&&x.label.includes('写真'+x.index)), 'English image search must be above each of the three picture boxes: '+JSON.stringify(perPhotoSearch));
+   await evaluate("window.open=(url)=>{window.__slotSearch=url;return {opener:null}};document.querySelectorAll('#photoGrid .photo-slot-search button')[1].click()");
+   assert.ok(decodeURIComponent(await evaluate('window.__slotSearch')).includes('Remington Model 870'),'Per-picture Google search must still use the English model name');
    assert.ok((await evaluate("document.querySelector('#backDescription').textContent")).includes('ショットガン'));
    await evaluate("document.querySelector('#editCardBtn').click()");
    assert.equal(await evaluate("document.querySelector('#editorDialog').open"),true);
@@ -159,7 +174,7 @@ async function run(){
    assert.equal(custom,'revolver');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: prominent English search, image-slot Ctrl+V/file paste, all three durable photos and preserved data');
+   console.log('PASS browser guns: reduced front frame, normal-size photo back, English Google search above each picture, clipboard/file paste and saved photos');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
