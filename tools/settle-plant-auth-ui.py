@@ -29,10 +29,10 @@ s=one(s,'    onStatus: (s, message) => {', '    onStatus: (s, message) => {\n   
 s=one(s,'      window.PlantNetworkSupport.complete(sync);', '      window.PlantNetworkSupport.complete(sync);\n      refreshSourceAuth();')
 write('plants/drive-sync.js',s)
 for path in ['plants/index.html','plants/plant-sync-v2.html']:
-    s=one(read(path),'<script src="./drive-sync.js?v=queue1"></script>', '<script src="./source-auth-ui.js?v=1"></script>\n<script src="./drive-sync.js?v=authsettled11"></script>')
+    s=one(read(path),'<script src="./drive-sync.js?v=queue1"></script>', '<script src="./source-auth-ui.js?v=1"></script>\n<script src="./drive-sync.js?v=authsettled12"></script>')
     write(path,s)
-s=one(read('plants/service-worker.js'),'plant-flashcards-v35-queue1','plant-flashcards-v46-authbridge1')
-s=one(s,"'./drive-sync.js?v=queue1'", "'./drive-sync.js?v=authsettled11', './source-auth-ui.js?v=1'")
+s=one(read('plants/service-worker.js'),'plant-flashcards-v35-queue1','plant-flashcards-v47-autophoto1')
+s=one(s,"'./drive-sync.js?v=queue1'", "'./drive-sync.js?v=authsettled12', './source-auth-ui.js?v=1'")
 write('plants/service-worker.js',s)
 if before!={p:sha(p) for p in protected}:raise RuntimeError('Protected auth, photo, data, transfer or viewer changed')
 write('plants/auth-settled-build.json',json.dumps({'schema':'plant-source-auth-display-v1','protected_sha256':before,'authentication_flow_changed':False,'photo_mutation':False},ensure_ascii=False,indent=2)+'\n')
