@@ -44,9 +44,10 @@
           <button type="button" id="allCardsBtn" class="btn secondary">すべての銃を見る</button>
         </div>
       </div>
-      <p class="intro">表・裏の銃名はカタカナで表示します。Google画像検索では元の英語モデル名を使い、選んだ写真だけを手動で登録します。</p>
+      <p class="intro">2,000モデルを収録。表はカタカナの銃名、裏は説明と写真3枚です。英語のGoogle画像検索で選んだ写真だけを手動登録できます。</p>
+      <p class="catalog-progress" id="catalogProgress" aria-live="polite">モデル一覧を読み込んでいます…</p>
       <div id="groupGrid" class="category-grid"></div>
-      <div class="small-note">分類は方式のおおよその発明・登場順です（個々の製品の発売年順ではありません）。代表的なモデルの概要は自由に追加・編集できます。</div>
+      <div class="small-note">分類は方式のおおよその発明・登場順です。追加したモデル名・派生型は資料確認が必要な参考候補を含み、製造年など未確認の詳細は断定していません。登録済みの写真・編集内容は保持されます。</div>
     </section>
     <section id="deckView" hidden>
       <div class="deck-top">
@@ -145,7 +146,9 @@
   </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
-<script src="./data.js?v=6"></script>
+<script src="./extended-models.js?v=1"></script>
+<script src="./extended-variants.js?v=1"></script>
+<script src="./data.js?v=7"></script>
 <script src="./app.js?v=10"></script>
 <script src="../drive-config.js?v=3"></script>
 <script src="../persistent-drive-auth.js?v=1"></script>
