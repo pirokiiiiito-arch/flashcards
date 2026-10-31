@@ -1,10 +1,11 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-auth-only-sync="1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2f66e8">
-<link rel="manifest" href="manifest.webmanifest">\n<link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <title>単語帳</title>
 <style>
 :root{--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--border:#d9e1ec;--accent:#2f66e8;--soft:#edf2f8;--green:#2e9d57}
@@ -56,7 +57,8 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 <div class="topbar">
 <button id="exportBtn" class="btn">データ保存</button>
 <button id="importBtn" class="btn">データ読込</button><input id="importFile" type="file" accept=".json,application/json" hidden>
-<button id="excelBtn" class="btn">Excel追加</button><input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden>\n<button id="syncBtn" class="btn sync-btn"><span class="sync-dot"></span><span id="syncBtnText">同期ログイン</span></button>
+<button id="excelBtn" class="btn">Excel追加</button><input id="excelFile" type="file" accept=".xlsx,.xls,.csv" hidden>
+<button id="syncBtn" class="btn sync-btn"><span class="sync-dot"></span><span id="syncBtnText">同期ログイン</span></button>
 </div>
 
 <div id="syncModalWrap" class="modal-backdrop" aria-hidden="true">
@@ -549,7 +551,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.ser
 </script>
 <script src="./drive-config.js?v=3"></script>
 <script src="./persistent-drive-auth.js?v=1"></script>
-<script src="./drive-core.js?v=persist1"></script>
-<script src="./drive-sync.js?v=3"></script>
+<script src="./drive-core.js?v=word-auto1"></script>
+<script src="./drive-sync.js?v=word-auto1"></script>
 <script src="./auth-only-ui.js?v=persist1"></script>
 </body></html>
