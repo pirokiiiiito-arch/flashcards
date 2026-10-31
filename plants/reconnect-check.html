@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>植物カード｜Drive接続の確認</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f6f8f6;color:#17231d;font:16px/1.7 system-ui,-apple-system,"Noto Sans JP",sans-serif}
+main{max-width:650px;margin:6vh auto;padding:24px;background:#fff;border-radius:20px;box-shadow:0 8px 28px #182d2012}
+h1{font-size:clamp(22px,4vw,30px);line-height:1.4}
+button,a{font:inherit}
+button{border:0;border-radius:12px;padding:12px 17px;cursor:pointer;font-weight:700;background:#2f7d5a;color:white}
+button.secondary{background:#edf3ef;color:#22513a}
+.buttons{display:flex;flex-wrap:wrap;gap:10px}
+#connectionState{padding:15px;margin:16px 0;border-radius:12px;background:#edf3ef;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:650}
+#connectionDetail{white-space:pre-wrap;overflow-wrap:anywhere;min-height:1.6em}
+.note{font-size:14px;color:#52665a}
+a{color:#215c41}
+@media(max-width:680px){main{margin:12px;padding:18px}}
+</style>
+</head>
+<body>
+<main>
+<h1>植物カード｜Google Driveの接続確認</h1>
+<p>このページでは、PC内の植物カードと写真を削除・変更しません。接続状態だけを確認します。</p>
+<p id="connectionState" role="status" aria-live="polite">Google Driveの接続状態を確認中です…</p>
+<div class="buttons">
+<button type="button" id="checkConnection">接続状態を再確認</button>
+<button type="button" class="secondary" id="openAuthentication">ログイン・Google認証画面を開く</button>
+</div>
+<p id="connectionDetail" role="status" aria-live="polite"></p>
+<p class="note">接続済みの場合、認証画面がすぐ閉じることがあります。それはログイン画面の表示失敗とは限りません。写真の同期完了は、植物カードの通常画面で別途確認が必要です。</p>
+<p><a href="./">植物カードの通常画面へ戻る</a></p>
+</main>
+<script src="../persistent-drive-auth.js?v=1"></script>
+<script>
+(function(){
+  "use strict";
+  const stateBox=document.getElementById("connectionState");
+  const detailBox=document.getElementById("connectionDetail");
+  const checkButton=document.getElementById("checkConnection");
+  const openButton=document.getElementById("openAuthentication");
+  const auth=()=>window.PersistentDriveAuth;
+  function phaseText(){
+    const api=auth();
+    if(!api||typeof api.state!=="function")return "認証プログラムが読み込めていません。通信状況を確認して、このページを再読み込みしてください。";
+    const state=api.state();
+    const phase=state.phase||"starting";
+    if(phase==="connected")return "Google Drive認証：接続済み\nPCの写真の送信完了はまだ確認していません。通常画面へ戻り、画像コピー状況を確認してください。";
+    if(phase==="starting")return "Google Drive認証：接続を確認中です。\n認証画面が必要か確認しています。";
+    if(phase==="temporary"||phase==="retry_pending")return "Google Drive認証：通信の確認ができていません。\n「接続状態を再確認」を押してください。";
+    if(phase==="connection_paused")return "Google Drive認証：接続が一時停止されています。\n「ログイン・Google認証画面を開く」から再接続してください。";
+    if(phase==="app_login_required"||phase==="app_login_failed")return "Google Drive認証：アプリのログインが必要です。\n「ログイン・Google認証画面を開く」を押してください。";
+    if(phase==="google_auth_required"||phase==="google_permission_required"||phase==="offline_permission_required"||phase==="google_account_mismatch")return "Google Drive認証：Googleアカウントの再接続が必要です。\n写真を保存したときと同じGoogleアカウントを使用してください。";
+    return "Google Drive認証：未完了（"+phase+"）。\n"+(api.message?.(phase)||"「ログイン・Google認証画面を開く」を押してください。");
+  }
+  function render(){const next=phaseText();if(stateBox.textContent!==next)stateBox.textContent=next;}
+  async function verify(){
+    const api=auth();
+    render();
+    if(!api||typeof api.getToken!=="function"){
+      detailBox.textContent="認証プログラムが利用できません。ブラウザのデータを消さずにページを再読込してください。";
+      return;
+    }
+    checkButton.disabled=true;
+    detailBox.textContent="Google Driveの接続を確認しています…";
+    try{
+      const result=await api.getToken();
+      if(!result?.token)throw Error("token_missing");
+      detailBox.textContent="Google Driveの認証を確認できました。植物カードの通常画面に戻り、保留中の画像同期を確認してください。";
+    }catch(error){
+      const code=String(error?.code||error?.message||"unknown");
+      detailBox.textContent="Google Driveの認証確認が完了しませんでした。\n理由："+code+"\n再接続が必要な場合は、右の「ログイン・Google認証画面を開く」を押してください。";
+    }finally{checkButton.disabled=false;render();}
+  }
+  function openLogin(){
+    const api=auth();
+    if(!api||typeof api.open!=="function"){
+      detailBox.textContent="認証プログラムを読み込めません。写真は変更していません。";
+      return;
+    }
+    if(api.state()?.phase==="connected"){
+      render();
+      detailBox.textContent="Google Driveは既に認証済みです。そのためログイン画面は表示されないことがあります。植物カードの通常画面へ戻って画像同期を確認してください。";
+      return;
+    }
+    detailBox.textContent="認証画面の表示を確認しています…";
+    try{
+      api.open();
+      window.setTimeout(()=>{
+        render();
+        const dialog=document.getElementById("persistentDriveDialog");
+        if(api.state()?.phase==="connected")
+          detailBox.textContent="Google Driveへの接続を確認しました。認証画面は自動で閉じます。通常の植物カード画面に戻って同期を確認してください。";
+        else if(dialog?.open)
+          detailBox.textContent="認証ダイアログが開いています。アプリのログイン、または「Googleで接続する」を画面内で行ってください。";
+        else
+          detailBox.textContent="認証画面は現在開いていません。上の接続状態をご確認ください。写真とカードは変更していません。";
+      },350);
+    }catch(error){
+      detailBox.textContent="認証画面を表示できませんでした："+String(error?.message||error);
+      render();
+    }
+  }
+  checkButton.addEventListener("click",verify);
+  openButton.addEventListener("click",openLogin);
+  render();
+  window.setInterval(render,1000);
+  window.addEventListener("focus",render);
+  window.addEventListener("pageshow",render);
+})();
+</script>
+</body>
+</html>
