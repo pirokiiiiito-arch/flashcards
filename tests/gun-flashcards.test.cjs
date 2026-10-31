@@ -88,6 +88,11 @@ test('vertical category list, compact front type and plant-style three verticall
  assert.ok(css.includes('.photo-frame{display:flex')&&css.includes('aspect-ratio:16/9'));
  assert.ok(plants.includes('.image-box{width:100%;aspect-ratio:16/9'));
  assert.match(css,/#cardBack\{cursor:default;display:block;height:auto;overflow:visible\}/);
+ assert.ok(css.includes('.flash-card.front-compact{width:min(100%,560px);max-width:560px;min-height:250px}'));
+ assert.ok(css.includes('.flash-card.front-compact #cardFront{min-height:250px;padding:20px 22px}'));
+ assert.ok(css.includes('.flash-card.front-compact{width:92%;max-width:560px;min-height:215px}'));
+ assert.ok(read('app.js').includes("classList.toggle('front-compact',!!card&&!view.flipped)"));
+ assert.ok(!css.includes('.flash-card.front-compact #cardBack'),'The back must keep its full width and height');
 });
 test('English Google image search is above the pictures and each picture supports direct paste',()=>{
  const html=read('index.html'),app=read('app.js'),css=read('style.css');
@@ -101,6 +106,13 @@ test('English Google image search is above the pictures and each picture support
  assert.ok(app.includes('clipboardImage(event.clipboardData)'));
  assert.ok(app.includes("paste.textContent='画像を貼り付け'"));
  assert.ok(app.includes("search.textContent='Google画像検索（英語）'"));
+ assert.ok(app.includes("searchRow.className='photo-slot-search'"));
+ assert.ok(app.includes("searchRow.append(cap,search)"));
+ assert.ok(app.includes("figure.append(searchRow,frame,tools,hint)"));
+ assert.ok(app.includes("tools.append(paste,fileLabel)"));
+ assert.ok(css.includes('.photo-slot-search{display:flex;align-items:center;justify-content:space-between'));
+ assert.ok(css.includes('.photo-slot-search .btn{flex:1 1 175px}'));
+ assert.ok(app.includes("search.setAttribute('aria-label','写真'+(i+1)+'のGoogle画像検索（英語）')"));
  assert.ok(app.includes("fileLabel.textContent='ファイルから登録'"));
  assert.ok(app.includes("pasteBackPhoto(card.id,i,frame)"));
  assert.ok(app.includes("saveBackPhoto(card.id,i,file)"));
@@ -137,16 +149,16 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v4'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v5'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=3'));
- assert.ok(sw.includes('./style.css?v=3'));
+ assert.ok(html.includes('./style.css?v=4'));
+ assert.ok(sw.includes('./style.css?v=4'));
  assert.ok(html.includes('./data.js?v=2'));
- assert.ok(html.includes('./app.js?v=3'));
+ assert.ok(html.includes('./app.js?v=4'));
  assert.ok(sw.includes('./data.js?v=2'));
- assert.ok(sw.includes('./app.js?v=3'));
+ assert.ok(sw.includes('./app.js?v=4'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
  assert.ok(html.includes('./drive-transfer-core.js?v=1'));
  assert.ok(html.includes('./service-worker.js')===false);
