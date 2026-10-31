@@ -146,6 +146,14 @@ jobs:
           node --test tests/plant-auth-settled.test.cjs tests/service-worker.test.cjs
           node --test tests/plant-photo-retry.test.cjs
           node --test tests/plant-photo-auto-sync.test.cjs
+      - name: Automatically publish newly registered color-card photos
+        run: |
+          python3 tools/build-color-photo-autosync.py
+          node --check colors/drive-sync.js
+          node --check colors/drive-transfer-core.js
+          node --check colors/network-support.js
+          node --test tests/color-photo-auto-sync.test.cjs
+          node --test tests/plant-color-network.test.cjs tests/service-worker.test.cjs
       - name: Show plant descriptions above photographs
         run: |
           python3 tools/plant-description-first.py
