@@ -79,6 +79,9 @@ async function run(){
    assert.equal(categoryLayout.stacked,true,'Categories must each occupy their own vertical row on desktop');
    assert.equal(categoryLayout.columns.trim().split(/\s+/).length,1,'Categories must use a single grid column');
    assert.ok(categoryLayout.widths.every(width=>width>400),'Vertical categories should be full-width rows');
+   const center=await evaluate("(()=>{const grid=document.querySelector('#groupGrid'),rect=grid.getBoundingClientRect(),tiles=[...document.querySelectorAll('.category-tile')];return {offset:Math.abs(rect.left+rect.width/2-innerWidth/2),aligned:tiles.every(tile=>{const r=tile.getBoundingClientRect(),title=tile.querySelector('.tile-name').getBoundingClientRect(),index=tile.querySelector('.tile-index').getBoundingClientRect(),counter=tile.querySelector('.tile-bottom').getBoundingClientRect();return [title,index,counter].every(part=>Math.abs(part.left+part.width/2-(r.left+r.width/2))<6)})};})()");
+   assert.ok(center.offset<5,'Category list must be centered in the page: '+JSON.stringify(center));
+   assert.equal(center.aligned,true,'Category labels/counts must be centered within each row');
    await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
    const mobileCategories=await evaluate("(()=>{const group=document.querySelector('#groupGrid'),tiles=[...group.querySelectorAll('.category-tile')].map(el=>el.getBoundingClientRect());return {columns:getComputedStyle(group).gridTemplateColumns,stacked:tiles.slice(1).every((row,i)=>row.top>=tiles[i].bottom-1),fullWidth:tiles.every(row=>row.width>320)}})()");
    assert.equal(mobileCategories.columns.trim().split(/\s+/).length,1,'Mobile categories must also be one column');
@@ -87,8 +90,14 @@ async function run(){
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('[data-group=shotgun]').click()");
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
+   assert.equal(await evaluate("document.querySelector('#frontEnglish').textContent"),'Remington Model 870');
+   assert.equal(await evaluate("document.querySelector('#cardFront').textContent.includes('FIREARM NAME')"),false);
+   assert.equal(await evaluate("document.querySelector('#cardFront').textContent.includes('クリック・タップで裏面へ')"),false);
+   const frontEnglishSize=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontEnglish')).fontSize)");
+   assert.ok(frontEnglishSize<=16,'The English exact model name must be a small subtitle');
    const desktopFont=await evaluate("parseFloat(getComputedStyle(document.querySelector('#frontName')).fontSize)");
    assert.ok(desktopFont<=34,'Gun name should stay at or below 34px on desktop');
+   assert.ok(desktopFont>frontEnglishSize*1.3,'The katakana product name must remain larger than the English subtitle');
    const desktopFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),rect=card.getBoundingClientRect();return {width:rect.width,height:rect.height,compact:card.classList.contains('front-compact')};})()");
    assert.equal(desktopFront.compact,true,'Name side must activate compact outer card frame');
    assert.ok(desktopFront.width<=482&&desktopFront.height<=232,'Front card frame must be genuinely small, not merely the text: '+JSON.stringify(desktopFront));
@@ -161,20 +170,26 @@ async function run(){
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'cards after browser restart');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name"),'レミントン・モデル870');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').search.includes('Remington')"),true);
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').name_en"),'Remington Model 870');
+   await evaluate("document.querySelector('[data-group=shotgun]').click()");
+   assert.equal(await evaluate("document.querySelector('#frontEnglish').textContent"),'Remington Model 870',
+     'English name must be restored from older photo-bearing saved cards');
    assert.equal(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images[0]"),photo,'Migration must preserve the original stored image ref');
    assert.deepEqual(await evaluate("GunDeck.getCards().find(c=>c.id==='gun-0001').images"),allPhotos,
      'All directly pasted/photo-file image slots must survive reload and English-name migration');
-   await evaluate("document.querySelector('[data-group=shotgun]').click();document.querySelector('#flipBtn').click()");
+   await evaluate("document.querySelector('#flipBtn').click()");
    await until(()=>evaluate("document.querySelector('#photoGrid img')?.naturalWidth>0"),'registered picture restored after restart');
-   await evaluate("document.querySelector('#addBtn').click();document.querySelector('#editCategory').value='revolver';document.querySelector('#editName').value='テスト・モデル';document.querySelector('#editSearch').value='historical revolver photo';document.querySelector('#editDescription').value='A saved catalog entry.';document.querySelector('#saveEditBtn').click();");
+   await evaluate("document.querySelector('#addBtn').click();document.querySelector('#editCategory').value='revolver';document.querySelector('#editName').value='テスト・モデル';document.querySelector('#editEnglishName').value='Test Model';document.querySelector('#editSearch').value='historical revolver photo';document.querySelector('#editDescription').value='A saved catalog entry.';document.querySelector('#saveEditBtn').click();");
    await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='テスト・モデル')"),'new editable gun saved');
    await navigate('Page.reload',{ignoreCache:false});
    await until(()=>evaluate("GunDeck.getCards().some(c=>c.name==='テスト・モデル')"),'user added card retained after restart');
    const custom=await evaluate("GunDeck.getCards().find(c=>c.name==='テスト・モデル')?.category");
    assert.equal(custom,'revolver');
+   assert.equal(await evaluate("GunDeck.getCards().find(c=>c.name==='テスト・モデル').name_en"),'Test Model',
+     'Custom English model name must survive browser restart');
    assert.deepEqual(errors,[],'No uncaught gun card UI errors');
    assert.ok(!external.some(url=>url.startsWith('https://www.googleapis.com')),'No private Drive requests without user authentication');
-   console.log('PASS browser guns: reduced front frame, normal-size photo back, English Google search above each picture, clipboard/file paste and saved photos');
+   console.log('PASS browser guns: centered category list, katakana plus small English product name, no top/bottom hints, all photos and search intact');
  }finally{
    try{ws?.close()}catch{}
    chrome.kill('SIGTERM');
