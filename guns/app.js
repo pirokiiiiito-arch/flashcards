@@ -144,6 +144,8 @@ function shuffleIds(){
  view.shuffleOrder=ids;
 }
 function buildGroups(){
+ const count=$('catalogProgress');
+ if(count)count.textContent='収録 '+cards.length.toLocaleString('ja-JP')+'モデル ／ 図鑑の基本収録目標 '+C.CATALOG_TARGET.toLocaleString('ja-JP')+'モデル';
  const grid=$('groupGrid');grid.replaceChildren();
  const allCounts=Object.fromEntries(groups.map(g=>[g.id,cards.filter(c=>c.category===g.id).length]));
  for(const [i,group] of groups.entries()){
