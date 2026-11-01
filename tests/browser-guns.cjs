@@ -146,9 +146,18 @@ async function run(){
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'モスバーグ500');
    await evaluate("document.querySelector('#prevBtn').click()");
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870');
+   const originalCategoryCounter=await evaluate("document.querySelector('#positionLabel').textContent");
+   assert.notEqual(originalCategoryCounter,'1 / 2000','Normal starts in the chosen shotgun classification');
    await evaluate("document.querySelector('#modeBtn').click()");
    assert.equal(await evaluate("document.querySelector('#modeBtn').textContent"),'シャッフル');
    assert.equal(await evaluate("document.querySelector('#modeBtn').getAttribute('aria-pressed')"),'true');
+   const globalShuffle=await evaluate("(()=>({counter:document.querySelector('#positionLabel').textContent,selected:document.querySelector('#categorySelect').value,scope:document.querySelector('#deckHeading').textContent,description:document.querySelector('#modeBtn').getAttribute('aria-label')}))()");
+   assert.equal(globalShuffle.counter,'1 / 2000','Shuffle must include all 2,000 firearms regardless of starting category');
+   assert.equal(globalShuffle.selected,'all','Category selector must reflect the active global scope');
+   assert.equal(globalShuffle.scope,'全分類','Shuffle heading must describe all categories');
+   assert.match(globalShuffle.description,/全分類シャッフル/);
+   const shuffledCategories=await evaluate("(()=>{const byName=new Map(GunDeck.getCards().map(c=>[c.name,c.category]));const seen=new Set();const next=document.querySelector('#nextBtn');for(let i=0;i<GunDeck.getCards().length&&seen.size<3;i++){seen.add(byName.get(document.querySelector('#frontName').textContent));next.click();}return [...seen];})()");
+   assert.ok(shuffledCategories.length>=3,'Shuffle navigation must cross multiple distinct classifications: '+JSON.stringify(shuffledCategories));
    const chosen=await evaluate("getComputedStyle(document.querySelector('#modeBtn')).backgroundColor");
    assert.equal(chosen,'rgb(47, 102, 232)','Shuffled mode must be blue: '+chosen);
    const shuffledNames=[];
@@ -161,6 +170,8 @@ async function run(){
    await evaluate("document.querySelector('#modeBtn').click()");
    assert.equal(await evaluate("document.querySelector('#modeBtn').getAttribute('aria-pressed')"),'false');
    assert.equal(await evaluate("document.querySelector('#modeBtn').textContent"),'通常');
+   assert.equal(await evaluate("document.querySelector('#categorySelect').value"),'shotgun','Normal restores the original selected category');
+   assert.equal(await evaluate("document.querySelector('#positionLabel').textContent"),originalCategoryCounter,'Normal restores the earlier category count');
    assert.equal(await evaluate("getComputedStyle(document.querySelector('#modeBtn')).backgroundColor"),'rgb(45, 157, 88)');
    assert.equal(await evaluate("document.querySelector('#frontName').textContent"),'レミントン・モデル870',
      'Pressing the mode button again restores the normal category order');

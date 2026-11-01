@@ -126,7 +126,8 @@ function restoreCloud(prepared){
 }
 function allFiltered(){
  const query=view.search.toLocaleLowerCase('ja-JP');
- const selected=cards.filter(c=>(view.category==='all'||c.category===view.category) &&
+ // In Shuffle mode draw across every classification; text search still applies.
+ const selected=cards.filter(c=>(view.shuffled||view.category==='all'||c.category===view.category) &&
   (!query||[c.name,c.name_en,c.maker,c.description,c.search,groupNames[c.category]].some(v=>String(v||'').toLocaleLowerCase('ja-JP').includes(query))));
  if(view.shuffled){
    const orders=new Map(view.shuffleOrder.map((id,i)=>[id,i]));
@@ -359,9 +360,12 @@ function renderDeck(){
  const list=allFiltered();
  if(view.index>=list.length)view.index=Math.max(0,list.length-1);
  const card=list[view.index]||null;
- const label=view.category==='all'?'全分類':groupNames[view.category];
- $('categoryCaption').textContent=(view.category==='all'?'ALL CATEGORIES':groups.find(x=>x.id===view.category)?.en.toUpperCase()||'OTHER');
+ const scope=view.shuffled?'all':view.category;
+ const label=scope==='all'?'全分類':groupNames[scope];
+ $('categoryCaption').textContent=(scope==='all'?'ALL CATEGORIES':groups.find(x=>x.id===scope)?.en.toUpperCase()||'OTHER');
  $('deckHeading').textContent=label;
+ // Indicate the global scope while preserving the chosen category for Normal.
+ $('categorySelect').value=scope;
  $('positionLabel').textContent=card?(view.index+1)+' / '+list.length:'0 / 0';
  $('flashCard').hidden=!card;$('emptyMsg').hidden=!!card;
  $('flashCard').classList.remove('front-compact');
@@ -371,7 +375,8 @@ function renderDeck(){
  const modeBtn=$('modeBtn');
  modeBtn.textContent=view.shuffled?'シャッフル':'通常';
  modeBtn.setAttribute('aria-pressed',String(view.shuffled));
- modeBtn.setAttribute('aria-label',view.shuffled?'シャッフル順で表示中。押すと通常順に切り替えます':'通常順で表示中。押すとシャッフル順に切り替えます');
+ modeBtn.setAttribute('aria-label',view.shuffled?'全分類シャッフル順で表示中。押すと元の分類の通常順に戻ります':'通常順で表示中。押すと全分類シャッフル順に切り替えます');
+ modeBtn.title=view.shuffled?'すべての分類からシャッフル中':'すべての分類からシャッフルする';
  if(!card){forgetPhotos();return;}
  $('frontName').textContent=card.name;
  // The English model name remains in the card data for searching/editing,

@@ -337,6 +337,19 @@ test('Delete sits at the bottom-right of the card, outside the top controls',()=
   assert.ok(css.includes('#flashCard #cardBack{padding-bottom:76px}'),'Keep Delete clear of the final picture');
   assert.ok(app.includes("$('deleteCardBtn').onclick=deleteCard"),'Delete must keep its existing click handler');
 });
+test('shuffle ignores categories and restores the original Normal scope',()=>{
+ const app=read('app.js');
+ assert.ok(app.includes("view.shuffled||view.category==='all'||c.category===view.category"),
+   'Shuffled selection must not filter by the selected category');
+ assert.ok(app.includes("const scope=view.shuffled?'all':view.category"),
+   'Shuffle must show the true global scope');
+ assert.ok(app.includes("$('categorySelect').value=scope"),
+   'Category selector must show All during global Shuffle');
+ assert.ok(app.includes("if(view.shuffled)shuffleIds();else view.shuffleOrder=[];"),
+   'Toggling back to Normal keeps the original category');
+ assert.ok(app.includes("const ids=allFiltered().map(c=>c.id"),
+   'Shuffle must randomize all filtered items rather than one category');
+});
 test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
   const app=read('app.js');
   assert.ok(app.includes('activePhotoRefs[i]!==sources[i]'));
@@ -347,7 +360,7 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v23'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v24'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
@@ -358,9 +371,9 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(sw.includes('./extended-models.js?v=1'));
  assert.ok(sw.includes('./extended-variants.js?v=1'));
  assert.ok(html.includes('./data.js?v=8'));
- assert.ok(html.includes('./app.js?v=14'));
+ assert.ok(html.includes('./app.js?v=15'));
  assert.ok(sw.includes('./data.js?v=8'));
- assert.ok(sw.includes('./app.js?v=14'));
+ assert.ok(sw.includes('./app.js?v=15'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
