@@ -219,7 +219,12 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
 .card-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
 .card-actions>.btn{min-height:35px;padding:6px 10px;border-radius:10px;font-weight:750;font-size:13px;border:1px solid #d4deeb;color:#1e2c40;background:white}
 .card-actions>.card-add{border-color:#b5c9ff;background:#f6f8ff;color:#2869e8}
-.card-actions>.card-edit:hover,.card-actions>.card-delete:hover{background:#f1f5f9}
+.card-actions>.card-edit:hover{background:#f1f5f9}
+.card-bottom-actions{position:absolute;right:23px;bottom:18px;z-index:4;display:flex;justify-content:flex-end}
+.card-bottom-actions>.card-delete{min-height:35px;padding:6px 10px;border-radius:10px;font-weight:750;font-size:13px;border:1px solid #d4deeb;color:#1e2c40;background:#fff}
+.card-bottom-actions>.card-delete:hover{background:#f1f5f9}
+/* Reserve the lower-right area for Delete after the final photo and controls. */
+#flashCard #cardBack{padding-bottom:76px}
 .card-number.counter{position:absolute;right:25px;top:69px;z-index:3;pointer-events:none;white-space:nowrap;background:transparent;padding:0;border-radius:0;color:#bac4d4;font-weight:400;font-size:13px;letter-spacing:.02em}
 #cardBack{min-height:360px;padding:106px 23px 24px;background:#fff;border-radius:27px;overflow:visible}
 #cardBack .back-topline{margin-bottom:12px}
@@ -249,6 +254,8 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
  .face-label{font-size:12px;line-height:1.4;white-space:normal;margin-top:6px}
  .card-actions{gap:4px}
  .card-actions>.btn{font-size:11px;min-height:31px;padding:5px 7px;border-radius:8px}
+ .card-bottom-actions{right:16px;bottom:14px}
+ .card-bottom-actions>.card-delete{font-size:11px;min-height:31px;padding:5px 9px;border-radius:8px}
  .card-number.counter{right:16px;top:70px;font-size:12px}
  #cardBack{min-height:320px;padding:105px 16px 22px;border-radius:21px}
  .deck-top{margin-bottom:7px}
@@ -260,6 +267,8 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
 @media(max-width:380px){
  .card-chrome{left:11px;right:11px;top:10px}
  .card-actions>.btn{font-size:10px;padding:4px 6px}
+ .card-bottom-actions{right:11px;bottom:12px}
+ .card-bottom-actions>.card-delete{font-size:10px;padding:4px 8px}
  .face-label{font-size:11px}
  #cardFront,#flashCard.front-compact #cardFront{padding-top:82px}
  .navigation>.btn{min-height:45px}
