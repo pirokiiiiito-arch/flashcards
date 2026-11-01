@@ -37,7 +37,7 @@ snippet does not distinguish G41(W) from G41(M). The Walther/Mauser
 model-variant split has not been independently verified against original
 manufacturer records in this offline pass. The second screenshot lists
 MP 3008's origin as Nazi Germany, not an individual manufacturer or factory:
-its manufacturer and maker-country flag are intentionally still empty.
+its manufacturer remains empty. The existing catalogue country code DE is not changed and does not establish an individual manufacturer.
 
 Stable IDs, data order, photo references, descriptions and source=user manual
 edits are preserved. Automatic legacy starter-value recovery applies only

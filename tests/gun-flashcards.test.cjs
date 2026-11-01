@@ -125,7 +125,7 @@ test('G41 has manufacturer-by-variant and MP3008 origin alone cannot identify a 
  assert.equal(candidate.basis,'variant-dependent');
  assert.equal(candidate.externallyVerified,false);
  assert.equal(mp.maker,'','German origin is not a verified maker');
- assert.equal(mp.country,'','Do not turn origin into a flag for a nonexistent maker');
+ assert.equal(mp.country,'DE','Preserve the existing catalogue origin code without claiming a factory');
  const old={...g41,source:'starter',maker:'',
    images:['idb:gunimg:'+g41.id+':0:previousPhoto','','']};
  const recovered=C.mergeCards([old]).find(c=>c.id===g41.id);
@@ -154,7 +154,7 @@ test('missing manufacturer recovery preserves photos and user edits',()=>{
  assert.equal(get('G 41').maker,'Carl Walther（G41(W)型）／Mauser（G41(M)型）※該当型式未特定');
  assert.equal(get('G 41').country,'','The G41 variant is not identified by the generic label');
  assert.equal(get('MP 3008').maker,'','Origin is not a factory/company name');
- assert.equal(get('MP 3008').country,'','Do not copy place of origin into maker-country field');
+ assert.equal(get('MP 3008').country,'DE','Previously recorded German origin is unchanged, but does not name a manufacturer');
  const current=get('Krag–Jørgensen M1889');
  assert.equal(register.lookup({...current,maker:''}).externallyVerified,false);
  const previous={...current,maker:'',source:'starter',description:'写真に添えた説明',
