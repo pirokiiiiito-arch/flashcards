@@ -237,6 +237,8 @@ async function run(){
    assert.ok(mobileBadge.contained&&mobileBadge.aboveTitle&&mobileBadge.nonOverlap&&mobileBadge.centerOffset<8,
      'Mobile back category should be centered and clear of controls: '+JSON.stringify(mobileBadge));
    await send('Emulation.clearDeviceMetricsOverride');
+   await until(()=>evaluate("document.querySelector('#flashCard').getBoundingClientRect().width>=650"),
+     'desktop card width restores after mobile category check');
    const backCarets=await evaluate("(()=>{const names=['#backName','#backDescription','#backMakerCompany','#flashCard'];return Object.fromEntries(names.map(selector=>[selector,getComputedStyle(document.querySelector(selector)).caretColor]));})()");
    for(const [name,color] of Object.entries(backCarets))
      assert.ok(/^(?:transparent|rgba\(0,\s*0,\s*0,\s*0\))$/i.test(color),
