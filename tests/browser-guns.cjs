@@ -224,6 +224,9 @@ async function run(){
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
+   const backCategory=await evaluate("(()=>{const name=document.querySelector('#backName').getBoundingClientRect(),category=document.querySelector('#backCategory'),label=category.getBoundingClientRect(),description=document.querySelector('#backDescription').getBoundingClientRect();return {text:category.textContent,visible:label.height>10,afterName:label.top>=name.bottom-1,beforeDescription:label.bottom<=description.top+1};})()");
+   assert.deepEqual(backCategory,{text:'分類：ショットガン',visible:true,afterName:true,beforeDescription:true},
+     'The selected firearm type should be visible beneath the back title and above its description');
    const backCarets=await evaluate("(()=>{const names=['#backName','#backDescription','#backMakerCompany','#flashCard'];return Object.fromEntries(names.map(selector=>[selector,getComputedStyle(document.querySelector(selector)).caretColor]));})()");
    for(const [name,color] of Object.entries(backCarets))
      assert.ok(/^(?:transparent|rgba\(0,\s*0,\s*0,\s*0\))$/i.test(color),
@@ -339,6 +342,8 @@ async function run(){
    assert.equal(customMaker.maker,'テスト製造会社');
    assert.equal(customMaker.country,'JP');
    await evaluate("document.querySelector('[data-group=revolver]').click();const input=document.querySelector('#filterInput');input.value='テスト・モデル';input.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#flipBtn').click()");
+   assert.equal(await evaluate("document.querySelector('#backCategory').textContent"),'分類：リボルバー',
+     'Edited or user-added cards show their actual classification, not the previous selection');
    await until(()=>evaluate("document.querySelector('#backCountryFlag')?.getAttribute('src')==='./flags/jp.svg' && document.querySelector('#backCountryFlag').naturalWidth>0"),
      'edited custom gun Japanese flag SVG image loads');
    assert.equal(await evaluate("document.querySelector('#backCountryFlag').getAttribute('src')"),'./flags/jp.svg',

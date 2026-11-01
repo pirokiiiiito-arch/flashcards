@@ -470,6 +470,18 @@ test('shuffle ignores categories and restores the original Normal scope',()=>{
  assert.ok(app.includes("const ids=allFiltered().map(c=>c.id"),
    'Shuffle must randomize all filtered items rather than one category');
 });
+test('back of each card clearly labels its own Japanese firearm category',()=>{
+ const html=read('index.html'),app=read('app.js'),css=read('style.css');
+ assert.match(html,/<p id="backCategory" class="back-category"><\/p>/);
+ assert.ok(html.indexOf('id="backCategory"')>html.indexOf('id="backName"'));
+ assert.ok(html.indexOf('id="backCategory"')<html.indexOf('id="backDescription"'));
+ assert.ok(app.includes("$('backCategory').textContent='分類：'+(groupNames[card.category]||groupNames.other)"),
+   'Classification must come from the actual card, not selected deck or shuffle');
+ assert.ok(css.includes('#cardBack .back-category{margin:9px 0 0;'));
+ assert.equal(C.CATEGORIES.length,10);
+ assert.ok(C.SEEDS.every(card=>C.CATEGORIES.some(c=>c.id===card.category)),
+   'Every bundled card must map to one of the displayed classification labels');
+});
 test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
   const app=read('app.js');
   assert.ok(app.includes('activePhotoRefs[i]!==sources[i]'));
@@ -480,12 +492,12 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v28'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v29'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=20'));
- assert.ok(sw.includes('./style.css?v=20'));
+ assert.ok(html.includes('./style.css?v=21'));
+ assert.ok(sw.includes('./style.css?v=21'));
  assert.ok(html.includes('./extended-models.js?v=1'));
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
@@ -495,9 +507,9 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(html.includes('./country-register.js?v=1'));
  assert.ok(sw.includes('./country-register.js?v=1'));
  assert.ok(html.includes('./data.js?v=10'));
- assert.ok(html.includes('./app.js?v=16'));
+ assert.ok(html.includes('./app.js?v=17'));
  assert.ok(sw.includes('./data.js?v=10'));
- assert.ok(sw.includes('./app.js?v=16'));
+ assert.ok(sw.includes('./app.js?v=17'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
