@@ -11,7 +11,7 @@ const listeners=new Set();
 let cards=[],deletedSeeds=new Set(),loaded=false;
 let view={category:'all',search:'',index:0,flipped:false,shuffled:false,shuffleOrder:[]};
 let editorCard=null,editorIndex=0,photoRefs=['','',''],previewUrls=[],displayUrls=[],toastTimer=null;
-let activePaste=0,renderSerial=0,dirtyEditor=false,ignoreClickUntil=0;
+let activePaste=0,activePhotoCardId=null,activePhotoRefs=['','',''],photoLoadTokens=[0,0,0],dirtyEditor=false,ignoreClickUntil=0;
 const validHttp=v=>/^https?:\/\/[^\s]+$/i.test(String(v||''));
 const isDrive=v=>/^gdrive:[\w-]+:[a-f0-9]{64}$/.test(String(v||''));
 const isLocal=v=>/^idb:gunimg:[a-zA-Z0-9_-]+:[0-2]:[a-zA-Z0-9_-]+$/.test(String(v||''));
@@ -226,67 +226,126 @@ async function pasteBackPhoto(cardId,index,frame) {
    return false;
  }
 }
-async function renderPhotos(card,serial){
- clearUrls(displayUrls);
- const grid=$('photoGrid');grid.replaceChildren();
- for(let i=0;i<3;i++){
-   const figure=document.createElement('figure');figure.className='photo-slot';
-   const frame=document.createElement('div');frame.className='photo-frame';
-   // Like the plant cards: click a picture box and paste an image with Ctrl+V.
-   frame.contentEditable='true';frame.spellcheck=false;frame.tabIndex=0;
-   frame.dataset.pasteSlot=String(i+1);
-   frame.title='この写真欄をクリックして Ctrl+V（Macは ⌘V）で画像を貼り付け';
-   frame.setAttribute('aria-label','写真'+(i+1)+'にコピーした画像を貼り付け');
-   frame.addEventListener('paste',event=>{
-     event.preventDefault();event.stopPropagation();
-     const file=clipboardImage(event.clipboardData);
-     if(file)void saveBackPhoto(card.id,i,file);
-     else toast('画像をコピーしてから、この写真欄で Ctrl+V（Macは ⌘V）してください。');
+// Keep picture slots mounted across flips and unchanged cloud refreshes.
+// Decode replacement pictures off-DOM so the visible picture never goes blank.
+function revokeDisplayUrl(index){
+ const url=displayUrls[index];
+ if(url?.startsWith('blob:'))URL.revokeObjectURL(url);
+ displayUrls[index]='';
+}
+async function decodePhoto(img,url){
+ img.loading='eager';img.decoding='async';
+ if(typeof img.decode==='function'){
+   img.src=url;
+   try{await img.decode();}
+   catch(e){if(!img.complete||!img.naturalWidth)throw e;}
+ }else{
+   await new Promise((resolve,reject)=>{
+     img.onload=resolve;img.onerror=reject;img.src=url;
+     if(img.complete){if(img.naturalWidth)resolve();else reject(Error('画像を読み込めませんでした'));}
    });
-   frame.addEventListener('beforeinput',event=>event.preventDefault());
-   frame.addEventListener('keydown',event=>{
-     if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();}
-   });
-   const source=getImages(card)[i];
-   if(source){
-     const img=document.createElement('img');img.alt=card.name+' 写真'+(i+1);img.loading='lazy';
-     frame.appendChild(img);
-     photoUrl(source).then(url=>{
-       if(serial!==renderSerial||!img.isConnected){if(url?.startsWith('blob:'))URL.revokeObjectURL(url);return;}
-       if(!url){img.replaceWith(document.createTextNode('写真を確認できません。PCでDriveへ接続してください。'));return;}
-       if(url.startsWith('blob:'))displayUrls.push(url);
-       img.src=url;img.onerror=()=>{img.replaceWith(document.createTextNode('画像を読み込めませんでした'))};
-       img.addEventListener('click',event=>{event.stopPropagation();openImage(url,card.name)});
-     }).catch(()=>{if(serial===renderSerial&&img.isConnected)img.replaceWith(document.createTextNode('写真を取得できません'))});
-   }else{
-     const empty=document.createElement('span');empty.className='photo-empty';empty.textContent='写真未登録';frame.appendChild(empty);
+ }
+}
+function forgetPhotos(){
+ activePhotoCardId=null;activePhotoRefs=['','',''];
+ photoLoadTokens=photoLoadTokens.map(token=>token+1);
+ clearUrls(displayUrls);$('photoGrid').replaceChildren();
+}
+function loadPhotoInFrame(frame,card,index,source){
+ const token=++photoLoadTokens[index];
+ const live=()=>activePhotoCardId===card.id && photoLoadTokens[index]===token && frame.isConnected;
+ activePhotoRefs[index]=source;
+ const placeholder=(message,retry=false)=>{
+   if(!live())return;
+   frame.replaceChildren(document.createTextNode(message));
+   revokeDisplayUrl(index);
+   if(retry)activePhotoRefs[index]='';
+ };
+ if(!source){
+   const empty=document.createElement('span');empty.className='photo-empty';empty.textContent='写真未登録';
+   frame.replaceChildren(empty);revokeDisplayUrl(index);return;
+ }
+ photoUrl(source).then(async url=>{
+   if(!live()){if(url?.startsWith('blob:'))URL.revokeObjectURL(url);return;}
+   if(!url){placeholder('写真を確認できません。PCでDriveへ接続してください。',true);return;}
+   const img=document.createElement('img');img.alt=card.name+' 写真'+(index+1);
+   try{await decodePhoto(img,url);}
+   catch(e){
+     if(url.startsWith('blob:'))URL.revokeObjectURL(url);
+     placeholder('画像を読み込めませんでした',true);return;
    }
-   const cap=document.createElement('figcaption');cap.textContent='写真 '+(i+1);
-   const searchRow=document.createElement('div');searchRow.className='photo-slot-search';
-   const tools=document.createElement('div');tools.className='photo-slot-actions';
-   const search=document.createElement('button');search.type='button';search.className='btn secondary';
-   search.textContent='Google画像検索（英語）';
-   search.setAttribute('aria-label','写真'+(i+1)+'のGoogle画像検索（英語）');
-   search.onclick=event=>{event.stopPropagation();englishSearch(googleQuery(card));};
-   searchRow.append(cap,search);
-   const paste=document.createElement('button');paste.type='button';paste.className='btn primary';
-   paste.textContent='画像を貼り付け';
-   paste.onclick=event=>{event.stopPropagation();void pasteBackPhoto(card.id,i,frame);};
-   const fileLabel=document.createElement('label');fileLabel.className='btn light';
-   fileLabel.textContent='ファイルから登録';
-   const file=document.createElement('input');file.type='file';file.accept='image/png,image/jpeg,image/webp,image/gif';
-   file.setAttribute('aria-label','写真'+(i+1)+'の画像ファイルを選択');
-   file.onchange=async()=>{
-     const selected=file.files?.[0];if(selected)await saveBackPhoto(card.id,i,selected);
-     file.value='';
-   };
-   fileLabel.appendChild(file);
-   const hint=document.createElement('span');hint.className='photo-slot-hint';
-   hint.textContent='写真枠をクリックして Ctrl+V（Macは ⌘V）でも貼り付け可能';
-   tools.append(paste,fileLabel);
-   // One English Google Images search sits immediately above EACH
-   // corresponding picture; clipboard/file controls remain immediately below.
-   figure.append(searchRow,frame,tools,hint);grid.appendChild(figure);
+   if(!live()){if(url.startsWith('blob:'))URL.revokeObjectURL(url);return;}
+   img.addEventListener('click',event=>{
+     event.stopPropagation();
+     openImage(url,current()?.name||card.name);
+   });
+   frame.replaceChildren(img);
+   revokeDisplayUrl(index);
+   if(url.startsWith('blob:'))displayUrls[index]=url;
+ }).catch(()=>placeholder('写真を取得できません',true));
+}
+function renderPhotos(card){
+ const grid=$('photoGrid'),sources=getImages(card);
+ const cardChanged=activePhotoCardId!==card.id;
+ if(cardChanged){
+   forgetPhotos();
+   activePhotoCardId=card.id;
+ }
+ for(let i=0;i<3;i++){
+   let figure=grid.children[i];
+   if(!figure){
+     figure=document.createElement('figure');figure.className='photo-slot';
+     const frame=document.createElement('div');frame.className='photo-frame';
+     // Click a picture box and paste an image with Ctrl+V.
+     frame.contentEditable='true';frame.spellcheck=false;frame.tabIndex=0;
+     frame.dataset.pasteSlot=String(i+1);
+     frame.title='この写真欄をクリックして Ctrl+V（Macは ⌘V）で画像を貼り付け';
+     frame.setAttribute('aria-label','写真'+(i+1)+'にコピーした画像を貼り付け');
+     frame.addEventListener('paste',event=>{
+       event.preventDefault();event.stopPropagation();
+       const file=clipboardImage(event.clipboardData);
+       if(file)void saveBackPhoto(card.id,i,file);
+       else toast('画像をコピーしてから、この写真欄で Ctrl+V（Macは ⌘V）してください。');
+     });
+     frame.addEventListener('beforeinput',event=>event.preventDefault());
+     frame.addEventListener('keydown',event=>{
+       if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();}
+     });
+     const cap=document.createElement('figcaption');cap.textContent='写真 '+(i+1);
+     const searchRow=document.createElement('div');searchRow.className='photo-slot-search';
+     const tools=document.createElement('div');tools.className='photo-slot-actions';
+     const search=document.createElement('button');search.type='button';search.className='btn secondary';
+     search.textContent='Google画像検索（英語）';
+     search.setAttribute('aria-label','写真'+(i+1)+'のGoogle画像検索（英語）');
+     search.onclick=event=>{
+       event.stopPropagation();
+       const selected=current();
+       if(selected?.id===card.id)englishSearch(googleQuery(selected));
+     };
+     searchRow.append(cap,search);
+     const paste=document.createElement('button');paste.type='button';paste.className='btn primary';
+     paste.textContent='画像を貼り付け';
+     paste.onclick=event=>{event.stopPropagation();void pasteBackPhoto(card.id,i,frame);};
+     const fileLabel=document.createElement('label');fileLabel.className='btn light';
+     fileLabel.textContent='ファイルから登録';
+     const file=document.createElement('input');file.type='file';file.accept='image/png,image/jpeg,image/webp,image/gif';
+     file.setAttribute('aria-label','写真'+(i+1)+'の画像ファイルを選択');
+     file.onchange=async()=>{
+       const selected=file.files?.[0];if(selected)await saveBackPhoto(card.id,i,selected);
+       file.value='';
+     };
+     fileLabel.appendChild(file);
+     const hint=document.createElement('span');hint.className='photo-slot-hint';
+     hint.textContent='写真枠をクリックして Ctrl+V（Macは ⌘V）でも貼り付け可能';
+     tools.append(paste,fileLabel);
+     figure.append(searchRow,frame,tools,hint);grid.appendChild(figure);
+   }
+   const frame=figure.querySelector('.photo-frame');
+   if(cardChanged||activePhotoRefs[i]!==sources[i])loadPhotoInFrame(frame,card,i,sources[i]);
+   else{
+     const img=frame.querySelector('img');
+     if(img)img.alt=card.name+' 写真'+(i+1);
+   }
  }
 }
 function openImage(url,name){
@@ -313,7 +372,7 @@ function renderDeck(){
  modeBtn.textContent=view.shuffled?'シャッフル':'通常';
  modeBtn.setAttribute('aria-pressed',String(view.shuffled));
  modeBtn.setAttribute('aria-label',view.shuffled?'シャッフル順で表示中。押すと通常順に切り替えます':'通常順で表示中。押すとシャッフル順に切り替えます');
- if(!card)return;
+ if(!card){forgetPhotos();return;}
  $('frontName').textContent=card.name;
  // The English model name remains in the card data for searching/editing,
  // but the face intentionally displays only the Japanese katakana title.
@@ -341,8 +400,8 @@ function renderDeck(){
  $('cardFront').hidden=view.flipped;$('cardBack').hidden=!view.flipped;
  $('flipBtn').textContent=view.flipped?'表を見る':'裏を見る';
  $('flashCard').setAttribute('aria-pressed',String(view.flipped));
- if(view.flipped)renderPhotos(card,++renderSerial);
- else{renderSerial++;clearUrls(displayUrls);$('photoGrid').replaceChildren();}
+ // Preload new photos behind the name-facing side, and reuse them on flips.
+ renderPhotos(card);
 }
 function flip(){
  if(!current())return;
