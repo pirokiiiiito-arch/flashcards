@@ -324,9 +324,17 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
  assert.ok(copy.includes('gun-before-image-copy:'));
  assert.ok(copy.includes("api.getBlob(ref, {fresh:true})"));
 });
+test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
+  const app=read('app.js');
+  assert.ok(app.includes('activePhotoRefs[i]!==sources[i]'));
+  assert.ok(app.includes('await decodePhoto(img,url)'));
+  assert.ok(app.includes('frame.replaceChildren(img)'));
+  assert.ok(app.includes('renderPhotos(card);'));
+  assert.ok(!app.includes('if(view.flipped)renderPhotos(card,++renderSerial)'));
+});
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v21'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v22'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
@@ -337,9 +345,9 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(sw.includes('./extended-models.js?v=1'));
  assert.ok(sw.includes('./extended-variants.js?v=1'));
  assert.ok(html.includes('./data.js?v=8'));
- assert.ok(html.includes('./app.js?v=13'));
+ assert.ok(html.includes('./app.js?v=14'));
  assert.ok(sw.includes('./data.js?v=8'));
- assert.ok(sw.includes('./app.js?v=13'));
+ assert.ok(sw.includes('./app.js?v=14'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
