@@ -470,17 +470,25 @@ test('shuffle ignores categories and restores the original Normal scope',()=>{
  assert.ok(app.includes("const ids=allFiltered().map(c=>c.id"),
    'Shuffle must randomize all filtered items rather than one category');
 });
-test('back of each card clearly labels its own Japanese firearm category',()=>{
+test('back shows only its Japanese classification inside the top-center border',()=>{
  const html=read('index.html'),app=read('app.js'),css=read('style.css');
- assert.match(html,/<p id="backCategory" class="back-category"><\/p>/);
- assert.ok(html.indexOf('id="backCategory"')>html.indexOf('id="backName"'));
- assert.ok(html.indexOf('id="backCategory"')<html.indexOf('id="backDescription"'));
- assert.ok(app.includes("$('backCategory').textContent='分類：'+(groupNames[card.category]||groupNames.other)"),
-   'Classification must come from the actual card, not selected deck or shuffle');
- assert.ok(css.includes('#cardBack .back-category{margin:9px 0 0;'));
+ assert.match(html,/<p id="backCategoryBadge" class="back-category-badge" hidden><\/p>/);
+ assert.ok(html.indexOf('id="backCategoryBadge"')>html.indexOf('id="backMakerMeta"'));
+ assert.ok(html.indexOf('id="backCategoryBadge"')<html.indexOf('id="cardAddBtn"'));
+ assert.ok(!html.includes('id="backCategory"'),'No duplicate classification below the card name');
+ assert.ok(app.includes("badge.textContent=groupNames[card.category]||groupNames.other;"),
+  'Only the class name, not the literal 分類： prefix, appears in the framed badge');
+ assert.ok(app.includes("badge.hidden=!view.flipped"),'Hide the classification on the front');
+ assert.ok(app.includes("classList.toggle('is-back',view.flipped)"));
+ assert.ok(!app.includes("='分類：'+(groupNames[card.category]"));
+ assert.ok(css.includes('#flashCard .back-category-badge{'),'A visible bordered badge must be styled');
+ assert.ok(css.includes('border:2px solid #a1b9d8'),'The category must be framed');
+ assert.ok(css.includes('#flashCard.is-back .card-chrome{'),'The top row must have a collision-safe grid');
+ assert.ok(css.includes('#flashCard.is-back #cardBack{padding-top:20px}'),
+  'The back content must follow the header rather than overlap it');
  assert.equal(C.CATEGORIES.length,10);
  assert.ok(C.SEEDS.every(card=>C.CATEGORIES.some(c=>c.id===card.category)),
-   'Every bundled card must map to one of the displayed classification labels');
+  'All seeded cards have a Japanese category name');
 });
 test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
   const app=read('app.js');
@@ -492,12 +500,12 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v29'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v30'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=21'));
- assert.ok(sw.includes('./style.css?v=21'));
+ assert.ok(html.includes('./style.css?v=22'));
+ assert.ok(sw.includes('./style.css?v=22'));
  assert.ok(html.includes('./extended-models.js?v=1'));
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
@@ -507,9 +515,9 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(html.includes('./country-register.js?v=1'));
  assert.ok(sw.includes('./country-register.js?v=1'));
  assert.ok(html.includes('./data.js?v=10'));
- assert.ok(html.includes('./app.js?v=17'));
+ assert.ok(html.includes('./app.js?v=18'));
  assert.ok(sw.includes('./data.js?v=10'));
- assert.ok(sw.includes('./app.js?v=17'));
+ assert.ok(sw.includes('./app.js?v=18'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));

@@ -224,9 +224,19 @@ async function run(){
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
-   const backCategory=await evaluate("(()=>{const name=document.querySelector('#backName').getBoundingClientRect(),category=document.querySelector('#backCategory'),label=category.getBoundingClientRect(),description=document.querySelector('#backDescription').getBoundingClientRect();return {text:category.textContent,visible:label.height>10,afterName:label.top>=name.bottom-1,beforeDescription:label.bottom<=description.top+1};})()");
-   assert.deepEqual(backCategory,{text:'分類：ショットガン',visible:true,afterName:true,beforeDescription:true},
-     'The selected firearm type should be visible beneath the back title and above its description');
+   const backCategory=await evaluate("(()=>{const card=document.querySelector('#flashCard').getBoundingClientRect(),badge=document.querySelector('#backCategoryBadge'),box=badge.getBoundingClientRect(),maker=document.querySelector('#backMakerMeta').getBoundingClientRect(),actions=document.querySelector('.card-actions').getBoundingClientRect(),title=document.querySelector('#backName').getBoundingClientRect();return {text:badge.textContent,visible:!badge.hidden&&box.height>15,centerOffset:Math.abs((box.left+box.right)/2-(card.left+card.right)/2),aboveTitle:box.bottom<title.top,notOverlapping:box.left>=maker.right-1&&box.right<=actions.left+1,border:getComputedStyle(badge).borderTopWidth,oldLabel:document.querySelector('#backCategory')};})()");
+   assert.equal(backCategory.text,'ショットガン','Show the Japanese type without the literal 分類 prefix');
+   assert.equal(backCategory.visible,true);
+   assert.ok(backCategory.centerOffset<8,'Framed type should be horizontally centered on the back: '+JSON.stringify(backCategory));
+   assert.ok(backCategory.aboveTitle&&backCategory.notOverlapping,
+     'Framed type must sit above the name without covering maker or edit buttons: '+JSON.stringify(backCategory));
+   assert.equal(backCategory.border,'2px');
+   assert.equal(backCategory.oldLabel,null,'No duplicate classification below the title');
+   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+   const mobileBadge=await evaluate("(()=>{const card=document.querySelector('#flashCard').getBoundingClientRect(),badge=document.querySelector('#backCategoryBadge').getBoundingClientRect(),title=document.querySelector('#backName').getBoundingClientRect(),maker=document.querySelector('#backMakerMeta').getBoundingClientRect(),buttons=document.querySelector('.card-actions').getBoundingClientRect();return {contained:badge.left>=card.left-1&&badge.right<=card.right+1,aboveTitle:badge.bottom<=title.top,nonOverlap:badge.left>=maker.right-1&&badge.right<=buttons.left+1,centerOffset:Math.abs((badge.left+badge.right)/2-(card.left+card.right)/2)};})()");
+   assert.ok(mobileBadge.contained&&mobileBadge.aboveTitle&&mobileBadge.nonOverlap&&mobileBadge.centerOffset<8,
+     'Mobile back category should be centered and clear of controls: '+JSON.stringify(mobileBadge));
+   await send('Emulation.clearDeviceMetricsOverride');
    const backCarets=await evaluate("(()=>{const names=['#backName','#backDescription','#backMakerCompany','#flashCard'];return Object.fromEntries(names.map(selector=>[selector,getComputedStyle(document.querySelector(selector)).caretColor]));})()");
    for(const [name,color] of Object.entries(backCarets))
      assert.ok(/^(?:transparent|rgba\(0,\s*0,\s*0,\s*0\))$/i.test(color),
@@ -342,8 +352,8 @@ async function run(){
    assert.equal(customMaker.maker,'テスト製造会社');
    assert.equal(customMaker.country,'JP');
    await evaluate("document.querySelector('[data-group=revolver]').click();const input=document.querySelector('#filterInput');input.value='テスト・モデル';input.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#flipBtn').click()");
-   assert.equal(await evaluate("document.querySelector('#backCategory').textContent"),'分類：リボルバー',
-     'Edited or user-added cards show their actual classification, not the previous selection');
+   assert.equal(await evaluate("document.querySelector('#backCategoryBadge').textContent"),'リボルバー',
+     'Edited or user-added cards show just their own category in the top badge');
    await until(()=>evaluate("document.querySelector('#backCountryFlag')?.getAttribute('src')==='./flags/jp.svg' && document.querySelector('#backCountryFlag').naturalWidth>0"),
      'edited custom gun Japanese flag SVG image loads');
    assert.equal(await evaluate("document.querySelector('#backCountryFlag').getAttribute('src')"),'./flags/jp.svg',

@@ -384,6 +384,11 @@ function renderDeck(){
  $('faceLabel').textContent='表・銃名';
  $('faceLabel').hidden=view.flipped;
  $('backMakerMeta').hidden=!view.flipped;
+ $('flashCard').classList.toggle('is-back',view.flipped);
+ // Only the Japanese class name goes inside the top-center frame.
+ const badge=$('backCategoryBadge');
+ badge.textContent=groupNames[card.category]||groupNames.other;
+ badge.hidden=!view.flipped;
  const country=C.COUNTRIES[card.country]||null;
  const flagImage=$('backCountryFlag');
  if (country?.image) {
@@ -407,9 +412,6 @@ function renderDeck(){
  $('backMakerMeta').title=country?.ja
    ? (brandCountry?'ブランド所在地：':!card.maker?'国情報（製造会社未登録）：':'代表的な製造会社の国：')+country.ja:'製造会社';
  $('backName').textContent=card.name;
- // Use the current card's actual classification, never the deck filter.
- // This keeps labels correct in all-category Shuffle and user-added cards.
- $('backCategory').textContent='分類：'+(groupNames[card.category]||groupNames.other);
  $('backDescription').textContent=card.description||'説明はまだ登録されていません。「この銃を編集」から入力できます。';
  $('cardFront').hidden=view.flipped;$('cardBack').hidden=!view.flipped;
  $('flipBtn').textContent=view.flipped?'表を見る':'裏を見る';

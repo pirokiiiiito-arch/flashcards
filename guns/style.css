@@ -230,7 +230,6 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
 #cardBack .back-topline{margin-bottom:12px}
 #cardBack .card-kicker{display:none}
 #cardBack .back-topline h3{font-size:clamp(19px,2.7vw,26px);line-height:1.35}
-#cardBack .back-category{margin:9px 0 0;color:#344e67;font-size:clamp(13px,2vw,15px);line-height:1.5;font-weight:800;overflow-wrap:anywhere}
 #cardBack .back-topline .btn{font-size:12px}
 #cardBack .photo-grid{gap:15px}
 #cardBack .photo-help{font-size:11px;padding:8px 11px}
@@ -309,4 +308,43 @@ h1{font-size:clamp(22px,3vw,28px);margin:1px 0 4px}
   -webkit-user-select:none;
   user-select:none;
   cursor:default;
+}
+
+/* The card's classification is a centered framed label, not "分類：...".
+   Keep the back header in normal flow so long manufacturer names or long
+   Japanese classification names cannot cover the title or edit controls. */
+#flashCard.is-back .card-chrome{
+ position:relative;top:auto;left:auto;right:auto;
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr);
+ align-items:start;column-gap:10px;margin:19px 25px 0;
+}
+#flashCard.is-back .card-meta-left{min-width:0}
+#flashCard.is-back .card-actions{min-width:0;justify-self:end}
+#flashCard .back-category-badge{
+ grid-column:2;justify-self:center;align-self:start;
+ width:max-content;max-width:100%;min-width:0;
+ padding:8px 13px;margin:0;
+ border:2px solid #a1b9d8;border-radius:12px;
+ background:#f6f9ff;color:#304c71;
+ font-size:clamp(12px,1.6vw,15px);font-weight:800;line-height:1.35;
+ text-align:center;white-space:normal;overflow-wrap:anywhere;
+ pointer-events:none;
+}
+#flashCard.is-back .card-number.counter{
+ position:relative;top:auto;right:auto;
+ display:block;width:max-content;margin:10px 25px 0 auto;
+}
+#flashCard.is-back #cardBack{padding-top:20px}
+@media(max-width:740px){
+ #flashCard.is-back .card-chrome{
+  column-gap:6px;margin:14px 15px 0;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr);
+ }
+ #flashCard .back-category-badge{padding:7px 8px;font-size:12px;border-radius:10px}
+ #flashCard.is-back .card-number.counter{margin:8px 16px 0 auto}
+ #flashCard.is-back #cardBack{padding-top:16px}
+}
+@media(max-width:380px){
+ #flashCard.is-back .card-chrome{column-gap:4px;margin:10px 11px 0}
+ #flashCard .back-category-badge{padding:6px 5px;font-size:11px}
 }
