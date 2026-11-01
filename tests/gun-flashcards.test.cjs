@@ -324,6 +324,19 @@ test('separate authenticated namespace publishes image bytes only after Drive ve
  assert.ok(copy.includes('gun-before-image-copy:'));
  assert.ok(copy.includes("api.getBlob(ref, {fresh:true})"));
 });
+test('Delete sits at the bottom-right of the card, outside the top controls',()=>{
+  const html=read('index.html'),css=read('style.css'),app=read('app.js');
+  const top=html.slice(html.indexOf('<div class="card-actions">'),html.indexOf('</div>',html.indexOf('<div class="card-actions">')));
+  assert.ok(!top.includes('deleteCardBtn'),'Top controls should only contain Add and Edit');
+  const bottom=html.indexOf('class="card-bottom-actions"');
+  assert.ok(bottom>html.indexOf('id="photoGrid"') && bottom>html.indexOf('id="cardBack"'),
+    'Delete must be placed after the back photographs');
+  assert.equal((html.match(/id="deleteCardBtn"/g)||[]).length,1);
+  assert.ok(html.slice(bottom).includes('id="deleteCardBtn"'));
+  assert.ok(css.includes('.card-bottom-actions{position:absolute;right:23px;bottom:18px'));
+  assert.ok(css.includes('#flashCard #cardBack{padding-bottom:76px}'),'Keep Delete clear of the final picture');
+  assert.ok(app.includes("$('deleteCardBtn').onclick=deleteCard"),'Delete must keep its existing click handler');
+});
 test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
   const app=read('app.js');
   assert.ok(app.includes('activePhotoRefs[i]!==sources[i]'));
@@ -334,12 +347,12 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v22'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v23'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
- assert.ok(html.includes('./style.css?v=19'));
- assert.ok(sw.includes('./style.css?v=19'));
+ assert.ok(html.includes('./style.css?v=20'));
+ assert.ok(sw.includes('./style.css?v=20'));
  assert.ok(html.includes('./extended-models.js?v=1'));
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
