@@ -88,6 +88,34 @@ test('all 35 firearms carry a representative manufacturer and a valid present-da
  assert.equal(cleared.country,'');
  assert.equal(C.sanitizeCard({...migrated,country:'XX'}).country,'');
 });
+test('missing manufacturer recovery preserves photos and user edits',()=>{
+ const rows=C.SEEDS, register=require('../guns/manufacturer-register.js');
+ assert.equal(rows.length,2000);
+ assert.equal(rows.filter(c=>!c.maker).length,8,'Only genuinely ambiguous maker records remain blank');
+ const get=name=>rows.find(c=>c.name_en===name);
+ assert.equal(get('Krag–Jørgensen M1889').maker,'Geværfabriken København (Royal Copenhagen Arsenal)');
+ assert.equal(get('Krag–Jørgensen M1894').maker,'Kongsberg Våpenfabrikk');
+ assert.equal(get('Krag–Jørgensen M1898').maker,'Springfield Armory');
+ assert.equal(get('Taurus Model 85').maker,'Forjas Taurus S.A.');
+ assert.equal(get('Tikka T3').maker,'Sako Ltd (Tikka brand)');
+ assert.equal(get('Tikka M55').maker,'Tikkakoski');
+ assert.equal(get('Type 89 Rifle').maker,'Howa Machinery');
+ assert.equal(get('B&T MP9').maker,'Brügger & Thomet (B&T)');
+ assert.equal(get('G 41').maker,'');
+ assert.equal(get('MP 3008').maker,'');
+ const current=get('Krag–Jørgensen M1889');
+ assert.equal(register.lookup({...current,maker:''}).externallyVerified,false);
+ const previous={...current,maker:'',source:'starter',description:'写真に添えた説明',
+   images:['idb:gunimg:'+current.id+':0:oldphoto','','']};
+ const restored=C.mergeCards([previous]).find(c=>c.id===current.id);
+ assert.equal(restored.maker,current.maker);
+ assert.equal(restored.description,previous.description);
+ assert.deepEqual(restored.images,previous.images);
+ const custom=C.mergeCards([{...previous,source:'user',maker:'個別に調べた会社'}]).find(c=>c.id===current.id);
+ assert.equal(custom.maker,'個別に調べた会社');
+ const cleared=C.mergeCards([{...previous,source:'user',maker:''}]).find(c=>c.id===current.id);
+ assert.equal(cleared.maker,'');
+});
 test('all 13 locally bundled SVG country flags are offline-readable image files, not Unicode emoji',()=>{
  const worker=read('service-worker.js');
  const countries=Object.values(C.COUNTRIES);
@@ -360,7 +388,7 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v24'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v25'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
@@ -370,9 +398,11 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
  assert.ok(sw.includes('./extended-variants.js?v=1'));
- assert.ok(html.includes('./data.js?v=8'));
+ assert.ok(html.includes('./manufacturer-register.js?v=1'));
+ assert.ok(sw.includes('./manufacturer-register.js?v=1'));
+ assert.ok(html.includes('./data.js?v=9'));
  assert.ok(html.includes('./app.js?v=15'));
- assert.ok(sw.includes('./data.js?v=8'));
+ assert.ok(sw.includes('./data.js?v=9'));
  assert.ok(sw.includes('./app.js?v=15'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));

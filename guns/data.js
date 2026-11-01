@@ -164,7 +164,15 @@
     }
     if(!added)break;
   }
-  const extendedSeeds=CATEGORIES.flatMap(c=>selected.get(c.id));
+  // The register proposes representative makers for blank catalogue seeds;
+  // it is not external verification. IDs, user photos and other makers persist.
+  const register=root.GunManufacturerRegister||
+    (typeof module!=='undefined'&&module.exports?require('./manufacturer-register.js'):null);
+  const extendedSeeds=CATEGORIES.flatMap(c=>selected.get(c.id)).map(item=>{
+    if(item.maker)return item;
+    const candidate=register?.lookup(item);
+    return candidate?.maker?Object.freeze({...item,maker:candidate.maker}):item;
+  });
   const SEEDS=Object.freeze([...originalSeeds,...extendedSeeds]);
   const ORIGINAL_SEED_NAMES=new Map(SEEDS.map(c=>[c.id,{
     english:c.name_en,katakana:c.name,search:c.search,country:c.country,maker:c.maker
@@ -185,10 +193,12 @@
     // Stable seed IDs restore the precise English model name even when an
     // older local backup/Drive journal has no separate English field.
     const name_en=String(input.name_en||legacy?.english||'').trim().slice(0,180);
-    // Only older saved seed records that lack these keys receive defaults.
-    // Explicitly cleared or user-edited values must remain unchanged.
-    const maker=Object.prototype.hasOwnProperty.call(input,'maker')
-      ? String(input.maker||'').trim().slice(0,200) : String(legacy?.maker||'');
+    // Old auto-saved starter cards can carry blank maker values. Recover
+    // the seed default but keep deliberate user edits and clears untouched.
+    const hasMaker=Object.prototype.hasOwnProperty.call(input,'maker');
+    const suppliedMaker=hasMaker?String(input.maker||'').trim().slice(0,200):'';
+    const maker=suppliedMaker||
+      (!hasMaker||input.source==='starter'?String(legacy?.maker||''):'');
     const countrySource=Object.prototype.hasOwnProperty.call(input,'country')
       ? String(input.country||'').trim().toUpperCase() : String(legacy?.country||'');
     const country=Object.prototype.hasOwnProperty.call(COUNTRIES,countrySource)?countrySource:'';
