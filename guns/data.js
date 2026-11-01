@@ -66,7 +66,24 @@
     RU:{ja:'ロシア（旧ソ連・ロシア帝国を含む）',image:'./flags/ru.svg'},
     IL:{ja:'イスラエル',image:'./flags/il.svg'}, CH:{ja:'スイス',image:'./flags/ch.svg'},
     CZ:{ja:'チェコ',image:'./flags/cz.svg'}, FR:{ja:'フランス',image:'./flags/fr.svg'},
-    JP:{ja:'日本',image:'./flags/jp.svg'}, CN:{ja:'中国',image:'./flags/cn.svg'}
+    JP:{ja:'日本',image:'./flags/jp.svg'}, CN:{ja:'中国',image:'./flags/cn.svg'},
+    FI:{ja:'フィンランド',image:'./flags/fi.svg'},
+    NO:{ja:'ノルウェー',image:'./flags/no.svg'},
+    DK:{ja:'デンマーク',image:'./flags/dk.svg'},
+    SE:{ja:'スウェーデン',image:'./flags/se.svg'},
+    PL:{ja:'ポーランド',image:'./flags/pl.svg'},
+    BG:{ja:'ブルガリア',image:'./flags/bg.svg'},
+    TR:{ja:'トルコ',image:'./flags/tr.svg'},
+    CA:{ja:'カナダ',image:'./flags/ca.svg'},
+    ZA:{ja:'南アフリカ',image:'./flags/za.svg'},
+    BR:{ja:'ブラジル',image:'./flags/br.svg'},
+    PH:{ja:'フィリピン',image:'./flags/ph.svg'},
+    EG:{ja:'エジプト',image:'./flags/eg.svg'},
+    AU:{ja:'オーストラリア',image:'./flags/au.svg'},
+    KR:{ja:'韓国',image:'./flags/kr.svg'},
+    RS:{ja:'セルビア',image:'./flags/rs.svg'},
+    SK:{ja:'スロバキア',image:'./flags/sk.svg'},
+    ES:{ja:'スペイン',image:'./flags/es.svg'}
   });
   // Aligned with ITEMS by stable ID, never sorted with the visible categories.
   const REPRESENTATIVE_MAKERS = Object.freeze([
@@ -168,10 +185,16 @@
   // it is not external verification. IDs, user photos and other makers persist.
   const register=root.GunManufacturerRegister||
     (typeof module!=='undefined'&&module.exports?require('./manufacturer-register.js'):null);
+  const countryRegister=root.GunCountryRegister||
+    (typeof module!=='undefined'&&module.exports?require('./country-register.js'):null);
   const extendedSeeds=CATEGORIES.flatMap(c=>selected.get(c.id)).map(item=>{
-    if(item.maker)return item;
-    const candidate=register?.lookup(item);
-    return candidate?.maker?Object.freeze({...item,maker:candidate.maker}):item;
+    const candidate=item.maker?null:register?.lookup(item);
+    const maker=candidate?.maker||item.maker;
+    const withMaker=maker===item.maker?item:{...item,maker};
+    const location=withMaker.country?null:countryRegister?.lookup(withMaker);
+    if(location?.country&&COUNTRIES[location.country])
+      return Object.freeze({...withMaker,country:location.country});
+    return withMaker===item?item:Object.freeze(withMaker);
   });
   const SEEDS=Object.freeze([...originalSeeds,...extendedSeeds]);
   const ORIGINAL_SEED_NAMES=new Map(SEEDS.map(c=>[c.id,{
@@ -199,8 +222,12 @@
     const suppliedMaker=hasMaker?String(input.maker||'').trim().slice(0,200):'';
     const maker=suppliedMaker||
       (!hasMaker||input.source==='starter'?String(legacy?.maker||''):'');
-    const countrySource=Object.prototype.hasOwnProperty.call(input,'country')
-      ? String(input.country||'').trim().toUpperCase() : String(legacy?.country||'');
+    // Newly available country defaults recover older starter saves, without
+    // overwriting manually edited or deliberately cleared country fields.
+    const hasCountry=Object.prototype.hasOwnProperty.call(input,'country');
+    const suppliedCountry=hasCountry?String(input.country||'').trim().toUpperCase():'';
+    const countrySource=suppliedCountry||
+      (!hasCountry||input.source==='starter'?String(legacy?.country||''):'');
     const country=Object.prototype.hasOwnProperty.call(COUNTRIES,countrySource)?countrySource:'';
     const category=CATEGORY_IDS.has(input.category)?input.category:'other';
     const images=Array.from({length:3},(_,i)=>{

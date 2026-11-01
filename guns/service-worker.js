@@ -1,10 +1,11 @@
 /* Offline shell for the firearm reference cards. No image blobs or OAuth responses cached publicly. */
-const CACHE='gun-flashcards-static-v27';
+const CACHE='gun-flashcards-static-v28';
 const STATIC=[
- './','./index.html','./style.css?v=20','./extended-models.js?v=1','./extended-variants.js?v=1','./manufacturer-register.js?v=3','./data.js?v=9','./app.js?v=15',
+ './','./index.html','./style.css?v=20','./extended-models.js?v=1','./extended-variants.js?v=1','./manufacturer-register.js?v=3','./country-register.js?v=1','./data.js?v=10','./app.js?v=16',
  './manifest.webmanifest','./drive-transfer-core.js?v=1','./image-copy.js?v=1',
  './drive-sync.js?v=2','../drive-config.js?v=3','../persistent-drive-auth.js?v=1',
- './flags/us.svg','./flags/be.svg','./flags/at.svg','./flags/de.svg','./flags/it.svg','./flags/gb.svg','./flags/ru.svg','./flags/il.svg','./flags/ch.svg','./flags/cz.svg','./flags/fr.svg','./flags/jp.svg','./flags/cn.svg'
+ './flags/us.svg','./flags/be.svg','./flags/at.svg','./flags/de.svg','./flags/it.svg','./flags/gb.svg','./flags/ru.svg','./flags/il.svg','./flags/ch.svg','./flags/cz.svg','./flags/fr.svg','./flags/jp.svg','./flags/cn.svg',
+ './flags/fi.svg','./flags/no.svg','./flags/dk.svg','./flags/se.svg','./flags/pl.svg','./flags/bg.svg','./flags/tr.svg','./flags/ca.svg','./flags/za.svg','./flags/br.svg','./flags/ph.svg','./flags/eg.svg','./flags/au.svg','./flags/kr.svg','./flags/rs.svg','./flags/sk.svg','./flags/es.svg'
 ];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(STATIC)).then(()=>self.skipWaiting()));

@@ -391,6 +391,9 @@ function renderDeck(){
    // flag glyph or load a third-party tracking/image host.
    if(flagImage.getAttribute('src')!==country.image)flagImage.setAttribute('src',country.image);
    flagImage.alt=country.ja+'の国旗';
+   if(card.maker.includes('ブランド元／実製造元未確認'))
+     flagImage.alt+='（ブランド所在地・製造国未確認）';
+   else if(!card.maker)flagImage.alt+='（製造会社未登録・国情報は参考）';
    flagImage.hidden=!view.flipped;
  } else {
    flagImage.removeAttribute('src');
@@ -398,8 +401,11 @@ function renderDeck(){
    flagImage.hidden=true;
  }
  $('backMakerCompany').textContent=card.maker||'製造会社未登録';
- $('backMakerCountry').textContent=country?.ja||'';
- $('backMakerMeta').title=country?.ja ? '代表的な製造会社：'+card.maker+'／現在の国旗：'+country.ja : '製造会社';
+ const brandCountry=card.maker.includes('ブランド元／実製造元未確認');
+ $('backMakerCountry').textContent=country?.ja
+   ? country.ja+(brandCountry?'（ブランド所在地）':!card.maker?'（製造会社未登録・参考）':''):'';
+ $('backMakerMeta').title=country?.ja
+   ? (brandCountry?'ブランド所在地：':!card.maker?'国情報（製造会社未登録）：':'代表的な製造会社の国：')+country.ja:'製造会社';
  $('backName').textContent=card.name;
  $('backDescription').textContent=card.description||'説明はまだ登録されていません。「この銃を編集」から入力できます。';
  $('cardFront').hidden=view.flipped;$('cardBack').hidden=!view.flipped;
