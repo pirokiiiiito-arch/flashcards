@@ -183,6 +183,15 @@ const FAMILY=Object.freeze({
   'QJB':'China North Industries (Norinco)'
  })
 });
+// The screenshot supplied by the user identifies an Armscor company, but
+// does not identify the factory that manufactured these three imported
+// shotguns. Show the company ONLY as brand owner, explicitly qualifying it
+// so nobody mistakes the entry for a verified factory attribution.
+const BRAND_ONLY=Object.freeze({
+ 'shotgun|Armscor VR80':'Armscor Global Defense, Inc.（ブランド元／実製造元未確認）',
+ 'shotgun|Armscor VR60':'Armscor Global Defense, Inc.（ブランド元／実製造元未確認）',
+ 'shotgun|Armscor VRF14':'Armscor Global Defense, Inc.（ブランド元／実製造元未確認）'
+});
 const EXACT=Object.freeze({
  'bolt|Krag–Jørgensen M1889':'Geværfabriken København (Royal Copenhagen Arsenal)',
  'bolt|Krag–Jørgensen M1894':'Kongsberg Våpenfabrikk',
@@ -211,7 +220,10 @@ const EXACT=Object.freeze({
 function lookup(card){
  if(!card||card.maker)return null;
  const name=String(card.name_en||'').trim(),category=String(card.category||'');
- const exact=EXACT[category+'|'+name];
+ const key=category+'|'+name;
+ const brand=BRAND_ONLY[key];
+ if(brand)return {maker:brand,basis:'brand-only',externallyVerified:false};
+ const exact=EXACT[key];
  if(exact)return {maker:exact,basis:'model-specific',externallyVerified:false};
  const entries=Object.entries(FAMILY[category]||{}).sort((a,b)=>b[0].length-a[0].length);
  // Exact models, space-delimited variants, slash and hyphen subtypes, and

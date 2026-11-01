@@ -88,10 +88,35 @@ test('all 35 firearms carry a representative manufacturer and a valid present-da
  assert.equal(cleared.country,'');
  assert.equal(C.sanitizeCard({...migrated,country:'XX'}).country,'');
 });
+test('Armscor image evidence identifies the brand, not each shotgun factory',()=>{
+ const register=require('../guns/manufacturer-register.js');
+ const rows=C.SEEDS;
+ for(const model of ['Armscor VR80','Armscor VR60','Armscor VRF14']){
+   const card=rows.find(c=>c.name_en===model);
+   assert.ok(card,'Missing stable model '+model);
+   assert.equal(card.maker,'Armscor Global Defense, Inc.（ブランド元／実製造元未確認）');
+   assert.equal(card.country,'','Do not infer a factory country from a corporate screenshot');
+   assert.deepEqual(card.images,['','',''],'Do not alter the photo slots');
+   const attribution=register.lookup({...card,maker:''});
+   assert.equal(attribution?.basis,'brand-only','Must distinguish brand from actual manufacturer');
+   assert.equal(attribution?.externallyVerified,false);
+   const past={...card,maker:'',source:'starter',
+     images:['idb:gunimg:'+card.id+':0:retainedPhoto','','']};
+   const restored=C.mergeCards([past]).find(c=>c.id===card.id);
+   assert.equal(restored.maker,card.maker);
+   assert.deepEqual(restored.images,past.images);
+   const manuallyEdited=C.mergeCards([{...past,source:'user',maker:'ユーザーの確認した会社'}])
+     .find(c=>c.id===card.id);
+   assert.equal(manuallyEdited.maker,'ユーザーの確認した会社');
+   const manuallyCleared=C.mergeCards([{...past,source:'user',maker:''}])
+     .find(c=>c.id===card.id);
+   assert.equal(manuallyCleared.maker,'','A deliberately cleared field must remain blank');
+ }
+});
 test('missing manufacturer recovery preserves photos and user edits',()=>{
  const rows=C.SEEDS, register=require('../guns/manufacturer-register.js');
  assert.equal(rows.length,2000);
- assert.equal(rows.filter(c=>!c.maker).length,8,'Only genuinely ambiguous maker records remain blank');
+ assert.equal(rows.filter(c=>!c.maker).length,5,'Only five factory-ambiguous cards remain blank; Armscor entries are brand-only');
  const get=name=>rows.find(c=>c.name_en===name);
  assert.equal(get('Krag–Jørgensen M1889').maker,'Geværfabriken København (Royal Copenhagen Arsenal)');
  assert.equal(get('Krag–Jørgensen M1894').maker,'Kongsberg Våpenfabrikk');
@@ -388,7 +413,7 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v25'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v26'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
@@ -398,8 +423,8 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
  assert.ok(sw.includes('./extended-variants.js?v=1'));
- assert.ok(html.includes('./manufacturer-register.js?v=1'));
- assert.ok(sw.includes('./manufacturer-register.js?v=1'));
+ assert.ok(html.includes('./manufacturer-register.js?v=2'));
+ assert.ok(sw.includes('./manufacturer-register.js?v=2'));
  assert.ok(html.includes('./data.js?v=9'));
  assert.ok(html.includes('./app.js?v=15'));
  assert.ok(sw.includes('./data.js?v=9'));
