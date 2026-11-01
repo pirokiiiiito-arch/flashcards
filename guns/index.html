@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#263b45">
 <meta name="description" content="銃器の歴史とモデル名を学ぶ分類別フラッシュカード。画像はGoogle英語検索から手動登録。">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./style.css?v=19">
+<link rel="stylesheet" href="./style.css?v=20">
 <title>銃器図鑑カード｜分類別フラッシュカード</title>
 </head>
 <body>
@@ -87,7 +87,6 @@
           <div class="card-actions">
             <button id="cardAddBtn" type="button" class="btn card-add">＋追加</button>
             <button id="editCardBtn" type="button" class="btn card-edit">編集</button>
-            <button id="deleteCardBtn" type="button" class="btn card-delete">削除</button>
           </div>
         </div>
         <span id="positionLabel" class="counter card-number" aria-live="polite">0 / 0</span>
@@ -107,6 +106,9 @@
           <p id="backDescription" class="card-description"></p>
           <p class="photo-help">英語でGoogle画像検索 → 気に入った写真を「画像をコピー」 → 戻って写真1〜3の「画像を貼り付け」を押してください。うまく貼れない場合は、各欄を選んで Ctrl+V、または「ファイルから登録」も使えます。</p>
           <div id="photoGrid" class="photo-grid"></div>
+        </div>
+        <div class="card-bottom-actions">
+          <button id="deleteCardBtn" type="button" class="btn card-delete">削除</button>
         </div>
       </article>
       <button id="flipBtn" class="sr-only" type="button">裏を見る</button>
