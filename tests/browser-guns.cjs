@@ -74,6 +74,10 @@ async function run(){
    await navigate('Page.navigate',{url:origin+'/flashcards/guns/index.html'});
    await until(()=>evaluate("document.querySelectorAll('.category-tile').length===9"),'nine gun categories');
    assert.equal(await evaluate('GunDeck.getCards().length'),2000);
+    const flagCoverage=await evaluate("(()=>{const cards=GunDeck.getCards();return {missing:cards.filter(c=>!GunCatalog.COUNTRIES[c.country]?.image).length,countries:new Set(cards.map(c=>c.country)).size,armscor:cards.find(c=>c.name_en==='Armscor VR80')?.country};})()");
+    assert.equal(flagCoverage.missing,0,'All 2,000 bundled cards should have local flag images');
+    assert.ok(flagCoverage.countries>=20,'The original country list has been extended');
+    assert.equal(flagCoverage.armscor,'PH','Philippines identifies Armscor brand headquarters');
    const catalogNames=await evaluate("GunDeck.getCards().map(c=>c.name_en)");
    assert.equal(new Set(catalogNames).size,2000,'A 2,000-model catalogue must not repeat the exact same English model name');
    assert.equal(await evaluate("document.querySelector('[data-group=shotgun]').textContent.includes('ショットガン')"),true);

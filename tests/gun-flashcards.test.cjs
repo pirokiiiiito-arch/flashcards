@@ -95,7 +95,7 @@ test('Armscor image evidence identifies the brand, not each shotgun factory',()=
    const card=rows.find(c=>c.name_en===model);
    assert.ok(card,'Missing stable model '+model);
    assert.equal(card.maker,'Armscor Global Defense, Inc.（ブランド元／実製造元未確認）');
-   assert.equal(card.country,'','Do not infer a factory country from a corporate screenshot');
+   assert.equal(card.country,'PH','PH marks the brand headquarters and not a verified manufacturing factory');
    assert.deepEqual(card.images,['','',''],'Do not alter the photo slots');
    const attribution=register.lookup({...card,maker:''});
    assert.equal(attribution?.basis,'brand-only','Must distinguish brand from actual manufacturer');
@@ -120,7 +120,7 @@ test('G41 has manufacturer-by-variant and MP3008 origin alone cannot identify a 
  assert.ok(g41&&mp);
  assert.match(g41.maker,/Carl Walther.*G41\(W\).*Mauser.*G41\(M\)/);
  assert.match(g41.maker,/該当型式未特定/);
- assert.equal(g41.country,'');
+ assert.equal(g41.country,'DE','Both proposed G41 manufacturers are associated with Germany');
  const candidate=register.lookup({...g41,maker:''});
  assert.equal(candidate.basis,'variant-dependent');
  assert.equal(candidate.externallyVerified,false);
@@ -152,7 +152,7 @@ test('missing manufacturer recovery preserves photos and user edits',()=>{
  assert.equal(get('Type 89 Rifle').maker,'Howa Machinery');
  assert.equal(get('B&T MP9').maker,'Brügger & Thomet (B&T)');
  assert.equal(get('G 41').maker,'Carl Walther（G41(W)型）／Mauser（G41(M)型）※該当型式未特定');
- assert.equal(get('G 41').country,'','The G41 variant is not identified by the generic label');
+ assert.equal(get('G 41').country,'DE','Both possible G41 firms are German even though subtype is unidentified');
  assert.equal(get('MP 3008').maker,'','Origin is not a factory/company name');
  assert.equal(get('MP 3008').country,'DE','Previously recorded German origin is unchanged, but does not name a manufacturer');
  const current=get('Krag–Jørgensen M1889');
@@ -168,10 +168,50 @@ test('missing manufacturer recovery preserves photos and user edits',()=>{
  const cleared=C.mergeCards([{...previous,source:'user',maker:''}]).find(c=>c.id===current.id);
  assert.equal(cleared.maker,'');
 });
-test('all 13 locally bundled SVG country flags are offline-readable image files, not Unicode emoji',()=>{
+test('all 238 previously flagless catalogue records now resolve to local SVG flags',()=>{
+ const countries=require('../guns/country-register.js');
+ const cards=C.SEEDS;
+ assert.equal(cards.length,2000);
+ assert.equal(Object.keys(countries.knownMakers).length,43);
+ assert.equal(cards.filter(c=>!c.country||!C.COUNTRIES[c.country]?.image).length,0,
+   'All 2,000 bundled cards should have a country code and a flag asset');
+ const sample={
+  'Taurus Model 85':'BR','Sako TRG-22':'FI','Tikka T3x Lite':'FI',
+  'Armscor VR80':'PH','Armscor VR60':'PH','Armscor VRF14':'PH',
+  'UTAS UTS-15':'TR','Derya MK-12':'TR','Striker 12':'ZA',
+  'Krag–Jørgensen M1889':'DK','Krag–Jørgensen M1894':'NO',
+  'Krag–Jørgensen M1898':'US','Ross Rifle Mk III':'CA',
+  'Zastava M48':'RS','Daewoo K2':'KR','AG 42 Ljungman':'SE',
+  'Hakim Rifle':'EG','Owen Gun':'AU','Madsen M-50':'DK',
+  'PM 63 RAK':'PL','Stribog SP9A1':'SK','CETME C':'ES',
+  'Arsenal SLR-95':'BG','Valmet M62':'FI','Colt Canada C7':'CA',
+  'G 41':'DE','MP 3008':'DE'
+ };
+ const get=name=>cards.find(c=>c.name_en===name);
+ for(const [name,country] of Object.entries(sample)){
+   const c=get(name);assert.ok(c,name);
+   assert.equal(c.country,country,name+' should use the correct representative country');
+ }
+ const armscor=get('Armscor VR80');
+ const attribution=countries.lookup({...armscor,country:''});
+ assert.equal(attribution.basis,'brand-home');
+ assert.equal(attribution.externallyVerified,false);
+ const taurus=get('Taurus Model 85');
+ const old={...taurus,country:'',source:'starter',
+   images:['idb:gunimg:'+taurus.id+':0:oldPhoto','','']};
+ const repaired=C.mergeCards([old]).find(c=>c.id===taurus.id);
+ assert.equal(repaired.country,'BR','Old untouched starter cards recover new flag country');
+ assert.deepEqual(repaired.images,old.images,'No image reference changes');
+ const custom=C.mergeCards([{...old,source:'user',country:'US'}]).find(c=>c.id===taurus.id);
+ assert.equal(custom.country,'US','User-edited country wins');
+ const cleared=C.mergeCards([{...old,source:'user',country:''}]).find(c=>c.id===taurus.id);
+ assert.equal(cleared.country,'','Deliberately cleared user country remains blank');
+ assert.equal(countries.lookup({...armscor,maker:'',country:''}),null,'Unknown makers get no guessed country');
+});
+test('all 30 locally bundled SVG country flags are offline-readable image files, not Unicode emoji',()=>{
  const worker=read('service-worker.js');
  const countries=Object.values(C.COUNTRIES);
- assert.equal(countries.length,13);
+ assert.equal(countries.length,30);
  for(const country of countries){
    assert.match(country.image,/^\.\/flags\/[a-z]{2}\.svg$/);
    const filename='guns/'+country.image.slice(2);
@@ -440,7 +480,7 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v27'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v28'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
@@ -452,10 +492,12 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(sw.includes('./extended-variants.js?v=1'));
  assert.ok(html.includes('./manufacturer-register.js?v=3'));
  assert.ok(sw.includes('./manufacturer-register.js?v=3'));
- assert.ok(html.includes('./data.js?v=9'));
- assert.ok(html.includes('./app.js?v=15'));
- assert.ok(sw.includes('./data.js?v=9'));
- assert.ok(sw.includes('./app.js?v=15'));
+ assert.ok(html.includes('./country-register.js?v=1'));
+ assert.ok(sw.includes('./country-register.js?v=1'));
+ assert.ok(html.includes('./data.js?v=10'));
+ assert.ok(html.includes('./app.js?v=16'));
+ assert.ok(sw.includes('./data.js?v=10'));
+ assert.ok(sw.includes('./app.js?v=16'));
  assert.ok(html.includes('./drive-sync.js?v=2'));
  assert.ok(sw.includes('./drive-sync.js?v=2'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
