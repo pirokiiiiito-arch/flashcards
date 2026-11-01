@@ -98,6 +98,7 @@ const FAMILY=Object.freeze({
   'PP 2000':'KBP Instrument Design Bureau',
   'PP 90':'KBP Instrument Design Bureau',
   'PP 91':'Zlatoust Machine-Building Plant',
+  'PP 9':'Zlatoust Machine-Building Plant',
   'PP 93':'KBP Instrument Design Bureau',
   'SR':'TsNIITochMash',
   'OTs':'TsKIB SOO (Tula)',
@@ -143,6 +144,10 @@ const FAMILY=Object.freeze({
   'Type 1':'Tokyo Army Arsenal (representative producer)',
   'Type 67':'China North Industries (Norinco)',
   'Type 80':'China North Industries (Norinco)',
+  'Type 81':'China North Industries (Norinco)',
+  'Type 54':'China North Industries (Norinco)',
+  'Type 77':'China North Industries (Norinco)',
+  'Type 85':'China North Industries (Norinco)',
   'M 1919':'Colt / General Motors (historical producers)',
   'M 37':'Saginaw Steering Gear (General Motors)',
   'M 73':'Rock Island Arsenal (representative producer)',
@@ -209,7 +214,15 @@ function lookup(card){
  const exact=EXACT[category+'|'+name];
  if(exact)return {maker:exact,basis:'model-specific',externallyVerified:false};
  const entries=Object.entries(FAMILY[category]||{}).sort((a,b)=>b[0].length-a[0].length);
- const hit=entries.find(([prefix])=>name.startsWith(prefix+' '));
+ // Exact models, space-delimited variants, slash and hyphen subtypes, and
+ // letter revisions such as M240B are supported. Never match digit-to-digit
+ // continuations: MG 3 must not be mistaken for MG 34.
+ const hit=entries.find(([prefix])=>{
+   if(name===prefix)return true;
+   if(!name.startsWith(prefix))return false;
+   const suffix=name.slice(prefix.length);
+   return /^[ \t\/-]/.test(suffix)||(/[A-Za-z]/.test(suffix[0]||'')&&/\d$/.test(prefix));
+ });
  return hit?{maker:hit[1],basis:'catalog-family',externallyVerified:false}:null;
 }
 const api=Object.freeze({lookup});
