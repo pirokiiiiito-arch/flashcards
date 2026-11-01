@@ -113,10 +113,35 @@ test('Armscor image evidence identifies the brand, not each shotgun factory',()=
    assert.equal(manuallyCleared.maker,'','A deliberately cleared field must remain blank');
  }
 });
+test('G41 has manufacturer-by-variant and MP3008 origin alone cannot identify a manufacturer',()=>{
+ const register=require('../guns/manufacturer-register.js');
+ const g41=C.SEEDS.find(c=>c.name_en==='G 41');
+ const mp=C.SEEDS.find(c=>c.name_en==='MP 3008');
+ assert.ok(g41&&mp);
+ assert.match(g41.maker,/Carl Walther.*G41\(W\).*Mauser.*G41\(M\)/);
+ assert.match(g41.maker,/該当型式未特定/);
+ assert.equal(g41.country,'');
+ const candidate=register.lookup({...g41,maker:''});
+ assert.equal(candidate.basis,'variant-dependent');
+ assert.equal(candidate.externallyVerified,false);
+ assert.equal(mp.maker,'','German origin is not a verified maker');
+ assert.equal(mp.country,'','Do not turn origin into a flag for a nonexistent maker');
+ const old={...g41,source:'starter',maker:'',
+   images:['idb:gunimg:'+g41.id+':0:previousPhoto','','']};
+ const recovered=C.mergeCards([old]).find(c=>c.id===g41.id);
+ assert.equal(recovered.maker,g41.maker);
+ assert.deepEqual(recovered.images,old.images);
+ const userEdit=C.mergeCards([{...old,source:'user',maker:'手動確認したメーカー'}])
+   .find(c=>c.id===g41.id);
+ assert.equal(userEdit.maker,'手動確認したメーカー');
+ const cleared=C.mergeCards([{...old,source:'user',maker:''}])
+   .find(c=>c.id===g41.id);
+ assert.equal(cleared.maker,'');
+});
 test('missing manufacturer recovery preserves photos and user edits',()=>{
  const rows=C.SEEDS, register=require('../guns/manufacturer-register.js');
  assert.equal(rows.length,2000);
- assert.equal(rows.filter(c=>!c.maker).length,5,'Only five factory-ambiguous cards remain blank; Armscor entries are brand-only');
+ assert.equal(rows.filter(c=>!c.maker).length,4,'Four catalogue records remain manufacturer-blank; G41 lists alternative subtypes');
  const get=name=>rows.find(c=>c.name_en===name);
  assert.equal(get('Krag–Jørgensen M1889').maker,'Geværfabriken København (Royal Copenhagen Arsenal)');
  assert.equal(get('Krag–Jørgensen M1894').maker,'Kongsberg Våpenfabrikk');
@@ -126,8 +151,10 @@ test('missing manufacturer recovery preserves photos and user edits',()=>{
  assert.equal(get('Tikka M55').maker,'Tikkakoski');
  assert.equal(get('Type 89 Rifle').maker,'Howa Machinery');
  assert.equal(get('B&T MP9').maker,'Brügger & Thomet (B&T)');
- assert.equal(get('G 41').maker,'');
- assert.equal(get('MP 3008').maker,'');
+ assert.equal(get('G 41').maker,'Carl Walther（G41(W)型）／Mauser（G41(M)型）※該当型式未特定');
+ assert.equal(get('G 41').country,'','The G41 variant is not identified by the generic label');
+ assert.equal(get('MP 3008').maker,'','Origin is not a factory/company name');
+ assert.equal(get('MP 3008').country,'','Do not copy place of origin into maker-country field');
  const current=get('Krag–Jørgensen M1889');
  assert.equal(register.lookup({...current,maker:''}).externallyVerified,false);
  const previous={...current,maker:'',source:'starter',description:'写真に添えた説明',
@@ -413,7 +440,7 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v26'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v27'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
@@ -423,8 +450,8 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(html.includes('./extended-variants.js?v=1'));
  assert.ok(sw.includes('./extended-models.js?v=1'));
  assert.ok(sw.includes('./extended-variants.js?v=1'));
- assert.ok(html.includes('./manufacturer-register.js?v=2'));
- assert.ok(sw.includes('./manufacturer-register.js?v=2'));
+ assert.ok(html.includes('./manufacturer-register.js?v=3'));
+ assert.ok(sw.includes('./manufacturer-register.js?v=3'));
  assert.ok(html.includes('./data.js?v=9'));
  assert.ok(html.includes('./app.js?v=15'));
  assert.ok(sw.includes('./data.js?v=9'));

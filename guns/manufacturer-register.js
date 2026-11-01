@@ -192,6 +192,11 @@ const BRAND_ONLY=Object.freeze({
  'shotgun|Armscor VR60':'Armscor Global Defense, Inc.（ブランド元／実製造元未確認）',
  'shotgun|Armscor VRF14':'Armscor Global Defense, Inc.（ブランド元／実製造元未確認）'
 });
+// The generic card G 41 covers separate Mauser and Walther subtypes. This is
+// a conditional attribution, not verification of one particular example.
+const VARIANT_DEPENDENT=Object.freeze({
+ 'semi-rifle|G 41':'Carl Walther（G41(W)型）／Mauser（G41(M)型）※該当型式未特定'
+});
 const EXACT=Object.freeze({
  'bolt|Krag–Jørgensen M1889':'Geværfabriken København (Royal Copenhagen Arsenal)',
  'bolt|Krag–Jørgensen M1894':'Kongsberg Våpenfabrikk',
@@ -223,6 +228,8 @@ function lookup(card){
  const key=category+'|'+name;
  const brand=BRAND_ONLY[key];
  if(brand)return {maker:brand,basis:'brand-only',externallyVerified:false};
+ const variant=VARIANT_DEPENDENT[key];
+ if(variant)return {maker:variant,basis:'variant-dependent',externallyVerified:false};
  const exact=EXACT[key];
  if(exact)return {maker:exact,basis:'model-specific',externallyVerified:false};
  const entries=Object.entries(FAMILY[category]||{}).sort((a,b)=>b[0].length-a[0].length);
