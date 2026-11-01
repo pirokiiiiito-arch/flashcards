@@ -129,10 +129,13 @@ async function run(){
    assert.ok(reference.cardWidth>=650&&reference.cardWidth<=675&&reference.cardHeight>=355&&reference.cardHeight<=385,
      'Front must match the real root word app ~670×360px, not the oversized mockup: '+JSON.stringify(reference));
    assert.equal(reference.faceLabel,'表・銃名');
-   assert.deepEqual(reference.actionLabels,['＋追加','編集','削除']);
+   assert.deepEqual(reference.actionLabels,['＋追加','編集']);
    assert.match(reference.counter,/^1 \/ [1-9]\d+$/);
    assert.ok(Number(reference.counter.split(' / ')[1])>=100,'The shotgun category must have a substantial expanded range');
-   assert.equal(reference.toolbarWithinCard,true,'Add/edit/delete controls must sit inside the white card');
+   assert.equal(reference.toolbarWithinCard,true,'Add/Edit controls must stay inside the upper edge of the white card');
+    const deleteFront=await evaluate("(()=>{const card=document.querySelector('#flashCard').getBoundingClientRect(),button=document.querySelector('#deleteCardBtn').getBoundingClientRect();return {inside:button.left>=card.left&&button.top>=card.top&&button.right<=card.right&&button.bottom<=card.bottom,right:card.right-button.right,bottom:card.bottom-button.bottom};})()");
+    assert.ok(deleteFront.inside&&deleteFront.right>=5&&deleteFront.right<=30&&deleteFront.bottom>=5&&deleteFront.bottom<=30,
+      'Delete must sit in the bottom-right corner of the front card: '+JSON.stringify(deleteFront));
    const navGeometry=await evaluate("(()=>{const nav=document.querySelector('.navigation'),buttons=[...nav.querySelectorAll('button')],r=nav.getBoundingClientRect();return {width:r.width,height:Math.round(buttons[0].getBoundingClientRect().height),equal:buttons.every(x=>Math.abs(x.getBoundingClientRect().height-buttons[0].getBoundingClientRect().height)<2)}})()");
    assert.ok(navGeometry.width>=650&&navGeometry.width<=675,'Top buttons should match the real 670px root app navigation: '+JSON.stringify(navGeometry));
    assert.ok(navGeometry.height>=53&&navGeometry.height<=58&&navGeometry.equal,'Word-app navigation must use compact equal 54px tall buttons');
@@ -200,6 +203,9 @@ async function run(){
    assert.ok(mobileFont>=23&&mobileFont<=35,'Gun name must stay legible in the compact mobile word-card face');
    const mobileFront=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,viewport:innerWidth};})()");
    assert.ok(mobileFront.height>=315&&mobileFront.height<=365&&mobileFront.width<mobileFront.viewport,'Mobile face must match the root app 320px-tall card: '+JSON.stringify(mobileFront));
+    const mobileDelete=await evaluate("(()=>{const card=document.querySelector('#flashCard').getBoundingClientRect(),button=document.querySelector('#deleteCardBtn').getBoundingClientRect();return {inside:button.left>=card.left&&button.top>=card.top&&button.right<=card.right&&button.bottom<=card.bottom,right:card.right-button.right,bottom:card.bottom-button.bottom};})()");
+    assert.ok(mobileDelete.inside&&mobileDelete.right>=5&&mobileDelete.right<=25&&mobileDelete.bottom>=5&&mobileDelete.bottom<=25,
+      'Delete must also stay at the lower-right on mobile: '+JSON.stringify(mobileDelete));
    await send('Emulation.clearDeviceMetricsOverride');
    await evaluate("document.querySelector('#flipBtn').click()");
    assert.equal(await evaluate("document.querySelector('#cardBack').hidden"),false);
@@ -219,7 +225,7 @@ async function run(){
    assert.equal(makerMeta.visible,true);
    assert.equal(makerMeta.faceHidden,true);
    assert.equal(makerMeta.inside,true,'Flag and manufacturer must be inside upper-left card header: '+JSON.stringify(makerMeta));
-   assert.equal(makerMeta.notOverlapping,true,'Manufacturer must not cover the add/edit/delete controls');
+   assert.equal(makerMeta.notOverlapping,true,'Manufacturer must not cover the upper add/edit controls');
    const desktopBack=await evaluate("(()=>{const card=document.querySelector('#flashCard'),r=card.getBoundingClientRect();return {width:r.width,height:r.height,compact:card.classList.contains('front-compact')};})()");
    assert.equal(desktopBack.compact,false,'Back must not use compact front frame');
    assert.ok(Math.abs(desktopBack.width-desktopFront.width)<4,'Front and back should occupy the same word-card width: front='+JSON.stringify(desktopFront)+' back='+JSON.stringify(desktopBack));
@@ -231,6 +237,9 @@ async function run(){
    assert.equal(photoLayout.fullWidth,true,'Each photo must span the card width like plant photos: '+JSON.stringify(photoLayout));
    assert.ok(photoLayout.aspect>1.7&&photoLayout.aspect<1.9,'Each photo uses a 16:9 frame');
    assert.equal(photoLayout.contained,true,'The back card must expand to contain photo three');
+    const backDelete=await evaluate("(()=>{const card=document.querySelector('#flashCard').getBoundingClientRect(),button=document.querySelector('#deleteCardBtn').getBoundingClientRect(),last=document.querySelector('#photoGrid .photo-slot:last-child').getBoundingClientRect();return {right:card.right-button.right,bottom:card.bottom-button.bottom,belowLastPhoto:button.top>=last.bottom,inside:button.left>=card.left&&button.right<=card.right&&button.bottom<=card.bottom};})()");
+    assert.ok(backDelete.inside&&backDelete.belowLastPhoto&&backDelete.right<30&&backDelete.bottom<30,
+      'Delete must sit at the lower-right on the back without covering the last picture: '+JSON.stringify(backDelete));
    const searchPosition=await evaluate("(()=>{const button=document.querySelector('#googleSearchBtn'),photos=document.querySelector('#photoGrid'),box=button.getBoundingClientRect();return {visible:!button.hidden&&box.width>80&&box.height>30,abovePhotos:box.bottom<photos.getBoundingClientRect().top};})()");
    assert.equal(searchPosition.visible,true,'English Google search must be visible near the top of the back');
    assert.equal(searchPosition.abovePhotos,true,'Search must be above, not below, three large pictures');
