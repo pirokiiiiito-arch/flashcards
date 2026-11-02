@@ -14,6 +14,9 @@ WORKERS = ['plants/service-worker.js', 'plants/drive-view-worker.js']
 REPORT = 'plants/description-first-build.json'
 OLD = 'body.append(left,desc);back.append(bl,body);'
 NEW = 'body.append(desc,left);back.append(bl,body);'
+# The search link may share a responsive header with the description.
+# This remains description-first: the header precedes every photo slot.
+WITH_SEARCH = 'intro.append(desc,googleTop);\n  body.append(intro,left);back.append(bl,body);'
 
 def read(path):
     return (ROOT / path).read_text(encoding='utf-8')
@@ -36,6 +39,10 @@ for path in ENTRIES:
         if updates[path].replace(NEW, OLD, 1) != text:
             raise RuntimeError('Unexpected plant content change: ' + path)
     elif (old_count, new_count) == (0, 1):
+        updates[path] = text
+    elif (old_count, new_count) == (0, 0) and text.count(WITH_SEARCH) == 1:
+        # The same description node is inside the new top-row header;
+        # keeping this form prevents the builder from undoing the search placement.
         updates[path] = text
     else:
         raise RuntimeError('Plant render anchor changed: ' + path)
