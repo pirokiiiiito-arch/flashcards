@@ -180,10 +180,11 @@ function swapOrder(shuffled){const v=hueOrder();if(shuffled)for(let i=v.length-1
 function change(delta){
   const v=filtered();
   const nextIndex=Math.max(0,Math.min(v.length-1,state.index+delta));
-  if(nextIndex===state.index)return;
+  const moved=nextIndex!==state.index;
   state.index=nextIndex;
   state.flipped=false;
   render();
+  if(!moved)return;
   // Show the new card from its top color swatch, not the previous card's scroll offset.
   if(window.ColorCardNavTop?.align){
     window.ColorCardNavTop.align();
