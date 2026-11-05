@@ -178,24 +178,26 @@ function filtered(){return state.order.filter(i=>matches(CARDS[i]));}
 function selected(){const v=filtered();state.index=Math.max(0,Math.min(state.index,Math.max(v.length-1,0)));return v.length?{v,i:v[state.index],c:CARDS[v[state.index]]}:null;}
 function swapOrder(shuffled){const v=hueOrder();if(shuffled)for(let i=v.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[v[i],v[j]]=[v[j],v[i]];}state.order=v;state.shuffled=shuffled;state.index=0;state.flipped=false;state.page=0;render();}
 function change(delta){
-  const doc=document.scrollingElement||document.documentElement;
-  const keepY=window.scrollY||doc.scrollTop||0,keepX=window.scrollX||doc.scrollLeft||0;
   const v=filtered();
-  state.index=Math.max(0,Math.min(v.length-1,state.index+delta));
+  const nextIndex=Math.max(0,Math.min(v.length-1,state.index+delta));
+  if(nextIndex===state.index)return;
+  state.index=nextIndex;
   state.flipped=false;
   render();
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    const tail=document.getElementById('cardNavScrollTail');
-    if(tail){
-      tail.style.height='0px';
-      const nowY=window.scrollY||doc.scrollTop||0;
-      const realEnd=tail.getBoundingClientRect().top+nowY;
-      const viewport=window.innerHeight||document.documentElement.clientHeight||0;
-      tail.style.height=Math.max(0,Math.ceil(keepY+viewport-realEnd))+'px';
-    }
-    try{window.scrollTo({top:keepY,left:keepX,behavior:'instant'});}
-    catch(_){window.scrollTo(keepX,keepY);}
-  }));
+  // Show the new card from its top color swatch, not the previous card's scroll offset.
+  if(window.ColorCardNavTop?.align){
+    window.ColorCardNavTop.align();
+  }else{
+    requestAnimationFrame(()=>{
+      const anchor=document.getElementById('cardNavScrollAnchor')||$('cardArea');
+      if(!anchor)return;
+      const doc=document.scrollingElement||document.documentElement;
+      const y=window.scrollY||doc.scrollTop||0;
+      const target=Math.max(0,anchor.getBoundingClientRect().top+y);
+      try{window.scrollTo({top:target,left:0,behavior:'instant'});}
+      catch(_){window.scrollTo(0,target);}
+    });
+  }
 }
 function flip(){state.flipped=!state.flipped;selectedPhotoKey=null;render();}
 function changeMode(mode){state.mode=mode;render();}
