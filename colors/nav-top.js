@@ -1,6 +1,5 @@
-/* Color cards: preserve the current scroll position for Previous/Next.
- * Only the Flip button keeps the older navigation-alignment behavior.
- * No data mutation and no replacement of original editor handlers.
+/* Color cards: align the navigation and first color swatch at the top on card change.
+ * The helper preserves card data and the existing editor handlers.
  */
 (function () {
   'use strict';
@@ -50,5 +49,5 @@
     }
   });
   observer.observe(study, {attributes: true, attributeFilter: ['class']});
-  window.ColorCardNavTop = Object.freeze({version: '2.0.0', align: schedule, prevNext: 'preserve-scroll-position'});
+  window.ColorCardNavTop = Object.freeze({version: '2.1.0', align: schedule, prevNext: 'align-card-top'});
 })();
