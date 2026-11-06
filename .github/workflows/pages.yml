@@ -37,6 +37,8 @@ jobs:
           node --check colors/drive-sync.js
           node --check colors/network-support.js
           node --check colors/data/review47-loader.js
+          node --check colors/nav-top.js
+          node --test tests/color-card-top-scroll.test.cjs
           node --test tests/plant-color-network.test.cjs
           git diff --exit-code -- drive-core.js drive-sync.js word-network-recovery.js colors/data/review47-progress.b64 colors/private-assets-manifest.json
       - name: Build and check isolated storage-free viewers
