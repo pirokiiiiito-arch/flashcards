@@ -31,15 +31,25 @@ test('moving to another color resets the card face and requests top alignment', 
   assert.equal(alignments, 2);
 });
 
-test('next/previous buttons align the color top and correct legacy scroll restoration', () => {
+test('next/previous fits the whole front color inside a short iPhone viewport', () => {
   const events = {};
   const frames = [], later = [];
-  const anchorAt = 500;
+  const anchorAt = 500, swatchAt = 610;
   const scroll = { y: 900 };
+  const visualViewport = { height: 460, addEventListener() {} };
+  let flipped = false;
   const anchor = {
     isConnected: true,
     getBoundingClientRect: () => ({ top: anchorAt - scroll.y })
   };
+  const swatch = {
+    style: {height: ''},
+    getBoundingClientRect: () => ({
+      top: swatchAt - scroll.y,
+      height: Number.parseFloat(swatch.style.height) || 400
+    })
+  };
+  const cardArea = {classList: {contains: cls => cls === 'flipped' && flipped}};
   const controls = {
     contains: () => true,
     addEventListener: (name, callback) => { events[name] = callback; }
@@ -51,17 +61,23 @@ test('next/previous buttons align the color top and correct legacy scroll restor
     getBoundingClientRect: () => ({ top: 1050 - scroll.y })
   };
   const window = {
-    innerHeight: 700,
+    innerHeight: 500,
+    innerWidth: 390,
+    visualViewport,
+    addEventListener() {},
     get scrollY() { return scroll.y; },
     scrollX: 0,
-    scrollTo: option => { scroll.y = typeof option === 'object' ? option.top : arguments[1]; }
+    scrollTo: (first, second) => {
+      scroll.y = typeof first === 'object' ? first.top : second;
+    }
   };
+  const elements = {cardNavScrollAnchor: anchor, cardNavigation: controls, study, swatch, cardArea};
   const document = {
-    getElementById: id => ({ cardNavScrollAnchor: anchor, cardNavigation: controls, study })[id] || null,
+    getElementById: id => elements[id] || null,
     createElement: () => tail,
     body: { appendChild() {} },
     scrollingElement: { scrollTop: 0 },
-    documentElement: { clientHeight: 700 }
+    documentElement: { clientHeight: 500, clientWidth: 390 }
   };
   const context = {
     window, document, Object,
@@ -73,13 +89,19 @@ test('next/previous buttons align the color top and correct legacy scroll restor
   };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync('colors/nav-top.js', 'utf8'), context);
-  assert.equal(window.ColorCardNavTop.prevNext, 'align-card-top');
+  assert.equal(window.ColorCardNavTop.prevNext, 'fit-and-align-complete-front');
+  frames.shift()(); // Initial card fit.
+  assert.equal(swatch.style.height, '338px'); // 460px viewport - 110px navigation - 12px margin.
   const click = id => {
+    scroll.y = 900;
     events.click({ target: { closest: () => ({ id, disabled: false }) } });
     assert.equal(frames.length, 1);
     frames.shift()();
     assert.equal(scroll.y, anchorAt);
-    // Simulate older cached card handlers restoring the previous offset.
+    assert.equal(swatch.getBoundingClientRect().top, 110);
+    assert.ok(swatch.getBoundingClientRect().top +
+      swatch.getBoundingClientRect().height <= visualViewport.height - 12);
+    // Simulate a cached handler undoing the scroll after the new card renders.
     scroll.y = 870;
     assert.equal(later.length, 1);
     later.shift()();
@@ -89,4 +111,18 @@ test('next/previous buttons align the color top and correct legacy scroll restor
   click('prev');
   events.click({ target: { closest: () => ({ id: 'shuffle', disabled: false }) } });
   assert.equal(frames.length, 0);
+  // Viewport changes on iPhone due to Safari's address bar.
+  visualViewport.height = 380;
+  window.ColorCardNavTop.fit();
+  assert.equal(swatch.style.height, '258px');
+  // Bigger screens use up to the existing desktop 600px rather than 400px.
+  window.innerWidth = 900;
+  visualViewport.height = 750;
+  window.ColorCardNavTop.fit();
+  assert.equal(swatch.style.height, '600px');
+  // The backside stays naturally scrollable and is never resized.
+  flipped = true;
+  visualViewport.height = 380;
+  window.ColorCardNavTop.fit();
+  assert.equal(swatch.style.height, '600px');
 });
