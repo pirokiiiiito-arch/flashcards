@@ -75,7 +75,7 @@ write('colors/drive-view.html',p)
 shared=['../drive-config.js?v=3','../persistent-drive-auth.js?v=1','../drive-core.js?v=readonly1','../drive-view-cache.js?v=1','../drive-local-base.js?v=1','../drive-local-view.js?v=1','../readonly-guard.js?v=1','../view-shell.js?v=1']
 assets={
  'plants':['./drive-view.html','./local-adapter.js?v=1','../drive-core.js?v=plant-network2']+shared,
- 'colors':['./drive-view.html','./data/review47-local-loader.js?v=1','./data/review47-progress.b64?v=1','./network-support.js?v=2','./app-view.js?v=palette1','./origin-editor-view.js?v=1','./local-adapter.js?v=1','./nav-top.js?v=3','./private-assets-manifest.json?v=2']+shared,
+ 'colors':['./drive-view.html','./data/review47-local-loader.js?v=1','./data/review47-progress.b64?v=1','./network-support.js?v=2','./app-view.js?v=palette1','./origin-editor-view.js?v=1','./local-adapter.js?v=1','./nav-top.js?v=4','./private-assets-manifest.json?v=2']+shared,
 }
 worker=read('view-shell-worker.js')
 for app,paths in assets.items():
