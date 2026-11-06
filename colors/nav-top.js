@@ -1,5 +1,6 @@
-/* Reset to the first color swatch on previous/next, even when a cached app
- * tries to restore the old scroll offset. No card data or editor state changes.
+/* Keep the entire front color swatch visible after switching cards.
+ * Fit it to the actual visual viewport on short iPhone screens, then align
+ * the navigation at the top. Never change card content or saved records.
  */
 (function () {
   'use strict';
@@ -7,7 +8,9 @@
   var anchor = document.getElementById('cardNavScrollAnchor');
   var controls = document.getElementById('cardNavigation');
   var study = document.getElementById('study');
-  if (!anchor || !controls || !study) return;
+  var swatch = document.getElementById('swatch');
+  var cardArea = document.getElementById('cardArea');
+  if (!anchor || !controls || !study || !swatch || !cardArea) return;
   var frame = null;
   var followUp = null;
   var tail = document.createElement('div');
@@ -15,9 +18,24 @@
   tail.setAttribute('aria-hidden', 'true');
   document.body.appendChild(tail);
 
+  function fitFrontColor() {
+    if (study.classList.contains('hide') || cardArea.classList.contains('flipped')) return;
+    // Measure the real space consumed by the sticky navigation, including
+    // its hint and margins, rather than guessing a fixed mobile header size.
+    var viewport = window.visualViewport && window.visualViewport.height ||
+      window.innerHeight || document.documentElement.clientHeight;
+    var navToColor = swatch.getBoundingClientRect().top -
+      anchor.getBoundingClientRect().top;
+    if (!(viewport > 0) || !(navToColor >= 0)) return;
+    var width = window.innerWidth || document.documentElement.clientWidth || 375;
+    var naturalHeight = width <= 650 ? 400 : 600;
+    var available = Math.max(1, Math.floor(viewport - navToColor - 12));
+    swatch.style.height = Math.min(naturalHeight, available) + 'px';
+  }
   function alignNavigation() {
     frame = null;
     if (study.classList.contains('hide') || !anchor.isConnected) return;
+    fitFrontColor();
     // A short filtered card may need a little extra bottom room to reach y=0.
     tail.style.height = '0px';
     var doc = document.scrollingElement || document.documentElement;
@@ -60,5 +78,13 @@
     }
   });
   observer.observe(study, {attributes: true, attributeFilter: ['class']});
-  window.ColorCardNavTop = Object.freeze({version: '3.0.0', align: schedule, prevNext: 'align-card-top'});
+  // Also fit the first front card and respond when Safari changes its visible
+  // height as the URL bar appears/disappears.
+  requestAnimationFrame(fitFrontColor);
+  window.addEventListener('resize', fitFrontColor);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fitFrontColor);
+  window.ColorCardNavTop = Object.freeze({
+    version: '4.0.0', align: schedule, fit: fitFrontColor,
+    prevNext: 'fit-and-align-complete-front'
+  });
 })();
