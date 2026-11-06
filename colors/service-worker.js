@@ -1,5 +1,5 @@
-const CACHE = 'colors1000-review47-persistent-auth-v15';
-const STATIC = ['./index.html', './data/review47-loader.js?v=4', './data/review47-progress.b64?v=1', './app-main.js?v=2', './nav-top.js?v=2', './recovery-import.js?v=2', './origin-editor.js?v=2', './manual-edit-compat.js', './drive-sync.js?v=13', './asset-migration.js?v=1', './private-assets-manifest.json?v=2', '../drive-config.js?v=3', '../persistent-drive-auth.js?v=1', '../drive-core.js?v=persist1', '../auth-only-ui.js?v=persist1', '../auth-only-ui.css?v=persist1'];
+const CACHE = 'colors1000-review47-persistent-auth-v14';
+const STATIC = ['./index.html', './data/review47-loader.js?v=3', './data/review47-progress.b64?v=1', './app-main.js?v=1', './nav-top.js?v=3', './recovery-import.js?v=2', './origin-editor.js?v=2', './manual-edit-compat.js', './drive-sync.js?v=13', './asset-migration.js?v=1', './private-assets-manifest.json?v=2', '../drive-config.js?v=3', '../persistent-drive-auth.js?v=1', '../drive-core.js?v=persist1', '../auth-only-ui.js?v=persist1', '../auth-only-ui.css?v=persist1'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('colors1000-review47-drive3-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
