@@ -179,6 +179,10 @@ jobs:
           node --test tests/gun-flashcards.test.cjs
           node --test tests/gun-catalog-2000.test.cjs
           node tests/browser-guns.cjs
+      - name: Publish fresh color photo sharing viewer
+        run: |
+          python3 tools/build-color-photo-share-entry.py
+          node --test tests/color-photo-share-entry.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
