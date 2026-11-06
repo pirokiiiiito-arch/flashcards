@@ -1,5 +1,5 @@
-/* Color cards: align the navigation and first color swatch at the top on card change.
- * The helper preserves card data and the existing editor handlers.
+/* Reset to the first color swatch on previous/next, even when a cached app
+ * tries to restore the old scroll offset. No card data or editor state changes.
  */
 (function () {
   'use strict';
@@ -9,6 +9,7 @@
   var study = document.getElementById('study');
   if (!anchor || !controls || !study) return;
   var frame = null;
+  var followUp = null;
   var tail = document.createElement('div');
   tail.id = 'cardNavScrollTail';
   tail.setAttribute('aria-hidden', 'true');
@@ -28,26 +29,36 @@
     var viewport = window.innerHeight || document.documentElement.clientHeight;
     tail.style.height = Math.max(0, Math.ceil(target + viewport - height)) + 'px';
     // Instant alignment avoids moving the controls while a user clicks again.
-    try { window.scrollTo({top: target, left: window.scrollX || 0, behavior: 'instant'}); }
-    catch (_) { window.scrollTo(window.scrollX || 0, target); }
+    // 'auto' is standard in iOS Safari; 'instant' may be ignored by older clients.
+    try { window.scrollTo({top: target, left: 0, behavior: 'auto'}); }
+    catch (_) { window.scrollTo(0, target); }
   }
   function schedule() {
     if (frame !== null) cancelAnimationFrame(frame);
-    // The existing handler flips/changes the card first; measure after render.
-    frame = requestAnimationFrame(alignNavigation);
+    if (followUp !== null) clearTimeout(followUp);
+    // The app's click handler synchronously renders the next card first.
+    frame = requestAnimationFrame(function () {
+      alignNavigation();
+      // A later pass wins over iOS scroll anchoring and older cached app handlers.
+      followUp = setTimeout(function () {
+        followUp = null;
+        alignNavigation();
+      }, 120);
+    });
   }
   controls.addEventListener('click', function (event) {
     var button = event.target && event.target.closest ? event.target.closest('button') : null;
     if (!button || !controls.contains(button) || button.disabled) return;
-    if (button.id !== 'flip') return;
+    if (button.id !== 'flip' && button.id !== 'prev' && button.id !== 'next') return;
     schedule();
   });
   var observer = new MutationObserver(function () {
     if (study.classList.contains('hide')) {
       if (frame !== null) { cancelAnimationFrame(frame); frame = null; }
+      if (followUp !== null) { clearTimeout(followUp); followUp = null; }
       tail.style.height = '0px';
     }
   });
   observer.observe(study, {attributes: true, attributeFilter: ['class']});
-  window.ColorCardNavTop = Object.freeze({version: '2.1.0', align: schedule, prevNext: 'align-card-top'});
+  window.ColorCardNavTop = Object.freeze({version: '3.0.0', align: schedule, prevNext: 'align-card-top'});
 })();
