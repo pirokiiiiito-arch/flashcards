@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>中世ヨーロッパの城塞｜Chrome読書版 001〜020枚目</title>
+<title>中世ヨーロッパの城塞｜001〜020 修正版の読書ページ</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
 *{box-sizing:border-box}
@@ -32,16 +32,18 @@ a{color:#2c666c}
  <main>
   <h1>中世ヨーロッパの城塞</h1>
   <p>Chromeで全画面表示する、001〜020枚目の読書用Webアプリです。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
-  <h2>最初の1回だけ</h2>
+  <h2>001〜020枚目：目次・図版説明の修正版</h2>
+  <p><a href="https://drive.google.com/file/d/1aTkBgZWKa6QbglCU1F0djupKbRTDkmka/view?usp=drivesdk" target="_blank" rel="noopener noreferrer"><strong>Googleドライブの修正版HTMLを開く</strong></a></p>
+  <p class="note">目次を読みやすいテキストに直し、図版の下に原本の説明文を表示する版です。本文OCRの全字校正とiPhone実機確認は継続中です。</p>
   <ol>
-   <li>Google Driveに保存した<strong>読書版HTML</strong>をiPhoneの「ファイル」に保存</li>
-   <li>ここに戻り、下の「ファイルを選択」からHTMLを選ぶ</li>
-   <li>次回は保存済みの読書版を自動で開きます</li>
+   <li>上のGoogleドライブのリンクから<strong>目次・図版説明の修正版HTML</strong>をiPhoneの「ファイル」に保存</li>
+   <li>このページへ戻り、下の「修正版HTMLを選択して開く」から保存したファイルを選ぶ</li>
+   <li>次回からは取り込んだ修正版を自動で開きます。旧版が端末にある場合は更新版を選ぶまで旧版は開きません</li>
   </ol>
-  <label class="pick" for="file">読書版HTMLを選択して開く</label>
+  <label class="pick" for="file">修正版HTMLを選択して開く</label>
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
-  <p id="status" role="status" aria-live="polite">読書版HTMLを選択してください。</p>
+  <p id="status" role="status" aria-live="polite">修正版HTMLを選択してください。</p>
   <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。他の区間とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」ボタンで原本画像に切り替えられます。</p>
  </main>
 </div>
@@ -49,6 +51,7 @@ a{color:#2c666c}
 'use strict';
 const $=id=>document.getElementById(id);
 const DB='castle-reader-on-device-v1',STORE='books',KEY='scans001to020',MAX=60*1024*1024;
+const REQUIRED_REVISION='目次・図版説明を読みやすく修正';
 let currentBlob=null,activeUrl='';
 function database(){
  return new Promise((resolve,reject)=>{
@@ -82,7 +85,8 @@ async function verify(blob){
  const head=await blob.slice(0,16000).text();
  if(!head.includes('中世ヨーロッパの城塞｜原本001〜020')||
     !head.includes('id="reader-main"')||
-    !head.includes('name="viewport"'))throw Error('別のHTMLです。Google Driveの「中世ヨーロッパの城塞_001-020_iPhone縦書き読書試作_校正継続中.html」を選択してください。');
+    !head.includes('name="viewport"')||
+    !head.includes(REQUIRED_REVISION))throw Error('このHTMLは旧版または別の本です。Googleドライブの「中世ヨーロッパの城塞_001-020_目次・図版説明_修正版_校正継続中.html」を選択してください。');
  return true;
 }
 async function openBook(blob){
@@ -118,8 +122,15 @@ window.addEventListener('pageshow',async()=>{
  try{
   const saved=await getSaved();
   if(saved?.blob){
-   $('reopen').hidden=false;
-   if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob);
+   let isCurrent=false;
+   try{await verify(saved.blob);isCurrent=true;}catch(_e){}
+   if(isCurrent){
+    $('reopen').hidden=false;
+    if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob);
+   }else{
+    $('reopen').hidden=true;
+    $('status').textContent='端末に旧版が保存されています。上のGoogleドライブから修正版を保存し、下の「修正版HTMLを選択して開く」で取り込んでください。旧版は自動表示しません。';
+   }
   }
  }catch(e){$('status').textContent='端末に保存済みの読書版はありません。最初の1回だけHTMLを選択してください。';}
 });
