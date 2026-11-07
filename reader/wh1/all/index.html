@@ -211,9 +211,22 @@ function positionText(){const s=SEGMENTS[currentState.segment];return s?`スキ�
 function showMenu(){if(!bookZip)return;$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
 function closeMenu(){$('menuOverlay').hidden=true;}
 function segmentForScan(scan){const i=SEGMENTS.findIndex(s=>scan>=s.start&&scan<=s.end);return i<0?0:i;}
+// 原本画像ページでは、元の各区間読書HTMLにscan番号属性がない場合がある。
+// 画像ページの実際の識別子 scan:274 等から復元し、末尾番号が先頭番号に化けるのを防ぐ。
+function scanFromPageKey(key){
+ const m=String(key||'').match(/^scan:(\d{1,3})$/);
+ if(!m)return null;
+ const n=Number(m[1]);return n>=1&&n<=274?n:null;
+}
+function resolveStateScan(state){return scanFromPageKey(state?.key)||state?.scan||SEGMENTS[Math.max(0,activeSegment)].start;}
+function destinationForScan(destination={}){
+ if(Number.isInteger(destination.scan)&&destination.scan>=1&&destination.scan<=274&&!destination.key)
+   return {...destination,key:'scan:'+destination.scan};
+ return destination;
+}
 async function openSegment(index,destination={}){
  if(!bookZip||index<0||index>=SEGMENTS.length)return;
- const token=++loadToken,s=SEGMENTS[index];pendingDest=destination;pendingLoaded=false;
+ const token=++loadToken,s=SEGMENTS[index];pendingDest=destinationForScan(destination);pendingLoaded=false;
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
   const text=await bookZip.readText(s.part);if(token!==loadToken)return;
@@ -240,7 +253,7 @@ function handleChildState(d){
   pendingLoaded=true;
   if(pendingDest && Object.keys(pendingDest).length){$('reader').contentWindow.postMessage({wh1bridge:1,action:'goto',destination:pendingDest},'*');pendingDest=null;return;}
  }
- currentState={segment:activeSegment,key:d.key||'',scan:d.scan||SEGMENTS[activeSegment].start,size:d.size||20};savePosition();clearBusy();
+ currentState={segment:activeSegment,key:d.key||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
  $('menuSummary').textContent=positionText();
 }
 window.addEventListener('message',e=>{
@@ -250,7 +263,7 @@ window.addEventListener('message',e=>{
  else if(d.type==='state')handleChildState(d);
  else if(d.type==='boundary'){const next=activeSegment+d.direction;if(next>=0&&next<SEGMENTS.length){const s=SEGMENTS[next];openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});}}
  else if(d.type==='menu')showMenu();
- else if(d.type==='original')openOriginal(d.scan);
+ else if(d.type==='original')openOriginal(scanFromPageKey(currentState.key)||d.scan);
 });
 function issueChild(action,extra={}){if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}
 async function openOriginal(scan){
