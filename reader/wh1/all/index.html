@@ -29,11 +29,11 @@
   <p>全274枚を、ひとつの読書画面で続けて読める統合版です。図版と説明は同じ画面に表示し、原本JPEGもそのまま確認できます。</p>
   <div class="spec"><span>縦書き20px</span><span>A−／A＋ 16〜30px</span><span>上スワイプで次へ</span><span>原本274枚</span></div>
   <h2>最初の一度だけ、書籍データを読み込む</h2>
-  <ol class="instructions"><li>統合書籍ZIPを1個、またはGoogle Driveに保存した分割データ001〜011をすべて「ファイル」に保存</li><li>下のボタンでZIPを1個、または分割データ11個をすべてまとめて選択する</li><li>読み込み後は全巻を連続して読めます。端末に保存できた場合は、次回自動で続きから開きます</li></ol>
+  <ol class="instructions"><li>統合書籍ZIPを1個、またはGoogle Driveに保存した分割データpart01〜part08の8個をすべて「ファイル」に保存</li><li>下のボタンでZIPを1個、または分割データ8個をすべてまとめて選択する</li><li>読み込み後は全巻を連続して読めます。端末に保存できた場合は、次回自動で続きから開きます</li></ol>
   <label class="button primary large" for="zipInput">統合書籍データを選んで開く</label>
   <input id="zipInput" type="file" multiple>
   <button class="button large" id="resume" hidden>保存済みの書籍を開く</button>
-  <p id="hint" role="status" aria-live="polite">統合書籍ZIP1個、または分割データ001〜011の11個を選択してください。</p>
+  <p id="hint" role="status" aria-live="polite">統合書籍ZIP1個、または分割データpart01〜part08の8個を選択してください。</p>
   <p class="notice">書籍の画像・本文はGitHubに送信・公開しません。原本JPEGの画素は変更していません。OCRの全字校正には未完了部分があり、原本確認機能を併設しています。大きな書籍データのため、端末の空き容量が必要です。</p>
  </section>
 </div>
@@ -96,19 +96,19 @@ function setHint(msg){$('hint').textContent=msg;}
 function pickedArchive(fileList){
  const chosen=Array.from(fileList||[]);
  if(chosen.length===1){
-   if(!/\.zip$/i.test(chosen[0].name))throw Error('統合書籍ZIPを1個、または分割データ001〜011をすべて選択してください。');
+   if(!/\.zip$/i.test(chosen[0].name))throw Error('統合書籍ZIPを1個、または分割データpart01〜part08をすべて選択してください。');
    return chosen[0];
  }
- if(chosen.length!==11)throw Error('分割データ001〜011の11個をまとめて選択してください。');
- const list=chosen.map(f=>({f,m:f.name.match(/^(.*\.zip)\.(\d{3})$/i)}));
- if(list.some(x=>!x.m))throw Error('分割データは統合ZIP名に連なる001〜011を選択してください。');
+ if(chosen.length!==8)throw Error('分割データpart01〜part08の8個をまとめて選択してください。');
+ const list=chosen.map(f=>({f,m:f.name.match(/^(.*)\.part(\d{2})$/i)}));
+ if(list.some(x=>!x.m))throw Error('分割データはpart01〜part08の形式のファイルを選択してください。');
  const root=list[0].m[1];
- if(list.some(x=>x.m[1]!==root)||new Set(list.map(x=>x.m[2])).size!==11)throw Error('同じ統合書籍の分割データ001〜011が必要です。');
+ if(list.some(x=>x.m[1]!==root)||new Set(list.map(x=>x.m[2])).size!==8)throw Error('同じ統合書籍の分割データpart01〜part08が必要です。');
  list.sort((a,b)=>Number(a.m[2])-Number(b.m[2]));
- if(list.some((x,i)=>Number(x.m[2])!==i+1))throw Error('分割データ001〜011に欠番があります。');
- if(list.some((x,i)=>i<10?x.f.size!==40000000:(!x.f.size||x.f.size>40000000)))throw Error('分割ファイルの容量が一致しません。再取得してください。');
+ if(list.some((x,i)=>Number(x.m[2])!==i+1))throw Error('分割データpart01〜part08に欠番があります。');
+ if(list.some((x,i)=>x.f.size!==(i<7?50331648:48068189)))throw Error('分割ファイルの容量が一致しません。再取得してください。');
  const joined=new Blob(list.map(x=>x.f),{type:'application/zip'});
- if(joined.size<=400000000||joined.size>440000000)throw Error('分割ファイルの合計サイズが一致しません。');
+ if(joined.size!==400389725)throw Error('分割ファイルの合計サイズが一致しません。');
  return joined;
 }
 function fillManifest(m){
