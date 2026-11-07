@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+<meta name="color-scheme" content="light">
+<title>世界の歴史1｜全274枚 統合縦書き読書</title>
+<style>
+:root{--paper:#fffdf7;--teal:#345c63;--ink:#233539;--muted:#617273;--bg:#f4f5ef;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #3095a0;outline-offset:2px}
+[hidden]{display:none!important}#reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:var(--paper);display:none}
+#setup{position:fixed;inset:0;overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:24px 14px calc(22px + env(safe-area-inset-bottom));background:#f4f6f1}
+.setup-card{width:min(100%,500px);background:white;border:1px solid #e0e8df;border-radius:18px;padding:26px 23px;box-shadow:0 16px 48px #192c2c11}
+.eyebrow{font-size:12px;color:var(--teal);font-weight:700;letter-spacing:.09em}h1{font-family:'Hiragino Mincho ProN',serif;font-size:27px;line-height:1.5;margin:8px 0 4px}h2{font-size:17px;margin:8px 0 14px}p{font-size:14px;line-height:1.85;margin:11px 0;color:#526466}.spec{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0}.spec span{background:#f1f5f2;border:1px solid #dfe8e2;color:#466263;padding:6px 9px;border-radius:22px;font-size:12px}.button{display:inline-flex;justify-content:center;align-items:center;gap:8px;padding:12px 15px;min-height:46px;border:1px solid #c6d8d2;border-radius:10px;background:white;color:var(--teal);font-weight:650;font-size:14px;line-height:1.5}.primary{background:var(--teal);border-color:var(--teal);color:white}.large{width:100%;margin-top:10px}.subtle{font-size:12px;color:#788587}#zipInput{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}#hint{font-size:13px;color:#4e696a;min-height:21px;white-space:pre-wrap;margin-top:12px;overflow-wrap:anywhere}.instructions{font-size:13px;line-height:1.7;padding-left:22px;color:#526466}.notice{border-top:1px solid #e6ebe7;padding-top:13px;margin-top:15px;font-size:12px}
+#busy{position:fixed;inset:0;z-index:19;background:#fbfcf8e8;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;text-align:center;padding:30px;color:#33545c;font-weight:650;font-size:14px;white-space:pre-wrap}
+.loader{height:28px;width:28px;border-radius:50%;border:3px solid #dbe5df;border-top-color:#3c646b;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+#menuOverlay,#originalOverlay{position:fixed;inset:0;z-index:22;background:#1f2d2d88;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
+.panel{background:#fffefa;border-radius:16px;padding:16px;width:min(100%,500px);max-height:94dvh;overflow-y:auto;box-shadow:0 18px 50px #07171522}.panelHead{display:flex;justify-content:space-between;gap:12px;align-items:center}.panelHead h2{margin:3px 0;font-size:18px}.xBtn{width:40px;height:40px;border:1px solid #d9e3db;background:white;border-radius:9px;font-size:22px}.panel label{display:block;font-size:12px;font-weight:700;margin:15px 0 6px;color:#647272}select,input[type=number]{width:100%;min-height:42px;border:1px solid #ccd9d2;border-radius:9px;background:white;color:#273b3c;padding:8px 10px}.formRow{display:flex;gap:10px;align-items:center}.formRow input{flex:1;min-width:0}.formRow button{flex:0 0 auto}.menuActions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.menuActions button{width:100%}.menuSummary{margin:8px 0 10px;padding:9px 11px;background:#f5f7f1;border-radius:8px;font-size:13px;color:#455b60}.menuToc{max-height:35vh;overflow-y:auto;border-top:1px solid #e4eae5;margin-top:12px}.tocButton{display:block;width:100%;background:white;border:0;border-bottom:1px solid #edf0ea;text-align:left;min-height:35px;padding:8px 6px;font-size:13px;color:#344b4c}.tocButton small{display:inline-block;min-width:41px;color:#87918b;font-size:11px}.tocButton:hover{background:#f3f7f4}
+#originalOverlay{z-index:25;background:#101919dc;flex-direction:column;padding:8px 0 calc(10px + env(safe-area-inset-bottom))}
+.originalToolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;width:100%;max-width:1000px;padding:3px 10px;color:white}.originalToolbar strong{font-size:14px}.originalToolbar button{border-radius:8px;border:1px solid #829495;background:#f7faf8;color:#15343a;min-width:40px;min-height:40px}.originalViewer{flex:1;width:100%;max-width:1000px;min-height:0;overflow:auto;display:flex;align-items:flex-start;justify-content:flex-start;touch-action:pan-x pan-y pinch-zoom}.originalViewport{margin:auto;min-width:100%;text-align:center;display:block}.originalViewport img{display:block;max-width:none;margin:0 auto;object-fit:contain;height:auto}.originalFooter{color:#d9e2df;font-size:11px;text-align:center;padding:4px 10px}
+</style>
+</head>
+<body>
+<iframe id="reader" title="世界の歴史1｜全274枚読書" sandbox="allow-scripts" loading="eager"></iframe>
+<div id="setup">
+ <section class="setup-card">
+  <div class="eyebrow">PRIVATE BOOK READER · OFFLINE</div>
+  <h1>世界の歴史１</h1>
+  <p>全274枚を、ひとつの読書画面で続けて読める統合版です。図版と説明は同じ画面に表示し、原本JPEGもそのまま確認できます。</p>
+  <div class="spec"><span>縦書き20px</span><span>A−／A＋ 16〜30px</span><span>上スワイプで次へ</span><span>原本274枚</span></div>
+  <h2>最初の一度だけ、書籍データを読み込む</h2>
+  <ol class="instructions"><li>統合書籍ZIPを1個、またはGoogle Driveに保存した分割データ001〜011をすべて「ファイル」に保存</li><li>下のボタンでZIPを1個、または分割データ11個をすべてまとめて選択する</li><li>読み込み後は全巻を連続して読めます。端末に保存できた場合は、次回自動で続きから開きます</li></ol>
+  <label class="button primary large" for="zipInput">統合書籍データを選んで開く</label>
+  <input id="zipInput" type="file" multiple>
+  <button class="button large" id="resume" hidden>保存済みの書籍を開く</button>
+  <p id="hint" role="status" aria-live="polite">統合書籍ZIP1個、または分割データ001〜011の11個を選択してください。</p>
+  <p class="notice">書籍の画像・本文はGitHubに送信・公開しません。原本JPEGの画素は変更していません。OCRの全字校正には未完了部分があり、原本確認機能を併設しています。大きな書籍データのため、端末の空き容量が必要です。</p>
+ </section>
+</div>
+<div id="busy" hidden><div class="loader"></div><div id="busyLabel">読書画面を読み込み中…</div></div>
+<div id="menuOverlay" hidden>
+ <section class="panel" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+  <div class="panelHead"><h2 id="menuTitle">全巻目次｜世界の歴史１</h2><button class="xBtn" id="menuClose" aria-label="閉じる">×</button></div>
+  <div class="menuSummary" id="menuSummary">全274枚</div>
+  <label for="partChoice">区間を選ぶ</label>
+  <select id="partChoice"></select>
+  <button class="button large primary" id="partGo">選んだ区間を開く</button>
+  <label for="scanNumber">スキャン番号から読む（1〜274）</label>
+  <div class="formRow"><input type="number" min="1" max="274" step="1" id="scanNumber" placeholder="例：131"><button class="button" id="scanGo">移動</button></div>
+  <div class="menuActions"><button class="button" id="localToc">この区間の目次</button><button class="button" id="menuOriginal">現在の原本</button><button class="button" id="reimport">書籍を再読込</button><button class="button" id="menuReturn">読書に戻る</button></div>
+  <label>主な見出し</label><div class="menuToc" id="allHeadings"></div>
+  <p class="subtle">書籍画像と本文は端末内の読書用ZIPから読み込みます。</p>
+ </section>
+</div>
+<div id="originalOverlay" hidden>
+ <div class="originalToolbar"><strong id="originalTitle">原本スキャン</strong><div><button id="zoomOut" aria-label="縮小">A−</button> <button id="zoomIn" aria-label="拡大">A＋</button> <button id="originalClose" aria-label="原本を閉じる">閉じる</button></div></div>
+ <div class="originalViewer" id="originalViewer"><div class="originalViewport"><img id="originalImage" alt="改変していない原本JPEG"></div></div>
+ <div class="originalFooter">原本画像そのものを表示しています。拡大・縮小ボタンで細部を確認できます。</div>
+</div>
+<!-- pako.inflateRaw: MIT License, copyright (C) 2014-2017 Vitaly Puzrin and Andrei Tuputcyn. Full license retained below. -->
+<script type="text/plain" id="pako-license">
+(The MIT License)
+
+Copyright (C) 2014-2017 by Vitaly Puzrin and Andrei Tuputcyn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+</script>
+<script>
+!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{("undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this).pako=e()}}(function(){return function r(o,s,f){function l(t,e){if(!s[t]){if(!o[t]){var i="function"==typeof require&&require;if(!e&&i)return i(t,!0);if(d)return d(t,!0);var n=new Error("Cannot find module '"+t+"'");throw n.code="MODULE_NOT_FOUND",n}var a=s[t]={exports:{}};o[t][0].call(a.exports,function(e){return l(o[t][1][e]||e)},a,a.exports,r,o,s,f)}return s[t].exports}for(var d="function"==typeof require&&require,e=0;e<f.length;e++)l(f[e]);return l}({1:[function(e,t,i){"use strict";var n="undefined"!=typeof Uint8Array&&"undefined"!=typeof Uint16Array&&"undefined"!=typeof Int32Array;i.assign=function(e){for(var t,i,n=Array.prototype.slice.call(arguments,1);n.length;){var a=n.shift();if(a){if("object"!=typeof a)throw new TypeError(a+"must be non-object");for(var r in a)t=a,i=r,Object.prototype.hasOwnProperty.call(t,i)&&(e[r]=a[r])}}return e},i.shrinkBuf=function(e,t){return e.length===t?e:e.subarray?e.subarray(0,t):(e.length=t,e)};var a={arraySet:function(e,t,i,n,a){if(t.subarray&&e.subarray)e.set(t.subarray(i,i+n),a);else for(var r=0;r<n;r++)e[a+r]=t[i+r]},flattenChunks:function(e){var t,i,n,a,r,o;for(t=n=0,i=e.length;t<i;t++)n+=e[t].length;for(o=new Uint8Array(n),t=a=0,i=e.length;t<i;t++)r=e[t],o.set(r,a),a+=r.length;return o}},r={arraySet:function(e,t,i,n,a){for(var r=0;r<n;r++)e[a+r]=t[i+r]},flattenChunks:function(e){return[].concat.apply([],e)}};i.setTyped=function(e){e?(i.Buf8=Uint8Array,i.Buf16=Uint16Array,i.Buf32=Int32Array,i.assign(i,a)):(i.Buf8=Array,i.Buf16=Array,i.Buf32=Array,i.assign(i,r))},i.setTyped(n)},{}],2:[function(e,t,i){"use strict";var f=e("./common"),a=!0,r=!0;try{String.fromCharCode.apply(null,[0])}catch(e){a=!1}try{String.fromCharCode.apply(null,new Uint8Array(1))}catch(e){r=!1}for(var l=new f.Buf8(256),n=0;n<256;n++)l[n]=252<=n?6:248<=n?5:240<=n?4:224<=n?3:192<=n?2:1;function d(e,t){if(t<65534&&(e.subarray&&r||!e.subarray&&a))return String.fromCharCode.apply(null,f.shrinkBuf(e,t));for(var i="",n=0;n<t;n++)i+=String.fromCharCode(e[n]);return i}l[254]=l[254]=1,i.string2buf=function(e){var t,i,n,a,r,o=e.length,s=0;for(a=0;a<o;a++)55296==(64512&(i=e.charCodeAt(a)))&&a+1<o&&56320==(64512&(n=e.charCodeAt(a+1)))&&(i=65536+(i-55296<<10)+(n-56320),a++),s+=i<128?1:i<2048?2:i<65536?3:4;for(t=new f.Buf8(s),a=r=0;r<s;a++)55296==(64512&(i=e.charCodeAt(a)))&&a+1<o&&56320==(64512&(n=e.charCodeAt(a+1)))&&(i=65536+(i-55296<<10)+(n-56320),a++),i<128?t[r++]=i:(i<2048?t[r++]=192|i>>>6:(i<65536?t[r++]=224|i>>>12:(t[r++]=240|i>>>18,t[r++]=128|i>>>12&63),t[r++]=128|i>>>6&63),t[r++]=128|63&i);return t},i.buf2binstring=function(e){return d(e,e.length)},i.binstring2buf=function(e){for(var t=new f.Buf8(e.length),i=0,n=t.length;i<n;i++)t[i]=e.charCodeAt(i);return t},i.buf2string=function(e,t){var i,n,a,r,o=t||e.length,s=new Array(2*o);for(i=n=0;i<o;)if((a=e[i++])<128)s[n++]=a;else if(4<(r=l[a]))s[n++]=65533,i+=r-1;else{for(a&=2===r?31:3===r?15:7;1<r&&i<o;)a=a<<6|63&e[i++],r--;1<r?s[n++]=65533:a<65536?s[n++]=a:(a-=65536,s[n++]=55296|a>>10&1023,s[n++]=56320|1023&a)}return d(s,n)},i.utf8border=function(e,t){var i;for((t=t||e.length)>e.length&&(t=e.length),i=t-1;0<=i&&128==(192&e[i]);)i--;return i<0?t:0===i?t:i+l[e[i]]>t?i:t}},{"./common":1}],3:[function(e,t,i){"use strict";t.exports=function(e,t,i,n){for(var a=65535&e|0,r=e>>>16&65535|0,o=0;0!==i;){for(i-=o=2e3<i?2e3:i;r=r+(a=a+t[n++]|0)|0,--o;);a%=65521,r%=65521}return a|r<<16|0}},{}],4:[function(e,t,i){"use strict";t.exports={Z_NO_FLUSH:0,Z_PARTIAL_FLUSH:1,Z_SYNC_FLUSH:2,Z_FULL_FLUSH:3,Z_FINISH:4,Z_BLOCK:5,Z_TREES:6,Z_OK:0,Z_STREAM_END:1,Z_NEED_DICT:2,Z_ERRNO:-1,Z_STREAM_ERROR:-2,Z_DATA_ERROR:-3,Z_BUF_ERROR:-5,Z_NO_COMPRESSION:0,Z_BEST_SPEED:1,Z_BEST_COMPRESSION:9,Z_DEFAULT_COMPRESSION:-1,Z_FILTERED:1,Z_HUFFMAN_ONLY:2,Z_RLE:3,Z_FIXED:4,Z_DEFAULT_STRATEGY:0,Z_BINARY:0,Z_TEXT:1,Z_UNKNOWN:2,Z_DEFLATED:8}},{}],5:[function(e,t,i){"use strict";var s=function(){for(var e,t=[],i=0;i<256;i++){e=i;for(var n=0;n<8;n++)e=1&e?3988292384^e>>>1:e>>>1;t[i]=e}return t}();t.exports=function(e,t,i,n){var a=s,r=n+i;e^=-1;for(var o=n;o<r;o++)e=e>>>8^a[255&(e^t[o])];return-1^e}},{}],6:[function(e,t,i){"use strict";t.exports=function(){this.text=0,this.time=0,this.xflags=0,this.os=0,this.extra=null,this.extra_len=0,this.name="",this.comment="",this.hcrc=0,this.done=!1}},{}],7:[function(e,t,i){"use strict";t.exports=function(e,t){var i,n,a,r,o,s,f,l,d,c,u,h,b,m,w,k,_,g,v,p,x,y,S,E,Z;i=e.state,n=e.next_in,E=e.input,a=n+(e.avail_in-5),r=e.next_out,Z=e.output,o=r-(t-e.avail_out),s=r+(e.avail_out-257),f=i.dmax,l=i.wsize,d=i.whave,c=i.wnext,u=i.window,h=i.hold,b=i.bits,m=i.lencode,w=i.distcode,k=(1<<i.lenbits)-1,_=(1<<i.distbits)-1;e:do{b<15&&(h+=E[n++]<<b,b+=8,h+=E[n++]<<b,b+=8),g=m[h&k];t:for(;;){if(h>>>=v=g>>>24,b-=v,0===(v=g>>>16&255))Z[r++]=65535&g;else{if(!(16&v)){if(0==(64&v)){g=m[(65535&g)+(h&(1<<v)-1)];continue t}if(32&v){i.mode=12;break e}e.msg="invalid literal/length code",i.mode=30;break e}p=65535&g,(v&=15)&&(b<v&&(h+=E[n++]<<b,b+=8),p+=h&(1<<v)-1,h>>>=v,b-=v),b<15&&(h+=E[n++]<<b,b+=8,h+=E[n++]<<b,b+=8),g=w[h&_];i:for(;;){if(h>>>=v=g>>>24,b-=v,!(16&(v=g>>>16&255))){if(0==(64&v)){g=w[(65535&g)+(h&(1<<v)-1)];continue i}e.msg="invalid distance code",i.mode=30;break e}if(x=65535&g,b<(v&=15)&&(h+=E[n++]<<b,(b+=8)<v&&(h+=E[n++]<<b,b+=8)),f<(x+=h&(1<<v)-1)){e.msg="invalid distance too far back",i.mode=30;break e}if(h>>>=v,b-=v,(v=r-o)<x){if(d<(v=x-v)&&i.sane){e.msg="invalid distance too far back",i.mode=30;break e}if(S=u,(y=0)===c){if(y+=l-v,v<p){for(p-=v;Z[r++]=u[y++],--v;);y=r-x,S=Z}}else if(c<v){if(y+=l+c-v,(v-=c)<p){for(p-=v;Z[r++]=u[y++],--v;);if(y=0,c<p){for(p-=v=c;Z[r++]=u[y++],--v;);y=r-x,S=Z}}}else if(y+=c-v,v<p){for(p-=v;Z[r++]=u[y++],--v;);y=r-x,S=Z}for(;2<p;)Z[r++]=S[y++],Z[r++]=S[y++],Z[r++]=S[y++],p-=3;p&&(Z[r++]=S[y++],1<p&&(Z[r++]=S[y++]))}else{for(y=r-x;Z[r++]=Z[y++],Z[r++]=Z[y++],Z[r++]=Z[y++],2<(p-=3););p&&(Z[r++]=Z[y++],1<p&&(Z[r++]=Z[y++]))}break}}break}}while(n<a&&r<s);n-=p=b>>3,h&=(1<<(b-=p<<3))-1,e.next_in=n,e.next_out=r,e.avail_in=n<a?a-n+5:5-(n-a),e.avail_out=r<s?s-r+257:257-(r-s),i.hold=h,i.bits=b}},{}],8:[function(e,t,i){"use strict";var z=e("../utils/common"),R=e("./adler32"),N=e("./crc32"),O=e("./inffast"),C=e("./inftrees"),I=1,D=2,T=0,U=-2,F=1,n=852,a=592;function L(e){return(e>>>24&255)+(e>>>8&65280)+((65280&e)<<8)+((255&e)<<24)}function r(){this.mode=0,this.last=!1,this.wrap=0,this.havedict=!1,this.flags=0,this.dmax=0,this.check=0,this.total=0,this.head=null,this.wbits=0,this.wsize=0,this.whave=0,this.wnext=0,this.window=null,this.hold=0,this.bits=0,this.length=0,this.offset=0,this.extra=0,this.lencode=null,this.distcode=null,this.lenbits=0,this.distbits=0,this.ncode=0,this.nlen=0,this.ndist=0,this.have=0,this.next=null,this.lens=new z.Buf16(320),this.work=new z.Buf16(288),this.lendyn=null,this.distdyn=null,this.sane=0,this.back=0,this.was=0}function o(e){var t;return e&&e.state?(t=e.state,e.total_in=e.total_out=t.total=0,e.msg="",t.wrap&&(e.adler=1&t.wrap),t.mode=F,t.last=0,t.havedict=0,t.dmax=32768,t.head=null,t.hold=0,t.bits=0,t.lencode=t.lendyn=new z.Buf32(n),t.distcode=t.distdyn=new z.Buf32(a),t.sane=1,t.back=-1,T):U}function s(e){var t;return e&&e.state?((t=e.state).wsize=0,t.whave=0,t.wnext=0,o(e)):U}function f(e,t){var i,n;return e&&e.state?(n=e.state,t<0?(i=0,t=-t):(i=1+(t>>4),t<48&&(t&=15)),t&&(t<8||15<t)?U:(null!==n.window&&n.wbits!==t&&(n.window=null),n.wrap=i,n.wbits=t,s(e))):U}function l(e,t){var i,n;return e?(n=new r,(e.state=n).window=null,(i=f(e,t))!==T&&(e.state=null),i):U}var d,c,u=!0;function H(e){if(u){var t;for(d=new z.Buf32(512),c=new z.Buf32(32),t=0;t<144;)e.lens[t++]=8;for(;t<256;)e.lens[t++]=9;for(;t<280;)e.lens[t++]=7;for(;t<288;)e.lens[t++]=8;for(C(I,e.lens,0,288,d,0,e.work,{bits:9}),t=0;t<32;)e.lens[t++]=5;C(D,e.lens,0,32,c,0,e.work,{bits:5}),u=!1}e.lencode=d,e.lenbits=9,e.distcode=c,e.distbits=5}function j(e,t,i,n){var a,r=e.state;return null===r.window&&(r.wsize=1<<r.wbits,r.wnext=0,r.whave=0,r.window=new z.Buf8(r.wsize)),n>=r.wsize?(z.arraySet(r.window,t,i-r.wsize,r.wsize,0),r.wnext=0,r.whave=r.wsize):(n<(a=r.wsize-r.wnext)&&(a=n),z.arraySet(r.window,t,i-n,a,r.wnext),(n-=a)?(z.arraySet(r.window,t,i-n,n,0),r.wnext=n,r.whave=r.wsize):(r.wnext+=a,r.wnext===r.wsize&&(r.wnext=0),r.whave<r.wsize&&(r.whave+=a))),0}i.inflateReset=s,i.inflateReset2=f,i.inflateResetKeep=o,i.inflateInit=function(e){return l(e,15)},i.inflateInit2=l,i.inflate=function(e,t){var i,n,a,r,o,s,f,l,d,c,u,h,b,m,w,k,_,g,v,p,x,y,S,E,Z=0,B=new z.Buf8(4),A=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];if(!e||!e.state||!e.output||!e.input&&0!==e.avail_in)return U;12===(i=e.state).mode&&(i.mode=13),o=e.next_out,a=e.output,f=e.avail_out,r=e.next_in,n=e.input,s=e.avail_in,l=i.hold,d=i.bits,c=s,u=f,y=T;e:for(;;)switch(i.mode){case F:if(0===i.wrap){i.mode=13;break}for(;d<16;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(2&i.wrap&&35615===l){B[i.check=0]=255&l,B[1]=l>>>8&255,i.check=N(i.check,B,2,0),d=l=0,i.mode=2;break}if(i.flags=0,i.head&&(i.head.done=!1),!(1&i.wrap)||(((255&l)<<8)+(l>>8))%31){e.msg="incorrect header check",i.mode=30;break}if(8!=(15&l)){e.msg="unknown compression method",i.mode=30;break}if(d-=4,x=8+(15&(l>>>=4)),0===i.wbits)i.wbits=x;else if(x>i.wbits){e.msg="invalid window size",i.mode=30;break}i.dmax=1<<x,e.adler=i.check=1,i.mode=512&l?10:12,d=l=0;break;case 2:for(;d<16;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(i.flags=l,8!=(255&i.flags)){e.msg="unknown compression method",i.mode=30;break}if(57344&i.flags){e.msg="unknown header flags set",i.mode=30;break}i.head&&(i.head.text=l>>8&1),512&i.flags&&(B[0]=255&l,B[1]=l>>>8&255,i.check=N(i.check,B,2,0)),d=l=0,i.mode=3;case 3:for(;d<32;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}i.head&&(i.head.time=l),512&i.flags&&(B[0]=255&l,B[1]=l>>>8&255,B[2]=l>>>16&255,B[3]=l>>>24&255,i.check=N(i.check,B,4,0)),d=l=0,i.mode=4;case 4:for(;d<16;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}i.head&&(i.head.xflags=255&l,i.head.os=l>>8),512&i.flags&&(B[0]=255&l,B[1]=l>>>8&255,i.check=N(i.check,B,2,0)),d=l=0,i.mode=5;case 5:if(1024&i.flags){for(;d<16;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}i.length=l,i.head&&(i.head.extra_len=l),512&i.flags&&(B[0]=255&l,B[1]=l>>>8&255,i.check=N(i.check,B,2,0)),d=l=0}else i.head&&(i.head.extra=null);i.mode=6;case 6:if(1024&i.flags&&(s<(h=i.length)&&(h=s),h&&(i.head&&(x=i.head.extra_len-i.length,i.head.extra||(i.head.extra=new Array(i.head.extra_len)),z.arraySet(i.head.extra,n,r,h,x)),512&i.flags&&(i.check=N(i.check,n,h,r)),s-=h,r+=h,i.length-=h),i.length))break e;i.length=0,i.mode=7;case 7:if(2048&i.flags){if(0===s)break e;for(h=0;x=n[r+h++],i.head&&x&&i.length<65536&&(i.head.name+=String.fromCharCode(x)),x&&h<s;);if(512&i.flags&&(i.check=N(i.check,n,h,r)),s-=h,r+=h,x)break e}else i.head&&(i.head.name=null);i.length=0,i.mode=8;case 8:if(4096&i.flags){if(0===s)break e;for(h=0;x=n[r+h++],i.head&&x&&i.length<65536&&(i.head.comment+=String.fromCharCode(x)),x&&h<s;);if(512&i.flags&&(i.check=N(i.check,n,h,r)),s-=h,r+=h,x)break e}else i.head&&(i.head.comment=null);i.mode=9;case 9:if(512&i.flags){for(;d<16;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(l!==(65535&i.check)){e.msg="header crc mismatch",i.mode=30;break}d=l=0}i.head&&(i.head.hcrc=i.flags>>9&1,i.head.done=!0),e.adler=i.check=0,i.mode=12;break;case 10:for(;d<32;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}e.adler=i.check=L(l),d=l=0,i.mode=11;case 11:if(0===i.havedict)return e.next_out=o,e.avail_out=f,e.next_in=r,e.avail_in=s,i.hold=l,i.bits=d,2;e.adler=i.check=1,i.mode=12;case 12:if(5===t||6===t)break e;case 13:if(i.last){l>>>=7&d,d-=7&d,i.mode=27;break}for(;d<3;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}switch(i.last=1&l,d-=1,3&(l>>>=1)){case 0:i.mode=14;break;case 1:if(H(i),i.mode=20,6!==t)break;l>>>=2,d-=2;break e;case 2:i.mode=17;break;case 3:e.msg="invalid block type",i.mode=30}l>>>=2,d-=2;break;case 14:for(l>>>=7&d,d-=7&d;d<32;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if((65535&l)!=(l>>>16^65535)){e.msg="invalid stored block lengths",i.mode=30;break}if(i.length=65535&l,d=l=0,i.mode=15,6===t)break e;case 15:i.mode=16;case 16:if(h=i.length){if(s<h&&(h=s),f<h&&(h=f),0===h)break e;z.arraySet(a,n,r,h,o),s-=h,r+=h,f-=h,o+=h,i.length-=h;break}i.mode=12;break;case 17:for(;d<14;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(i.nlen=257+(31&l),l>>>=5,d-=5,i.ndist=1+(31&l),l>>>=5,d-=5,i.ncode=4+(15&l),l>>>=4,d-=4,286<i.nlen||30<i.ndist){e.msg="too many length or distance symbols",i.mode=30;break}i.have=0,i.mode=18;case 18:for(;i.have<i.ncode;){for(;d<3;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}i.lens[A[i.have++]]=7&l,l>>>=3,d-=3}for(;i.have<19;)i.lens[A[i.have++]]=0;if(i.lencode=i.lendyn,i.lenbits=7,S={bits:i.lenbits},y=C(0,i.lens,0,19,i.lencode,0,i.work,S),i.lenbits=S.bits,y){e.msg="invalid code lengths set",i.mode=30;break}i.have=0,i.mode=19;case 19:for(;i.have<i.nlen+i.ndist;){for(;k=(Z=i.lencode[l&(1<<i.lenbits)-1])>>>16&255,_=65535&Z,!((w=Z>>>24)<=d);){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(_<16)l>>>=w,d-=w,i.lens[i.have++]=_;else{if(16===_){for(E=w+2;d<E;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(l>>>=w,d-=w,0===i.have){e.msg="invalid bit length repeat",i.mode=30;break}x=i.lens[i.have-1],h=3+(3&l),l>>>=2,d-=2}else if(17===_){for(E=w+3;d<E;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}d-=w,x=0,h=3+(7&(l>>>=w)),l>>>=3,d-=3}else{for(E=w+7;d<E;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}d-=w,x=0,h=11+(127&(l>>>=w)),l>>>=7,d-=7}if(i.have+h>i.nlen+i.ndist){e.msg="invalid bit length repeat",i.mode=30;break}for(;h--;)i.lens[i.have++]=x}}if(30===i.mode)break;if(0===i.lens[256]){e.msg="invalid code -- missing end-of-block",i.mode=30;break}if(i.lenbits=9,S={bits:i.lenbits},y=C(I,i.lens,0,i.nlen,i.lencode,0,i.work,S),i.lenbits=S.bits,y){e.msg="invalid literal/lengths set",i.mode=30;break}if(i.distbits=6,i.distcode=i.distdyn,S={bits:i.distbits},y=C(D,i.lens,i.nlen,i.ndist,i.distcode,0,i.work,S),i.distbits=S.bits,y){e.msg="invalid distances set",i.mode=30;break}if(i.mode=20,6===t)break e;case 20:i.mode=21;case 21:if(6<=s&&258<=f){e.next_out=o,e.avail_out=f,e.next_in=r,e.avail_in=s,i.hold=l,i.bits=d,O(e,u),o=e.next_out,a=e.output,f=e.avail_out,r=e.next_in,n=e.input,s=e.avail_in,l=i.hold,d=i.bits,12===i.mode&&(i.back=-1);break}for(i.back=0;k=(Z=i.lencode[l&(1<<i.lenbits)-1])>>>16&255,_=65535&Z,!((w=Z>>>24)<=d);){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(k&&0==(240&k)){for(g=w,v=k,p=_;k=(Z=i.lencode[p+((l&(1<<g+v)-1)>>g)])>>>16&255,_=65535&Z,!(g+(w=Z>>>24)<=d);){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}l>>>=g,d-=g,i.back+=g}if(l>>>=w,d-=w,i.back+=w,i.length=_,0===k){i.mode=26;break}if(32&k){i.back=-1,i.mode=12;break}if(64&k){e.msg="invalid literal/length code",i.mode=30;break}i.extra=15&k,i.mode=22;case 22:if(i.extra){for(E=i.extra;d<E;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}i.length+=l&(1<<i.extra)-1,l>>>=i.extra,d-=i.extra,i.back+=i.extra}i.was=i.length,i.mode=23;case 23:for(;k=(Z=i.distcode[l&(1<<i.distbits)-1])>>>16&255,_=65535&Z,!((w=Z>>>24)<=d);){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(0==(240&k)){for(g=w,v=k,p=_;k=(Z=i.distcode[p+((l&(1<<g+v)-1)>>g)])>>>16&255,_=65535&Z,!(g+(w=Z>>>24)<=d);){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}l>>>=g,d-=g,i.back+=g}if(l>>>=w,d-=w,i.back+=w,64&k){e.msg="invalid distance code",i.mode=30;break}i.offset=_,i.extra=15&k,i.mode=24;case 24:if(i.extra){for(E=i.extra;d<E;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}i.offset+=l&(1<<i.extra)-1,l>>>=i.extra,d-=i.extra,i.back+=i.extra}if(i.offset>i.dmax){e.msg="invalid distance too far back",i.mode=30;break}i.mode=25;case 25:if(0===f)break e;if(h=u-f,i.offset>h){if((h=i.offset-h)>i.whave&&i.sane){e.msg="invalid distance too far back",i.mode=30;break}h>i.wnext?(h-=i.wnext,b=i.wsize-h):b=i.wnext-h,h>i.length&&(h=i.length),m=i.window}else m=a,b=o-i.offset,h=i.length;for(f<h&&(h=f),f-=h,i.length-=h;a[o++]=m[b++],--h;);0===i.length&&(i.mode=21);break;case 26:if(0===f)break e;a[o++]=i.length,f--,i.mode=21;break;case 27:if(i.wrap){for(;d<32;){if(0===s)break e;s--,l|=n[r++]<<d,d+=8}if(u-=f,e.total_out+=u,i.total+=u,u&&(e.adler=i.check=i.flags?N(i.check,a,u,o-u):R(i.check,a,u,o-u)),u=f,(i.flags?l:L(l))!==i.check){e.msg="incorrect data check",i.mode=30;break}d=l=0}i.mode=28;case 28:if(i.wrap&&i.flags){for(;d<32;){if(0===s)break e;s--,l+=n[r++]<<d,d+=8}if(l!==(4294967295&i.total)){e.msg="incorrect length check",i.mode=30;break}d=l=0}i.mode=29;case 29:y=1;break e;case 30:y=-3;break e;case 31:return-4;case 32:default:return U}return e.next_out=o,e.avail_out=f,e.next_in=r,e.avail_in=s,i.hold=l,i.bits=d,(i.wsize||u!==e.avail_out&&i.mode<30&&(i.mode<27||4!==t))&&j(e,e.output,e.next_out,u-e.avail_out)?(i.mode=31,-4):(c-=e.avail_in,u-=e.avail_out,e.total_in+=c,e.total_out+=u,i.total+=u,i.wrap&&u&&(e.adler=i.check=i.flags?N(i.check,a,u,e.next_out-u):R(i.check,a,u,e.next_out-u)),e.data_type=i.bits+(i.last?64:0)+(12===i.mode?128:0)+(20===i.mode||15===i.mode?256:0),(0===c&&0===u||4===t)&&y===T&&(y=-5),y)},i.inflateEnd=function(e){if(!e||!e.state)return U;var t=e.state;return t.window&&(t.window=null),e.state=null,T},i.inflateGetHeader=function(e,t){var i;return e&&e.state?0==(2&(i=e.state).wrap)?U:((i.head=t).done=!1,T):U},i.inflateSetDictionary=function(e,t){var i,n=t.length;return e&&e.state?0!==(i=e.state).wrap&&11!==i.mode?U:11===i.mode&&R(1,t,n,0)!==i.check?-3:j(e,t,n,n)?(i.mode=31,-4):(i.havedict=1,T):U},i.inflateInfo="pako inflate (from Nodeca project)"},{"../utils/common":1,"./adler32":3,"./crc32":5,"./inffast":7,"./inftrees":9}],9:[function(e,t,i){"use strict";var I=e("../utils/common"),D=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258,0,0],T=[16,16,16,16,16,16,16,16,17,17,17,17,18,18,18,18,19,19,19,19,20,20,20,20,21,21,21,21,16,72,78],U=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577,0,0],F=[16,16,16,16,17,17,18,18,19,19,20,20,21,21,22,22,23,23,24,24,25,25,26,26,27,27,28,28,29,29,64,64];t.exports=function(e,t,i,n,a,r,o,s){var f,l,d,c,u,h,b,m,w,k=s.bits,_=0,g=0,v=0,p=0,x=0,y=0,S=0,E=0,Z=0,B=0,A=null,z=0,R=new I.Buf16(16),N=new I.Buf16(16),O=null,C=0;for(_=0;_<=15;_++)R[_]=0;for(g=0;g<n;g++)R[t[i+g]]++;for(x=k,p=15;1<=p&&0===R[p];p--);if(p<x&&(x=p),0===p)return a[r++]=20971520,a[r++]=20971520,s.bits=1,0;for(v=1;v<p&&0===R[v];v++);for(x<v&&(x=v),_=E=1;_<=15;_++)if(E<<=1,(E-=R[_])<0)return-1;if(0<E&&(0===e||1!==p))return-1;for(N[1]=0,_=1;_<15;_++)N[_+1]=N[_]+R[_];for(g=0;g<n;g++)0!==t[i+g]&&(o[N[t[i+g]]++]=g);if(0===e?(A=O=o,h=19):1===e?(A=D,z-=257,O=T,C-=257,h=256):(A=U,O=F,h=-1),_=v,u=r,S=g=B=0,d=-1,c=(Z=1<<(y=x))-1,1===e&&852<Z||2===e&&592<Z)return 1;for(;;){for(b=_-S,o[g]<h?(m=0,w=o[g]):o[g]>h?(m=O[C+o[g]],w=A[z+o[g]]):(m=96,w=0),f=1<<_-S,v=l=1<<y;a[u+(B>>S)+(l-=f)]=b<<24|m<<16|w|0,0!==l;);for(f=1<<_-1;B&f;)f>>=1;if(0!==f?(B&=f-1,B+=f):B=0,g++,0==--R[_]){if(_===p)break;_=t[i+o[g]]}if(x<_&&(B&c)!==d){for(0===S&&(S=x),u+=v,E=1<<(y=_-S);y+S<p&&!((E-=R[y+S])<=0);)y++,E<<=1;if(Z+=1<<y,1===e&&852<Z||2===e&&592<Z)return 1;a[d=B&c]=x<<24|y<<16|u-r|0}}return 0!==B&&(a[u+B]=_-S<<24|64<<16|0),s.bits=x,0}},{"../utils/common":1}],10:[function(e,t,i){"use strict";t.exports={2:"need dictionary",1:"stream end",0:"","-1":"file error","-2":"stream error","-3":"data error","-4":"insufficient memory","-5":"buffer error","-6":"incompatible version"}},{}],11:[function(e,t,i){"use strict";t.exports=function(){this.input=null,this.next_in=0,this.avail_in=0,this.total_in=0,this.output=null,this.next_out=0,this.avail_out=0,this.total_out=0,this.msg="",this.state=null,this.data_type=2,this.adler=0}},{}],"/lib/inflate.js":[function(e,t,i){"use strict";var c=e("./zlib/inflate"),u=e("./utils/common"),h=e("./utils/strings"),b=e("./zlib/constants"),n=e("./zlib/messages"),a=e("./zlib/zstream"),r=e("./zlib/gzheader"),m=Object.prototype.toString;function o(e){if(!(this instanceof o))return new o(e);this.options=u.assign({chunkSize:16384,windowBits:0,to:""},e||{});var t=this.options;t.raw&&0<=t.windowBits&&t.windowBits<16&&(t.windowBits=-t.windowBits,0===t.windowBits&&(t.windowBits=-15)),!(0<=t.windowBits&&t.windowBits<16)||e&&e.windowBits||(t.windowBits+=32),15<t.windowBits&&t.windowBits<48&&0==(15&t.windowBits)&&(t.windowBits|=15),this.err=0,this.msg="",this.ended=!1,this.chunks=[],this.strm=new a,this.strm.avail_out=0;var i=c.inflateInit2(this.strm,t.windowBits);if(i!==b.Z_OK)throw new Error(n[i]);if(this.header=new r,c.inflateGetHeader(this.strm,this.header),t.dictionary&&("string"==typeof t.dictionary?t.dictionary=h.string2buf(t.dictionary):"[object ArrayBuffer]"===m.call(t.dictionary)&&(t.dictionary=new Uint8Array(t.dictionary)),t.raw&&(i=c.inflateSetDictionary(this.strm,t.dictionary))!==b.Z_OK))throw new Error(n[i])}function s(e,t){var i=new o(t);if(i.push(e,!0),i.err)throw i.msg||n[i.err];return i.result}o.prototype.push=function(e,t){var i,n,a,r,o,s=this.strm,f=this.options.chunkSize,l=this.options.dictionary,d=!1;if(this.ended)return!1;n=t===~~t?t:!0===t?b.Z_FINISH:b.Z_NO_FLUSH,"string"==typeof e?s.input=h.binstring2buf(e):"[object ArrayBuffer]"===m.call(e)?s.input=new Uint8Array(e):s.input=e,s.next_in=0,s.avail_in=s.input.length;do{if(0===s.avail_out&&(s.output=new u.Buf8(f),s.next_out=0,s.avail_out=f),(i=c.inflate(s,b.Z_NO_FLUSH))===b.Z_NEED_DICT&&l&&(i=c.inflateSetDictionary(this.strm,l)),i===b.Z_BUF_ERROR&&!0===d&&(i=b.Z_OK,d=!1),i!==b.Z_STREAM_END&&i!==b.Z_OK)return this.onEnd(i),!(this.ended=!0);s.next_out&&(0!==s.avail_out&&i!==b.Z_STREAM_END&&(0!==s.avail_in||n!==b.Z_FINISH&&n!==b.Z_SYNC_FLUSH)||("string"===this.options.to?(a=h.utf8border(s.output,s.next_out),r=s.next_out-a,o=h.buf2string(s.output,a),s.next_out=r,s.avail_out=f-r,r&&u.arraySet(s.output,s.output,a,r,0),this.onData(o)):this.onData(u.shrinkBuf(s.output,s.next_out)))),0===s.avail_in&&0===s.avail_out&&(d=!0)}while((0<s.avail_in||0===s.avail_out)&&i!==b.Z_STREAM_END);return i===b.Z_STREAM_END&&(n=b.Z_FINISH),n===b.Z_FINISH?(i=c.inflateEnd(this.strm),this.onEnd(i),this.ended=!0,i===b.Z_OK):n!==b.Z_SYNC_FLUSH||(this.onEnd(b.Z_OK),!(s.avail_out=0))},o.prototype.onData=function(e){this.chunks.push(e)},o.prototype.onEnd=function(e){e===b.Z_OK&&("string"===this.options.to?this.result=this.chunks.join(""):this.result=u.flattenChunks(this.chunks)),this.chunks=[],this.err=e,this.msg=this.strm.msg},i.Inflate=o,i.inflate=s,i.inflateRaw=function(e,t){return(t=t||{}).raw=!0,s(e,t)},i.ungzip=s},{"./utils/common":1,"./utils/strings":2,"./zlib/constants":4,"./zlib/gzheader":6,"./zlib/inflate":8,"./zlib/messages":10,"./zlib/zstream":11}]},{},[])("/lib/inflate.js")});
+
+</script>
+<script>
+'use strict';
+const SEGMENTS=[];let manifest=null,bookZip=null,activeSegment=-1,pendingDest=null,pendingLoaded=false,frameURL='',currentState={segment:0,key:'',scan:1,size:20},originalURL='',originalScale=1,loadToken=0,saving=false;
+const $=id=>document.getElementById(id);
+function setBusy(msg){$('busyLabel').textContent=msg;$('busy').hidden=false;}
+function clearBusy(){$('busy').hidden=true;}
+function setHint(msg){$('hint').textContent=msg;}
+function pickedArchive(fileList){
+ const chosen=Array.from(fileList||[]);
+ if(chosen.length===1){
+   if(!/\.zip$/i.test(chosen[0].name))throw Error('統合書籍ZIPを1個、または分割データ001〜011をすべて選択してください。');
+   return chosen[0];
+ }
+ if(chosen.length!==11)throw Error('分割データ001〜011の11個をまとめて選択してください。');
+ const list=chosen.map(f=>({f,m:f.name.match(/^(.*\.zip)\.(\d{3})$/i)}));
+ if(list.some(x=>!x.m))throw Error('分割データは統合ZIP名に連なる001〜011を選択してください。');
+ const root=list[0].m[1];
+ if(list.some(x=>x.m[1]!==root)||new Set(list.map(x=>x.m[2])).size!==11)throw Error('同じ統合書籍の分割データ001〜011が必要です。');
+ list.sort((a,b)=>Number(a.m[2])-Number(b.m[2]));
+ if(list.some((x,i)=>Number(x.m[2])!==i+1))throw Error('分割データ001〜011に欠番があります。');
+ if(list.some((x,i)=>i<10?x.f.size!==40000000:(!x.f.size||x.f.size>40000000)))throw Error('分割ファイルの容量が一致しません。再取得してください。');
+ const joined=new Blob(list.map(x=>x.f),{type:'application/zip'});
+ if(joined.size<=400000000||joined.size>440000000)throw Error('分割ファイルの合計サイズが一致しません。');
+ return joined;
+}
+function fillManifest(m){
+ if(!m||m.schema!==1||m.range?.[0]!==1||m.range?.[1]!==274||!Array.isArray(m.segments)||m.segments.length!==14)throw Error('指定された統合書籍ZIPではありません。');
+ for(let i=0;i<m.segments.length;i++){
+   const s=m.segments[i];if(!s.part||!s.assets||s.start> s.end)throw Error('書籍の構成情報が壊れています');
+   if(i>0&&m.segments[i-1].end+1!==s.start)throw Error('スキャン番号に欠番があります');
+ }
+ if(m.segments[0].start!==1||m.segments.at(-1).end!==274)throw Error('274枚に対応しない書籍ZIPです');
+ for(let n=1;n<=274;n++)if(!m.originalScans?.[String(n)]?.path)throw Error('原本スキャンが不足しています: '+n);
+ manifest=m;SEGMENTS.splice(0,SEGMENTS.length,...m.segments);
+ $('partChoice').replaceChildren();const toc=$('allHeadings');toc.replaceChildren();
+ for(let i=0;i<SEGMENTS.length;i++){
+  const s=SEGMENTS[i],o=new Option(`${s.start}〜${s.end}枚目`,String(i));$('partChoice').append(o);
+  for(const heading of (s.headings||[])){
+   if(!heading.text||heading.text.length>110)continue;
+   const btn=document.createElement('button');btn.className='tocButton';
+   const lbl=document.createElement('small');lbl.textContent=heading.scan+'枚目';btn.append(lbl,document.createTextNode(heading.text));
+   btn.onclick=()=>{closeMenu();openSegment(i,{scan:heading.scan});};toc.append(btn);
+  }
+ }
+}
+function makeCrcTable(){const table=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0;}return table;}
+const CRC_TABLE=makeCrcTable();
+function crc32(data){let crc=0xffffffff;for(let i=0;i<data.length;i++)crc=CRC_TABLE[(crc^data[i])&255]^(crc>>>8);return (crc^0xffffffff)>>>0;}
+class ZipBook {
+ constructor(blob){this.blob=blob;this.entries=new Map();}
+ async index(){
+  if(this.blob.size<40||this.blob.size>850000000)throw Error('ZIPのサイズが正しくありません（上限850MB）');
+  const tailStart=Math.max(0,this.blob.size-70000),tail=new DataView(await this.blob.slice(tailStart).arrayBuffer());let end=-1;
+  for(let i=tail.byteLength-22;i>=0;i--){if(tail.getUint32(i,true)===0x06054b50){end=i;break;}}
+  if(end<0)throw Error('ZIPの終端が見つかりません');
+  const total=tail.getUint16(end+10,true),centralSize=tail.getUint32(end+12,true),centralOffset=tail.getUint32(end+16,true);
+  if(total>950||total<100||centralSize>300000||centralOffset===0xffffffff||centralOffset+centralSize>this.blob.size)throw Error('書籍ZIPの構成が正しくありません');
+  const dir=new DataView(await this.blob.slice(centralOffset,centralOffset+centralSize).arrayBuffer()),dec=new TextDecoder();let pos=0;
+  for(let k=0;k<total;k++){
+   if(pos+46>dir.byteLength||dir.getUint32(pos,true)!==0x02014b50)throw Error('ZIPの目録が壊れています');
+   const flags=dir.getUint16(pos+8,true),method=dir.getUint16(pos+10,true),crc=dir.getUint32(pos+16,true),compressed=dir.getUint32(pos+20,true),uncompressed=dir.getUint32(pos+24,true),nameLen=dir.getUint16(pos+28,true),extraLen=dir.getUint16(pos+30,true),commentLen=dir.getUint16(pos+32,true),localOffset=dir.getUint32(pos+42,true);
+   if(flags&1||![0,8].includes(method)||uncompressed>82000000||localOffset===0xffffffff||pos+46+nameLen+extraLen+commentLen>dir.byteLength)throw Error('未対応の書籍ZIP形式です');
+   const name=dec.decode(new Uint8Array(dir.buffer,dir.byteOffset+pos+46,nameLen));
+   if(this.entries.has(name)||name.includes('..')||name.startsWith('/'))throw Error('書籍ZIP内のパスが正しくありません');
+   this.entries.set(name,{method,crc,compressed,uncompressed,localOffset});pos+=46+nameLen+extraLen+commentLen;
+  }
+  if(!this.entries.has('manifest.json'))throw Error('統合書籍ZIPの目録がありません');
+  return this;
+ }
+ async dataSlice(path){
+  const e=this.entries.get(path);if(!e)throw Error('ZIP内のファイルがありません: '+path);
+  if(e.dataStart===undefined){
+   const d=new DataView(await this.blob.slice(e.localOffset,e.localOffset+30).arrayBuffer());
+   if(d.byteLength<30||d.getUint32(0,true)!==0x04034b50)throw Error('ZIPヘッダーが壊れています');
+   e.dataStart=e.localOffset+30+d.getUint16(26,true)+d.getUint16(28,true);
+  }
+  if(e.dataStart+e.compressed>this.blob.size)throw Error('ZIPのデータ領域が壊れています');
+  return {entry:e,blob:this.blob.slice(e.dataStart,e.dataStart+e.compressed)};
+ }
+ async readBytes(path){
+  const {entry:e,blob}=await this.dataSlice(path);
+  let raw=new Uint8Array(await blob.arrayBuffer());
+  if(e.method===8){
+   let decomp=null;
+   if('DecompressionStream' in window){
+    try{decomp=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());}catch(_){}
+   }
+   raw=decomp||window.pako.inflateRaw(raw);
+  }
+  if(raw.length!==e.uncompressed||crc32(raw)!==e.crc)throw Error('ZIP内のファイルが破損しています: '+path);
+  return raw;
+ }
+ async readText(path){return new TextDecoder().decode(await this.readBytes(path));}
+ async imageBlob(path){
+  const {entry:e,blob}=await this.dataSlice(path);
+  if(e.method!==0) return new Blob([await this.readBytes(path)],{type:'image/jpeg'});
+  return blob.slice(0,blob.size,'image/jpeg');
+ }
+}
+function savePosition(){try{localStorage.setItem('WH1_UNIFIED_POSITION',JSON.stringify(currentState));}catch(_){}}
+function restorePosition(){try{let p=JSON.parse(localStorage.getItem('WH1_UNIFIED_POSITION'));if(p && Number.isInteger(p.segment)&&p.segment>=0&&p.segment<14)return p;}catch(_){}return {segment:0,key:'',scan:1,size:20};}
+async function dbOpen(){return new Promise((resolve,reject)=>{const req=indexedDB.open('wh1-unified-book',1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('archive'))req.result.createObjectStore('archive');};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+async function dbRead(){const db=await dbOpen();try{return await new Promise((resolve,reject)=>{const r=db.transaction('archive','readonly').objectStore('archive').get('full');r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);});}finally{db.close();}}
+async function dbSave(blob){const db=await dbOpen();try{return await new Promise((resolve,reject)=>{const tr=db.transaction('archive','readwrite');tr.objectStore('archive').put({blob,name:blob.name||'世界の歴史1.zip',saved:Date.now()},'full');tr.oncomplete=resolve;tr.onerror=()=>reject(tr.error);tr.onabort=()=>reject(tr.error);});}finally{db.close();}}
+async function loadBook(file,shouldSave=true){
+ setBusy('統合書籍の目録を確認しています…');
+ try{
+  const book=await new ZipBook(file).index();const m=JSON.parse(await book.readText('manifest.json'));
+  fillManifest(m);bookZip=book;
+  if(shouldSave){
+    setHint('端末への保存を試しています…（容量によっては保存できない場合があります）');
+    Promise.resolve().then(()=>dbSave(file)).then(()=>{
+      $('resume').hidden=false;setHint('端末に保存できました。次回は続きから自動で開けます。');
+    }).catch(()=>{
+      setHint('端末に自動保存できませんでした。今回の読書は可能です。次回はZIPを再選択してください。');
+    });
+  }
+  $('setup').hidden=true;$('reader').style.display='block';
+  currentState=restorePosition();await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});
+ }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
+}
+function positionText(){const s=SEGMENTS[currentState.segment];return s?`スキャン ${currentState.scan} / 274　｜　区間 ${s.start}〜${s.end}　｜　文字 ${currentState.size}px`: '全274枚';}
+function showMenu(){if(!bookZip)return;$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
+function closeMenu(){$('menuOverlay').hidden=true;}
+function segmentForScan(scan){const i=SEGMENTS.findIndex(s=>scan>=s.start&&scan<=s.end);return i<0?0:i;}
+async function openSegment(index,destination={}){
+ if(!bookZip||index<0||index>=SEGMENTS.length)return;
+ const token=++loadToken,s=SEGMENTS[index];pendingDest=destination;pendingLoaded=false;
+ setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
+ try{
+  const text=await bookZip.readText(s.part);if(token!==loadToken)return;
+  const content=new Blob([text],{type:'text/html'});
+  if(frameURL) URL.revokeObjectURL(frameURL);
+  frameURL=URL.createObjectURL(content);activeSegment=index;
+  $('reader').src=frameURL;
+ }catch(err){if(token===loadToken){clearBusy();setHint('読書区間の読み込みに失敗しました: '+(err.message||String(err)));$('setup').hidden=false;}throw err;}
+}
+async function handlePrepare(index){
+ const token=loadToken;if(index!==activeSegment||!bookZip)return;
+ const s=SEGMENTS[index],assets=[];
+ try{
+  for(const [name,meta] of Object.entries(s.assets)) {
+   if(token!==loadToken)return;
+   const bytes=await bookZip.readBytes(meta.path);assets.push({name,mime:meta.mime,data:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)});
+  }
+  if(token!==loadToken)return;
+  $('reader').contentWindow.postMessage({wh1bridge:1,action:'loadAssets',assets,size:currentState.size},'*',assets.map(a=>a.data));
+ }catch(e){if(token===loadToken){clearBusy();$('setup').hidden=false;setHint('画像の照合・展開に失敗: '+(e.message||String(e)));}}
+}
+function handleChildState(d){
+ if(!pendingLoaded){
+  pendingLoaded=true;
+  if(pendingDest && Object.keys(pendingDest).length){$('reader').contentWindow.postMessage({wh1bridge:1,action:'goto',destination:pendingDest},'*');pendingDest=null;return;}
+ }
+ currentState={segment:activeSegment,key:d.key||'',scan:d.scan||SEGMENTS[activeSegment].start,size:d.size||20};savePosition();clearBusy();
+ $('menuSummary').textContent=positionText();
+}
+window.addEventListener('message',e=>{
+ if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1||e.data.segment!==activeSegment)return;
+ const d=e.data;
+ if(d.type==='prepare')handlePrepare(d.segment);
+ else if(d.type==='state')handleChildState(d);
+ else if(d.type==='boundary'){const next=activeSegment+d.direction;if(next>=0&&next<SEGMENTS.length){const s=SEGMENTS[next];openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});}}
+ else if(d.type==='menu')showMenu();
+ else if(d.type==='original')openOriginal(d.scan);
+});
+function issueChild(action,extra={}){if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}
+async function openOriginal(scan){
+ const n=Math.max(1,Math.min(274,Number(scan)||currentState.scan));if(!bookZip)return;
+ const entry=manifest.originalScans[String(n)];if(!entry)return;
+ setBusy('原本スキャンを開いています…');
+ try{
+  const blob=await bookZip.imageBlob(entry.path);
+  if(originalURL)URL.revokeObjectURL(originalURL);originalURL=URL.createObjectURL(blob);
+  const img=$('originalImage');img.onload=()=>{originalScale=1;$('originalOverlay').hidden=false;setOriginalScale();clearBusy();};
+  img.onerror=()=>{clearBusy();alert('原本画像の表示に失敗しました');};
+  img.src=originalURL;$('originalTitle').textContent=`原本スキャン ${n} / 274`;
+ }catch(err){clearBusy();alert('原本を開けません: '+(err.message||String(err)));}
+}
+function setOriginalScale(){const viewer=$('originalViewer'),img=$('originalImage');const width=viewer.clientWidth-20;img.style.width=(Math.max(200,width)*originalScale)+'px';}
+function closeOriginal(){$('originalOverlay').hidden=true;}
+$('zipInput').addEventListener('change',async()=>{if(!$('zipInput').files?.length)return;try{await loadBook(pickedArchive($('zipInput').files),true);}catch(e){console.warn(e);setHint(e.message||String(e));}finally{$('zipInput').value='';}});
+$('resume').onclick=async()=>{try{const saved=await dbRead();if(!saved?.blob)throw Error('保存された書籍がありません');await loadBook(saved.blob,false);}catch(e){setHint(e.message||String(e));clearBusy();}};
+$('menuClose').onclick=closeMenu;$('menuReturn').onclick=closeMenu;
+$('partGo').onclick=()=>{const i=Number($('partChoice').value);closeMenu();openSegment(i,{scan:SEGMENTS[i].start});};
+$('scanGo').onclick=()=>{const v=Number($('scanNumber').value);if(!Number.isInteger(v)||v<1||v>274){alert('1〜274の番号を入力してください');return;}closeMenu();openSegment(segmentForScan(v),{scan:v});};
+$('scanNumber').addEventListener('keydown',e=>{if(e.key==='Enter')$('scanGo').click();});
+$('localToc').onclick=()=>{closeMenu();issueChild('localToc');};
+$('menuOriginal').onclick=()=>{closeMenu();openOriginal(currentState.scan);};
+$('reimport').onclick=()=>{closeMenu();$('reader').style.display='none';$('setup').hidden=false;};
+$('originalClose').onclick=closeOriginal;
+$('zoomOut').onclick=()=>{originalScale=Math.max(0.7,Math.round((originalScale-.25)*100)/100);setOriginalScale();};
+$('zoomIn').onclick=()=>{originalScale=Math.min(5,Math.round((originalScale+.25)*100)/100);setOriginalScale();};
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();closeOriginal();}});
+window.addEventListener('pageshow',async()=>{try{const saved=await dbRead();if(saved?.blob){$('resume').hidden=false;await loadBook(saved.blob,false);}}catch(e){setHint('書籍を選択してください。端末に保存済みのデータがある場合は再読込できます。');}});
+</script>
+</body>
+</html>
