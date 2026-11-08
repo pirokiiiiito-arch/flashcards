@@ -303,7 +303,7 @@ async function openSegment(index,destination={}){
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
   const text=await bookZip.readText(s.part);if(token!==loadToken)return;
-  const content=new Blob([text],{type:'text/html'});
+  const content=new Blob([text.replace(/<\\/body>/i,WH1_COUNTER_BRIDGE+'</body>')],{type:'text/html'});
   if(frameURL) URL.revokeObjectURL(frameURL);
   frameURL=URL.createObjectURL(content);activeSegment=index;
   $('reader').src=frameURL;
@@ -321,12 +321,54 @@ async function handlePrepare(index){
   $('reader').contentWindow.postMessage({wh1bridge:1,action:'loadAssets',assets,size:currentState.size},'*',assets.map(a=>a.data));
  }catch(e){if(token===loadToken){clearBusy();$('setup').hidden=false;setHint('画像の照合・展開に失敗: '+(e.message||String(e)));}}
 }
+
+// Whole-book display pagination (reference profiles from the existing 336-case QA).
+// Actual current-section page count overrides the reference. Unvisited sections remain approximate.
+const WH1_PAGE_COUNTS=[[[24,75,81,82,75,77,77,80,66,67,77,72,64,56],[26,84,94,95,88,88,94,89,76,76,89,82,75,61],[30,108,124,117,109,108,110,107,93,94,108,99,96,71],[34,127,145,142,123,140,133,123,111,108,125,116,109,83],[40,154,177,174,152,180,164,154,137,134,157,147,139,100],[46,194,220,226,193,217,202,186,165,165,190,180,170,122],[49,214,245,245,210,240,234,205,182,175,208,194,184,131],[62,264,297,308,261,335,279,266,232,226,261,249,238,163]],[[19,41,50,47,53,40,49,55,40,44,48,47,40,41],[20,49,55,55,59,45,59,60,47,50,54,53,45,44],[21,54,63,61,65,50,65,64,55,57,61,62,53,49],[23,64,74,72,70,60,71,70,62,63,70,68,61,53],[25,77,85,84,82,68,82,85,73,75,84,80,73,59],[27,88,97,96,89,82,106,95,86,90,98,98,88,66],[31,103,115,113,109,98,119,113,101,106,115,111,104,75],[32,113,131,122,114,106,124,124,114,114,125,122,112,81]],[[17,38,45,46,51,35,47,49,38,42,44,43,35,39],[19,42,48,51,55,39,49,54,47,46,47,46,40,42],[20,49,53,54,59,45,57,59,47,50,53,51,44,44],[21,54,63,61,63,49,63,64,54,57,58,59,52,49],[22,63,70,66,68,55,68,69,58,62,67,66,59,52],[25,73,80,77,78,64,76,80,70,72,75,74,66,57],[27,84,93,91,88,75,96,92,81,85,93,89,82,62],[27,90,97,99,93,82,107,95,89,89,99,97,87,68]]];
+const WH1_PAGE_VIEWPORTS=[[320,568],[390,844],[430,932]];
+let wh1ProgressSignature='',wh1ObservedCounts=new Map();
+function wh1PageProgress(d){
+ const scan=Math.max(1,Math.min(manifest?.range?.[1]||274,Number(d.scan)||1));
+ const maxScans=manifest?.range?.[1]||274;
+ if(maxScans!==274||SEGMENTS.length!==14||!Number.isInteger(d.pageIndex)||!(d.totalPages>0)){
+  return {wh1bridge:1,action:'globalProgress',label:scan+' / '+maxScans,scan,maxScans,ratio:scan/maxScans,approx:false};
+ }
+ const w=$('reader').clientWidth||window.innerWidth,h=$('reader').clientHeight||window.innerHeight;
+ const sz=Math.max(16,Math.min(30,Number(d.size)||20));
+ const sig=[w,h,sz].join(':');
+ if(sig!==wh1ProgressSignature){wh1ProgressSignature=sig;wh1ObservedCounts.clear();}
+ wh1ObservedCounts.set(activeSegment,Number(d.totalPages));
+ let closest=0,score=Infinity;
+ for(let i=0;i<WH1_PAGE_VIEWPORTS.length;i++){
+  const [cw,ch]=WH1_PAGE_VIEWPORTS[i];
+  const dist=Math.abs(Math.log(w/cw))+Math.abs(Math.log(h/ch));
+  if(dist<score){score=dist;closest=i;}
+ }
+ const sizeIndex=Math.max(0,Math.min(7,Math.round((sz-16)/2)));
+ const counts=WH1_PAGE_COUNTS[closest][sizeIndex].map((estimate,i)=>wh1ObservedCounts.get(i)||estimate);
+ let offset=0;for(let i=0;i<activeSegment;i++)offset+=counts[i];
+ const total=counts.reduce((a,b)=>a+b,0);
+ const current=Math.max(1,Math.min(total,offset+Number(d.pageIndex)+1));
+ const estimatedCurrent=Array.from({length:activeSegment},(_,i)=>i).some(i=>!wh1ObservedCounts.has(i));
+ const estimatedTotal=wh1ObservedCounts.size<SEGMENTS.length;
+ return {wh1bridge:1,action:'globalProgress',
+  label:(estimatedCurrent?'約':'')+current+' / '+(estimatedTotal?'約':'')+total,
+  scan,maxScans,ratio:current/total,approx:estimatedTotal||estimatedCurrent};
+}
+const WH1_COUNTER_BRIDGE='<scr'+'ipt>(function(){window.addEventListener("message",function(e){'+
+ 'const d=e.data;if(e.source!==window.parent||!d||d.wh1bridge!==1||d.action!=="globalProgress")return;'+
+ 'const location=document.getElementById("location");if(location){location.textContent=d.label;location.setAttribute("aria-label",d.approx?"全巻の読書ページ数の概算":"全巻の読書ページ番号");}'+
+ 'const pos=document.getElementById("position");if(pos){const base=pos.textContent.replace(/\\s*[｜|]\\s*原本\\s*\\d+\\s*\\/\\s*\\d+\\s*$/,"");pos.textContent=base+" ｜ 原本 "+d.scan+" / "+d.maxScans;}'+
+ 'const bar=document.getElementById("progress-fill");if(bar)bar.style.width=(Math.max(0,Math.min(1,d.ratio))*100).toFixed(2)+"%";'+
+ '});})();</scr'+'ipt>';
+
 function handleChildState(d){
  if(!pendingLoaded){
   pendingLoaded=true;
   if(pendingDest && Object.keys(pendingDest).length){$('reader').contentWindow.postMessage({wh1bridge:1,action:'goto',destination:pendingDest},'*');pendingDest=null;return;}
  }
  currentState={segment:activeSegment,key:d.key||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
+ const progress=wh1PageProgress({...d,scan:currentState.scan});$('reader').contentWindow?.postMessage(progress,'*');
  $('menuSummary').textContent=positionText();
 }
 window.addEventListener('message',e=>{
