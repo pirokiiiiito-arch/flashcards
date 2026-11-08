@@ -2,7 +2,7 @@
    This script never uploads, edits, or exposes any book contents. */
 'use strict';
 (() => {
-  const REVISION = 'exact-wh1-pages-v1';
+  const REVISION = 'exact-wh1-pages-v2-top-start';
 
   // Used by both visible readers and invisible page measuring frames, so that
   // the exact total-page measurement accounts for the same toolbar height.
