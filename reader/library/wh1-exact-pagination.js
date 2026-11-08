@@ -3,6 +3,29 @@
 'use strict';
 (() => {
   const REVISION = 'exact-wh1-pages-v1';
+
+  // Used by both visible readers and invisible page measuring frames, so that
+  // the exact total-page measurement accounts for the same toolbar height.
+  const TOP_START_STYLE = `<style id="wh1-top-start-style">
+#wh1-start-top{font-size:12px;min-height:40px;padding:6px 8px;white-space:nowrap}
+@media(max-width:520px){
+ .toolbar-line{flex-wrap:wrap!important;column-gap:4px!important;row-gap:4px!important}
+ .toolbar-line .brand{flex:1 1 100%!important;width:100%!important;min-width:0!important}
+ .toolbar-line .brand strong{font-size:15px!important}
+ .toolbar-line .brand small{display:none!important}
+ .toolbar-line .head-actions{display:flex!important;width:100%!important;min-width:0!important;justify-content:space-between!important;gap:4px!important}
+ .toolbar-line .head-actions .nav-button{min-height:36px!important;padding:5px 6px!important;font-size:12px!important}
+ .toolbar-line .head-actions .font-control{padding:0!important;gap:0!important;flex-shrink:0!important}
+ .toolbar-line .head-actions .size-button{min-height:34px!important;padding:3px 6px!important;font-size:16px!important}
+ .toolbar-line .head-actions #current-size{min-width:34px!important;font-size:11px!important}
+}
+@media(max-width:350px){
+ .toolbar-line .head-actions .nav-button{padding:5px 4px!important;font-size:11px!important}
+ .toolbar-line .head-actions .size-button{padding:3px 5px!important}
+ .toolbar-line .head-actions #current-size{min-width:30px!important}
+}
+</style>`;
+
   const CHILD_CSS = `<style id="wh1-exact-page-css">
 #location{position:relative;color:transparent!important;white-space:nowrap;min-width:14ch;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 #location::after{content:attr(data-wh1-global);position:absolute;inset:0;color:var(--ink,#263630);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -19,6 +42,17 @@
       const pos=document.getElementById('position');
       if(pos){const base=pos.textContent.split(' ｜ 原本 ')[0];pos.textContent=base+' ｜ 原本 '+d.scan+' / '+d.maxScans;}
     });
+    const actions=document.querySelector('.head-actions');
+    if(actions&&!document.getElementById('wh1-start-top')){
+      const first=document.createElement('button');first.id='wh1-start-top';
+      first.className='nav-button';first.type='button';first.textContent='最初へ';
+      first.setAttribute('aria-label','本の最初のページ（表紙）に戻る');
+      first.addEventListener('click',function(){
+        window.parent.postMessage({wh1bridge:1,type:'bookStart'},'*');
+      });
+      const menu=document.getElementById('open-menu');
+      actions.insertBefore(first,menu||actions.firstChild);
+    }
   })();</script>`;
   const MEASURE_BRIDGE = `<script>(function(){
     window.addEventListener('message',async function(e){
@@ -35,7 +69,7 @@
     });
   })();</script>`;
   const inject = (html, script) => html.replace('</body>', script + '</body>');
-  const decorate = html => inject(html.replace('</head>', CHILD_CSS + '</head>'), CHILD_BRIDGE);
+  const decorate = html => inject(html.replace('</head>', CHILD_CSS + TOP_START_STYLE + '</head>'), CHILD_BRIDGE);
 
   function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getScan}) {
     let cached=null,active=null,lastState=null,errorKey='';
@@ -137,7 +171,7 @@
         step.reject=err=>{clear();reject(err);};
         run.step=step;
         step.timer=setTimeout(()=>step.reject(Error(`${index+1}区間目の組版が完了しませんでした`)),45000);
-        frame.srcdoc=inject(html,MEASURE_BRIDGE);
+        frame.srcdoc=inject(html.replace('</head>',TOP_START_STYLE+'</head>'),MEASURE_BRIDGE);
       });
     }
     function start(config){
