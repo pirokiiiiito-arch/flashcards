@@ -32,10 +32,10 @@ a{color:#2c666c}
  <main>
   <h1>図説 英国のインテリア史</h1>
   <p><strong>第2分冊：21〜40枚目</strong>（本文は縦書き20px。図の説明は横書き。OCR校正継続中）</p>
-  <p>原本画像1枚＝読書1ページ（20ページ固定）。本文は縦書き20px・ページ内を縦スクロール、上端・下端から再度スワイプすると原本画像単位で前後に進みます。 iPhoneのChromeで開く、021〜040枚目の読書用Webアプリです。画面サイズに合わせた縦書き本文・図版と説明文を表示します。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
-  <h2>Googleドライブの読書版を開く（表示修正版）</h2>
+  <p>原本画像21〜40枚目の読書用Webアプリです。<strong>図版の説明が収まらない場合も、文章を切らず次の読書画面へ続きます。</strong> 上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本20枚でも読書画面数は増減します。本文は縦書き20px基準、図の説明は横書き。文字サイズは A−／A＋ で変更できます。</p>
+  <h2>Googleドライブの読書版を開く（説明文改ページ対応）</h2>
   <ol>
-   <li><a href="https://drive.google.com/file/d/1A_HDczNfvYiO3imMTV5X3to5G8VveZhQ/view" target="_blank" rel="noopener">Googleドライブの新しい読書版HTML</a>が保存されていることを確認します</li>
+   <li><a href="https://drive.google.com/file/d/1A_HDczNfvYiO3imMTV5X3to5G8VveZhQ/view" target="_blank" rel="noopener">Googleドライブの説明文改ページ対応HTML（11月9日更新）</a>を選んでください</li>
    <li>ここに戻り、下の「ファイルを選択」を押して、「ブラウズ」→「Google Drive」→該当するHTMLを選んで「確認」を押します</li>
    <li>HTMLを受け取ったら先に読書画面を表示し、その後Chromeへの保存を行います。旧版を選んでも無反応にはせず理由を表示します。</li>
   </ol>
@@ -49,8 +49,8 @@ a{color:#2c666c}
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='uk-interiors-reader-on-device-onepage-21-40-v3',STORE='books',KEY='scans021to040_lazy_ready_v3_20261108',MAX=60*1024*1024;
-const EXPECTED='one-scan-one-reader-page-v3-20261108-21-40-lazy-ready';
+const DB='uk-interiors-reader-on-device-onepage-21-40-v3',STORE='books',KEY='scans021to040_caption_flow_v1_20261109',MAX=60*1024*1024;
+const EXPECTED='caption-flow-v1-20261109';
 let currentBlob=null,activeUrl='',pendingSave=null,loadId=0,readerIsReady=false;
 function say(s){$('status').textContent=s}
 function database(){
@@ -81,7 +81,7 @@ async function verify(blob){
  const head=await blob.slice(0,30000).text();
  if(!head.includes('図説 英国のインテリア史｜021〜040｜iPhone縦書き・上下スワイプ読書版')||
     !head.includes('id="reader-main"') || !head.includes(EXPECTED))
-  throw Error('別の版が選ばれました。Googleドライブ内の「英国のインテリア史_021-040_iPhoneChrome…」をもう一度選択してください。');
+  throw Error('旧版または別のHTMLです。Googleドライブから2026年11月9日の説明文改ページ対応版を選択してください。');
  return true;
 }
 function readerFailed(message){
