@@ -24,14 +24,14 @@ input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events
 #status{white-space:pre-wrap;min-height:26px;font-size:14px;line-height:1.6;color:#29505a;padding:10px;border:1px solid #c6d8d9;border-radius:9px;background:#eff6f6}#status.error{color:#873e24;border-color:#dfbfb2;background:#fff4ee}
 ol{font-size:13px;line-height:1.8;color:#536369;padding-left:23px}
 a{color:#2c666c}
-</style>
+.books-choice{border:1px solid #aabfc1;background:#eff5f4;border-radius:14px;padding:16px;margin:18px 0}.books-choice h2{margin-top:0;color:#234e50;font-size:20px}.books-choice p{font-size:14px;line-height:1.7}.books-choice .books-link{display:block;border:1px solid #285b60;border-radius:10px;background:#285b60;padding:15px 13px;color:white;text-align:center;text-decoration:none;font-weight:bold;font-size:17px;margin:12px 0}.previous-method{border-top:1px solid #ddd;margin-top:18px;padding-top:12px}.previous-method summary{font-size:13px;color:#69777b;cursor:pointer;margin:12px 0}.previous-method[open]{padding-bottom:8px}</style>
 </head>
 <body>
 <iframe id="reader" title="中世ヨーロッパの城塞 縦書き読書" sandbox="allow-scripts"></iframe>
 <div id="setup">
  <main>
   <h1>中世ヨーロッパの城塞</h1>
-  <p>Chromeで全画面表示する、001〜020枚目の読書用Webアプリです。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
+  <section class="books-choice"><h2>iPhoneで読む：ブック版（推奨）</h2><p>HTMLを選ぶと「1/1」のプレビュー画面になり、ページ送りできない問題がありました。<strong>同じ操作は繰り返さないでください。</strong></p><a class="books-link" href="https://drive.google.com/file/d/1q8akcnh152TEF1kObDO8J1S_1JujjTOg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer">『中世ヨーロッパの城塞』EPUBを開く</a><p>GoogleドライブでEPUBを開き、共有・「アプリで開く」などから<strong>「ブック」</strong>を選びます。ブック内でページ送りと文字サイズ変更ができます。</p><p class="note">001〜020枚目。原本画像を無変更で収録。本文OCRは最終校正前です。</p></section><details class="previous-method"><summary>以前のHTML取込方式を開く（iPhoneでは非推奨）</summary><p>従来のWeb読書版を端末へ読み込む予備の方法です。iPhoneではファイルのプレビュー画面が出る場合があります。</p>
   <h2>001〜020枚目：文字再調査・スワイプ修正版</h2>
   <p><a href="https://drive.google.com/file/d/1sX7Ejy-evTRVvErvN7-AUCEEJmipQ2-5/view?usp=drivesdk" target="_blank" rel="noopener noreferrer"><strong>Googleドライブの最新版HTMLを開く</strong></a></p>
   <p class="note">原本002の献辞、005〜006の図版・地図一覧（計147項目）を文字化し、目次を画面ごとにページ分割した版です。図版と説明文は連携したままです。本文OCR全字校正とiPhone実機確認は継続中です。</p>
@@ -46,7 +46,7 @@ a{color:#2c666c}
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
 
-  <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。他の区間とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」ボタンで原本画像に切り替えられます。</p>
+  <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。他の区間とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」ボタンで原本画像に切り替えられます。</p></details>
  </main>
 </div>
 <script>
@@ -132,7 +132,7 @@ window.addEventListener('pageshow',async()=>{
    try{await verify(saved.blob);isCurrent=true;}catch(_e){}
    if(isCurrent){
     $('reopen').hidden=false;
-    if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob);
+    if(!new URLSearchParams(location.search).has('import') && !/iPhone|iPad|iPod/.test(navigator.userAgent))await openBook(saved.blob);
    }else{
     $('reopen').hidden=true;
     $('status').classList.add('error');
