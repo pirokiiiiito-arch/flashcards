@@ -342,8 +342,15 @@ function handleChildState(d){
  $('menuSummary').textContent=positionText();
 }
 window.addEventListener('message',e=>{
- if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1||e.data.segment!==activeSegment)return;
+ if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1)return;
  const d=e.data;
+ if(d.type==='bookStart'){
+  closeMenu();
+  if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});
+  else openSegment(0,{mode:'first'}).catch(err=>console.warn('先頭への移動に失敗しました',err));
+  return;
+ }
+ if(d.segment!==activeSegment)return;
  if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);
  else if(d.type==='boundary'){const next=activeSegment+d.direction;if(next>=0&&next<SEGMENTS.length){const s=SEGMENTS[next];openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});}}
