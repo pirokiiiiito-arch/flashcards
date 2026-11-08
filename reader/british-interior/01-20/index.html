@@ -31,10 +31,10 @@ a{color:#2c666c}
 <div id="setup">
  <main>
   <h1>図説 英国のインテリア史</h1>
-  <p>iPhoneのChromeで縦書き表示する、1〜20枚目の読書用Webアプリです。ページ上部の◀／▶で原本画像のページを移動し、縦書き本文は横にスクロールして読めます。文字サイズは A−／A＋ で変更できます。本文と図版は<strong>校正継続中</strong>です。</p>
+  <p>iPhoneのChromeで読む1〜20枚目の読書用Webアプリです。上スワイプ・「次へ」で、画面に収まらない図版説明の続きを読めます。文字サイズはA−／A＋で変更できます。原本は変更せず、本文と図版は<strong>校正継続中</strong>です。</p>
   <h2>最初の1回だけ</h2>
   <ol>
-   <li><a href="https://drive.google.com/file/d/1KDKyAtqrBFdgNFjwBDDdenVCbgV1IeRM/view" target="_blank" rel="noopener noreferrer">Googleドライブの1〜20枚目読書版HTML</a>をiPhoneの「ファイル」に保存</li>
+   <li><a href="https://drive.google.com/file/d/1M05TD7nA8uaJAyHo9NHz4-l8nRxdejvI/view" target="_blank" rel="noopener noreferrer">Googleドライブの説明文改ページ修正版（1〜20枚目・11月9日更新）</a>をiPhoneの「ファイル」に保存</li>
    <li>ここに戻り、下の「ファイルを選択」からHTMLを選ぶ</li>
    <li>次回は保存済みの読書版を自動で開きます</li>
   </ol>
@@ -48,7 +48,7 @@ a{color:#2c666c}
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='british-interior-reader-on-device-v1',STORE='books',KEY='scans001to020',MAX=70*1024*1024;
+const DB='british-interior-reader-on-device-v1',STORE='books',KEY='scans001to020_caption_flow_v1_20261109',MAX=70*1024*1024;
 let currentBlob=null,activeUrl='';
 function database(){
  return new Promise((resolve,reject)=>{
@@ -81,8 +81,8 @@ async function verify(blob){
  if(!blob||blob.size<1000000||blob.size>MAX)throw Error('「英国のインテリア史」1〜20枚目の読書版HTMLを選んでください。');
  const head=await blob.slice(0,24000).text();
  if(!head.includes('図説 英国のインテリア史')||
-    !head.includes('id="main"')||
-    !head.includes('id="frame"'))throw Error('別のHTMLです。Googleドライブの「英国のインテリア史_001-020_図版説明一体型_縦書き読書版_校正継続中_20261108.html」を選択してください。');
+    !head.includes('id="reader-main"')||
+    !head.includes('caption-flow-v1-20261109'))throw Error('旧版または別のHTMLです。11月9日更新の説明文改ページ修正版を選んでください。');
  return true;
 }
 async function openBook(blob){
