@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>図説 英国のインテリア史｜iPhone読書版 021〜040枚目</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+#reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf7}
+#setup{position:fixed;inset:0;z-index:10;overflow-y:auto;background:#f7f8f5;display:flex;justify-content:center;align-items:center;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))}
+#setup[hidden]{display:none}
+main{width:100%;max-width:480px;padding:26px 23px;border-radius:18px;background:#fff;border:1px solid #e0e5e1;box-shadow:0 12px 35px #213c3810}
+h1{font-size:22px;margin:0 0 6px;line-height:1.4}
+h2{font-size:16px;margin:0 0 12px}
+p{font-size:14px;line-height:1.85;color:#526367;margin:10px 0}
+.note{font-size:12px;color:#6a7779}
+button,.pick{display:block;width:100%;min-height:48px;text-align:center;padding:11px 13px;margin:13px 0;border:1px solid #bdcdcb;border-radius:11px;background:#fff;color:#25474c;font-size:15px;font-weight:600;cursor:pointer}
+.pick{background:#315c63;color:#fff;border-color:#315c63}
+button[hidden]{display:none}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#status{white-space:pre-wrap;min-height:26px;font-size:12px;color:#485e65}
+ol{font-size:13px;line-height:1.8;color:#536369;padding-left:23px}
+a{color:#2c666c}
+</style>
+</head>
+<body>
+<iframe id="reader" title="図説 英国のインテリア史 読書" sandbox="allow-scripts"></iframe>
+<div id="setup">
+ <main>
+  <h1>図説 英国のインテリア史</h1>
+  <p><strong>第2分冊：21〜40枚目</strong>（本文は縦書き20px。図の説明は横書き。OCR校正継続中）</p>
+  <p>原本画像1枚＝読書1ページ（20ページ固定）。本文は縦書き20px・ページ内を縦スクロール、上端・下端から再度スワイプすると原本画像単位で前後に進みます。 iPhoneのChromeで開く、021〜040枚目の読書用Webアプリです。画面サイズに合わせた縦書き本文・図版と説明文を表示します。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
+  <h2>原本1画像＝1ページ版をGoogleドライブから読み込む</h2>
+  <ol>
+   <li><a href="https://drive.google.com/file/d/1A_HDczNfvYiO3imMTV5X3to5G8VveZhQ/view" target="_blank" rel="noopener">Googleドライブの新しい読書版HTML</a>が保存されていることを確認します</li>
+   <li>ここに戻り、下の「ファイルを選択」を押して、「ブラウズ」→「Google Drive」→該当するHTMLを選んで「確認」を押します</li>
+   <li>最初の取込が完了すると、次回はこのChrome読書サイトから開けます。以前の版を開いていた場合も、今回だけGoogleドライブから新しい20ページ固定版を選び直してください</li>
+  </ol>
+  <label class="pick" for="file">Googleドライブから読書版HTMLを選択</label>
+  <input type="file" id="file" accept=".html,text/html">
+  <button id="reopen" hidden>保存済みの読書版を開く</button>
+  <p id="status" role="status" aria-live="polite">読書版HTMLを選択してください。</p>
+  <p class="note">右上で読み込み表示が止まる場合は、Google Driveアプリで該当HTMLの同期を確認し、可能なら「オフラインで使用可能」を設定してから選び直してください。ZIPへの切替は必要ありません。本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。目次から章見出しに移動でき、原本も確認できます。現時点のOCR校正と実機確認は完了していません。</p>
+ </main>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const DB='uk-interiors-reader-on-device-onepage-21-40-v2',STORE='books',KEY='scans021to040_one_image_one_page_v2_20261108',MAX=60*1024*1024;
+let currentBlob=null,activeUrl='';
+function database(){
+ return new Promise((resolve,reject)=>{
+  if(!('indexedDB' in window))return reject(Error('端末保存には対応していません'));
+  const req=indexedDB.open(DB,1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error||Error('端末保存ができません'));
+ });
+}
+async function getSaved(){
+ const db=await database();
+ try{return await new Promise((resolve,reject)=>{
+  const req=db.transaction(STORE,'readonly').objectStore(STORE).get(KEY);
+  req.onsuccess=()=>resolve(req.result||null);
+  req.onerror=()=>reject(req.error);
+ });}finally{db.close();}
+}
+async function putSaved(blob,name){
+ const db=await database();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).put({blob,name,date:Date.now()},KEY);
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(tx.error);
+  tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+async function verify(blob){
+ if(!blob||blob.size<1000000||blob.size>MAX)throw Error('図説 英国のインテリア史 021〜040枚目の読書HTMLをGoogleドライブから選択してください。');
+ const head=await blob.slice(0,30000).text();
+ if(!head.includes('図説 英国のインテリア史｜021〜040｜iPhone縦書き・上下スワイプ読書版')||
+    !head.includes('id="reader-main"')||
+    !head.includes('one-scan-one-reader-page-v1-20261108-21-40')||
+    !head.includes('name="viewport"'))
+   throw Error('別のHTMLです。Googleドライブの『英国のインテリア史_021-040_iPhoneChrome_縦書き_図版本文分離_OCR再照合_校正継続中_20261108.html』を選択してください。');
+ return true;
+}
+async function openBook(blob){
+ await verify(blob);
+ currentBlob=blob;
+ $('status').textContent='読書画面を開いています…';
+ if(activeUrl)URL.revokeObjectURL(activeUrl);
+ activeUrl=URL.createObjectURL(blob);
+ const frame=$('reader');
+ frame.onload=()=>{
+  $('setup').hidden=true;
+  frame.focus();
+ };
+ frame.onerror=()=>{$('status').textContent='表示できませんでした。もう一度ファイルを選択してください。';};
+ frame.src=activeUrl;
+}
+$('file').addEventListener('change',async()=>{
+ const file=$('file').files?.[0];if(!file)return;
+ try{
+  await verify(file);
+  try{await putSaved(file,file.name);}catch(e){
+   $('status').textContent='端末への自動保存はできませんでしたが、今回の読書画面は開けます。';
+  }
+  await openBook(file);
+ }catch(e){$('status').textContent=e?.message||String(e);}
+ $('file').value='';
+});
+$('reopen').onclick=async()=>{
+ try{const doc=await getSaved();if(!doc?.blob)throw Error('保存済みファイルがありません');await openBook(doc.blob)}
+ catch(e){$('status').textContent=e.message||String(e);}
+};
+window.addEventListener('pageshow',async()=>{
+ try{
+  const saved=await getSaved();
+  if(saved?.blob){
+   $('reopen').hidden=false;
+   if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob);
+  }
+ }catch(e){$('status').textContent='端末に保存済みの読書版はありません。最初の1回だけHTMLを選択してください。';}
+});
+</script>
+</body>
+</html>
