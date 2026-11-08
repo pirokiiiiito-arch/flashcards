@@ -39,13 +39,13 @@ a{color:#24566a}
 <label class="control" for="file">GoogleドライブのHTMLを選択</label>
 <input id="file" type="file" accept=".html,text/html">
 <p id="status" role="status" aria-live="polite">この白い案内画面が表示されていれば、サイトの入口は開けています。上のボタンからGoogleドライブ内のHTMLを選んでください。</p>
-<p class="note">本文は縦書き20pxで、1列は26文字分の高さ。図の横書き説明文は『世界の歴史1』と同じ文字サイズ（20px基準で16.8px）。同じ原本内の続きは上スワイプで次へ、下スワイプで前へ、1画面分ずつ切り替えます（次の文章を下に積みません）。原本画像1枚＝読書1ページ。原本は変更しません。黒画面の原因を切り分けるため、この入口ではChrome内の保存済みHTMLを自動で読み込まず、端末への自動保存も一時停止しています。Googleドライブが管理元です。</p>
+<p class="note">2026年11月9日版：画面の高さに収まらない本文・図版説明は自動で次の読書画面に続きます。上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本1枚と読書画面の枚数は別です。本文は縦書き20px基準、図の説明は横書き。原本画像は無変更です。古いHTMLは再選択してください。端末への自動保存はこの入口では行いません。</p>
 </main>
 </div>
 <script>
 'use strict';
 (function(){
-  var expected='one-scan-one-reader-page-v11-20261109-01-20-wh1-caption-size';
+  var expected='caption-flow-v1-20261109';
   var $=function(id){return document.getElementById(id)};
   var objUrl=null,token=0;
   function status(s){$('status').textContent=String(s)}
@@ -75,7 +75,7 @@ a{color:#24566a}
     try{
       if(f.size<1000000||f.size>60*1024*1024)throw Error('約30 MBの読書版HTMLを選択してください');
       var head=await f.slice(0,30000).text();
-      if(!head.includes(expected)||!head.includes('id="reader-main"'))throw Error('別の版のHTMLです。20261109_01時09分_で始まるファイルを選んでください');
+      if(!head.includes(expected)||!head.includes('id="reader-main"'))throw Error('説明文改ページ対応前のHTMLです。Googleドライブの「★これを選ぶ」から最新版を読み込んでください');
       if(token!==id)return;
       $('viewer').hidden=false;
       $('return').hidden=false;
