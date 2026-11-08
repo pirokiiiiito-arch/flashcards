@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>中世ヨーロッパの城塞｜001〜020 修正版の読書ページ</title>
+<title>中世ヨーロッパの城塞｜001〜020 文字再調査・スワイプ修正版</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
 *{box-sizing:border-box}
@@ -32,11 +32,11 @@ a{color:#2c666c}
  <main>
   <h1>中世ヨーロッパの城塞</h1>
   <p>Chromeで全画面表示する、001〜020枚目の読書用Webアプリです。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
-  <h2>001〜020枚目：目次・図版説明の修正版</h2>
-  <p><a href="https://drive.google.com/file/d/1aTkBgZWKa6QbglCU1F0djupKbRTDkmka/view?usp=drivesdk" target="_blank" rel="noopener noreferrer"><strong>Googleドライブの修正版HTMLを開く</strong></a></p>
-  <p class="note">目次を読みやすいテキストに直し、図版の下に原本の説明文を表示する版です。本文OCRの全字校正とiPhone実機確認は継続中です。</p>
+  <h2>001〜020枚目：文字再調査・スワイプ修正版</h2>
+  <p><a href="https://drive.google.com/file/d/1sX7Ejy-evTRVvErvN7-AUCEEJmipQ2-5/view?usp=drivesdk" target="_blank" rel="noopener noreferrer"><strong>Googleドライブの最新版HTMLを開く</strong></a></p>
+  <p class="note">原本002の献辞、005〜006の図版・地図一覧（計147項目）を文字化し、目次を画面ごとにページ分割した版です。図版と説明文は連携したままです。本文OCR全字校正とiPhone実機確認は継続中です。</p>
   <ol>
-   <li>上のGoogleドライブのリンクから<strong>目次・図版説明の修正版HTML</strong>をiPhoneの「ファイル」に保存</li>
+   <li>上のGoogleドライブのリンクから<strong>文字再調査・スワイプ修正版HTML</strong>をiPhoneの「ファイル」に保存</li>
    <li>このページへ戻り、下の「修正版HTMLを選択して開く」から保存したファイルを選ぶ</li>
    <li>次回からは取り込んだ修正版を自動で開きます。旧版が端末にある場合は更新版を選ぶまで旧版は開きません</li>
   </ol>
@@ -51,7 +51,7 @@ a{color:#2c666c}
 'use strict';
 const $=id=>document.getElementById(id);
 const DB='castle-reader-on-device-v1',STORE='books',KEY='scans001to020',MAX=60*1024*1024;
-const REQUIRED_REVISION='目次・図版説明を読みやすく修正';
+const REQUIRED_REVISION='001・002・005・006文字化＋目次ページ分割済み';
 let currentBlob=null,activeUrl='';
 function database(){
  return new Promise((resolve,reject)=>{
@@ -86,7 +86,7 @@ async function verify(blob){
  if(!head.includes('中世ヨーロッパの城塞｜原本001〜020')||
     !head.includes('id="reader-main"')||
     !head.includes('name="viewport"')||
-    !head.includes(REQUIRED_REVISION))throw Error('このHTMLは旧版または別の本です。Googleドライブの「中世ヨーロッパの城塞_001-020_目次・図版説明_修正版_校正継続中.html」を選択してください。');
+    !head.includes(REQUIRED_REVISION))throw Error('このHTMLは旧版または別の本です。Googleドライブの「中世ヨーロッパの城塞_001-020_全ページ文字点検・スワイプ修正版_校正継続中.html」を選択してください。');
  return true;
 }
 async function openBook(blob){
