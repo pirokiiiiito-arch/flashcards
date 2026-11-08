@@ -23,7 +23,7 @@ a{color:#24566a}
 .note{font-size:12px;color:#657479}
 #viewer{position:fixed;inset:0;z-index:1;background:#fffdf8}
 #reader{width:100%;height:100%;border:0;display:block}
-#return{position:fixed;z-index:2;right:8px;bottom:calc(55px + env(safe-area-inset-bottom));min-height:33px;padding:5px 9px;background:#fff;border:1px solid #a4b2b2;border-radius:7px;color:#354b4f;font-size:11px}
+#return{display:none!important}
 #viewer[hidden],#return[hidden]{display:none}
 </style>
 </head>
@@ -35,17 +35,17 @@ a{color:#24566a}
 <h1>英国のインテリア史<br>1〜20枚目</h1>
 <p><strong>Googleドライブから読む</strong>ための軽量入口です。自動読み込みを停止し、ファイルを選ぶまで本は起動しません。</p>
 <p>Googleドライブの読書HTML：</p>
-<p><a href="https://drive.google.com/file/d/1M05TD7nA8uaJAyHo9NHz4-l8nRxdejvI/view" rel="noopener" target="_blank">20261109_01時09分_★これを選ぶ_英国のインテリア史_01-20.html</a></p>
-<label class="control" for="file">GoogleドライブのHTMLを選択</label>
+<p><a href="https://drive.google.com/file/d/1f2P92Kn8wXmO9PqOba7FPVWZHpJm7tuJ/view" rel="noopener" target="_blank">【文字切れ修正v3】英国のインテリア史_01-20.html</a></p>
+<label class="control" for="file">Googleドライブの【文字切れ修正v3】を選択</label>
 <input id="file" type="file" accept=".html,text/html">
 <p id="status" role="status" aria-live="polite">この白い案内画面が表示されていれば、サイトの入口は開けています。上のボタンからGoogleドライブ内のHTMLを選んでください。</p>
-<p class="note">2026年11月9日版：画面の高さに収まらない本文・図版説明は自動で次の読書画面に続きます。上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本1枚と読書画面の枚数は別です。本文は縦書き20px基準、図の説明は横書き。原本画像は無変更です。古いHTMLは再選択してください。端末への自動保存はこの入口では行いません。</p>
+<p class="note">文字切れ修正版v3：測定用の幅・高さを実際の表示領域に合わせ、下端に余白を確保します。説明が長いときは次画面に続きます。上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本1枚と読書画面の枚数は別です。本文は縦書き20px基準、図の説明は横書き。原本画像は無変更です。古いHTMLは再選択してください。端末への自動保存はこの入口では行いません。</p>
 </main>
 </div>
 <script>
 'use strict';
 (function(){
-  var expected='caption-flow-v1-20261109';
+  var expected='visible-size-pagination-v3-20261109';
   var $=function(id){return document.getElementById(id)};
   var objUrl=null,token=0;
   function status(s){$('status').textContent=String(s)}
@@ -56,7 +56,7 @@ a{color:#24566a}
   function reset(){
     token++;$('reader').removeAttribute('src');$('viewer').hidden=true;$('return').hidden=true;$('landing').hidden=false;
     if(objUrl){URL.revokeObjectURL(objUrl);objUrl=null;}
-    status('GoogleドライブのHTMLを選択してください。');
+    status('Googleドライブの【文字切れ修正v3】ファイルを選択してください。');
   }
   $('return').addEventListener('click',reset);
   window.addEventListener('message',function(event){
@@ -64,8 +64,9 @@ a{color:#24566a}
     var data=event.data;
     if(!data||data.range!=='01-20')return;
     if(data.kind==='uk-interiors-reader-error'){fail(data.message||'組版処理エラー');return}
+    if(data.kind==='uk-interiors-reader-change-file'){reset();return;}
     if(data.kind!=='uk-interiors-reader-ready')return;
-    $('landing').hidden=true;$('viewer').hidden=false;$('return').hidden=false;
+    $('landing').hidden=true;$('viewer').hidden=false;$('return').hidden=true;
     $('reader').focus();
   });
   $('file').addEventListener('change',async function(){
@@ -75,10 +76,10 @@ a{color:#24566a}
     try{
       if(f.size<1000000||f.size>60*1024*1024)throw Error('約30 MBの読書版HTMLを選択してください');
       var head=await f.slice(0,30000).text();
-      if(!head.includes(expected)||!head.includes('id="reader-main"'))throw Error('説明文改ページ対応前のHTMLです。Googleドライブの「★これを選ぶ」から最新版を読み込んでください');
+      if(!head.includes(expected)||!head.includes('id="reader-main"'))throw Error('文字切れ修正版v3ではありません。Googleドライブの「【文字切れ修正v3】英国のインテリア史_01-20.html」を選択してください');
       if(token!==id)return;
       $('viewer').hidden=false;
-      $('return').hidden=false;
+      $('return').hidden=true;
       status('読書本文の1/20を準備しています。画面が切り替わらない場合は、この案内にエラーが表示されます。');
       if(objUrl)URL.revokeObjectURL(objUrl);
       objUrl=URL.createObjectURL(f);
