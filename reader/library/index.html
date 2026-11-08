@@ -35,11 +35,11 @@
 <section id="settingsPanel" class="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
   <div class="sheet-handle"></div><div class="sheet-title"><h2 id="settingsTitle">Google Driveと接続</h2><button id="settingsClose" class="close" aria-label="設定を閉じる" type="button">×</button></div>
   <p>ご自身のGoogleアカウントで、非公開の書籍データを直接読むための設定です。書籍やアクセストークンをGitHubへ送信しません。</p>
-  <label class="form-label" for="clientId">Google OAuth クライアントID（ウェブアプリ）</label>
+  <label class="form-label" for="clientId">Google OAuth クライアントID（フラッシュカードと共通）</label>
   <input id="clientId" class="form-input" type="text" placeholder="例：123456789-xxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
-  <p class="tiny">Client IDのみ入力してください。パスワード・Client Secret・アクセストークンは入力しないでください。</p>
+  <p class="tiny">既存のフラッシュカード用クライアントIDを自動読み込みします。初めから作り直す必要はありません。Google Driveの通常のフォルダへアクセスするため、追加の「読み取り」権限に本人の許可が必要です。Client Secretやパスワードは入力しないでください。</p>
   <button class="primary-button" id="saveClientId" type="button">設定を保存してGoogleに接続</button>
-  <details class="help-details"><summary>初回のGoogle設定方法を見る</summary><ol><li>Google Cloud Consoleでプロジェクトを作り、Google Drive APIを有効にします。</li><li>Google Auth Platform（OAuth同意画面）を設定し、個人利用ならご自身のGoogleアカウントをテストユーザーに追加します。</li><li>OAuthクライアントを「ウェブアプリケーション」として作成し、承認済みJavaScript生成元に <code>https://pirokiiiiito-arch.github.io</code> を登録します。</li><li>生成された <strong>クライアントID</strong> だけを上欄に貼ります。Client Secretは不要です。</li></ol><p>Googleから「Drive内のファイル全体を閲覧する」読み取り権限を求められます。アプリの処理では、本棚フォルダと登録済み書籍だけを取得します。個人用の未審査アプリでは警告やテストユーザー設定が必要になる場合があります。</p><a target="_blank" rel="noopener noreferrer" href="https://console.cloud.google.com/apis/credentials">Google Cloudの認証情報を開く</a></details>
+  <details class="help-details"><summary>既存のGoogle設定で接続できない場合</summary><ol><li>Google Cloud Consoleでプロジェクトを作り、Google Drive APIを有効にします。</li><li>Google Auth Platform（OAuth同意画面）を設定し、個人利用ならご自身のGoogleアカウントをテストユーザーに追加します。</li><li>OAuthクライアントを「ウェブアプリケーション」として作成し、承認済みJavaScript生成元に <code>https://pirokiiiiito-arch.github.io</code> を登録します。</li><li>生成された <strong>クライアントID</strong> だけを上欄に貼ります。Client Secretは不要です。</li></ol><p>Googleから「Drive内のファイル全体を閲覧する」読み取り権限を求められます。アプリの処理では、本棚フォルダと登録済み書籍だけを取得します。個人用の未審査アプリでは警告やテストユーザー設定が必要になる場合があります。</p><a target="_blank" rel="noopener noreferrer" href="https://console.cloud.google.com/apis/credentials">Google Cloudの認証情報を開く</a></details>
   <div class="security-note"><strong>接続先</strong><span>Google Drive／読書本棚_200冊_非公開</span><small>OAuthアクセストークンは端末内にも永続保存しません。必要に応じて再接続します。</small></div>
 </section>
 <div class="backdrop" id="bookBackdrop" hidden></div>
@@ -52,6 +52,7 @@
   <p class="tiny">書籍画像・OCR本文はGoogle Driveから端末へ直接転送されます。大容量の本はWi-Fiで保存してください。Safari等の保存領域には上限があります。</p>
 </section>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="../../drive-config.js"></script>
 <script src="./storage.js"></script>
 <script src="./app.js"></script>
 </body>
