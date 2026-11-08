@@ -1,6 +1,6 @@
 /* Offline cache for the app shell only. Never cache private Drive book content. */
 'use strict';
-const CACHE='private-bookshelf-shell-v6';
+const CACHE='private-bookshelf-shell-v7';
 const ASSETS=['./','./index.html','./app.css','./app.js','./storage.js','./read.html','./wh1-exact-pagination.js','./manifest.webmanifest','./apple-touch-icon.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS.map(x=>new URL(x,self.registration.scope).href))).then(()=>self.skipWaiting()));
