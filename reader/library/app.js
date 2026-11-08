@@ -90,7 +90,14 @@
   async function googleSignIn(){const id=($('clientId').value||localStorage.getItem(CLIENT_KEY)||'').trim();
     if(!clientIdPattern.test(id)){openSettings();say('Googleのウェブ用OAuthクライアントIDを設定してください');return;}
     localStorage.setItem(CLIENT_KEY,id);
-    try{setCloud('Googleに接続中','許可画面が表示される場合があります');await loadGoogleScript();
+    if(!window.google?.accounts?.oauth2){
+      setCloud('Google認証を準備中','読み込み完了後にもう一度接続してください');
+      try{await loadGoogleScript();say('Google認証の準備ができました。もう一度「接続」を押してください。');}
+      catch(e){say('Google認証の準備に失敗：'+(e.message||e));}
+      return;
+    }
+    try{setCloud('Googleに接続中','許可画面が表示される場合があります');
+      // Must request an OAuth popup in the original user activation, not after an awaited script load.
       const result=await new Promise((resolve,reject)=>{
         tokenClient=google.accounts.oauth2.initTokenClient({client_id:id,scope:SCOPES,
           callback:r=>r?.access_token?resolve(r):reject(new Error(r?.error_description||r?.error||'認証がキャンセルされました')),
