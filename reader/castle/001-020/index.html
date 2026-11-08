@@ -2,144 +2,131 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>中世ヨーロッパの城塞｜001〜020 文字再調査・スワイプ修正版</title>
+<meta name="theme-color" content="#365c62">
+<title>中世ヨーロッパの城塞｜GoogleドライブZIP読書版 001〜020</title>
 <style>
-:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;background:#f6f7f3;color:#26383b}
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden}
-#reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf7}
-#setup{position:fixed;inset:0;z-index:10;overflow-y:auto;background:#f7f8f5;display:flex;justify-content:center;align-items:flex-start;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))}
-#setup[hidden]{display:none}
-main{width:100%;max-width:480px;padding:26px 23px;border-radius:18px;background:#fff;border:1px solid #e0e5e1;box-shadow:0 12px 35px #213c3810}
-h1{font-size:22px;margin:0 0 6px;line-height:1.4}
-h2{font-size:16px;margin:0 0 12px}
-p{font-size:14px;line-height:1.85;color:#526367;margin:10px 0}
-.note{font-size:12px;color:#6a7779}
-button,.pick{display:block;width:100%;min-height:48px;text-align:center;padding:11px 13px;margin:13px 0;border:1px solid #bdcdcb;border-radius:11px;background:#fff;color:#25474c;font-size:15px;font-weight:600;cursor:pointer}
-.pick{background:#315c63;color:#fff;border-color:#315c63}
-button[hidden]{display:none}
+html,body{margin:0;height:100%;width:100%;overflow:hidden}
+[hidden]{display:none!important}
+#reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf7;display:none}
+#setup{position:fixed;inset:0;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:calc(22px + env(safe-area-inset-top)) 14px calc(22px + env(safe-area-inset-bottom));background:#f5f7f4;z-index:3}
+.panel{width:min(100%,510px);padding:25px 23px 28px;background:white;border:1px solid #dbe2df;border-radius:18px;box-shadow:0 10px 35px #172f3310}
+.kicker{font-size:12px;color:#41696d;font-weight:750;letter-spacing:.04em}
+h1{font-size:23px;margin:8px 0 12px;line-height:1.45}
+p{font-size:14px;color:#4e6265;line-height:1.7;margin:10px 0}
+.tag{display:inline-block;color:#416269;border:1px solid #d7e4e1;border-radius:100px;padding:6px 9px;font-size:12px;margin:2px 3px 6px 0}
+.action{display:block;width:100%;text-align:center;border-radius:11px;min-height:49px;padding:13px 11px;margin:14px 0 11px;font-size:16px;font-weight:700;line-height:1.5;cursor:pointer;text-decoration:none}
+.action.primary{color:white;background:#315d63;border:1px solid #315d63}
+.action.secondary{color:#315d63;background:white;border:1px solid #aec5c7}
 input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-#status{white-space:pre-wrap;min-height:26px;font-size:14px;line-height:1.6;color:#29505a;padding:10px;border:1px solid #c6d8d9;border-radius:9px;background:#eff6f6}#status.error{color:#873e24;border-color:#dfbfb2;background:#fff4ee}
-ol{font-size:13px;line-height:1.8;color:#536369;padding-left:23px}
-a{color:#2c666c}
-.books-choice{border:1px solid #aabfc1;background:#eff5f4;border-radius:14px;padding:16px;margin:18px 0}.books-choice h2{margin-top:0;color:#234e50;font-size:20px}.books-choice p{font-size:14px;line-height:1.7}.books-choice .books-link{display:block;border:1px solid #285b60;border-radius:10px;background:#285b60;padding:15px 13px;color:white;text-align:center;text-decoration:none;font-weight:bold;font-size:17px;margin:12px 0}.previous-method{border-top:1px solid #ddd;margin-top:18px;padding-top:12px}.previous-method summary{font-size:13px;color:#69777b;cursor:pointer;margin:12px 0}.previous-method[open]{padding-bottom:8px}</style>
+ol{padding-left:22px;line-height:1.7;font-size:14px;color:#44585c}
+li{margin:7px 0}
+#status{border:1px solid #c5d9d9;background:#f1f8f7;border-radius:11px;color:#2a575b;padding:12px;font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0;min-height:52px}
+#status.error{color:#853a30;background:#fff6f3;border-color:#e1b7b0}
+.fine{font-size:12px;color:#637476;line-height:1.6}
+#banner{position:fixed;left:10px;right:10px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:5;margin:auto;max-width:520px;padding:11px 14px;background:#e6f2ee;border:1px solid #b5d7ce;border-radius:10px;color:#244c4b;font-size:13px;line-height:1.5;box-shadow:0 5px 16px #12262022;pointer-events:none}
+
+</style>
 </head>
 <body>
-<iframe id="reader" title="中世ヨーロッパの城塞 縦書き読書" sandbox="allow-scripts"></iframe>
-<div id="setup">
- <main>
-  <h1>中世ヨーロッパの城塞</h1>
-  <section class="books-choice"><h2>iPhoneで読む：ブック版（推奨）</h2><p>HTMLを選ぶと「1/1」のプレビュー画面になり、ページ送りできない問題がありました。<strong>同じ操作は繰り返さないでください。</strong></p><a class="books-link" href="https://drive.google.com/file/d/1q8akcnh152TEF1kObDO8J1S_1JujjTOg/view?usp=drivesdk" target="_blank" rel="noopener noreferrer">EPUBの保存ページを開く（約31MB）</a><p><strong>Googleドライブの画面では本を読むことはできません。</strong>「サポートされていないファイル形式です」と表示されてもファイルの破損を意味しません。右上の「…」から<strong>「ダウンロード」</strong>を選び、iPhoneの「ファイル」→「ダウンロード」からEPUBを開いてください。必要なら長押し→「共有」→「ブック」で開きます。</p><p class="note">iPhoneの「ブック」に取り込んだ後にページ送り・文字サイズ変更を使います。ファイルのGoogleドライブ内プレビューやHTMLのファイルプレビューではページ送りできません。</p><p class="note">001〜020枚目。原本画像を無変更で収録。本文OCRは最終校正前です。</p></section><details class="previous-method"><summary>以前のHTML取込方式を開く（iPhoneでは非推奨）</summary><p>従来のWeb読書版を端末へ読み込む予備の方法です。iPhoneではファイルのプレビュー画面が出る場合があります。</p>
-  <h2>001〜020枚目：文字再調査・スワイプ修正版</h2>
-  <p><a href="https://drive.google.com/file/d/1sX7Ejy-evTRVvErvN7-AUCEEJmipQ2-5/view?usp=drivesdk" target="_blank" rel="noopener noreferrer"><strong>Googleドライブの最新版HTMLを開く</strong></a></p>
-  <p class="note">原本002の献辞、005〜006の図版・地図一覧（計147項目）を文字化し、目次を画面ごとにページ分割した版です。図版と説明文は連携したままです。本文OCR全字校正とiPhone実機確認は継続中です。</p>
-  <ol>
-   <li>上のGoogleドライブのリンクから<strong>文字再調査・スワイプ修正版HTML</strong>をiPhoneの「ファイル」に保存</li>
-   <li>このページへ戻り、下の「修正版HTMLを選択して開く」から保存したファイルを選ぶ</li>
-   <li>次回からは取り込んだ修正版を自動で開きます。旧版が端末にある場合は更新版を選ぶまで旧版は開きません</li>
-  </ol>
-  <p class="note">ファイル一覧では、名前に<strong>「全ページ文字点検・スワイプ修正版」</strong>が含まれるHTMLを選び、右上の<strong>「確認」</strong>を押してください。「全ページ」のない旧版は読み込めません。</p>
-  <p id="status" role="status" aria-live="assertive">まだ選択されていません。「全ページ文字点検」版を選んでください。</p>
-  <label class="pick" for="file">「全ページ文字点検」版を選択</label>
-  <input type="file" id="file" accept=".html,text/html">
-  <button id="reopen" hidden>保存済みの読書版を開く</button>
-
-  <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。他の区間とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」ボタンで原本画像に切り替えられます。</p></details>
- </main>
-</div>
+<iframe id="reader" title="中世ヨーロッパの城塞 001〜020枚目" sandbox="allow-scripts"></iframe>
+<div id="setup"><section class="panel">
+<div class="kicker">PRIVATE BOOK READER / GOOGLE DRIVE</div>
+<h1>中世ヨーロッパの城塞</h1>
+<div><span class="tag">001〜020枚目</span><span class="tag">20px基準</span><span class="tag">原本画像そのまま</span><span class="tag">OCR校正継続中</span></div>
+<p><strong>『世界の歴史1』と同じ、GoogleドライブのZIPを取り込む読書方法です。</strong>EPUBのプレビューやHTMLファイルのプレビューではなく、下のボタンからZIPを読み込みます。</p>
+<a class="action secondary" href="https://drive.google.com/file/d/1UJpQc7Jf_O62luhKj3cqlWIgFAt6wLB7/view" target="_blank" rel="noopener noreferrer">Googleドライブの読書用ZIPを開く</a>
+<ol>
+<li>GoogleドライブのZIP画面で<strong>「ダウンロード」</strong>をタップする。</li>
+<li>iPhoneの「ファイル」アプリの「ダウンロード」にZIPを保存する。<strong>ZIP自体をタップして展開する必要はありません。</strong></li>
+<li>この読書ページへ戻り、下の「読書用ZIPを選んで開く」→「ブラウズ」→「ダウンロード」でZIPを選び、右上の「確認」を押す。</li>
+</ol>
+<label for="zipInput" class="action primary">読書用ZIPを選んで開く</label>
+<input id="zipInput" type="file" accept=".zip,application/zip">
+<button id="reopen" class="action secondary" type="button" hidden>端末に保存した本を開く</button>
+<div id="status" role="status" aria-live="polite">読書用ZIPを選んでください。「世界の歴史1方式_読書用データ.zip」が正しいファイルです。</div>
+<p class="fine">ZIP内の原本画像・OCR本文はこの端末内で表示します。Googleドライブが保管元であり、本文や画像はGitHubへ送信しません。自動保存できた場合は次回読み込みを省けます。原本画像と図版説明の対応は維持していますが、OCR全字校正は未完了です。</p>
+</section></div>
+<div id="banner" role="status" aria-live="polite" hidden></div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='castle-reader-on-device-v1',STORE='books',KEY='scans001to020',MAX=60*1024*1024;
-const REQUIRED_REVISION='001・002・005・006文字化＋目次ページ分割済み';
-let currentBlob=null,activeUrl='';
-function database(){
- return new Promise((resolve,reject)=>{
-  if(!('indexedDB' in window))return reject(Error('端末保存には対応していません'));
-  const req=indexedDB.open(DB,1);
-  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};
-  req.onsuccess=()=>resolve(req.result);
-  req.onerror=()=>reject(req.error||Error('端末保存ができません'));
- });
-}
-async function getSaved(){
- const db=await database();
- try{return await new Promise((resolve,reject)=>{
-  const req=db.transaction(STORE,'readonly').objectStore(STORE).get(KEY);
-  req.onsuccess=()=>resolve(req.result||null);
-  req.onerror=()=>reject(req.error);
- });}finally{db.close();}
-}
-async function putSaved(blob,name){
- const db=await database();
- try{await new Promise((resolve,reject)=>{
-  const tx=db.transaction(STORE,'readwrite');
-  tx.objectStore(STORE).put({blob,name,date:Date.now()},KEY);
-  tx.oncomplete=()=>resolve();
-  tx.onerror=()=>reject(tx.error);
-  tx.onabort=()=>reject(tx.error);
- });}finally{db.close();}
-}
-async function verify(blob){
- if(!blob||blob.size<1000000||blob.size>MAX)throw Error('001〜020枚目の読書版HTMLを選択してください。');
- const head=await blob.slice(0,16000).text();
- if(!head.includes('中世ヨーロッパの城塞｜原本001〜020')||
-    !head.includes('id="reader-main"')||
-    !head.includes('name="viewport"')||
-    !head.includes(REQUIRED_REVISION))throw Error('このHTMLは旧版または別の本です。Googleドライブの「中世ヨーロッパの城塞_001-020_全ページ文字点検・スワイプ修正版_校正継続中.html」を選択してください。');
- return true;
-}
-async function openBook(blob,saveName){
- await verify(blob);
- currentBlob=blob;
- $('status').textContent='読書画面を開いています…';
- if(activeUrl)URL.revokeObjectURL(activeUrl);
- activeUrl=URL.createObjectURL(blob);
- const frame=$('reader');
- frame.onload=()=>{
-  $('setup').hidden=true;
-  frame.focus();
-  if(saveName){void putSaved(blob,saveName).catch(()=>{});}
- };
- frame.onerror=()=>{$('status').textContent='表示できませんでした。もう一度ファイルを選択してください。';};
- frame.src=activeUrl;
-}
-$('file').addEventListener('change',async()=>{
- const file=$('file').files?.[0];if(!file)return;
- $('status').classList.remove('error');
- $('status').textContent='選択したファイル：'+file.name+'\n読書版か確認しています…';
- try{
-  await verify(file);
-  $('status').textContent='選択したファイル：'+file.name+'\n確認できました。読書画面を開いています…';
-  await openBook(file,file.name);
- }catch(e){
-  $('status').classList.add('error');
-  $('status').textContent='選択したファイル：'+file.name+'\n'+(e?.message||String(e));
- }
- $('file').value='';
-});
-$('reopen').onclick=async()=>{
- try{const doc=await getSaved();if(!doc?.blob)throw Error('保存済みファイルがありません');await openBook(doc.blob)}
- catch(e){$('status').textContent=e.message||String(e);}
-};
-window.addEventListener('pageshow',async()=>{
- try{
-  const saved=await getSaved();
-  if(saved?.blob){
-   let isCurrent=false;
-   try{await verify(saved.blob);isCurrent=true;}catch(_e){}
-   if(isCurrent){
-    $('reopen').hidden=false;
-    if(!new URLSearchParams(location.search).has('import') && !/iPhone|iPad|iPod/.test(navigator.userAgent))await openBook(saved.blob);
-   }else{
-    $('reopen').hidden=true;
-    $('status').classList.add('error');
-    $('status').textContent='端末の旧版は開きません。最新版「全ページ文字点検・スワイプ修正版」を選び、iPhone右上の「確認」を押してください。';
-   }
+const ZIP_NAME_PART='世界の歴史1方式_読書用データ.zip';
+const HTML_MEMBER='book.html';
+const HTML_BYTES=43582836;
+const ZIP_BYTES=43582952;
+const EXPECTED_CRC=0x5259f0e4;
+const REVISION='001・002・005・006文字化＋目次ページ分割済み';
+const DB='castle-drivezip-reader-v1', STORE='chunks', META='info', KEY='castle001-020-20261108';
+const CHUNK=4*1024*1024;
+let currentBookUrl='',currentName='';
+const writeStatus=(s,error=false)=>{const el=$('status');el.textContent=s;el.classList.toggle('error',error);};
+let bannerTimer=0;const showBanner=s=>{const b=$('banner');b.textContent=s;b.hidden=false;if(bannerTimer)clearTimeout(bannerTimer);bannerTimer=setTimeout(()=>{b.hidden=true},5200);};
+function makeDb(){return new Promise((resolve,reject)=>{
+  if(!('indexedDB' in window)){reject(Error('IndexedDBが使用できません'));return;}
+  let req=indexedDB.open(DB,1);
+  req.onupgradeneeded=()=>{let db=req.result; if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE);if(!db.objectStoreNames.contains(META))db.createObjectStore(META);};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error('データベースを開けません'));
+});}
+function txRead(db,store,key){return new Promise((resolve,reject)=>{let req=db.transaction(store,'readonly').objectStore(store).get(key);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+function txPut(db,store,key,value){return new Promise((resolve,reject)=>{const t=db.transaction(store,'readwrite');t.objectStore(store).put(value,key);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});}
+async function saveChunks(zip,name){let db=await makeDb();try{
+  let pieces=Math.ceil(zip.size/CHUNK);for(let i=0;i<pieces;i++){
+    await txPut(db,STORE,KEY+'-'+i,zip.slice(i*CHUNK,(i+1)*CHUNK,'application/zip'));
+    if(i===0||i===pieces-1||i%3===0)showBanner('端末に読書データを保存中：'+(i+1)+'/'+pieces);
   }
- }catch(e){$('status').textContent='端末に保存済みの読書版はありません。最初の1回だけHTMLを選択してください。';}
+  await txPut(db,META,KEY,{name,size:zip.size,pieces,savedAt:Date.now()});
+  showBanner('端末保存が完了しました。次回は「端末に保存した本を開く」から再開できます。');
+ }finally{db.close();}}
+async function savedZip(){let db=await makeDb();try{
+  const m=await txRead(db,META,KEY); if(!m||m.size!==ZIP_BYTES||m.pieces!==Math.ceil(ZIP_BYTES/CHUNK))return null;
+  const parts=[];for(let i=0;i<m.pieces;i++){const p=await txRead(db,STORE,KEY+'-'+i);if(!p)return null;parts.push(p);}
+  return new Blob(parts,{type:'application/zip'});
+ }finally{db.close();}}
+async function extractBook(zip){
+ if(!zip||zip.size!==ZIP_BYTES)throw Error('別のZIPが選択されています。Googleドライブの「世界の歴史1方式_読書用データ.zip」を選んでください。');
+ const head=new DataView(await zip.slice(0,256).arrayBuffer());
+ if(head.getUint32(0,true)!==0x04034b50)throw Error('ZIPとして認識できません。');
+ const flags=head.getUint16(6,true),method=head.getUint16(8,true),crc=head.getUint32(14,true),compressed=head.getUint32(18,true),original=head.getUint32(22,true);
+ const nameLen=head.getUint16(26,true),extraLen=head.getUint16(28,true);
+ const member=new TextDecoder().decode(new Uint8Array(head.buffer,30,nameLen));
+ if(flags&8||method!==0||crc!==EXPECTED_CRC||compressed!==HTML_BYTES||original!==HTML_BYTES||member!==HTML_MEMBER)throw Error('このZIPは今回の読書用データと一致しません。原本画像ZIPやEPUBではなく、新しい読書用ZIPを選択してください。');
+ const pos=30+nameLen+extraLen;
+ if(pos+HTML_BYTES>zip.size)throw Error('ZIPの読み取り位置が不正です。');
+ const doc=zip.slice(pos,pos+HTML_BYTES,'text/html');
+ const first=await doc.slice(0,20000).text();
+ if(!first.includes('中世ヨーロッパの城塞｜原本001〜020')||!first.includes(REVISION)||!first.includes('id="reader-main"'))throw Error('書籍データの内容が一致しません。');
+ return doc;
+}
+async function readZip(zip,name,shouldSave){
+ currentName=name;
+ writeStatus('選択したZIP：'+name+'\n内容を確認しています…');
+ const doc=await extractBook(zip);
+ writeStatus('書籍データを確認しました。読書画面を開いています…');
+ const frame=$('reader');
+ if(currentBookUrl)URL.revokeObjectURL(currentBookUrl);
+ currentBookUrl=URL.createObjectURL(doc);
+ frame.onload=()=>{
+   $('setup').hidden=true;frame.style.display='block';
+   if(shouldSave){void saveChunks(zip,name).catch(e=>showBanner('読書画面は開きましたが端末保存ができませんでした。次回はZIPを選び直してください。'))}
+ };
+ frame.onerror=()=>writeStatus('読書画面の表示に失敗しました。ZIPを選び直してください。',true);
+ frame.src=currentBookUrl;
+}
+$('zipInput').addEventListener('change',async()=>{
+ const file=$('zipInput').files?.[0]; if(!file)return;
+ try{writeStatus('選択したZIP：'+file.name+'\n読み込みます…');await readZip(file,file.name,true);}catch(e){writeStatus('選択したZIP：'+file.name+'\n'+(e?.message||e),true);}
+ $('zipInput').value='';
+});
+$('reopen').onclick=async()=>{try{writeStatus('保存済みのZIPを読み込みます…');const b=await savedZip();if(!b)throw Error('保存済みデータが見つかりません。GoogleドライブからZIPを選択してください。');await readZip(b,'端末保存済みの中世ヨーロッパの城塞',false);}catch(e){writeStatus(e.message||String(e),true);}};
+window.addEventListener('pageshow',async()=>{
+ try{const saved=await savedZip();if(!saved)return;$('reopen').hidden=false;
+   writeStatus('端末にこの本のデータが保存されています。「端末に保存した本を開く」から再開できます。');
+   if(!new URLSearchParams(location.search).has('import'))await readZip(saved,'端末保存済みの中世ヨーロッパの城塞',false);
+ }catch(e){writeStatus('Googleドライブから新しい読書用ZIPを選んでください。',false);}
 });
 </script>
 </body>
