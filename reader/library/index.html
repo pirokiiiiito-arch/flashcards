@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+<meta name="theme-color" content="#f7f6ef">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="私の本棚">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>私の本棚｜Google Drive連携</title>
+<link rel="stylesheet" href="./app.css">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+</head>
+<body>
+<header class="app-head">
+  <div class="head-brand"><span class="logo" aria-hidden="true">本</span><div><strong>私の本棚</strong><small>PRIVATE READING LIBRARY</small></div></div>
+  <button class="head-action" type="button" id="settingsButton" aria-label="設定を開く"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15l1.1 1.8-1.8 1.8-1.8-1.1a8.5 8.5 0 0 1-2.1.9l-.5 2h-2.6l-.5-2a8.5 8.5 0 0 1-2.1-.9l-1.8 1.1-1.8-1.8L6.6 15a9 9 0 0 1-.9-2.1l-2-.5V9.8l2-.5a9 9 0 0 1 .9-2.1L5.5 5.4l1.8-1.8 1.8 1.1a9 9 0 0 1 2.1-.9l.5-2h2.6l.5 2a9 9 0 0 1 2.1.9l1.8-1.1 1.8 1.8-1.1 1.8a9 9 0 0 1 .9 2.1l2 .5v2.6l-2 .5a9 9 0 0 1-.9 2.1Z" transform="translate(0 1) scale(.95)"/></svg></button>
+</header>
+<main class="main">
+  <section class="welcome">
+    <div class="welcome-text"><span class="eyebrow">YOUR PRIVATE COLLECTION</span><h1>いつでも、<br>好きな本の続きを。</h1><p>Google Driveの本をここに並べて、タップするだけで読む。保存した本は外出先でも。</p></div>
+    <div class="hero-books" aria-hidden="true"><div class="book-graphic bg-one"><span>世界の<br>歴史</span><small>01</small></div><div class="book-graphic bg-two"><span>私の<br>蔵書</span></div><div class="book-graphic bg-three"><span>読書</span></div></div>
+  </section>
+  <section class="cloud-banner" aria-live="polite"><div class="cloud-icon" aria-hidden="true">☁</div><div class="cloud-message"><strong id="cloudTitle">Google Driveと未接続</strong><small id="cloudMessage">連携後は本棚が自動更新されます</small></div><button id="connectButton" class="compact-button" type="button">接続する</button></section>
+  <div class="section-top"><div><span class="eyebrow">LIBRARY</span><h2>すべての本 <span id="bookCount">1</span></h2></div><button id="refreshButton" class="text-button" type="button">↻ 更新</button></div>
+  <label class="search-control"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="書名で検索" aria-label="書名で検索"></label>
+  <div id="shelf" class="books-grid" aria-live="polite"></div>
+  <div id="emptyState" class="empty-state" hidden>該当する書籍はありません。</div>
+  <section class="foot-note"><h3>200冊以上を見据えた本棚</h3><p>新しい統合読書ZIPをDriveの専用フォルダに置くと、接続後に本棚へ追加されます。書籍本文・画像はGitHubには公開しません。</p><a id="folderLink" href="https://drive.google.com/drive/folders/1WPpY1os7llCyFaDa9C7Bf7vDQb0ee31j" target="_blank" rel="noopener noreferrer">Google Driveの本棚フォルダを開く</a></section>
+</main>
+<footer class="app-footer"><span>PRIVATE BOOKSHELF</span><span>端末内保存は端末ごとに管理されます</span></footer>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<div class="backdrop" id="settingsBackdrop" hidden></div>
+<section id="settingsPanel" class="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+  <div class="sheet-handle"></div><div class="sheet-title"><h2 id="settingsTitle">Google Driveと接続</h2><button id="settingsClose" class="close" aria-label="設定を閉じる" type="button">×</button></div>
+  <p>ご自身のGoogleアカウントで、非公開の書籍データを直接読むための設定です。書籍やアクセストークンをGitHubへ送信しません。</p>
+  <label class="form-label" for="clientId">Google OAuth クライアントID（ウェブアプリ）</label>
+  <input id="clientId" class="form-input" type="text" placeholder="例：123456789-xxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+  <p class="tiny">Client IDのみ入力してください。パスワード・Client Secret・アクセストークンは入力しないでください。</p>
+  <button class="primary-button" id="saveClientId" type="button">設定を保存してGoogleに接続</button>
+  <details class="help-details"><summary>初回のGoogle設定方法を見る</summary><ol><li>Google Cloud Consoleでプロジェクトを作り、Google Drive APIを有効にします。</li><li>Google Auth Platform（OAuth同意画面）を設定し、個人利用ならご自身のGoogleアカウントをテストユーザーに追加します。</li><li>OAuthクライアントを「ウェブアプリケーション」として作成し、承認済みJavaScript生成元に <code>https://pirokiiiiito-arch.github.io</code> を登録します。</li><li>生成された <strong>クライアントID</strong> だけを上欄に貼ります。Client Secretは不要です。</li></ol><p>GoogleからDriveの読み取り権限を求められます。既存ファイルの閲覧にはDrive読み取りスコープが必要です。個人用の未審査アプリでは警告やテストユーザー設定が必要になる場合があります。</p><a target="_blank" rel="noopener noreferrer" href="https://console.cloud.google.com/apis/credentials">Google Cloudの認証情報を開く</a></details>
+  <div class="security-note"><strong>接続先</strong><span>Google Drive／読書本棚_200冊_非公開</span><small>OAuthアクセストークンは端末内にも永続保存しません。必要に応じて再接続します。</small></div>
+</section>
+<div class="backdrop" id="bookBackdrop" hidden></div>
+<section id="bookPanel" class="sheet book-sheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle" hidden>
+  <div class="sheet-handle"></div><div class="sheet-title"><h2 id="detailTitle">書籍</h2><button id="bookClose" class="close" type="button" aria-label="書籍の詳細を閉じる">×</button></div>
+  <p id="detailSub">全巻読書</p><p id="detailStatus" class="detail-status"></p>
+  <button id="primaryBookAction" type="button" class="primary-button">この本を読む</button>
+  <button id="removeBook" type="button" class="secondary-button" hidden>端末に保存したデータを削除</button>
+  <div id="downloadProgress" class="download-progress" hidden><div class="progress-track"><div id="progressBar"></div></div><p id="progressLabel" role="status" aria-live="polite">準備中</p><button id="cancelDownload" class="text-button" type="button">ダウンロードを中止</button></div>
+  <p class="tiny">書籍画像・OCR本文はGoogle Driveから端末へ直接転送されます。大容量の本はWi-Fiで保存してください。Safari等の保存領域には上限があります。</p>
+</section>
+<script src="./storage.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
