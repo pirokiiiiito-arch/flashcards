@@ -81,7 +81,7 @@ async function verify(blob){
  const head=await blob.slice(0,30000).text();
  if(!head.includes('図説 英国のインテリア史｜001〜020｜iPhone縦書き・上下スワイプ読書版')||
     !head.includes('id="reader-main"') || !head.includes(EXPECTED))
-  throw Error('別の版が選ばれました。Googleドライブ内の「★これを選ぶ_英国のインテリア史_01-20.html」を選択してください。');
+  throw Error('別の版が選ばれました。Googleドライブ内の「15時49分_★これを選ぶ_英国のインテリア史_01-20.html」を選択してください。');
  return true;
 }
 function readerFailed(message){
