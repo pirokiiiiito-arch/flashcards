@@ -36,13 +36,13 @@ li{margin:7px 0}
 <div id="setup"><section class="panel">
 <div class="kicker">PRIVATE BOOK READER / GOOGLE DRIVE</div>
 <h1>中世ヨーロッパの城塞</h1>
-<div><span class="tag">001〜020枚目</span><span class="tag">20px基準</span><span class="tag">原本画像そのまま</span><span class="tag">OCR校正継続中</span><span class="tag">図説明：世界の歴史1と同じ文字サイズ</span></div>
+<div><span class="tag">001〜020枚目</span><span class="tag">20px基準</span><span class="tag">原本画像そのまま</span><span class="tag">OCR校正継続中</span><span class="tag">5写真それぞれ1説明</span><span class="tag">図説明：世界の歴史1と同じ文字サイズ</span></div>
 <p><strong>Googleドライブ上のZIPを、ここから直接選んで読みます。</strong>ZIPのプレビュー・EPUB・HTMLのプレビュー画面は開かないでください。</p>
 <label for="zipInput" class="action primary">GoogleドライブのZIPを選んで読む</label>
 <input id="zipInput" type="file" accept=".zip,application/zip">
 <ol>
 <li>上のボタンをタップし、iPhoneのファイル選択画面で<strong>「ブラウズ」→「Google Drive」</strong>を選びます。</li>
-<li>本の保管庫の<strong>「01_作業中_1-20枚目」</strong>を開き、<strong>「図説明WH1同サイズ.zip」</strong>で終わるファイルを選びます。</li>
+<li>本の保管庫の<strong>「01_作業中_1-20枚目」</strong>を開き、<strong>「1画像1説明.zip」</strong>で終わるファイルを選びます。</li>
 <li>右上の<strong>「確認」</strong>を押すと、この画面に戻って書籍の読み込みが始まります。ZIPを直接タップしてプレビュー・展開する必要はありません。</li>
 </ol>
 <p class="fine">ファイル選択画面に「Google Drive」が見えない場合は、「ブラウズ」の「…」からGoogle Driveを有効にしてください。Googleドライブから選べない場合のみ、ドライブでZIPを「ファイル」に保存し、上のボタンから選択してください。</p>
@@ -54,13 +54,13 @@ li{margin:7px 0}
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const ZIP_NAME_PART='図説明WH1同サイズ.zip';
+const ZIP_NAME_PART='1画像1説明.zip';
 const HTML_MEMBER='book.html';
-const HTML_BYTES=43584832;
-const ZIP_BYTES=43584948;
-const EXPECTED_CRC=0x3b3e24a2;
+const HTML_BYTES=48862448;
+const ZIP_BYTES=48862564;
+const EXPECTED_CRC=0x274ba951;
 const REVISION='001・002・005・006文字化＋目次ページ分割済み';
-const DB='castle-drivezip-reader-v1', STORE='chunks', META='info', KEY='castle001-020-wh1captions-20261108';
+const DB='castle-drivezip-reader-v1', STORE='chunks', META='info', KEY='castle001-020-oneimage-onecaption-20261108';
 const CHUNK=4*1024*1024;
 let currentBookUrl='',currentName='';
 const writeStatus=(s,error=false)=>{const el=$('status');el.textContent=s;el.classList.toggle('error',error);};
@@ -87,7 +87,7 @@ async function savedZip(){let db=await makeDb();try{
   return new Blob(parts,{type:'application/zip'});
  }finally{db.close();}}
 async function extractBook(zip){
- if(!zip||zip.size!==ZIP_BYTES)throw Error('別のZIPが選択されています。Googleドライブの「図説明WH1同サイズ.zip」を選んでください。');
+ if(!zip||zip.size!==ZIP_BYTES)throw Error('別のZIPが選択されています。Googleドライブの「1画像1説明.zip」を選んでください。');
  const head=new DataView(await zip.slice(0,256).arrayBuffer());
  if(head.getUint32(0,true)!==0x04034b50)throw Error('ZIPとして認識できません。');
  const flags=head.getUint16(6,true),method=head.getUint16(8,true),crc=head.getUint32(14,true),compressed=head.getUint32(18,true),original=head.getUint32(22,true);
