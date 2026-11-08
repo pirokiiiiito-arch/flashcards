@@ -104,7 +104,7 @@ const BookCovers = (() => {
     return await validImage(image)?image:null;
   }
   async function fromLocal(book) {
-    if (!window.LibraryDB?.findBlob) return null;
+    if (typeof LibraryDB === 'undefined' || typeof LibraryDB.findBlob !== 'function') return null;
     const saved = await LibraryDB.findBlob(book.id);
     return saved?.blob?fromZip(saved.blob):null;
   }
