@@ -41,13 +41,13 @@
   <p>全274枚を、ひとつの読書画面で続けて読める統合版です。図版と説明は同じ画面に表示し、原本JPEGもそのまま確認できます。</p>
   <div class="spec"><span>縦書き20px</span><span>A−／A＋ 16〜30px</span><span>上スワイプで次へ</span><span>原本274枚</span></div>
   <h2>最初の一度だけ、書籍データを読み込む</h2>
-  <ol class="instructions"><li>統合書籍ZIPを1個、またはGoogle Driveに保存した分割データpart01〜part08の8個をすべて「ファイル」に保存</li><li>下のボタンでZIPを1個、または分割データ8個をすべてまとめて選択する</li><li>読み込み後は全巻を読めます。端末保存が「完了」と表示されるまでページを閉じないでください。保存できた端末では次回自動で続きから開けます</li></ol>
+  <ol class="instructions"><li>統合書籍ZIP1個、または分割データpart01〜part08の8個を「ファイル」アプリの「このiPhone内」に保存（Google Drive内のままではオフラインで開けない場合があります）</li><li>下のボタンでZIPを1個、または分割データ8個をすべてまとめて選択する</li><li>読み込み後は全巻を読めます。端末保存が「完了」と表示されるまでページを閉じないでください。保存できた端末では次回自動で続きから開けます</li></ol>
   <label class="button primary large" for="zipInput">統合書籍データを選んで開く</label>
   <input id="zipInput" type="file" multiple>
   <button class="button large" id="resume" hidden>このiPhoneに保存した本を開く</button>
   <p id="offlineState" role="status">端末保存状態：未確認</p>
   <p id="hint" role="status" aria-live="polite">統合書籍ZIP1個、または分割データpart01〜part08の8個を選択してください。</p>
-  <p class="notice">書籍の画像・本文はGitHubに送信・公開しません。原本JPEGの画素は変更していません。OCRの全字校正には未完了部分があり、原本確認機能を併設しています。大きな書籍データのため、端末の空き容量が必要です。</p>
+  <p class="notice">ホーム画面からワンタップで開きたい場合は、Safariでこのサイトを開き「共有」→「ホーム画面に追加」してください。追加されたアイコンから初回だけ書籍を読み込み、端末保存の「完了」を確認したら機内モードで起動テストをしてください。<br>書籍の画像・本文はGitHubに送信・公開しません。原本JPEGの画素は変更していません。OCRの全字校正には未完了部分があり、原本確認機能を併設しています。大きな書籍データのため、端末の空き容量が必要です。</p>
  </section>
 </div>
 <div id="storageBanner" hidden role="status" aria-live="polite"><span id="storageMessage"></span><button id="storageDismiss" type="button" aria-label="通知を閉じる">閉じる</button></div>
@@ -205,12 +205,14 @@ function restorePosition(){try{let p=JSON.parse(localStorage.getItem('WH1_UNIFIE
 // Offline book storage: use small IndexedDB chunks rather than one huge 400 MB transaction.
 // Old v1 records remain readable so an already cached book does not require re-import.
 const OFFLINE_CHUNK_SIZE = 4 * 1024 * 1024;
-let storageState = '端末保存状態：未確認', savingPromise = null;
+let storageState = '端末保存状態：未確認', savingPromise = null, storageNoticeTimer=null;
 function setStorageState(message,{warn=false,show=true}={}){
  storageState=message;
  $('offlineState').textContent=message;
  $('menuStorageStatus').textContent=message;
- if(show){$('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;}
+ if(show){$('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;
+  if(storageNoticeTimer)clearTimeout(storageNoticeTimer);
+  if(message.includes('保存が完了')||message.includes('保存済み'))storageNoticeTimer=setTimeout(()=>{$('storageBanner').hidden=true;},9000);}
 }
 function storageErrorText(err){
  const code=String(err?.name||'');
