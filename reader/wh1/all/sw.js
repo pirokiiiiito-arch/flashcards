@@ -1,6 +1,6 @@
 /* World History 1 reader app shell only. Book bytes are never cached by this worker. */
 'use strict';
-const CACHE_NAME='wh1-unified-reader-shell-v5';
+const CACHE_NAME='wh1-unified-reader-shell-v6';
 const SHELL_URL=new URL('index.html',self.registration.scope).toString();
 const MANIFEST_URL=new URL('manifest.webmanifest',self.registration.scope).toString();
 const ICON_URL=new URL('apple-touch-icon.png',self.registration.scope).toString();
