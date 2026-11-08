@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>図説 英国のインテリア史｜Chrome読書版 1〜20枚目（表示・スワイプ再修正版）</title>
+<title>図説 英国のインテリア史｜Chrome読書版 1〜20枚目（v7組版エラー修正版）</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
 *{box-sizing:border-box}
@@ -49,8 +49,8 @@ a{color:#2c666c}
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='uk-interiors-reader-on-device-onepage-01-20-v6',STORE='books',KEY='scans001to020_stable_scroll_v6_20261108',MAX=60*1024*1024;
-const EXPECTED='one-scan-one-reader-page-v6-20261108-01-20-stable-scroll';
+const DB='uk-interiors-reader-on-device-onepage-01-20-v7',STORE='books',KEY='scans001to020_oldh_fixed_v7_20261108',MAX=60*1024*1024;
+const EXPECTED='one-scan-one-reader-page-v7-20261108-01-20-oldh-fix';
 let currentBlob=null,activeUrl='',pendingSave=null,loadId=0,readerIsReady=false;
 function say(s){$('status').textContent=s}
 function database(){
@@ -81,7 +81,7 @@ async function verify(blob){
  const head=await blob.slice(0,30000).text();
  if(!head.includes('図説 英国のインテリア史｜001〜020｜iPhone縦書き・上下スワイプ読書版')||
     !head.includes('id="reader-main"') || !head.includes(EXPECTED))
-  throw Error('別の版が選ばれました。Googleドライブ内の「15時49分_★これを選ぶ_英国のインテリア史_01-20.html」を選択してください。');
+  throw Error('別の版が選ばれました。Googleドライブ内の「15時59分_★これを選ぶ_英国のインテリア史_01-20.html」を選択してください。');
  return true;
 }
 function readerFailed(message){
