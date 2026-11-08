@@ -3,6 +3,9 @@
   const ROOT_ID = '1WPpY1os7llCyFaDa9C7Bf7vDQb0ee31j';
   const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
   const CLIENT_KEY = 'PRIVATE_BOOKSHELF_GOOGLE_CLIENT_ID';
+  // Use the public OAuth client already configured for the three flashcard apps.
+  // The bookshelf asks for drive.readonly separately; appdata permission alone is insufficient.
+  const SHARED_CLIENT_ID = String(window.FLASHCARDS_DRIVE_CONFIG?.clientId || '').trim();
   const PREVIEW = {id:'wh1',title:'世界の歴史1',subtitle:'全274枚・縦書き読書版',scans:274,
     status:'OCR全字校正継続中',totalBytes:400389725,parts:[]};
   const $ = id => document.getElementById(id);
@@ -15,7 +18,7 @@
   const clientIdPattern=/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i;
   function openSheet(prefix) {$(prefix+'Backdrop').hidden=false;$(prefix+'Panel').hidden=false;document.body.style.overflow='hidden';}
   function closeSheet(prefix) {$(prefix+'Backdrop').hidden=true;$(prefix+'Panel').hidden=true;document.body.style.overflow='';}
-  function openSettings() { $('clientId').value=localStorage.getItem(CLIENT_KEY)||''; openSheet('settings'); }
+  function openSettings() { $('clientId').value=localStorage.getItem(CLIENT_KEY)||SHARED_CLIENT_ID||''; openSheet('settings'); }
   function closeSettings() {closeSheet('settings');}
   function normalizeTitle(filename) {
     let base=filename.replace(/\.zip$/i,'').replace(/\.part\d+$/i,'');
@@ -87,7 +90,7 @@
       document.head.append(s);
     });
   }
-  async function googleSignIn(){const id=($('clientId').value||localStorage.getItem(CLIENT_KEY)||'').trim();
+  async function googleSignIn(){const id=($('clientId').value||localStorage.getItem(CLIENT_KEY)||SHARED_CLIENT_ID||'').trim();
     if(!clientIdPattern.test(id)){openSettings();say('Googleのウェブ用OAuthクライアントIDを設定してください');return;}
     localStorage.setItem(CLIENT_KEY,id);
     if(!window.google?.accounts?.oauth2){
@@ -226,6 +229,6 @@
   $('removeBook').onclick=deleteLocal;
   window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pendingDownload){closeSettings();closeSheet('book');}});
   renderShelf();refreshSaved().catch(()=>{});registerSW();
-  if(localStorage.getItem(CLIENT_KEY))setCloud('Google Drive連携の設定あり','「接続する」でGoogleにログインしてください');
+  if(localStorage.getItem(CLIENT_KEY)||SHARED_CLIENT_ID)setCloud('フラッシュカードのGoogle設定を利用','「接続する」で書籍フォルダの読み取り権限を許可してください');
   if(!navigator.onLine)setCloud('オフライン','端末に保存済みの本は読めます');
 })();
