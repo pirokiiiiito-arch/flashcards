@@ -12,3 +12,15 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
 @media(max-width:520px){.hero-books{display:none}.welcome{min-height:216px;height:auto}.welcome-text{width:100%}.welcome p{max-width:305px}.welcome h1{font-size:27px}}
+
+
+/* Authentic scanned book covers are private images served from the owner's
+   Google Drive or an on-device book. No scan files are published with the site. */
+.cover-wrap{height:auto;aspect-ratio:0.70;max-width:210px;min-height:0}
+.cover{position:relative;overflow:hidden;isolation:isolate;border-radius:4px 10px 10px 4px}
+.cover .book-cover-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+ object-position:center;background:#f8f7f3;z-index:1;visibility:hidden;border-radius:inherit}
+.cover.photo-ready .book-cover-photo{visibility:visible}
+.book-card .book-name{font-size:15px;line-height:1.5;letter-spacing:.005em;overflow-wrap:anywhere}
+.book-card .book-sub{font-size:12px}
+@media(max-width:365px){.cover-wrap{height:auto;aspect-ratio:0.70;max-width:210px}}
