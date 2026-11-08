@@ -35,17 +35,17 @@ a{color:#24566a}
 <h1>英国のインテリア史<br>1〜20枚目</h1>
 <p><strong>Googleドライブから読む</strong>ための軽量入口です。自動読み込みを停止し、ファイルを選ぶまで本は起動しません。</p>
 <p>Googleドライブの読書HTML：</p>
-<p><a href="https://drive.google.com/file/d/1M05TD7nA8uaJAyHo9NHz4-l8nRxdejvI/view" rel="noopener" target="_blank">20261108_23時40分_★これを選ぶ_英国のインテリア史_01-20.html</a></p>
+<p><a href="https://drive.google.com/file/d/1M05TD7nA8uaJAyHo9NHz4-l8nRxdejvI/view" rel="noopener" target="_blank">20261109_00時01分_★これを選ぶ_英国のインテリア史_01-20.html</a></p>
 <label class="control" for="file">GoogleドライブのHTMLを選択</label>
 <input id="file" type="file" accept=".html,text/html">
 <p id="status" role="status" aria-live="polite">この白い案内画面が表示されていれば、サイトの入口は開けています。上のボタンからGoogleドライブ内のHTMLを選んでください。</p>
-<p class="note">本文は縦書き20pxで、1列は26文字分の高さ。原本画像1枚＝読書1ページ。原本は変更しません。黒画面の原因を切り分けるため、この入口ではChrome内の保存済みHTMLを自動で読み込まず、端末への自動保存も一時停止しています。Googleドライブが管理元です。</p>
+<p class="note">本文は縦書き20pxで、1列は26文字分の高さ。同じ原本内の続きは上下スワイプで1画面分ずつ切り替えます（次の文章を下に積みません）。原本画像1枚＝読書1ページ。原本は変更しません。黒画面の原因を切り分けるため、この入口ではChrome内の保存済みHTMLを自動で読み込まず、端末への自動保存も一時停止しています。Googleドライブが管理元です。</p>
 </main>
 </div>
 <script>
 'use strict';
 (function(){
-  var expected='one-scan-one-reader-page-v8-20261108-01-20-26char-flow';
+  var expected='one-scan-one-reader-page-v9-20261108-01-20-single-view-wh1';
   var $=function(id){return document.getElementById(id)};
   var objUrl=null,token=0;
   function status(s){$('status').textContent=String(s)}
@@ -75,7 +75,7 @@ a{color:#24566a}
     try{
       if(f.size<1000000||f.size>60*1024*1024)throw Error('約30 MBの読書版HTMLを選択してください');
       var head=await f.slice(0,30000).text();
-      if(!head.includes(expected)||!head.includes('id="reader-main"'))throw Error('別の版のHTMLです。20261108_23時40分_で始まるファイルを選んでください');
+      if(!head.includes(expected)||!head.includes('id="reader-main"'))throw Error('別の版のHTMLです。20261109_00時01分_で始まるファイルを選んでください');
       if(token!==id)return;
       $('viewer').hidden=false;
       $('return').hidden=false;
