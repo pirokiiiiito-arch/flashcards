@@ -326,7 +326,7 @@ async function openSegment(index,destination={}){
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
   const text=await bookZip.readText(s.part);if(token!==loadToken)return;
-  const content=new Blob([text.replace(/<\\/body>/i,WH1_COUNTER_BRIDGE+'</body>')],{type:'text/html'});
+  const content=new Blob([text.replace('</body>',WH1_COUNTER_BRIDGE+'</body>')],{type:'text/html'});
   if(frameURL) URL.revokeObjectURL(frameURL);
   frameURL=URL.createObjectURL(content);activeSegment=index;
   $('reader').src=frameURL;
@@ -381,7 +381,7 @@ function wh1PageProgress(d){
 const WH1_COUNTER_BRIDGE='<scr'+'ipt>(function(){window.addEventListener("message",function(e){'+
  'const d=e.data;if(e.source!==window.parent||!d||d.wh1bridge!==1||d.action!=="globalProgress")return;'+
  'const location=document.getElementById("location");if(location){location.textContent=d.label;location.setAttribute("aria-label",d.approx?"全巻の読書ページ数の概算":"全巻の読書ページ番号");}'+
- 'const pos=document.getElementById("position");if(pos){const base=pos.textContent.replace(/\\s*[｜|]\\s*原本\\s*\\d+\\s*\\/\\s*\\d+\\s*$/,"");pos.textContent=base+" ｜ 原本 "+d.scan+" / "+d.maxScans;}'+
+ 'const pos=document.getElementById("position");if(pos){const base=pos.textContent.split(" ｜ 原本 ")[0];pos.textContent=base+" ｜ 原本 "+d.scan+" / "+d.maxScans;}'+
  'const bar=document.getElementById("progress-fill");if(bar)bar.style.width=(Math.max(0,Math.min(1,d.ratio))*100).toFixed(2)+"%";'+
  '});})();</scr'+'ipt>';
 
