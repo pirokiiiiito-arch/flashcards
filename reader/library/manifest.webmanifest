@@ -1,0 +1,12 @@
+{
+  "id":"./",
+  "name":"私の本棚｜Google Drive連携",
+  "short_name":"私の本棚",
+  "description":"Google Driveの非公開書籍を端末保存して読む個人用電子本棚",
+  "start_url":"./",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#f8f7f1",
+  "theme_color":"#f8f7f1",
+  "icons":[{"src":"./apple-touch-icon.png","sizes":"180x180","type":"image/png","purpose":"any"}]
+}
