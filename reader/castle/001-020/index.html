@@ -37,17 +37,17 @@ li{margin:7px 0}
 <div class="kicker">PRIVATE BOOK READER / GOOGLE DRIVE</div>
 <h1>中世ヨーロッパの城塞</h1>
 <div><span class="tag">001〜020枚目</span><span class="tag">20px基準</span><span class="tag">原本画像そのまま</span><span class="tag">OCR校正継続中</span></div>
-<p><strong>『世界の歴史1』と同じ、GoogleドライブのZIPを取り込む読書方法です。</strong>EPUBのプレビューやHTMLファイルのプレビューではなく、下のボタンからZIPを読み込みます。</p>
-<a class="action secondary" href="https://drive.google.com/file/d/1UJpQc7Jf_O62luhKj3cqlWIgFAt6wLB7/view" target="_blank" rel="noopener noreferrer">Googleドライブの読書用ZIPを開く</a>
-<ol>
-<li>GoogleドライブのZIP画面で<strong>「ダウンロード」</strong>をタップする。</li>
-<li>iPhoneの「ファイル」アプリの「ダウンロード」にZIPを保存する。<strong>ZIP自体をタップして展開する必要はありません。</strong></li>
-<li>この読書ページへ戻り、下の「読書用ZIPを選んで開く」→「ブラウズ」→「ダウンロード」でZIPを選び、右上の「確認」を押す。</li>
-</ol>
-<label for="zipInput" class="action primary">読書用ZIPを選んで開く</label>
+<p><strong>Googleドライブ上のZIPを、ここから直接選んで読みます。</strong>ZIPのプレビュー・EPUB・HTMLのプレビュー画面は開かないでください。</p>
+<label for="zipInput" class="action primary">GoogleドライブのZIPを選んで読む</label>
 <input id="zipInput" type="file" accept=".zip,application/zip">
+<ol>
+<li>上のボタンをタップし、iPhoneのファイル選択画面で<strong>「ブラウズ」→「Google Drive」</strong>を選びます。</li>
+<li>本の保管庫の<strong>「01_作業中_1-20枚目」</strong>を開き、<strong>「世界の歴史1方式_読書用データ.zip」</strong>で終わるファイルを選びます。</li>
+<li>右上の<strong>「確認」</strong>を押すと、この画面に戻って書籍の読み込みが始まります。ZIPを直接タップしてプレビュー・展開する必要はありません。</li>
+</ol>
+<p class="fine">ファイル選択画面に「Google Drive」が見えない場合は、「ブラウズ」の「…」からGoogle Driveを有効にしてください。Googleドライブから選べない場合のみ、ドライブでZIPを「ファイル」に保存し、上のボタンから選択してください。</p>
 <button id="reopen" class="action secondary" type="button" hidden>端末に保存した本を開く</button>
-<div id="status" role="status" aria-live="polite">読書用ZIPを選んでください。「世界の歴史1方式_読書用データ.zip」が正しいファイルです。</div>
+<div id="status" role="status" aria-live="polite">この画面の「GoogleドライブのZIPを選んで読む」から選択してください。Googleドライブのプレビューは使いません。</div>
 <p class="fine">ZIP内の原本画像・OCR本文はこの端末内で表示します。Googleドライブが保管元であり、本文や画像はGitHubへ送信しません。自動保存できた場合は次回読み込みを省けます。原本画像と図版説明の対応は維持していますが、OCR全字校正は未完了です。</p>
 </section></div>
 <div id="banner" role="status" aria-live="polite" hidden></div>
@@ -126,7 +126,7 @@ window.addEventListener('pageshow',async()=>{
  try{const saved=await savedZip();if(!saved)return;$('reopen').hidden=false;
    writeStatus('端末にこの本のデータが保存されています。「端末に保存した本を開く」から再開できます。');
    if(!new URLSearchParams(location.search).has('import'))await readZip(saved,'端末保存済みの中世ヨーロッパの城塞',false);
- }catch(e){writeStatus('Googleドライブから新しい読書用ZIPを選んでください。',false);}
+ }catch(e){writeStatus('上のボタンからGoogleドライブ内の読書用ZIPを選んでください。',false);}
 });
 </script>
 </body>
