@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>図説 英国のインテリア史｜Chrome読書版 1〜20枚目（初期表示修正版）</title>
+<title>図説 英国のインテリア史｜Chrome読書版 1〜20枚目（表示・スワイプ再修正版）</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
 *{box-sizing:border-box}
@@ -32,8 +32,8 @@ a{color:#2c666c}
  <main>
   <h1>図説 英国のインテリア史</h1>
   <p><strong>第1分冊：1〜20枚目</strong>（1〜3枚目は表紙・出版情報・目次。4枚目から縦書き本文。図の説明は横書き。OCR校正継続中）</p>
-  <p>原本画像1枚＝読書1ページ（20ページ固定）。本文は縦書き20px・ページ内を縦スクロール、上端・下端から再度スワイプすると原本画像単位で前後に進みます。 iPhoneのChromeで開く、001〜020枚目の読書用Webアプリです。画面サイズに合わせた縦書き本文・図版と説明文を表示します。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
-  <h2>Googleドライブの読書版を開く（表示修正版）</h2>
+  <p>原本画像1枚＝読書1ページ（20ページ固定）。本文は縦書き20px・ページ内を縦スクロール、上端・下端から再度スワイプすると原本画像単位で前後に進みます。 iPhoneのChromeで開く、001〜020枚目の読書用Webアプリです。画面サイズに合わせた縦書き本文・図版と説明文を表示します。<strong>上スワイプで本文の続きを表示。ページ末尾で再度スワイプすると次の原本画像へ</strong>、下スワイプで本文を戻り、ページ先頭で再度スワイプすると前の原本画像へ戻ります。文字サイズは A−／A＋ で変更できます。</p>
+  <h2>Googleドライブの読書版を開く（表示・スワイプ再修正版）</h2>
   <ol>
    <li><a href="https://drive.google.com/file/d/1M05TD7nA8uaJAyHo9NHz4-l8nRxdejvI/view" target="_blank" rel="noopener">Googleドライブの新しい読書版HTML</a>が保存されていることを確認します</li>
    <li>ここに戻り、下の「ファイルを選択」を押して、「ブラウズ」→「Google Drive」→該当するHTMLを選んで「確認」を押します</li>
@@ -49,8 +49,8 @@ a{color:#2c666c}
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='uk-interiors-reader-on-device-onepage-01-20-v5',STORE='books',KEY='scans001to020_lazy_ready_v5_20261108',MAX=60*1024*1024;
-const EXPECTED='one-scan-one-reader-page-v5-20261108-01-20-lazy-ready';
+const DB='uk-interiors-reader-on-device-onepage-01-20-v6',STORE='books',KEY='scans001to020_stable_scroll_v6_20261108',MAX=60*1024*1024;
+const EXPECTED='one-scan-one-reader-page-v6-20261108-01-20-stable-scroll';
 let currentBlob=null,activeUrl='',pendingSave=null,loadId=0,readerIsReady=false;
 function say(s){$('status').textContent=s}
 function database(){
