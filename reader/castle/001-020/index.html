@@ -10,7 +10,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden}
 #reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf7}
-#setup{position:fixed;inset:0;z-index:10;overflow-y:auto;background:#f7f8f5;display:flex;justify-content:center;align-items:center;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))}
+#setup{position:fixed;inset:0;z-index:10;overflow-y:auto;background:#f7f8f5;display:flex;justify-content:center;align-items:flex-start;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))}
 #setup[hidden]{display:none}
 main{width:100%;max-width:480px;padding:26px 23px;border-radius:18px;background:#fff;border:1px solid #e0e5e1;box-shadow:0 12px 35px #213c3810}
 h1{font-size:22px;margin:0 0 6px;line-height:1.4}
@@ -21,7 +21,7 @@ button,.pick{display:block;width:100%;min-height:48px;text-align:center;padding:
 .pick{background:#315c63;color:#fff;border-color:#315c63}
 button[hidden]{display:none}
 input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-#status{white-space:pre-wrap;min-height:26px;font-size:12px;color:#485e65}
+#status{white-space:pre-wrap;min-height:26px;font-size:14px;line-height:1.6;color:#29505a;padding:10px;border:1px solid #c6d8d9;border-radius:9px;background:#eff6f6}#status.error{color:#873e24;border-color:#dfbfb2;background:#fff4ee}
 ol{font-size:13px;line-height:1.8;color:#536369;padding-left:23px}
 a{color:#2c666c}
 </style>
@@ -40,10 +40,12 @@ a{color:#2c666c}
    <li>このページへ戻り、下の「修正版HTMLを選択して開く」から保存したファイルを選ぶ</li>
    <li>次回からは取り込んだ修正版を自動で開きます。旧版が端末にある場合は更新版を選ぶまで旧版は開きません</li>
   </ol>
-  <label class="pick" for="file">修正版HTMLを選択して開く</label>
+  <p class="note">ファイル一覧では、名前に<strong>「全ページ文字点検・スワイプ修正版」</strong>が含まれるHTMLを選び、右上の<strong>「確認」</strong>を押してください。「全ページ」のない旧版は読み込めません。</p>
+  <p id="status" role="status" aria-live="assertive">まだ選択されていません。「全ページ文字点検」版を選んでください。</p>
+  <label class="pick" for="file">「全ページ文字点検」版を選択</label>
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
-  <p id="status" role="status" aria-live="polite">修正版HTMLを選択してください。</p>
+
   <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。他の区間とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」ボタンで原本画像に切り替えられます。</p>
  </main>
 </div>
@@ -89,7 +91,7 @@ async function verify(blob){
     !head.includes(REQUIRED_REVISION))throw Error('このHTMLは旧版または別の本です。Googleドライブの「中世ヨーロッパの城塞_001-020_全ページ文字点検・スワイプ修正版_校正継続中.html」を選択してください。');
  return true;
 }
-async function openBook(blob){
+async function openBook(blob,saveName){
  await verify(blob);
  currentBlob=blob;
  $('status').textContent='読書画面を開いています…';
@@ -99,19 +101,23 @@ async function openBook(blob){
  frame.onload=()=>{
   $('setup').hidden=true;
   frame.focus();
+  if(saveName){void putSaved(blob,saveName).catch(()=>{});}
  };
  frame.onerror=()=>{$('status').textContent='表示できませんでした。もう一度ファイルを選択してください。';};
  frame.src=activeUrl;
 }
 $('file').addEventListener('change',async()=>{
  const file=$('file').files?.[0];if(!file)return;
+ $('status').classList.remove('error');
+ $('status').textContent='選択したファイル：'+file.name+'\n読書版か確認しています…';
  try{
   await verify(file);
-  try{await putSaved(file,file.name);}catch(e){
-   $('status').textContent='端末への自動保存はできませんでしたが、今回の読書画面は開けます。';
-  }
-  await openBook(file);
- }catch(e){$('status').textContent=e?.message||String(e);}
+  $('status').textContent='選択したファイル：'+file.name+'\n確認できました。読書画面を開いています…';
+  await openBook(file,file.name);
+ }catch(e){
+  $('status').classList.add('error');
+  $('status').textContent='選択したファイル：'+file.name+'\n'+(e?.message||String(e));
+ }
  $('file').value='';
 });
 $('reopen').onclick=async()=>{
@@ -129,7 +135,8 @@ window.addEventListener('pageshow',async()=>{
     if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob);
    }else{
     $('reopen').hidden=true;
-    $('status').textContent='端末に旧版が保存されています。上のGoogleドライブから修正版を保存し、下の「修正版HTMLを選択して開く」で取り込んでください。旧版は自動表示しません。';
+    $('status').classList.add('error');
+    $('status').textContent='端末の旧版は開きません。最新版「全ページ文字点検・スワイプ修正版」を選び、iPhone右上の「確認」を押してください。';
    }
   }
  }catch(e){$('status').textContent='端末に保存済みの読書版はありません。最初の1回だけHTMLを選択してください。';}
