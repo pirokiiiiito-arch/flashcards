@@ -1,0 +1,19 @@
+{
+  "name": "世界の歴史1｜全274枚",
+  "short_name": "世界の歴史1",
+  "description": "書籍を端末内に保存してオフラインで読む統合縦書きアプリ",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fffdf7",
+  "theme_color": "#345c63",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
