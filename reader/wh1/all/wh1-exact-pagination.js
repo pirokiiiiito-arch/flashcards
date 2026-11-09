@@ -91,8 +91,8 @@
   // several pages. For this one figure only, keep the full existing description
   // in the scrollable panel. Apply the SAME change to offscreen page measurement.
   function scan18SinglePage(html){
-    const from='function appendIllustrationPages(g,output){\\n const base=bundleData(g),all=base.descriptionFull;';
-    const to='function appendIllustrationPages(g,output){\\n const base=bundleData(g),all=base.descriptionFull;\\n if(Number(g.scan)===18&&g.title==="動物の発達"){output.push({...base,description:all,partOffset:0,key:"ill:"+g.at+":0"});return;}';
+    const from=['function appendIllustrationPages(g,output){',' const base=bundleData(g),all=base.descriptionFull;'].join(String.fromCharCode(10));
+    const to=[from,' if(Number(g.scan)===18&&g.title==="動物の発達"){output.push({...base,description:all,partOffset:0,key:"ill:"+g.at+":0"});return;}'].join(String.fromCharCode(10));
     return html.replace(from,to);
   }
   // Native iOS scrolling must be kept away from the reader's outer swipe handler
