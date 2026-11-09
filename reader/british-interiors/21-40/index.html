@@ -31,11 +31,11 @@ a{color:#2c666c}
 <div id="setup">
  <main>
   <h1>図説 英国のインテリア史</h1>
-  <p><strong>第2分冊：21〜40枚目</strong>（本文は縦書き20px。図の説明は横書き。OCR校正継続中）</p>
-  <p>原本画像21〜40枚目の読書用Webアプリです。<strong>実際の表示幅と高さで改ページし、画面下の文字切れを防ぎます。図版の説明が収まらない場合も、同じ図を示しながら文章を次の読書画面へ続けます。</strong> 上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本20枚でも読書画面数は増減します。本文は縦書き20px基準、図の説明は横書き。文字サイズは A−／A＋ で変更できます。</p>
-  <h2>Googleドライブの読書版を開く（新60項目・図説再掲v4）</h2>
+  <p><strong>第2分冊：21〜40枚目</strong>（縦書き20px、1桁数字正立、図版固定・説明文のみページ送り、OCR校正継続中）</p>
+  <p>原本画像21〜40枚目の読書用Webアプリです。<strong>実際の表示幅と高さで改ページし、画面下の文字切れを防ぎます。図版の説明が収まらない場合も、図は一つの表示要素として固定し、説明文だけを次・前の読書画面へ切り替えます。図を再掲載・縮小しません。</strong> 上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本20枚でも読書画面数は増減します。本文は縦書き20px基準、図の説明は横書き。文字サイズは A−／A＋ で変更できます。</p>
+  <h2>Googleドライブの読書版を開く（1桁数字正立・図版固定v6）</h2>
   <ol>
-   <li><a href="https://drive.google.com/file/d/11iRDFEz9ZWFFHvF88OFygrEJFbhFY5vK/view" target="_blank" rel="noopener">20261109_1237_【新60項目適用・校正継続中】英国のインテリア史_021-040_図説再掲_表示修正v4.html</a>を選んでください</li>
+   <li><a href="https://drive.google.com/file/d/1T61LO2eJ-eF4y1pQbamUXyEmmJa3GqMM/view" target="_blank" rel="noopener">20261110_0620_【縦書き1桁数字正立v6・図版固定】英国のインテリア史_021-040_校正継続中.html</a>を選んでください</li>
    <li>ここに戻り、下の「ファイルを選択」を押して、「ブラウズ」→「Google Drive」→該当するHTMLを選んで「確認」を押します</li>
    <li>HTMLを受け取ったら先に読書画面を表示し、その後Chromeへの保存を行います。旧版を選んでも無反応にはせず理由を表示します。</li>
   </ol>
@@ -49,7 +49,7 @@ a{color:#2c666c}
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='uk-interiors-reader-on-device-onepage-21-40-v3',STORE='books',KEY='scans021to040_ocr60_v4_20261109',MAX=60*1024*1024;
+const DB='uk-interiors-reader-on-device-onepage-21-40-v3',STORE='books',KEY='scans021to040_one_digit_figure_fixed_v6_20261110',MAX=60*1024*1024;
 // Verify book title, source range, and data format, not an exact revision marker.
 let currentBlob=null,activeUrl='',pendingSave=null,loadId=0,readerIsReady=false;
 function say(s){$('status').textContent=s}
