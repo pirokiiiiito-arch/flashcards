@@ -2,7 +2,7 @@
    This script never uploads, edits, or exposes any book contents. */
 'use strict';
 (() => {
-  const REVISION = 'exact-wh1-pages-v4-scan18-safe';
+  const REVISION = 'exact-wh1-pages-v5-figure32-left';
 
   // Used by both visible readers and invisible page measuring frames, so that
   // the exact total-page measurement accounts for the same toolbar height.
@@ -29,17 +29,36 @@
   const SCAN18_CSS = "<style id=\"wh1-scan18-nocrop\">\n/* 原本18枚目の図説：iOSで各行の左端が欠けないよう余白を確保する。\n   原本画像と本文データ、図説84%の文字サイズは変更しない。 */\n.figure-bundle[data-scan=\"18\"] {\n  box-sizing:border-box!important;\n  width:100%!important;\n  max-width:100%!important;\n  min-width:0!important;\n  padding-left:clamp(24px,calc(var(--size)*1.5),45px)!important;\n  padding-right:12px!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-header,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-explanation,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-label,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-text,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-content {\n  box-sizing:border-box!important;\n  min-width:0!important;\n  max-width:100%!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-title {\n  display:block!important;\n  white-space:normal!important;\n  -webkit-line-clamp:unset!important;\n  overflow:visible!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-text {\n  overflow:visible!important;\n  white-space:pre-wrap!important;\n  overflow-wrap:anywhere!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-content {\n  display:block!important;\n  padding:0!important;\n  margin:0!important;\n  white-space:inherit!important;\n}\n</style>";
   // Scan 18: protect the start of each line and make caption overflow readable.
   // The private OCR/scan images remain untouched; this only changes on-device layout.
-  const SCAN18_SAFE_CSS = `<style id="wh1-scan18-safe-v4">
-.figure-bundle[data-scan="18"]{overflow:hidden!important;padding-left:18px!important;padding-right:18px!important;gap:4px!important}
-.figure-bundle[data-scan="18"] .figure-bundle-header,
-.figure-bundle[data-scan="18"] .figure-bundle-explanation{padding-left:8px!important;padding-right:4px!important;min-width:0!important;max-width:100%!important}
-.figure-bundle[data-scan="18"] .figure-bundle-art{height:30%!important;flex:0 0 30%!important;min-height:0!important}
-.figure-bundle[data-scan="18"] .figure-bundle-caption-text{
-  display:block!important;min-width:0!important;max-width:100%!important;
-  overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch!important;
+  const SCAN18_SAFE_CSS = `<style id="wh1-scan18-figure32-left-v5">
+/* Only the animal evolution figure on scan 18 (group 32).
+   Keep the original illustration, complete caption text and 20px base size;
+   allow the existing fitting routine to split the caption across reading pages. */
+.figure-bundle[data-scan="18"][data-figure-group="32"]{
+  box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;
+  padding-left:clamp(42px,calc(var(--size)*2.3),64px)!important;
+  padding-right:14px!important;gap:4px!important;overflow:hidden!important;
 }
-.figure-bundle[data-scan="18"] .figure-bundle-caption-content{display:block!important;max-width:100%!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-header,
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-explanation{
+  box-sizing:border-box!important;min-width:0!important;width:100%!important;max-width:100%!important;
+  margin:0!important;padding-left:0!important;padding-right:0!important;align-self:stretch!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-art{
+  height:30%!important;flex:0 0 30%!important;min-height:0!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-explanation{
+  overflow:visible!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-caption-text{
+  display:block!important;box-sizing:border-box!important;min-width:0!important;width:100%!important;max-width:100%!important;
+  padding:0 0 0 4px!important;margin:0!important;overflow:visible!important;
+  white-space:pre-wrap!important;overflow-wrap:anywhere!important;word-break:normal!important;
+  text-indent:0!important;direction:ltr!important;writing-mode:horizontal-tb!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-caption-content{
+  display:block!important;min-width:0!important;max-width:100%!important;
+  margin:0!important;padding:0!important;white-space:inherit!important;text-indent:0!important;transform:none!important;
+}
 </style>`;
   const CHILD_CSS = `<style id="wh1-exact-page-css">
 #location{position:relative;color:transparent!important;white-space:nowrap;min-width:14ch;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
