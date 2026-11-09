@@ -35,11 +35,11 @@ a{color:#24566a}
 <h1>英国のインテリア史<br>1〜20枚目</h1>
 <p><strong>Googleドライブから読む</strong>ための軽量入口です。自動読み込みを停止し、ファイルを選ぶまで本は起動しません。</p>
 <p>Googleドライブの読書HTML：</p>
-<p><a href="https://drive.google.com/file/d/1Zio4btbtB9eeCcHU9pyJqPh02EE6kBI8/view" rel="noopener" target="_blank">20261109_2055_【新60項目・図版固定・説明文のみ切替v5】英国のインテリア史_001-020_校正継続中.html</a></p>
-<label class="control" for="file">Googleドライブの【図版固定・説明だけv5】を選択</label>
+<p><a href="https://drive.google.com/file/d/1PLg10vY0Xbo-lCUyvLvF7dU0G-bgb_0v/view" rel="noopener" target="_blank">20261110_0604_【縦書き1桁数字正立v6・図版固定】英国のインテリア史_001-020_校正継続中.html</a></p>
+<label class="control" for="file">Googleドライブの【1桁数字正立・図版固定v6】を選択</label>
 <input id="file" type="file" accept=".html,text/html">
 <p id="status" role="status" aria-live="polite">この白い案内画面が表示されていれば、サイトの入口は開けています。上のボタンからGoogleドライブ内のHTMLを選んでください。</p>
-<p class="note">2026年11月9日20:55版：図を一度だけ作成して画面上に固定し、説明文だけをスワイプ／前・次ボタンで切り替えます。図を再掲載・縮小しません。表示領域を実測し、図説の行間は1.48です。上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本1枚と読書画面の枚数は別です。本文は縦書き20px基準、図の説明は横書き。原本画像は無変更です。古いHTMLは再選択してください。端末への自動保存はこの入口では行いません。</p>
+<p class="note">2026年11月10日06:04版：縦書き本文・見出しの独立した1桁の数字を正立表示します。複数桁の年号は従来どおりです。図を固定したまま説明文だけを切り替え、図説の行間は1.48です。上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本1枚と読書画面の枚数は別です。本文は縦書き20px基準、図の説明は横書き。原本画像は無変更です。古いHTMLは再選択してください。端末への自動保存はこの入口では行いません。</p>
 </main>
 </div>
 <script>
@@ -56,7 +56,7 @@ a{color:#24566a}
   function reset(){
     token++;$('reader').removeAttribute('src');$('viewer').hidden=true;$('return').hidden=true;$('landing').hidden=false;
     if(objUrl){URL.revokeObjectURL(objUrl);objUrl=null;}
-    status('Googleドライブの20261109_2055版を選択してください。');
+    status('Googleドライブの20261110_0604版を選択してください。');
   }
   $('return').addEventListener('click',reset);
   window.addEventListener('message',function(event){
@@ -81,7 +81,7 @@ a{color:#24566a}
       var matchingStructure=head.includes('id="reader-main"')&&head.includes('const SOURCE=');
       var matchingRange=tail.includes('const START_SCAN=1,END_SCAN=20;');
       if(!matchingBook||!matchingStructure||!matchingRange)throw Error('書名・原本番号・読書データ形式が一致しません。1〜20枚目の対応HTMLを選んでください');
-      if(!head.includes('ocr-qc60-20261109-figure-fixed-caption-v5'))status('互換する旧版を読み込みます。図版固定と説明文だけの切り替えには20261109_2055版を選択してください。');
+      if(!head.includes('ocr-qc60-20261110-figure-fixed-caption-v6-one-digit-upright'))status('互換する旧版を読み込みます。1桁数字の正立と図版固定には20261110_0604版を選択してください。');
       if(token!==id)return;
       $('viewer').hidden=false;
       $('return').hidden=true;
