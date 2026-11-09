@@ -2,7 +2,7 @@
    This script never uploads, edits, or exposes any book contents. */
 'use strict';
 (() => {
-  const REVISION = 'exact-wh1-pages-v5-figure32-left';
+  const REVISION = 'exact-wh1-pages-v6-figure32-entire-caption';
 
   // Used by both visible readers and invisible page measuring frames, so that
   // the exact total-page measurement accounts for the same toolbar height.
@@ -60,6 +60,62 @@
   margin:0!important;padding:0!important;white-space:inherit!important;text-indent:0!important;transform:none!important;
 }
 </style>`;
+  // Extra scan-18 fix: the PDF-derived OCR text remains in the user-selected
+  // local ZIP. Only the animal-evolution figure's on-device presentation changes.
+  // Its 20px base setting and original scan/figure images are never altered.
+  const SCAN18_FULL_CSS = `<style id="wh1-scan18-entire-caption-v6">
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-art{
+  height:26%!important;flex:0 0 26%!important;min-height:0!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-explanation{
+  display:flex!important;flex-direction:column!important;flex:1 1 0%!important;min-height:0!important;
+  overflow:hidden!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-caption-text{
+  display:block!important;box-sizing:border-box!important;flex:1 1 0%!important;
+  width:100%!important;max-width:100%!important;min-height:0!important;
+  margin:0!important;padding:3px 10px 12px 12px!important;
+  overflow-x:hidden!important;overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;touch-action:pan-y!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-caption-content{
+  display:block!important;box-sizing:border-box!important;max-width:100%!important;
+  margin:0!important;padding:0 2px!important;text-indent:0!important;transform:none!important;
+  white-space:pre-wrap!important;overflow-wrap:anywhere!important;
+}
+.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-scrollhint{
+  flex:0 0 auto;font-size:10px;line-height:1.35;color:#83513e;text-align:right;
+}
+</style>`;
+  // The local per-segment reader normally splits long figure descriptions over
+  // several pages. For this one figure only, keep the full existing description
+  // in the scrollable panel. Apply the SAME change to offscreen page measurement.
+  function scan18SinglePage(html){
+    const from='function appendIllustrationPages(g,output){\\n const base=bundleData(g),all=base.descriptionFull;';
+    const to='function appendIllustrationPages(g,output){\\n const base=bundleData(g),all=base.descriptionFull;\\n if(Number(g.scan)===18&&g.title==="動物の発達"){output.push({...base,description:all,partOffset:0,key:"ill:"+g.at+":0"});return;}';
+    return html.replace(from,to);
+  }
+  // Native iOS scrolling must be kept away from the reader's outer swipe handler
+  // when a finger starts inside the scan-18 description panel.
+  const SCAN18_SCROLL_BRIDGE = `<script>(function(){
+    const area=document.getElementById('reader-page');
+    if(!area)return;
+    function bind(){
+      const caption=area.querySelector('.figure-bundle[data-scan="18"][data-figure-group="32"] .figure-bundle-caption-text');
+      if(!caption||caption.dataset.wh1ScrollBound)return;
+      caption.dataset.wh1ScrollBound='1';
+      for(const type of ['touchstart','touchmove','touchend','touchcancel']){
+        caption.addEventListener(type,event=>event.stopPropagation(),{passive:true});
+      }
+      caption.addEventListener('wheel',event=>event.stopPropagation(),{passive:true});
+      const hint=document.createElement('div');
+      hint.className='figure-bundle-scrollhint';
+      hint.textContent='↓ 説明欄を上下にスクロールして最後まで読む';
+      caption.insertAdjacentElement('beforebegin',hint);
+    }
+    new MutationObserver(bind).observe(area,{childList:true});
+    bind();
+  })();</script>`;
   const CHILD_CSS = `<style id="wh1-exact-page-css">
 #location{position:relative;color:transparent!important;white-space:nowrap;min-width:14ch;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 #location::after{content:attr(data-wh1-global);position:absolute;inset:0;color:var(--ink,#263630);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -103,7 +159,7 @@
     });
   })();</script>`;
   const inject = (html, script) => html.replace('</body>', script + '</body>');
-  const decorate = html => inject(html.replace('</head>', CHILD_CSS + TOP_START_STYLE + SCAN18_CSS + SCAN18_SAFE_CSS + '</head>'), CHILD_BRIDGE);
+  const decorate = html => inject(scan18SinglePage(html).replace('</head>', CHILD_CSS + TOP_START_STYLE + SCAN18_CSS + SCAN18_SAFE_CSS + SCAN18_FULL_CSS + '</head>'), SCAN18_SCROLL_BRIDGE + CHILD_BRIDGE);
 
   function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getScan}) {
     let cached=null,active=null,lastState=null,errorKey='';
@@ -205,7 +261,7 @@
         step.reject=err=>{clear();reject(err);};
         run.step=step;
         step.timer=setTimeout(()=>step.reject(Error(`${index+1}区間目の組版が完了しませんでした`)),45000);
-        frame.srcdoc=inject(html.replace('</head>',TOP_START_STYLE+SCAN18_CSS+SCAN18_SAFE_CSS+'</head>'),MEASURE_BRIDGE);
+        frame.srcdoc=inject(scan18SinglePage(html).replace('</head>',TOP_START_STYLE+SCAN18_CSS+SCAN18_SAFE_CSS+SCAN18_FULL_CSS+'</head>'),MEASURE_BRIDGE);
       });
     }
     function start(config){
