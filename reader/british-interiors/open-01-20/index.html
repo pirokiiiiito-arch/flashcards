@@ -35,17 +35,17 @@ a{color:#24566a}
 <h1>英国のインテリア史<br>1〜20枚目</h1>
 <p><strong>Googleドライブから読む</strong>ための軽量入口です。自動読み込みを停止し、ファイルを選ぶまで本は起動しません。</p>
 <p>Googleドライブの読書HTML：</p>
-<p><a href="https://drive.google.com/file/d/1f2P92Kn8wXmO9PqOba7FPVWZHpJm7tuJ/view" rel="noopener" target="_blank">【文字切れ修正v3】英国のインテリア史_01-20.html</a></p>
-<label class="control" for="file">Googleドライブの【文字切れ修正v3】を選択</label>
+<p><a href="https://drive.google.com/file/d/1mAq7oV6tFCckSWkUHHe7Yh4OlYzITRdm/view" rel="noopener" target="_blank">20261109_1237_【新60項目適用・校正継続中】英国のインテリア史_001-020_図説再掲_表示修正v4.html</a></p>
+<label class="control" for="file">Googleドライブの【60項目・図説再掲v4】を選択</label>
 <input id="file" type="file" accept=".html,text/html">
 <p id="status" role="status" aria-live="polite">この白い案内画面が表示されていれば、サイトの入口は開けています。上のボタンからGoogleドライブ内のHTMLを選んでください。</p>
-<p class="note">文字切れ修正版v3：測定用の幅・高さを実際の表示領域に合わせ、下端に余白を確保します。説明が長いときは次画面に続きます。上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本1枚と読書画面の枚数は別です。本文は縦書き20px基準、図の説明は横書き。原本画像は無変更です。古いHTMLは再選択してください。端末への自動保存はこの入口では行いません。</p>
+<p class="note">2026年11月9日12:37版：最新版60項目ルールに合わせ、説明の続きにも原図を表示し、行間1.48・表示領域を実測します。上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本1枚と読書画面の枚数は別です。本文は縦書き20px基準、図の説明は横書き。原本画像は無変更です。古いHTMLは再選択してください。端末への自動保存はこの入口では行いません。</p>
 </main>
 </div>
 <script>
 'use strict';
 (function(){
-  var expected='visible-size-pagination-v3-20261109';
+  // Check book, scan range, and source-data format; no revision marker lockout.
   var $=function(id){return document.getElementById(id)};
   var objUrl=null,token=0;
   function status(s){$('status').textContent=String(s)}
@@ -56,7 +56,7 @@ a{color:#24566a}
   function reset(){
     token++;$('reader').removeAttribute('src');$('viewer').hidden=true;$('return').hidden=true;$('landing').hidden=false;
     if(objUrl){URL.revokeObjectURL(objUrl);objUrl=null;}
-    status('Googleドライブの【文字切れ修正v3】ファイルを選択してください。');
+    status('Googleドライブの20261109_1237版を選択してください。');
   }
   $('return').addEventListener('click',reset);
   window.addEventListener('message',function(event){
@@ -76,7 +76,12 @@ a{color:#24566a}
     try{
       if(f.size<1000000||f.size>60*1024*1024)throw Error('約30 MBの読書版HTMLを選択してください');
       var head=await f.slice(0,30000).text();
-      if(!head.includes(expected)||!head.includes('id="reader-main"'))throw Error('文字切れ修正版v3ではありません。Googleドライブの「【文字切れ修正v3】英国のインテリア史_01-20.html」を選択してください');
+      var tail=await f.slice(Math.max(0,f.size-36000)).text();
+      var matchingBook=head.includes('図説 英国のインテリア史｜001〜020');
+      var matchingStructure=head.includes('id="reader-main"')&&head.includes('const SOURCE=');
+      var matchingRange=tail.includes('const START_SCAN=1,END_SCAN=20;');
+      if(!matchingBook||!matchingStructure||!matchingRange)throw Error('書名・原本番号・読書データ形式が一致しません。1〜20枚目の対応HTMLを選んでください');
+      if(!head.includes('ocr-qc60-20261109-figure-repeat-v4'))status('互換する旧版を読み込みます。図版再掲や最新の修正を使うには20261109_1237版を選択してください。');
       if(token!==id)return;
       $('viewer').hidden=false;
       $('return').hidden=true;
