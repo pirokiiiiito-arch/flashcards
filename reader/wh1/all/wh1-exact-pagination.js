@@ -2,7 +2,7 @@
    This script never uploads, edits, or exposes any book contents. */
 'use strict';
 (() => {
-  const REVISION = 'exact-wh1-pages-v3-scan18-nocrop';
+  const REVISION = 'exact-wh1-pages-v4-scan18-safe';
 
   // Used by both visible readers and invisible page measuring frames, so that
   // the exact total-page measurement accounts for the same toolbar height.
@@ -27,6 +27,20 @@
 </style>`;
 
   const SCAN18_CSS = "<style id=\"wh1-scan18-nocrop\">\n/* 原本18枚目の図説：iOSで各行の左端が欠けないよう余白を確保する。\n   原本画像と本文データ、図説84%の文字サイズは変更しない。 */\n.figure-bundle[data-scan=\"18\"] {\n  box-sizing:border-box!important;\n  width:100%!important;\n  max-width:100%!important;\n  min-width:0!important;\n  padding-left:clamp(24px,calc(var(--size)*1.5),45px)!important;\n  padding-right:12px!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-header,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-explanation,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-label,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-text,\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-content {\n  box-sizing:border-box!important;\n  min-width:0!important;\n  max-width:100%!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-title {\n  display:block!important;\n  white-space:normal!important;\n  -webkit-line-clamp:unset!important;\n  overflow:visible!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-text {\n  overflow:visible!important;\n  white-space:pre-wrap!important;\n  overflow-wrap:anywhere!important;\n}\n.figure-bundle[data-scan=\"18\"] .figure-bundle-caption-content {\n  display:block!important;\n  padding:0!important;\n  margin:0!important;\n  white-space:inherit!important;\n}\n</style>";
+  // Scan 18: protect the start of each line and make caption overflow readable.
+  // The private OCR/scan images remain untouched; this only changes on-device layout.
+  const SCAN18_SAFE_CSS = `<style id="wh1-scan18-safe-v4">
+.figure-bundle[data-scan="18"]{overflow:hidden!important;padding-left:18px!important;padding-right:18px!important;gap:4px!important}
+.figure-bundle[data-scan="18"] .figure-bundle-header,
+.figure-bundle[data-scan="18"] .figure-bundle-explanation{padding-left:8px!important;padding-right:4px!important;min-width:0!important;max-width:100%!important}
+.figure-bundle[data-scan="18"] .figure-bundle-art{height:30%!important;flex:0 0 30%!important;min-height:0!important}
+.figure-bundle[data-scan="18"] .figure-bundle-caption-text{
+  display:block!important;min-width:0!important;max-width:100%!important;
+  overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch!important;
+}
+.figure-bundle[data-scan="18"] .figure-bundle-caption-content{display:block!important;max-width:100%!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+</style>`;
   const CHILD_CSS = `<style id="wh1-exact-page-css">
 #location{position:relative;color:transparent!important;white-space:nowrap;min-width:14ch;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 #location::after{content:attr(data-wh1-global);position:absolute;inset:0;color:var(--ink,#263630);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -70,7 +84,7 @@
     });
   })();</script>`;
   const inject = (html, script) => html.replace('</body>', script + '</body>');
-  const decorate = html => inject(html.replace('</head>', CHILD_CSS + TOP_START_STYLE + SCAN18_CSS + '</head>'), CHILD_BRIDGE);
+  const decorate = html => inject(html.replace('</head>', CHILD_CSS + TOP_START_STYLE + SCAN18_CSS + SCAN18_SAFE_CSS + '</head>'), CHILD_BRIDGE);
 
   function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getScan}) {
     let cached=null,active=null,lastState=null,errorKey='';
@@ -172,7 +186,7 @@
         step.reject=err=>{clear();reject(err);};
         run.step=step;
         step.timer=setTimeout(()=>step.reject(Error(`${index+1}区間目の組版が完了しませんでした`)),45000);
-        frame.srcdoc=inject(html.replace('</head>',TOP_START_STYLE+SCAN18_CSS+'</head>'),MEASURE_BRIDGE);
+        frame.srcdoc=inject(html.replace('</head>',TOP_START_STYLE+SCAN18_CSS+SCAN18_SAFE_CSS+'</head>'),MEASURE_BRIDGE);
       });
     }
     function start(config){
