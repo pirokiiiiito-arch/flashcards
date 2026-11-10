@@ -1,0 +1,43 @@
+name: WH1 figure viewport v8 regression
+on:
+  push:
+    branches: [main, fix/wh1-figure-viewport-v8]
+    paths:
+      - 'reader/wh1/all/**'
+      - 'tools/build-wh1-figure-viewport-v8.py'
+      - 'tests/*wh1-figure-viewport-v8*'
+      - '.github/workflows/wh1-figure-viewport-v8.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and check versioned reader entries
+        run: |
+          python3 tools/build-wh1-figure-viewport-v8.py
+          node --check reader/wh1/all/wh1-figure-viewport-v8.js
+          node --check reader/wh1/all/sw.js
+          node --test tests/wh1-figure-viewport-v8.test.cjs
+      - name: Install browser test engines
+        run: |
+          npm install --prefix /tmp/wh1-v8-browser --no-package-lock playwright@1.56.1
+          /tmp/wh1-v8-browser/node_modules/.bin/playwright install --with-deps chromium webkit
+      - name: Check legacy clipping and figure to text transitions
+        env:
+          NODE_PATH: /tmp/wh1-v8-browser/node_modules
+        run: node tests/browser-wh1-figure-viewport-v8.cjs
+      - name: Store synthetic test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wh1-v8-synthetic-layout
+          path: wh1-v8-test-results/
+          if-no-files-found: ignore
+          retention-days: 7
