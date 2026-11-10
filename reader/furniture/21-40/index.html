@@ -42,7 +42,7 @@ a{color:#2c666c}
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
   <p id="status" role="status" aria-live="polite">読書版HTMLを選択してください。</p>
-  <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。原本表示と図版表示に切り替えられます。現時点のOCR校正と実機確認は完了していません。</p>
+  <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。新版への更新時もHTMLを選び直してください。iPhone実機確認は制作側のブラウザー検査とは別です。</p>
  </main>
 </div>
 <script>
@@ -77,13 +77,34 @@ async function putSaved(blob,name){
   tx.onabort=()=>reject(tx.error);
  });}finally{db.close();}
 }
+function jsonConstant(text,name){
+ const re=new RegExp('\\bconst\\s+'+name+'\\s*=\\s*');
+ const m=re.exec(text);if(!m)throw Error('読書データが見つかりません。HTMLを保存し直してください。');
+ const start=m.index+m[0].length;if(text[start]!=='{')throw Error('読書データの形式が壊れています。');
+ let depth=0,quoted=false,escaped=false;
+ for(let i=start;i<text.length;i++){
+  const c=text[i];
+  if(quoted){if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c==='"')quoted=false;}
+  else if(c==='"')quoted=true;
+  else if(c==='{')depth++;
+  else if(c==='}'&&--depth===0)return JSON.parse(text.slice(start,i+1));
+ }
+ throw Error('HTMLが途中で切れています。ファイルを保存し直してください。');
+}
 async function verify(blob){
  if(!blob||blob.size<1000000||blob.size>MAX)throw Error('洋家具の歴史と様式 021〜040枚目の読書HTMLを選択してください。');
- const head=await blob.slice(0,30000).text();
- if(!head.includes('洋家具の歴史と様式｜021〜040')||
-    !head.includes('id="stage"')||
-    !head.includes('name="viewport"'))
-   throw Error('別のHTMLです。Googleドライブから洋家具の新版HTMLを保存して選択してください。');
+ const text=await blob.text();
+ if(!/name\s*=\s*["']viewport["']/.test(text.slice(0,30000))||!/id\s*=\s*["']stage["']/.test(text.slice(0,30000)))throw Error('読書画面の形式が違います。');
+ let book,images;try{book=jsonConstant(text,'BOOK');images=jsonConstant(text,'IMAGES');}catch(e){throw Error('読書データが破損しています。正しいHTMLを保存し直してください。');}
+ if(typeof book.title!=='string'||!book.title.includes('洋家具の歴史と様式')||!Array.isArray(book.scans)||book.scans.length!==20||book.source_scan_count!==20)throw Error('別の本・範囲のHTMLです。洋家具021〜040を選んでください。');
+ const validImage=s=>typeof s==='string'&&/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(s)&&s.length>100;
+ for(let i=0;i<20;i++)if(book.scans[i].n!==i+21||!validImage(images['scan'+String(i+21).padStart(3,'0')]))throw Error('原本021〜040の画像・順序が不足しています。');
+ if(!Array.isArray(book.reading_sections)||!Array.isArray(book.figure_groups)||!book.figure_groups.length)throw Error('本文または図版の構造が壊れています。');
+ const ids=new Set();
+ for(const g of book.figure_groups){
+  if(typeof g.id!=='string'||ids.has(g.id)||g.scan<21||g.scan>40||typeof g.desc!=='string'||!Array.isArray(g.image_assets)||!g.image_assets.length||g.image_assets.some(x=>!validImage(images[x.key])))throw Error('図版・説明文の対応が壊れています。');ids.add(g.id);
+ }
+ for(const s of book.reading_sections)if(typeof s.section!=='string'||!Array.isArray(s.paragraphs)||s.paragraphs.some(p=>typeof p.text!=='string'))throw Error('本文データが壊れています。');
  return true;
 }
 async function openBook(blob){
