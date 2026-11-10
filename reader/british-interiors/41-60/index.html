@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>図説 英国のインテリア史｜41〜60枚目｜読書入口</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}
+#reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf8}
+#setup{position:fixed;inset:0;z-index:10;overflow-y:auto;background:#f7f8f5;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))}
+#setup[hidden]{display:none}main{width:100%;max-width:480px;margin:12px auto;padding:24px 20px;border-radius:16px;background:#fff;border:1px solid #e0e5e1}
+h1{font-size:22px;margin:0 0 8px;line-height:1.4}h2{font-size:16px;margin:20px 0 10px}p{font-size:14px;line-height:1.8;color:#526367;margin:10px 0}
+.note{font-size:12px}a{color:#2c666c;overflow-wrap:anywhere}button,.pick{display:block;width:100%;min-height:48px;text-align:center;padding:12px;margin:14px 0;border:1px solid #bdcdcb;border-radius:10px;background:white;color:#25474c;font:600 15px/1.5 system-ui,sans-serif;cursor:pointer}.pick{background:#315c63;color:white}button[hidden]{display:none}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#status{white-space:pre-wrap;min-height:44px;padding:10px;border:1px solid #dce4e2;border-radius:8px;background:#f7faf9;font-size:13px}
+</style>
+</head>
+<body>
+<iframe id="reader" title="英国のインテリア史 41〜60枚目" sandbox="allow-scripts"></iframe>
+<div id="setup"><main>
+<h1>図説 英国のインテリア史<br>41〜60枚目</h1>
+<p><strong>第3分冊・原本20枚</strong>。図は固定し、説明文だけを上下スワイプ／前・次ボタンで送ります。本文は縦書き20px基準、独立した1桁数字は正立表示です。</p>
+<h2>Googleドライブの読書HTML</h2>
+<p><a href="https://drive.google.com/file/d/1QBugPEzgprnpwTZDA33iB8__g6bXLXIA/view?usp=drivesdk" target="_blank" rel="noopener">20261110_1321_英国のインテリア史_041-060_読書版.html</a></p>
+<p>下のボタンから、Google DriveまたはiPhoneの「ファイル」に保存した上記HTMLを選び、「確認」を押してください。ZIPではなくHTMLを選択します。</p>
+<label class="pick" for="file">41〜60枚目の読書HTMLを選択</label>
+<input id="file" type="file" accept=".html,text/html">
+<button id="reopen" type="button" hidden>この端末に保存済みの読書版を開く</button>
+<p id="status" role="status" aria-live="polite">読書HTMLを選択してください。</p>
+<p class="note">原本からの一次転記・照合済み／独立した全文再校正は継続中です。原本45・46枚目の挟み込みはがきは本文とは別枠で収録しています。iPhone実機確認は未完了です。</p>
+<p class="note">書籍本文・原本画像はこのサイトに公開しません。選んだHTMLを端末内で開き、可能な場合だけこのブラウザーに保存します。PCの起動は不要です。別のファイルを選ぶときは読書画面の「目次」から戻れます。</p>
+</main></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const DB='uk-interiors-reader-41-60',STORE='books',KEY='scans041to060-20261110-1321',MAX=80*1024*1024;
+let activeUrl='',loadId=0,ready=false,pendingSave=null;
+function say(text){$('status').textContent=String(text)}
+function database(){return new Promise((resolve,reject)=>{
+ if(!('indexedDB' in window)){reject(Error('端末保存を利用できません'));return}
+ const req=indexedDB.open(DB,1);
+ req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+})}
+async function getSaved(){const db=await database();try{return await new Promise((resolve,reject)=>{
+ const req=db.transaction(STORE,'readonly').objectStore(STORE).get(KEY);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
+})}finally{db.close()}}
+async function putSaved(value){const db=await database();try{await new Promise((resolve,reject)=>{
+ const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(value,KEY);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+})}finally{db.close()}}
+async function verify(blob){
+ if(!blob||blob.size<1000000||blob.size>MAX)throw Error('約30 MBの41〜60枚目読書HTMLを選択してください。');
+ const head=await blob.slice(0,40000).text(),tail=await blob.slice(Math.max(0,blob.size-65536)).text();
+ const title=(head.match(/<title[^>]*>([^<]+)<\/title>/i)||[])[1]||'';
+ const book=title.includes('英国のインテリア史')&&/041[〜～-]060/.test(title);
+ const format=head.includes('id="reader-main"')&&/const\s+SOURCE\s*=\s*\[/.test(head);
+ const range=/const\s+START_SCAN\s*=\s*41\s*,\s*END_SCAN\s*=\s*60\s*;/.test(tail);
+ if(!book||!format||!range)throw Error('書名・原本41〜60枚・読書データ形式が一致しません。対応するHTMLを選んでください。');
+}
+function fail(message){ready=false;pendingSave=null;$('setup').hidden=false;say('読み込みできませんでした：'+String(message)+'\nファイルを選び直してください。')}
+function reset(){loadId++;ready=false;pendingSave=null;$('reader').removeAttribute('src');if(activeUrl){URL.revokeObjectURL(activeUrl);activeUrl=''}$('setup').hidden=false;say('41〜60枚目の読書HTMLを選択してください。')}
+window.addEventListener('message',event=>{
+ if(event.source!==$('reader').contentWindow)return;
+ const data=event.data;if(!data||data.range!=='41-60')return;
+ if(data.kind==='uk-interiors-reader-error'){fail(data.message||'組版エラー');return}
+ if(data.kind==='uk-interiors-reader-change-file'){reset();return}
+ if(data.kind!=='uk-interiors-reader-ready'||ready)return;
+ ready=true;$('setup').hidden=true;$('reader').focus();
+ const save=pendingSave,token=loadId;pendingSave=null;
+ if(save)setTimeout(async()=>{if(token!==loadId)return;try{await putSaved(save);$('reopen').hidden=false}catch(e){console.warn('端末保存は未実施',e)}},300);
+});
+async function openBook(blob,save=false){
+ await verify(blob);const token=++loadId;ready=false;
+ pendingSave=save?{blob,name:blob.name||'英国のインテリア史_041-060.html',date:Date.now()}:null;
+ $('setup').hidden=false;say('HTMLを受け取りました。原本41枚目の読書画面を準備しています…');
+ const frame=$('reader'),old=activeUrl;
+ const html=(blob.type||'').includes('html')?blob:new Blob([blob],{type:'text/html;charset=utf-8'});
+ activeUrl=URL.createObjectURL(html);frame.onerror=()=>{if(token===loadId)fail('HTMLを表示できません')};frame.src=activeUrl;
+ if(old)setTimeout(()=>URL.revokeObjectURL(old),2000);
+ setTimeout(()=>{if(token===loadId&&!ready)say('初期表示を確認できていません。Google Driveからの取得が完了しているか確認し、HTMLを選び直してください。')},20000);
+}
+$('file').addEventListener('change',async()=>{const file=$('file').files?.[0];$('file').value='';if(!file)return;try{say('ファイルを確認しています…');await openBook(file,true)}catch(e){fail(e.message||e)}});
+$('reopen').onclick=async()=>{try{const saved=await getSaved();if(!saved?.blob)throw Error('保存済みHTMLがありません');await openBook(saved.blob)}catch(e){fail(e.message||e)}};
+window.addEventListener('pageshow',async()=>{if(loadId)return;try{const saved=await getSaved();if(!saved?.blob)return;$('reopen').hidden=false;if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob)}catch(e){say('読書HTMLを選択してください。端末への保存は利用できませんでした。')}});
+</script>
+</body>
+</html>
