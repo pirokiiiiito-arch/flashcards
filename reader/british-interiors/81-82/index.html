@@ -14,20 +14,20 @@ button,.pick{display:block;width:100%;min-height:48px;text-align:center;padding:
 <iframe id="reader" title="英国のインテリア史 81〜82枚目" sandbox="allow-scripts"></iframe>
 <div id="setup"><main>
 <h1>図説 英国のインテリア史<br>81〜82枚目</h1>
-<p><strong>第5分冊・原本2枚</strong>。81枚目は年表後半を原本画像で保持し、82枚目の索引62項目を縦書き20px基準で読み進めます。独立した1桁数字は正立表示します。</p>
+<p><strong>第5分冊・原本2枚</strong>。81枚目は日本語表記の年表を原本画像で保持し、82枚目の索引62項目を縦書き20px基準で読み進めます。独立した1桁数字は正立表示します。</p>
 <h2>Googleドライブの読書HTML</h2>
-<p><a href="https://drive.google.com/file/d/1xATdVzumzScxIGJx1LGe27kQ6KaD6GcY/view?usp=drivesdk" target="_blank" rel="noopener">20261110_1851_英国のインテリア史_081-082_年表と索引_一次転記・校正継続中.html</a></p>
+<p><a href="https://drive.google.com/file/d/1xATdVzumzScxIGJx1LGe27kQ6KaD6GcY/view?usp=drivesdk" target="_blank" rel="noopener">20261110_2223_英国のインテリア史_081-082_原本再照合版.html</a></p>
 <p>下のボタンから、Google DriveまたはiPhoneの「ファイル」に保存した上記HTMLを選び、「確認」を押してください。ZIPではなくHTMLを選択します。</p>
 <label class="pick" for="file">81〜82枚目の読書HTMLを選択</label><input id="file" type="file" accept=".html,text/html">
 <button id="reopen" type="button" hidden>この端末に保存済みの読書版を開く</button>
 <p id="status" role="status" aria-live="polite">読書HTMLを選択してください。</p>
-<p class="note">索引62項目は原本3列に基づく一次転記です。独立した第2巡の全文字照合は未完了です。81枚目は年表の原図を保持し、人物と年代の位置関係を守ります。iPhone実機確認は未完了です。</p>
+<p class="note">索引62項目は、下書きを見ずに原本から読み直して照合済みです。81枚目は前頁の英語年表に対応する日本語表記で、原図の位置関係を保持します。今回版の画面再検査とiPhone実機確認は未実施です。</p>
 <p class="note">書籍本文・原本画像はこのサイトに公開しません。選んだHTMLを端末内で開き、可能な場合だけこのブラウザーに保存します。PCの起動は不要です。別のファイルを選ぶときは読書画面の「目次」から戻れます。</p>
 </main></div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='uk-interiors-reader-81-82',STORE='books',KEY='scans081to082-20261110-1851',MAX=10*1024*1024;
+const DB='uk-interiors-reader-81-82',STORE='books',KEY='scans081to082-20261110-2223',MAX=10*1024*1024;
 let activeUrl='',loadId=0,ready=false,pendingSave=null;
 function say(text){$('status').textContent=String(text)}
 function database(){return new Promise((resolve,reject)=>{if(!('indexedDB' in window)){reject(Error('端末保存を利用できません'));return}const req=indexedDB.open(DB,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
@@ -51,3 +51,4 @@ $('reopen').onclick=async()=>{try{const saved=await getSaved();if(!saved?.blob)t
 window.addEventListener('pageshow',async()=>{if(loadId)return;try{const saved=await getSaved();if(!saved?.blob)return;$('reopen').hidden=false;if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob)}catch(e){say('読書HTMLを選択してください。端末への保存は利用できませんでした。')}});
 </script>
 </body></html>
+
