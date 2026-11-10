@@ -16,18 +16,18 @@ button,.pick{display:block;width:100%;min-height:48px;text-align:center;padding:
 <h1>図説 英国のインテリア史<br>61〜80枚目</h1>
 <p><strong>第4分冊・原本20枚</strong>。図を固定したまま説明文だけを上下スワイプ／前・次ボタンで送ります。本文は縦書き20px基準、独立した1桁数字は正立表示です。</p>
 <h2>Googleドライブの読書HTML</h2>
-<p><a href="https://drive.google.com/file/d/1VMU137VEeZANUl76r2zGcTqoL7BOKQqW/view?usp=drivesdk" target="_blank" rel="noopener">20261110_1728_英国のインテリア史_061-080_読書版.html</a></p>
+<p><a href="https://drive.google.com/file/d/1VMU137VEeZANUl76r2zGcTqoL7BOKQqW/view?usp=drivesdk" target="_blank" rel="noopener">20261110_1923_英国のインテリア史_061-080_原本再照合版.html</a></p>
 <p>下のボタンから、Google DriveまたはiPhoneの「ファイル」に保存した上記HTMLを選び、「確認」を押してください。ZIPではなくHTMLを選択します。</p>
 <label class="pick" for="file">61〜80枚目の読書HTMLを選択</label><input id="file" type="file" accept=".html,text/html">
 <button id="reopen" type="button" hidden>この端末に保存済みの読書版を開く</button>
 <p id="status" role="status" aria-live="polite">読書HTMLを選択してください。</p>
-<p class="note">原本からの一次転記・照合済み／独立した全文再校正は継続中です。用語集49項目と年表を収録。年表は原図を保ち、「原本」の＋／−で拡大・縮小できます。iPhone実機確認は未完了です。</p>
+<p class="note">本文・図説・用語集の原本再照合済み。今回版の画面・操作の再検査は未実施です。用語集49項目と年表を収録。年表は原図を保ち、「原本」の＋／−で拡大・縮小できます。iPhone実機確認は未完了です。</p>
 <p class="note">書籍本文・原本画像はこのサイトに公開しません。選んだHTMLを端末内で開き、可能な場合だけこのブラウザーに保存します。PCの起動は不要です。別のファイルを選ぶときは読書画面の「目次」から戻れます。</p>
 </main></div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='uk-interiors-reader-61-80',STORE='books',KEY='scans061to080-20261110-1728',MAX=80*1024*1024;
+const DB='uk-interiors-reader-61-80',STORE='books',KEY='scans061to080-20261110-1923',MAX=80*1024*1024;
 let activeUrl='',loadId=0,ready=false,pendingSave=null;
 function say(text){$('status').textContent=String(text)}
 function database(){return new Promise((resolve,reject)=>{if(!('indexedDB' in window)){reject(Error('端末保存を利用できません'));return}const req=indexedDB.open(DB,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
