@@ -182,10 +182,10 @@ jobs:
         run: |
           python3 tools/build-color-photo-share-entry.py
           node --test tests/color-photo-share-entry.test.cjs
-      - name: Build fresh WH1 figure display entry without changing private books
+      - name: Build WH1 figure display v9 without changing private books
         run: |
           python3 tools/build-wh1-figure-viewport-v8.py
-          node --check reader/wh1/all/wh1-figure-viewport-v8.js
+          node --check reader/wh1/all/wh1-figure-viewport-v9.js
           node --check reader/wh1/all/sw.js
           node --test tests/wh1-figure-viewport-v8.test.cjs
       - name: Configure Pages
@@ -206,3 +206,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+

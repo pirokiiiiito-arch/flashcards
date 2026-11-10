@@ -3,18 +3,30 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const test=require('node:test');
+const {createHash}=require('node:crypto');
 const root=require('node:path').resolve(__dirname,'..');
 const read=p=>fs.readFileSync(root+'/'+p,'utf8');
 const base=read('reader/wh1/all/wh1-exact-pagination.js');
-const fix=read('reader/wh1/all/wh1-figure-viewport-v8.js');
+const fix=read('reader/wh1/all/wh1-figure-viewport-v9.js');
 function context(){const c={window:{},console};vm.createContext(c);vm.runInContext(base,c);return c;}
 test('new entry loads both current layout scripts before the application and keeps storage keys',()=>{
  const html=read('reader/wh1/all/index.html');
- assert.match(html,/wh1-exact-pagination\.js\?v=figure-viewport-v8-20261110/);
- assert.match(html,/wh1-figure-viewport-v8\.js\?v=figure-viewport-v8-20261110/);
- assert.ok(html.indexOf('wh1-figure-viewport-v8.js')<html.indexOf('const SEGMENTS='));
+ const scripts=[...html.matchAll(/<script src="([^"]+)"/g)].map(match=>match[1]);
+ assert.deepEqual(scripts,[
+  './wh1-exact-pagination.js?v=figure-viewport-v9-20261110',
+  './wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110'
+ ]);
+ assert.ok(html.indexOf('wh1-figure-viewport-v9.js')<html.indexOf('const SEGMENTS='));
  assert.match(html,/wh1-unified-book/);assert.match(html,/WH1_UNIFIED_POSITION/);
+ assert.match(html,/updateViaCache:'none'/);
+ assert.equal(read('reader/wh1/all/figure-repair-v9.html'),html);
  assert.equal(read('reader/wh1/all/figure-repair-v8.html'),html);
+ const report=JSON.parse(read('reader/wh1/all/figure-repair-v9-build.json'));
+ assert.equal(report.revision,'figure-viewport-v9-20261110');
+ assert.equal(report.entry,'figure-repair-v9.html');
+ assert.equal(report.index_sha256,createHash('sha256').update(html).digest('hex'));
+ assert.equal(report.private_book_modified,false);
+ assert.deepEqual(JSON.parse(read('reader/wh1/all/figure-repair-v8-build.json')),report);
 });
 test('viewport change is scoped, repeat-safe and syntax-valid',()=>{
  const c=context(),before=c.window.WH1ExactPager.decorate;
@@ -23,10 +35,10 @@ test('viewport change is scoped, repeat-safe and syntax-valid',()=>{
  assert.equal(c.window.WH1ExactPager.decorate(other),before(other));
  const part='<html><head></head><body><script>const FIRST_SCAN=11; const LAST_SCAN=30;</script></body></html>';
  const html=c.window.WH1ExactPager.decorate(part);
- assert.match(html,/wh1-figure-viewport-v8-css/);
- const child=html.match(/<script id="wh1-figure-viewport-v8-script">([\s\S]*?)<\/script>/)[1];
+ assert.match(html,/wh1-figure-viewport-v9-css/);
+ const child=html.match(/<script id="wh1-figure-viewport-v9-script">([\s\S]*?)<\/script>/)[1];
  new vm.Script(child);
- assert.equal((c.window.WH1ExactPager.decorate(html).match(/id="wh1-figure-viewport-v8-css"/g)||[]).length,1);
+ assert.equal(c.window.WH1ExactPager.decorate(html),html);
  assert.doesNotMatch(fix,/indexedDB|fetch\(|localStorage\.removeItem|innerHTML\s*=/);
 });
 test('offscreen counter receives the same viewport repair without mutating book or manifest',async()=>{
@@ -37,8 +49,51 @@ test('offscreen counter receives the same viewport repair without mutating book 
  const book={blob:{size:123},readText:async()=>html};const manifest={created:'fixture'};
  const saved=book.readText;
  c.window.WH1ExactPager.create({getBook:()=>book,getManifest:()=>manifest});
- assert.match(await options.getBook().readText('part'),/wh1-figure-viewport-v8-css/);
+ assert.match(await options.getBook().readText('part'),/wh1-figure-viewport-v9-css/);
  assert.equal(book.readText,saved);assert.equal(manifest.created,'fixture');
- assert.match(options.getManifest().created,/figure-viewport-v8/);
+ assert.match(options.getManifest().created,/figure-viewport-v9/);
  assert.equal(options.getBook().blob,book.blob);
 });
+
+test('worker installs current entries and offline fallback never selects an older shell',async()=>{
+ const source=read('reader/wh1/all/sw.js');
+ const scope='https://reader.example/flashcards/reader/wh1/all/';
+ const handlers={};let installed=[],claimed=0,waiting=0,deleted=0,globalMatches=0;
+ const currentCache={
+  async addAll(requests){installed=Array.from(requests,request=>request.url);},
+  async match(request){return new Response('current:'+String(request.url||request));},
+  async put(){}
+ };
+ const c={URL,Request,Response,console,
+  self:{registration:{scope},location:{origin:'https://reader.example'},
+   addEventListener:(name,handler)=>{handlers[name]=handler;},
+   skipWaiting:async()=>{waiting++;},clients:{claim:async()=>{claimed++;}}},
+  caches:{open:async name=>{
+   assert.equal(name,'wh1-unified-reader-shell-v12-figure-viewport9');return currentCache;
+  },delete:async()=>{deleted++;},match:async()=>{globalMatches++;return new Response('old shell');}},
+  fetch:async()=>{throw Error('Offline fixture');}
+ };
+ vm.createContext(c);vm.runInContext(source,c);
+ let install,activate;
+ handlers.install({waitUntil:promise=>{install=promise;}});await install;
+ handlers.activate({waitUntil:promise=>{activate=promise;}});await activate;
+ assert.equal(waiting,1);assert.equal(claimed,1);assert.equal(deleted,0);
+ assert.deepEqual(installed.map(url=>url.slice(scope.length)).sort(),[
+  'apple-touch-icon.png','figure-repair-v8.html','figure-repair-v9.html','index.html',
+  'manifest.webmanifest','wh1-exact-pagination.js?v=figure-viewport-v9-20261110',
+  'wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110'
+ ].sort());
+ for(const [path,mode,fallback] of [
+  ['', 'navigate', 'index.html'],
+  ['figure-repair-v8.html', 'navigate', 'figure-repair-v9.html'],
+  ['wh1-exact-pagination.js?v=scan18-entire-caption-v6-20261109', 'cors', 'wh1-exact-pagination.js?v=figure-viewport-v9-20261110'],
+  ['wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110', 'cors', 'wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110']
+ ]){
+  let response;
+  handlers.fetch({request:{url:scope+path,method:'GET',mode},respondWith:promise=>{response=promise;},waitUntil(){}});
+  assert.equal(await (await response).text(),'current:'+scope+fallback);
+ }
+ assert.equal(globalMatches,0);
+ assert.doesNotMatch(source,/indexedDB\.|localStorage\.(?:clear|removeItem)\(/);
+});
+

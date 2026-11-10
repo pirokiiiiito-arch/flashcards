@@ -1,7 +1,7 @@
-name: WH1 figure viewport v8 regression
+name: WH1 figure viewport v9 regression
 on:
   push:
-    branches: [main, fix/wh1-figure-viewport-v8]
+    branches: [main, 'fix/wh1-figure-viewport-v9*']
     paths:
       - 'reader/wh1/all/**'
       - 'tools/build-wh1-figure-viewport-v8.py'
@@ -22,22 +22,23 @@ jobs:
       - name: Build and check versioned reader entries
         run: |
           python3 tools/build-wh1-figure-viewport-v8.py
-          node --check reader/wh1/all/wh1-figure-viewport-v8.js
+          node --check reader/wh1/all/wh1-figure-viewport-v9.js
           node --check reader/wh1/all/sw.js
           node --test tests/wh1-figure-viewport-v8.test.cjs
       - name: Install browser test engines
         run: |
-          npm install --prefix /tmp/wh1-v8-browser --no-package-lock playwright@1.56.1
-          /tmp/wh1-v8-browser/node_modules/.bin/playwright install --with-deps chromium webkit
-      - name: Check legacy clipping and figure to text transitions
+          npm install --prefix /tmp/wh1-v9-browser --no-package-lock playwright@1.56.1
+          /tmp/wh1-v9-browser/node_modules/.bin/playwright install --with-deps chromium webkit
+      - name: Check source-layout clipping and figure to text transitions
         env:
-          NODE_PATH: /tmp/wh1-v8-browser/node_modules
+          NODE_PATH: /tmp/wh1-v9-browser/node_modules
         run: node tests/browser-wh1-figure-viewport-v8.cjs
       - name: Store synthetic test evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: wh1-v8-synthetic-layout
+          name: wh1-v9-synthetic-layout
           path: wh1-v8-test-results/
           if-no-files-found: ignore
           retention-days: 7
+
