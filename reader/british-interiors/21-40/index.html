@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>図説 英国のインテリア史｜Chrome読書版 21〜40枚目（原本32文字訂正版v7）</title>
+<title>図説 英国のインテリア史｜Chrome読書版 21〜40枚目（図4.7・原本32文字訂正版v8）</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
 *{box-sizing:border-box}
@@ -33,23 +33,23 @@ a{color:#2c666c}
   <h1>図説 英国のインテリア史</h1>
   <p><strong>第2分冊：21〜40枚目</strong>（縦書き20px、1桁数字正立、図版固定・説明文のみページ送り、OCR校正継続中）</p>
   <p>原本画像21〜40枚目の読書用Webアプリです。<strong>実際の表示幅と高さで改ページし、画面下の文字切れを防ぎます。図版の説明が収まらない場合も、図は一つの表示要素として固定し、説明文だけを次・前の読書画面へ切り替えます。図を再掲載・縮小しません。</strong> 上スワイプ・「次へ」で続きを読み、下スワイプ・「前へ」で戻れます。原本20枚でも読書画面数は増減します。本文は縦書き20px基準、図の説明は横書き。文字サイズは A−／A＋ で変更できます。</p>
-  <h2>Googleドライブの読書版を開く（原本32文字訂正・図版固定v7）</h2>
+  <h2>Googleドライブの読書版を開く（図4.7 OCR訂正・図版固定v8）</h2>
   <ol>
-   <li><a href="https://drive.google.com/file/d/1T61LO2eJ-eF4y1pQbamUXyEmmJa3GqMM/view" target="_blank" rel="noopener">20261110_2242_【原本32文字訂正v7・図版固定】英国のインテリア史_021-040_校正継続中.html</a>を選んでください</li>
+   <li><a href="https://drive.google.com/file/d/1SFl95QX5DLPKmmabvO9NQ00LswvLnesK/view" target="_blank" rel="noopener">20261110_2350_【原本30図4.7 OCR訂正v8・図版固定】英国のインテリア史_021-040_校正継続中.html</a>を選んでください</li>
    <li>ここに戻り、下の「ファイルを選択」を押して、「ブラウズ」→「Google Drive」→該当するHTMLを選んで「確認」を押します</li>
-   <li>HTMLを受け取ったら先に読書画面を表示し、その後Chromeへの保存を行います。旧版と訂正版の端末保存を分けているため、v7のHTMLを一度選択してください。</li>
+   <li>HTMLを受け取ったら先に読書画面を表示し、その後Chromeへの保存を行います。旧版と訂正版の端末保存を分けているため、v8のHTMLを一度選択してください。</li>
   </ol>
   <label class="pick" for="file">Googleドライブから読書版HTMLを選択</label>
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
-  <p id="status" role="status" aria-live="polite">Googleドライブから20261110_2242の訂正版HTMLを選択してください。</p>
-  <p class="note">原本32枚目の文字・図の対応を原画像と照合して訂正しました。他ページの全文校正は継続中です。右上で読み込み表示が止まる場合は、Google Driveアプリで該当HTMLの同期を確認し、可能なら「オフラインで使用可能」を設定してから選び直してください。ZIPへの切替は必要ありません。本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。目次から章見出しに移動でき、原本も確認できます。原本画像は変更していません。読書画面が開くまで状態を表示し、読み込み失敗時には原因を表示します。</p>
+  <p id="status" role="status" aria-live="polite">Googleドライブから20261110_2350の訂正版HTMLを選択してください。</p>
+  <p class="note">原本30枚目の図4.7に残っていたOCRの文字化けを原本に基づき訂正しました。原本32枚目の訂正も維持しています。ほかのページの全文校正は継続中です。右上で読み込み表示が止まる場合は、Google Driveアプリで該当HTMLの同期を確認し、可能なら「オフラインで使用可能」を設定してから選び直してください。ZIPへの切替は必要ありません。本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。目次から章見出しに移動でき、原本も確認できます。原本画像は変更していません。読書画面が開くまで状態を表示し、読み込み失敗時には原因を表示します。</p>
  </main>
 </div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const DB='uk-interiors-reader-on-device-onepage-21-40-v3',STORE='books',KEY='scans021to040_source32_v7_20261110_2242',MAX=60*1024*1024;
+const DB='uk-interiors-reader-on-device-onepage-21-40-v3',STORE='books',KEY='scans021to040_curtain_figure47_v8_20261110_2350',MAX=60*1024*1024;
 // Verify book title, source range, and data format, not an exact revision marker.
 let currentBlob=null,activeUrl='',pendingSave=null,loadId=0,readerIsReady=false;
 function say(s){$('status').textContent=s}
