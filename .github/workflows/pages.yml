@@ -185,10 +185,13 @@ jobs:
       - name: Build WH1 figure display v9 without changing private books
         run: |
           python3 tools/build-wh1-figure-viewport-v8.py
+          python3 tools/build-wh1-library-v9.py
           node --check reader/wh1/all/wh1-figure-viewport-v9.js
           node --check reader/wh1/all/wh1-display-check-v9.js
+          node --check reader/library/wh1-reader-routing.js
+          node --check reader/library/sw.js
           node --check reader/wh1/all/sw.js
-          node --test tests/wh1-figure-viewport-v8.test.cjs tests/wh1-display-check-v9.test.cjs
+          node --test tests/wh1-figure-viewport-v8.test.cjs tests/wh1-display-check-v9.test.cjs tests/wh1-library-routing.test.cjs tests/wh1-library-build.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:

@@ -103,6 +103,7 @@ THE SOFTWARE.
 
 </script>
 <script src="./storage.js"></script>
+<script src="./wh1-reader-routing.js?v=wh1-library-v9-20261110"></script>
 <script src="./wh1-exact-pagination.js"></script>
 <script>
 'use strict';
@@ -275,6 +276,10 @@ async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
   const book=await new ZipBook(file).index();const m=JSON.parse(await book.readText('manifest.json'));
+  // A saved book can be reopened in the WH1 renderer without copying its ZIP
+  // or changing its ID/position key. Keep an unsaved manual import in this page.
+  const replacement=!shouldSave&&window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID,manifest:m,isSaved:true});
+  if(replacement){location.replace(replacement);return;}
   fillManifest(m);bookZip=book;
   if(shouldSave)void saveCurrentBook();
   else setStorageState('このiPhoneに保存した書籍を開きました。次回も自動で開きます。',{show:false});
@@ -387,16 +392,20 @@ $('originalClose').onclick=closeOriginal;
 $('zoomOut').onclick=()=>{originalScale=Math.max(0.7,Math.round((originalScale-.25)*100)/100);setOriginalScale();};
 $('zoomIn').onclick=()=>{originalScale=Math.min(5,Math.round((originalScale+.25)*100)/100);setOriginalScale();};
 window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();closeOriginal();}});
-window.addEventListener('pageshow',async()=>{
+async function recoverSavedBook(){
+ const replacement=window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID});
+ if(replacement){location.replace(replacement);return;}
  try{const saved=await dbRead();if(saved?.blob){$('resume').hidden=false;await loadBook(saved.blob,false);}}
  catch(e){setHint('保存済みデータが見つからないか、読み込めませんでした。「このiPhone内」に保存したZIPから再読込できます。');}
-});
+}
+window.addEventListener('pageshow',recoverSavedBook);
 // Cache the application shell only. The private book stays on this iPhone, never on GitHub.
 if(location.protocol==='https:' && 'serviceWorker' in navigator){
- navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{
+ navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).catch(()=>{
   setStorageState('オフライン起動設定を確認できません。書籍ZIPは「このiPhone内」に保管してください。',{warn:true,show:false});
  });
 }
 </script>
 </body>
 </html>
+

@@ -79,11 +79,12 @@
     $('downloadProgress').hidden=true; $('primaryBookAction').disabled=false;openSheet('book');
   }
   async function primaryAction(){if(!selected)return;
-    if(savedIds.has(selected.id)){location.href=`./read.html?id=${encodeURIComponent(selected.id)}`;return;}
+    if(savedIds.has(selected.id)){location.href=readerHref(selected);return;}
     if(!selected.parts.length){closeSheet('book');openSettings();say('Googleアカウントへの接続が必要です');return;}
     if(!tokenValid()){closeSheet('book');openSettings();say('先にGoogle Driveと接続してください');return;}
     await download(selected);
   }
+  function readerHref(book){return window.WH1ReaderRouting?.href(book)||`./read.html?id=${encodeURIComponent(book.id)}`;}
   async function deleteLocal(){if(!selected)return;
     if(!confirm(`${selected.title}の端末保存データを削除しますか？Google Driveの原本は消えません。`))return;
     try{await LibraryDB.removeBook(selected.id);savedIds.delete(selected.id);closeSheet('book');renderShelf();say('端末保存データを削除しました');}
@@ -225,7 +226,7 @@
       await assertZip(verify.blob);
       savedIds.add(book.id);renderShelf();$('detailStatus').textContent='端末に保存しました。次回から自動で開けます。';
       $('progressLabel').textContent='保存完了。読書画面を開きます。';
-      location.href=`./read.html?id=${encodeURIComponent(book.id)}`;
+      location.href=readerHref(book);
     }catch(e){if(committed)await LibraryDB.removeBook(book.id).catch(()=>{});else await writer.abort();$('primaryBookAction').disabled=false;
       if(e.name==='AbortError'){$('detailStatus').textContent='ダウンロードを中止しました。';say('ダウンロードを中止しました');}
       else{$('detailStatus').textContent='保存できませんでした：'+(e.message||e);say('保存エラー：'+(e.message||e));}
@@ -233,7 +234,7 @@
     }finally{pendingDownload=null;}
   }
   function registerSW(){if('serviceWorker' in navigator&&location.protocol==='https:')
-    navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});
+    navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).catch(()=>{});
   }
   $('settingsButton').onclick=openSettings;$('connectButton').onclick=()=>tokenValid()?refreshCloud():openSettings();
   $('settingsClose').onclick=closeSettings;$('settingsBackdrop').onclick=closeSettings;
@@ -250,3 +251,4 @@
   if(localStorage.getItem(CLIENT_KEY)||SHARED_CLIENT_ID)setCloud('フラッシュカードのGoogle設定を利用','「接続する」で書籍フォルダの読み取り権限を許可してください');
   if(!navigator.onLine)setCloud('オフライン','端末に保存済みの本は読めます');
 })();
+

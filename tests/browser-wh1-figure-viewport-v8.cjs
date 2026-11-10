@@ -16,6 +16,8 @@ const addon = fs.readFileSync(path.join(root, 'reader/wh1/all/wh1-figure-viewpor
 const displayCheck = fs.readFileSync(path.join(root, 'reader/wh1/all/wh1-display-check-v9.js'), 'utf8');
 const checkShell = fs.readFileSync(path.join(root, 'reader/wh1/all/figure-check-v9-1.html'), 'utf8')
   .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '');
+const libraryShell = fs.readFileSync(path.join(root, 'reader/library/read-wh1-v9.html'), 'utf8')
+  .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '');
 const baselineContext = {window: {}, console};
 vm.createContext(baselineContext);
 vm.runInContext(core, baselineContext);
@@ -129,14 +131,14 @@ async function nonTargets(page) {
   });
 }
 
-async function checkParentChildDiagnostics(browser, engine, output) {
+async function checkParentChildDiagnostics(browser, engine, output, shell = checkShell, entry = 'diagnostic') {
   const page = await browser.newPage({viewport: {width: 390, height: 666}});
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   try {
     // Use the generated outer page, with automatic book loading removed. Only
     // the existing synthetic fixture enters the sandboxed reader iframe.
-    await page.setContent(checkShell);
+    await page.setContent(shell);
     await page.evaluate(() => {
       document.getElementById('setup').hidden = true;
       document.getElementById('reader').style.display = 'block';
@@ -166,7 +168,7 @@ async function checkParentChildDiagnostics(browser, engine, output) {
     assert.equal(await page.locator('#wh1-display-check-panel').isVisible(), true);
     assert.match(await page.locator('#wh1-display-check-scan').textContent(), /22/);
     await page.locator('#wh1-display-check-close').click();
-    await page.screenshot({path: path.join(output, `${engine}-diagnostic-entry-scan22.png`)});
+    await page.screenshot({path: path.join(output, `${engine}-${entry}-entry-scan22.png`)});
 
     // A loaded parent v9 with an incompatible child must remain visibly
     // unapplied. This is distinct from an old parent or a bounds failure.
@@ -183,7 +185,7 @@ async function checkParentChildDiagnostics(browser, engine, output) {
     assert.equal(state.boundsCheck, 'unverified');
     assert.equal(state.paintVerified, false);
     assert.deepEqual(errors, []);
-    return {engine, appliedChild: true, rejectedChild: true, iframeGeometryUnchanged: true};
+    return {engine, entry, appliedChild: true, rejectedChild: true, iframeGeometryUnchanged: true};
   } finally { await page.close(); }
 }
 
@@ -278,6 +280,7 @@ async function checkParentChildDiagnostics(browser, engine, output) {
         await page.close();
       }
       diagnostics.push(await checkParentChildDiagnostics(browser, engine, output));
+      diagnostics.push(await checkParentChildDiagnostics(browser, engine, output, libraryShell, 'library'));
     } finally {
       await browser.close();
     }
@@ -287,5 +290,5 @@ async function checkParentChildDiagnostics(browser, engine, output) {
     conditions: results.length, results, diagnostics
   }, null, 2));
   console.log('WH1_V9_BROWSER_PASS ' + results.length + ' target conditions, Chromium and WebKit; source22 before source18. Synthetic content only.');
-  console.log('WH1_DISPLAY_CHECK_PASS ' + diagnostics.length + ' engines; parent/child distinction and unchanged iframe geometry.');
+  console.log('WH1_DISPLAY_CHECK_PASS ' + diagnostics.length + ' entry/engine combinations; parent/child distinction and unchanged iframe geometry.');
 })().catch(error => {console.error(error); process.exit(1);});
