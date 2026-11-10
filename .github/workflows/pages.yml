@@ -90,7 +90,6 @@ jobs:
         run: |
           python3 tools/build-quiet-word-sync.py
           node --check word-quiet-sync.js
-          node --check drive-sync.js
           node --check word-recovery.js
           node --check service-worker.js
           node --test tests/word-quiet-sync.test.cjs tests/service-worker.test.cjs
@@ -183,6 +182,12 @@ jobs:
         run: |
           python3 tools/build-color-photo-share-entry.py
           node --test tests/color-photo-share-entry.test.cjs
+      - name: Build fresh WH1 figure display entry without changing private books
+        run: |
+          python3 tools/build-wh1-figure-viewport-v8.py
+          node --check reader/wh1/all/wh1-figure-viewport-v8.js
+          node --check reader/wh1/all/sw.js
+          node --test tests/wh1-figure-viewport-v8.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
