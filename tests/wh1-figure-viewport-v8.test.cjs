@@ -41,6 +41,24 @@ test('viewport change is scoped, repeat-safe and syntax-valid',()=>{
  assert.equal(c.window.WH1ExactPager.decorate(html),html);
  assert.doesNotMatch(fix,/indexedDB|fetch\(|localStorage\.removeItem|innerHTML\s*=/);
 });
+test('diagnostic entry adds a static marker and observer without changing the normal reader',()=>{
+ const html=read('reader/wh1/all/index.html');
+ const check=read('reader/wh1/all/figure-check-v9-1.html');
+ const expected='<script src="./wh1-display-check-v9.js?revision=display-check-v9-1-20261110"></script>';
+ assert.equal(createHash('sha256').update(html).digest('hex'),'274f0378598946e44cc55f0872ab1c3eb679dc5710044e78e4ff8d0c81ba61a6');
+ assert.doesNotMatch(html,/wh1-display-check|確認9\.1/);
+ assert.equal(check.split(expected).length-1,1);
+ assert.ok(check.indexOf('wh1-figure-viewport-v9.js')<check.indexOf(expected));
+ assert.ok(check.indexOf(expected)<check.indexOf('const SEGMENTS='));
+ assert.match(check,/<title>確認9\.1｜/);
+ const marker=check.match(/\n<aside id="wh1-display-check-fallback"[^>]*>確認9\.1 · 確認待ち<\/aside>/);
+ assert.ok(marker,'The static confirmation marker must survive a script-load failure');
+ assert.ok(check.indexOf(marker[0])<check.indexOf('<iframe id="reader"'));
+ assert.match(marker[0],/position:fixed/);
+ assert.equal(check.replace('\n'+expected,'').replace('<title>確認9.1｜','<title>').replace(marker[0],''),html);
+ assert.match(check,/indexedDB\.open\('wh1-unified-book',2\)/);
+ assert.match(check,/localStorage\.getItem\('WH1_UNIFIED_POSITION'\)/);
+});
 test('offscreen counter receives the same viewport repair without mutating book or manifest',async()=>{
  const c=context();let options;
  c.window.WH1ExactPager.create=value=>{options=value;return {test:true};};
@@ -69,7 +87,7 @@ test('worker installs current entries and offline fallback never selects an olde
    addEventListener:(name,handler)=>{handlers[name]=handler;},
    skipWaiting:async()=>{waiting++;},clients:{claim:async()=>{claimed++;}}},
   caches:{open:async name=>{
-   assert.equal(name,'wh1-unified-reader-shell-v12-figure-viewport9');return currentCache;
+   assert.equal(name,'wh1-unified-reader-shell-v13-display-check91');return currentCache;
   },delete:async()=>{deleted++;},match:async()=>{globalMatches++;return new Response('old shell');}},
   fetch:async()=>{throw Error('Offline fixture');}
  };
@@ -79,15 +97,18 @@ test('worker installs current entries and offline fallback never selects an olde
  handlers.activate({waitUntil:promise=>{activate=promise;}});await activate;
  assert.equal(waiting,1);assert.equal(claimed,1);assert.equal(deleted,0);
  assert.deepEqual(installed.map(url=>url.slice(scope.length)).sort(),[
-  'apple-touch-icon.png','figure-repair-v8.html','figure-repair-v9.html','index.html',
+  'apple-touch-icon.png','figure-repair-v8.html','figure-repair-v9.html','figure-check-v9-1.html','index.html',
   'manifest.webmanifest','wh1-exact-pagination.js?v=figure-viewport-v9-20261110',
-  'wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110'
+  'wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110',
+  'wh1-display-check-v9.js?revision=display-check-v9-1-20261110'
  ].sort());
  for(const [path,mode,fallback] of [
   ['', 'navigate', 'index.html'],
   ['figure-repair-v8.html', 'navigate', 'figure-repair-v9.html'],
+  ['figure-check-v9-1.html?verify=latest', 'navigate', 'figure-check-v9-1.html'],
   ['wh1-exact-pagination.js?v=scan18-entire-caption-v6-20261109', 'cors', 'wh1-exact-pagination.js?v=figure-viewport-v9-20261110'],
-  ['wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110', 'cors', 'wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110']
+  ['wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110', 'cors', 'wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110'],
+  ['wh1-display-check-v9.js?revision=old-query', 'cors', 'wh1-display-check-v9.js?revision=display-check-v9-1-20261110']
  ]){
   let response;
   handlers.fetch({request:{url:scope+path,method:'GET',mode},respondWith:promise=>{response=promise;},waitUntil(){}});

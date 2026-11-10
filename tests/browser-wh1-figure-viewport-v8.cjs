@@ -13,6 +13,9 @@ const root = path.resolve(__dirname, '..');
 const core = fs.readFileSync(path.join(root, 'reader/wh1/all/wh1-exact-pagination.js'), 'utf8');
 const publishedAddon = fs.readFileSync(path.join(root, 'reader/wh1/all/wh1-figure-viewport-v8.js'), 'utf8');
 const addon = fs.readFileSync(path.join(root, 'reader/wh1/all/wh1-figure-viewport-v9.js'), 'utf8');
+const displayCheck = fs.readFileSync(path.join(root, 'reader/wh1/all/wh1-display-check-v9.js'), 'utf8');
+const checkShell = fs.readFileSync(path.join(root, 'reader/wh1/all/figure-check-v9-1.html'), 'utf8')
+  .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '');
 const baselineContext = {window: {}, console};
 vm.createContext(baselineContext);
 vm.runInContext(core, baselineContext);
@@ -126,8 +129,67 @@ async function nonTargets(page) {
   });
 }
 
+async function checkParentChildDiagnostics(browser, engine, output) {
+  const page = await browser.newPage({viewport: {width: 390, height: 666}});
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  try {
+    // Use the generated outer page, with automatic book loading removed. Only
+    // the existing synthetic fixture enters the sandboxed reader iframe.
+    await page.setContent(checkShell);
+    await page.evaluate(() => {
+      document.getElementById('setup').hidden = true;
+      document.getElementById('reader').style.display = 'block';
+    });
+    const before = await page.locator('#reader').boundingBox();
+    await page.addScriptTag({content: core});
+    await page.addScriptTag({content: addon});
+    await page.addScriptTag({content: displayCheck});
+    await page.evaluate(html => {
+      document.getElementById('reader').srcdoc = window.WH1ExactPager.decorate(html);
+    }, fixture);
+    const frame = await (await page.locator('#reader').elementHandle()).contentFrame();
+    await frame.waitForFunction(() => window.__FIXTURE_READY__ && pages.length > 0);
+    await frame.evaluate(() => {
+      currentPage = pages.findIndex(p => p.type === 'illustration' && p.scan === 22);
+      if (currentPage < 0) throw Error('Synthetic source 22 missing');
+      showPage();
+    });
+    await page.waitForFunction(() => {
+      const state = window.WH1DisplayCheck?.getState();
+      return state?.scan === 22 && state.childStatus === 'applied' && state.boundsCheck === 'inside';
+    });
+    assert.deepEqual(await page.locator('#reader').boundingBox(), before, 'diagnostics preserve iframe geometry');
+    assert.equal(await frame.locator('#current-size').textContent(), '20px');
+    assert.equal(await page.evaluate(() => window.WH1DisplayCheck.getState().paintVerified), false);
+    await page.locator('#wh1-display-check-button').click();
+    assert.equal(await page.locator('#wh1-display-check-panel').isVisible(), true);
+    assert.match(await page.locator('#wh1-display-check-scan').textContent(), /22/);
+    await page.locator('#wh1-display-check-close').click();
+    await page.screenshot({path: path.join(output, `${engine}-diagnostic-entry-scan22.png`)});
+
+    // A loaded parent v9 with an incompatible child must remain visibly
+    // unapplied. This is distinct from an old parent or a bounds failure.
+    const incompatible = fixture.replace(/("scan"\s*:\s*)11/, (_, prefix) => prefix + '12');
+    assert.notEqual(incompatible, fixture);
+    await page.evaluate(html => {
+      document.getElementById('reader').srcdoc = window.WH1ExactPager.decorate(html);
+    }, incompatible);
+    await page.waitForFunction(() => window.WH1DisplayCheck.getState().childStatus === 'not-applied');
+    const state = await page.evaluate(() => window.WH1DisplayCheck.getState());
+    assert.equal(state.parentRevision, 'figure-viewport-v9-20261110');
+    assert.equal(state.childRevision, null);
+    assert.equal(state.guard, 'outside-range');
+    assert.equal(state.boundsCheck, 'unverified');
+    assert.equal(state.paintVerified, false);
+    assert.deepEqual(errors, []);
+    return {engine, appliedChild: true, rejectedChild: true, iframeGeometryUnchanged: true};
+  } finally { await page.close(); }
+}
+
 (async () => {
   const results = [];
+  const diagnostics = [];
   const output = path.join(root, 'wh1-v8-test-results');
   fs.mkdirSync(output, {recursive: true});
   for (const [engine, launcher] of [['chromium', chromium], ['webkit', webkit]]) {
@@ -215,13 +277,15 @@ async function nonTargets(page) {
         await baseline.close();
         await page.close();
       }
+      diagnostics.push(await checkParentChildDiagnostics(browser, engine, output));
     } finally {
       await browser.close();
     }
   }
   fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify({
     scope: 'v9 synthetic regression using actual source structure; not private-book or physical-iPhone validation',
-    conditions: results.length, results
+    conditions: results.length, results, diagnostics
   }, null, 2));
   console.log('WH1_V9_BROWSER_PASS ' + results.length + ' target conditions, Chromium and WebKit; source22 before source18. Synthetic content only.');
+  console.log('WH1_DISPLAY_CHECK_PASS ' + diagnostics.length + ' engines; parent/child distinction and unchanged iframe geometry.');
 })().catch(error => {console.error(error); process.exit(1);});

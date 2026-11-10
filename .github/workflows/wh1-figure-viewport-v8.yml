@@ -6,6 +6,7 @@ on:
       - 'reader/wh1/all/**'
       - 'tools/build-wh1-figure-viewport-v8.py'
       - 'tests/*wh1-figure-viewport-v8*'
+      - 'tests/wh1-display-check-v9.test.cjs'
       - '.github/workflows/wh1-figure-viewport-v8.yml'
   workflow_dispatch:
 permissions:
@@ -23,8 +24,9 @@ jobs:
         run: |
           python3 tools/build-wh1-figure-viewport-v8.py
           node --check reader/wh1/all/wh1-figure-viewport-v9.js
+          node --check reader/wh1/all/wh1-display-check-v9.js
           node --check reader/wh1/all/sw.js
-          node --test tests/wh1-figure-viewport-v8.test.cjs
+          node --test tests/wh1-figure-viewport-v8.test.cjs tests/wh1-display-check-v9.test.cjs
       - name: Install browser test engines
         run: |
           npm install --prefix /tmp/wh1-v9-browser --no-package-lock playwright@1.56.1
