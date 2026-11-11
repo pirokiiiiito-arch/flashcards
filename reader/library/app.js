@@ -8,8 +8,12 @@
   const SHARED_CLIENT_ID = String(window.FLASHCARDS_DRIVE_CONFIG?.clientId || '').trim();
   const PREVIEW = {id:'wh1',title:'世界の歴史1',subtitle:'全274枚・縦書き読書版',scans:274,
     status:'OCR全字校正継続中',totalBytes:400389725,parts:[]};
+  // Integrated UK Interiors reading edition: 82 continuous scans, OCR verification ongoing.
+  // This preview stores no book bytes; images and text are downloaded privately from Drive.
+  const UK_PREVIEW = {id:'uk-interiors',title:'図説 英国のインテリア史',subtitle:'全82枚・通し番号で一冊読書',scans:82,
+    status:'読書版統合済み／独立全文字校正は継続中',totalBytes:126889183,parts:[]};
   const $ = id => document.getElementById(id);
-  let books=[PREVIEW], savedIds=new Set(), selected=null, accessToken=null, expiry=0, pendingDownload=null;
+  let books=[PREVIEW,UK_PREVIEW], savedIds=new Set(), selected=null, accessToken=null, expiry=0, pendingDownload=null;
   let tokenClient=null, connected=false, isRefreshing=false;
   const num = new Intl.NumberFormat('ja-JP');
   const say = (message) => {const t=$('toast');t.textContent=message;t.hidden=false;clearTimeout(say.timer);say.timer=setTimeout(()=>t.hidden=true,4500);};
@@ -84,7 +88,10 @@
     if(!tokenValid()){closeSheet('book');openSettings();say('先にGoogle Driveと接続してください');return;}
     await download(selected);
   }
-  function readerHref(book){return window.WH1ReaderRouting?.href(book)||`./read.html?id=${encodeURIComponent(book.id)}`;}
+  function readerHref(book){
+    if(book.id===UK_PREVIEW.id)return `../british-interiors/full/?id=${encodeURIComponent(book.id)}`;
+    return window.WH1ReaderRouting?.href(book)||`./read.html?id=${encodeURIComponent(book.id)}`;
+  }
   async function deleteLocal(){if(!selected)return;
     if(!confirm(`${selected.title}の端末保存データを削除しますか？Google Driveの原本は消えません。`))return;
     try{await LibraryDB.removeBook(selected.id);savedIds.delete(selected.id);closeSheet('book');renderShelf();say('端末保存データを削除しました');}
@@ -160,7 +167,11 @@
     }
     for(const [base,group] of groups){group.sort((a,b)=>a.index-b.index);
       if(group.length<2||group.some((p,i)=>p.index!==i+1)||group.some(p=>!Number.isFinite(p.size)||p.size<=0))continue;
-      const b=safeBook({id:`g_${group[0].id}`,title:normalizeTitle(base),subtitle:`Google Drive／${group.length}分割`,parts:group,
+      const uk=base.includes('英国のインテリア史')&&base.includes('一冊統合読書版')&&group.length===4;
+      const b=uk?safeBook({id:'uk-interiors',title:'図説 英国のインテリア史',subtitle:'全82枚・通し番号で一冊読書',
+        status:'読書版統合済み／独立全文字校正は継続中',scans:82,parts:group,
+        totalBytes:group.reduce((sum,p)=>sum+p.size,0)}):
+        safeBook({id:`g_${group[0].id}`,title:normalizeTitle(base),subtitle:`Google Drive／${group.length}分割`,parts:group,
         totalBytes:group.reduce((sum,p)=>sum+p.size,0)});if(b)singles.push(b);
     }
     return singles;
@@ -178,6 +189,7 @@
       const seen=new Set();books=[];
       for(const b of [...catalog,...found]){if(seen.has(b.id))continue;seen.add(b.id);books.push(b);}
       if(!books.some(x=>x.id==='wh1'))books.unshift(PREVIEW);
+      if(!books.some(x=>x.id===UK_PREVIEW.id))books.push(UK_PREVIEW);
       books.sort((a,b)=>a.id==='wh1'?-1:b.id==='wh1'?1:a.title.localeCompare(b.title,'ja'));
       await refreshSaved();setCloud('Google Driveに接続済み',`${books.length}冊の書籍を同期しました`,true);
     }catch(e){setCloud('同期できませんでした',e.message||'再接続をお試しください');say('同期エラー: '+(e.message||String(e)));}
