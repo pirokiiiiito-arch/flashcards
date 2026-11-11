@@ -25,3 +25,17 @@ test('single-digit orientation and Japanese word-boundary protection stay in rea
  const s=patch.repair.toString();
  for(const item of ['wsWriteVertical','ws-one-digit','wsSafeCut','Intl.Segmenter','white-space:normal'])assert.ok(s.includes(item),item);
 });
+
+const vm=require('node:vm');
+const sourceFixture=fs.readFileSync(require('node:path').join(__dirname,'fixtures/world-symbols-synthetic.html'),'utf8');
+test('synthetic non-copyright fixture repairs to a syntax-valid reader without rewriting book bytes',()=>{
+ const result=patch.repair(sourceFixture);
+ const first=sourceFixture.match(/<script id="embedded-data" type="application\\/json">([\\s\\S]*?)<\\/script>/);
+ const second=result.html.match(/<script id="embedded-data" type="application\\/json">([\\s\\S]*?)<\\/script>/);
+ assert.ok(first&&second);
+ assert.equal(first[1],second[1]);
+ const main=result.html.slice(result.html.lastIndexOf('<script>')+8,result.html.lastIndexOf('</script>'));
+ assert.doesNotThrow(()=>new vm.Script(main));
+ assert.match(main,/wsWriteVertical/);assert.match(main,/wsSafeCut/);assert.match(main,/Math.abs\\(dy\\)>45/);
+ const again=patch.repair(result.html);assert.equal(result.html,again.html);
+});
