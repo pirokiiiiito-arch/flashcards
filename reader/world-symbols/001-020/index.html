@@ -42,10 +42,10 @@ a{color:#2c666c}
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
   <p id="status" role="status" aria-live="polite">読書版HTMLを選択してください。</p>
-  <p class="note">この読書入口は『世界の歴史1』準拠の上下スワイプ、図版固定、画面全体ピンチ拡大を読み込み時に適用します。原本画像と読み込み前のOCRは変更しません。本文中の半角「,」「.」は読書・書き出し時に「、」「。」へ置換し、元のOCR文字列も保持します。読書HTMLを保存する場合は読書画面の「読込・保存」から書き出してください。</p><p class="note">原本画像とOCR本文はこのWebサイトに公開しません。この端末のChrome内へ保存します。別の本・分冊とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」「比較」に切り替えられます。</p>
+  <p class="note">操作修正版v4：下スワイプで前へ戻ります。タッチとPointer操作の両方に対応し、二重送りを防ぎます。この読書入口は『世界の歴史1』準拠の上下スワイプ、図版固定、画面全体ピンチ拡大を読み込み時に適用します。原本画像と読み込み前のOCRは変更しません。本文中の半角「,」「.」は読書・書き出し時に「、」「。」へ置換し、元のOCR文字列も保持します。読書HTMLを保存する場合は読書画面の「読込・保存」から書き出してください。</p><p class="note">原本画像とOCR本文はこのWebサイトに公開しません。この端末のChrome内へ保存します。別の本・分冊とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」「比較」に切り替えられます。</p>
  </main>
 </div>
-<script src="./reader-repair-v1.js?v=20261112-v3-japanese-punctuation"></script>
+<script src="./reader-repair-v1.js?v=20261112-v4-pointer-swipe"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);

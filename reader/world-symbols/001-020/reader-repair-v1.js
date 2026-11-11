@@ -99,9 +99,22 @@ function wsSeedRegions(book){
  return result;
 }
 
+function extractSwipeV3(){
+ const marker='/* world-symbols-wh1-fix-v3 */';
+ const src=String(repair).match(/const swipe=\x60([\s\S]*?)\x60;/);
+ if(!src)throw Error('SWIPE_V3_SOURCE_MISSING');
+ return marker+src[1].slice(src[1].indexOf('\n')).replace('${wsSwipeDecision.toString()}',wsSwipeDecision.toString());
+}
+
 function repair(html){
  const before=inspect(html);
- if(html.includes("world-symbols-wh1-fix-v2"))return {html,version:"world-symbols-wh1-fix-v2",summary:before};
+ if(html.includes("world-symbols-wh1-fix-v3"))return {html,version:"world-symbols-wh1-fix-v3",summary:before};
+ if(html.includes("world-symbols-wh1-fix-v2")){
+  const gesture=extractSwipeV3();
+  const updated=span(html,"/* world-symbols-wh1-fix-v3 */","document.addEventListener('keydown',",gesture);
+  if(inspect(updated).data!==before.data)throw Error("PRIVATE_BOOK_CONTENT_CHANGED");
+  return {html:updated,version:"world-symbols-wh1-fix-v3",summary:before};
+ }
  if(html.includes("world-symbols-wh1-fix-v1"))throw Error("以前に保存した旧パッチ版です。原本の2010版HTMLを選び直してください");
  const pagesFn=`function wsFigurePages(source){
  const box=byId('readingContent'),w=Math.max(140,box.clientWidth-12),maxH=Math.max(56,Math.min(220,box.clientHeight*.32));
@@ -189,12 +202,12 @@ html=one(html,"function pagesForCurrent(){",uprightFn+pagesFn+"function pagesFor
  html=span(html,"const sourcePane=byId('sourceBody');let srcGesture=null;","let touchY=0,touchX=0;","const sourcePane=byId('sourceBody');\n");
  const swipe=`/* world-symbols-wh1-fix-v2 */
 ${wsSwipeDecision.toString()}
-let gX=0,gY=0,gAt=0,gTracking=false,gMulti=false,gWheel=0;
+let gX=0,gY=0,gAt=0,gTracking=false,gMulti=false,gWheel=0,gLastCommitAt=0;\nfunction gCommit(move){const now=Date.now();if(!move||now-gLastCommitAt<300)return false;gLastCommitAt=now;go(move);return true;}
 const gStage=byId('readView'),gZoom=()=>!!(window.visualViewport&&window.visualViewport.scale>1.01);
 gStage.addEventListener('touchstart',e=>{if(e.touches.length!==1||gZoom()){gTracking=false;gMulti=true;return;}if(gMulti)return;gTracking=true;gX=e.touches[0].clientX;gY=e.touches[0].clientY;gAt=Date.now();},{passive:true});
 gStage.addEventListener('touchmove',e=>{if(e.touches.length>1){gTracking=false;gMulti=true;return;}if(!gTracking||gZoom())return;const dx=e.touches[0].clientX-gX,dy=e.touches[0].clientY-gY;if(Math.abs(dy)>14&&Math.abs(dy)>Math.abs(dx)*1.15&&e.cancelable)e.preventDefault();},{passive:false});
-gStage.addEventListener('touchend',e=>{if(gMulti){if(!e.touches.length){gMulti=false;gTracking=false;}return;}if(!gTracking||!e.changedTouches.length)return;gTracking=false;const dx=e.changedTouches[0].clientX-gX,dy=e.changedTouches[0].clientY-gY,move=wsSwipeDecision(dx,dy,Date.now()-gAt,gZoom());if(move){if(e.cancelable)e.preventDefault();go(move);}},{passive:false});
-gStage.addEventListener('touchcancel',()=>{gTracking=false;gMulti=false;},{passive:true});
+gStage.addEventListener('touchend',e=>{if(gMulti){if(!e.touches.length){gMulti=false;gTracking=false;}return;}if(!gTracking||!e.changedTouches.length)return;gTracking=false;const dx=e.changedTouches[0].clientX-gX,dy=e.changedTouches[0].clientY-gY,move=wsSwipeDecision(dx,dy,Date.now()-gAt,gZoom());if(move){if(e.cancelable)e.preventDefault();gCommit(move);}},{passive:false});
+gStage.addEventListener('touchcancel',()=>{gTracking=false;gMulti=false;},{passive:true});\nlet pointerGesture=null;\ngStage.addEventListener('pointerdown',e=>{\n if(e.pointerType!=='touch'||!e.isPrimary||gZoom()){pointerGesture=null;return;}\n pointerGesture={x:e.clientX,y:e.clientY,at:Date.now()};\n},{passive:true});\ngStage.addEventListener('pointermove',e=>{\n if(!pointerGesture||e.pointerType!=='touch'||gZoom())return;\n const dx=e.clientX-pointerGesture.x,dy=e.clientY-pointerGesture.y;\n if(Math.abs(dy)>14&&Math.abs(dy)>Math.abs(dx)*1.15&&e.cancelable)e.preventDefault();\n},{passive:false});\ngStage.addEventListener('pointerup',e=>{\n if(!pointerGesture||e.pointerType!=='touch'){pointerGesture=null;return;}\n const p=pointerGesture;pointerGesture=null;\n const move=wsSwipeDecision(e.clientX-p.x,e.clientY-p.y,Date.now()-p.at,gZoom()||gMulti);\n if(move){if(e.cancelable)e.preventDefault();gCommit(move);}\n},{passive:false});\ngStage.addEventListener('pointercancel',()=>{pointerGesture=null;},{passive:true});
 gStage.addEventListener('wheel',e=>{if(e.ctrlKey||gZoom()||Math.abs(e.deltaY)<16||Math.abs(e.deltaY)<Math.abs(e.deltaX))return;if(e.cancelable)e.preventDefault();const t=Date.now();if(t-gWheel<560)return;gWheel=t;go(e.deltaY>0?1:-1);},{passive:false});
 `;
  html=span(html,"let touchY=0,touchX=0;","document.addEventListener('keydown',",swipe);
@@ -205,7 +218,7 @@ gStage.addEventListener('wheel',e=>{if(e.ctrlKey||gZoom()||Math.abs(e.deltaY)<16
   "// The original bytes remain in dataUrl. Display layers never resave or redraw original scans.\n"+wsSeedRegions.toString()+"\nwindow.wsRegionInventory=wsSeedRegions(book);\nrefresh();");
  const after=inspect(html);
  if(after.data!==before.data)throw Error("PRIVATE_BOOK_CONTENT_CHANGED");
- return {html,version:"world-symbols-wh1-fix-v2",summary:after};
+ return {html,version:"world-symbols-wh1-fix-v3",summary:after};
 }
 return {one,span,inspect,repair,wsSwipeDecision,wsSeedRegions,wsBodyPunctuation,wsNormalizeBodyPunctuation};
 });

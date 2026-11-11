@@ -17,7 +17,7 @@ test('blank or wrong source book is refused',()=>{
 });
 test('the patch includes WH1 swipe thresholds, native zoom and fixed figure DOM',()=>{
  const code=patch.repair.toString();
- for(const word of ['wsSwipeDecision','Math.abs(dy)>14','wheel','touchcancel','keepFigure','wsFigurePages','browser-native pinch','ws-native-whole-screen-pinch'])
+ for(const word of ['wsSwipeDecision','Math.abs(dy)>14','wheel','touchcancel','pointerup','pointercancel','gCommit','keepFigure','wsFigurePages','browser-native pinch','ws-native-whole-screen-pinch'])
   assert.ok(code.includes(word),word);
 });
 
@@ -80,7 +80,7 @@ test('swipe next/previous is symmetric; diagonal, too slow and zoom are ignored'
 test('region seeding runs inside patched reader without modifying embedded original data',()=>{
  const fixed=patch.repair(sourceFixture);
  assert.ok(fixed.html.includes('window.wsRegionInventory=wsSeedRegions(book)'));
- assert.ok(fixed.html.includes('world-symbols-wh1-fix-v2'));
+ assert.ok(fixed.html.includes('world-symbols-wh1-fix-v3'));
  assert.ok(fixed.html.includes('#readingStage,.figure-frame,.figure-inner{touch-action:pan-x pinch-zoom'));
  const tag='<script id="embedded-data" type="application/json">';
  assert.equal(sourceFixture.split(tag)[1].split('</script>')[0],fixed.html.split(tag)[1].split('</script>')[0]);
@@ -111,4 +111,19 @@ test('patched reader renders and exports normalized body without touching embedd
  assert.equal(fixed.split(tag)[1].split('</script>')[0],sourceFixture.split(tag)[1].split('</script>')[0]);
  const js=fixed.slice(fixed.lastIndexOf('<script>')+8,fixed.lastIndexOf('</script>'));
  assert.doesNotThrow(()=>new vm.Script(js));
+});
+
+test('v3 loader has versioned cache bust, touch/pointer dedup and upgrade path',()=>{
+ const shell=fs.readFileSync(require('node:path').join(__dirname,'../reader/world-symbols/001-020/index.html'),'utf8');
+ assert.match(shell,/v4-pointer-swipe/);
+ assert.match(shell,/操作修正版v4/);
+ const fixed=patch.repair(sourceFixture);
+ assert.ok(fixed.html.includes('gStage.addEventListener(\'pointerup\''));
+ assert.ok(fixed.html.includes('gCommit(move)'));
+ assert.ok(fixed.html.includes('gLastCommitAt<300'));
+ const older=fixed.html.replace('/* world-symbols-wh1-fix-v3 */','/* world-symbols-wh1-fix-v2 */');
+ const revised=patch.repair(older);
+ assert.ok(revised.html.includes('world-symbols-wh1-fix-v3'));
+ assert.ok(revised.html.includes('gCommit(move)'));
+ assert.equal(patch.repair(revised.html).html,revised.html);
 });
