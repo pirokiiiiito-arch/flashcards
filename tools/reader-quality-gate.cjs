@@ -111,7 +111,10 @@ function validate(root=ROOT){
   const trustedTopLevel=!classicFrame&&/\binstallTopLevelEngine\s*\(/.test(html)&&
     /TRUSTED_ENGINE_SHA256='[0-9a-f]{64}'/.test(html)&&/user-scalable=yes/.test(html);
   if(!fileImport||!(classicFrame||trustedTopLevel))errors.push('BAD_FILE_IMPORT_ENTRY '+b.entry);
-  if(/data:image\/(?:jpeg|png|webp);base64,/i.test(html))errors.push('PRIVATE_SOURCE_IN_PUBLIC_WEB '+b.entry);
+  // Reject actual embedded private image payloads, not a harmless string literal
+  // checking a data URL prefix. A real JPEG/PNG/WebP has far more than 64 base64 chars.
+  if(/data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]{64,}/i.test(html))
+   errors.push('PRIVATE_SOURCE_IN_PUBLIC_WEB '+b.entry);
   if(b.stage==='draft'&&!/制作中|校正中|校正継続|未校正|未完了|未確認/.test(html))
    errors.push('UNLABELLED_DRAFT '+b.entry);
   reportCheck(b,read(root,b.report,errors),errors);
