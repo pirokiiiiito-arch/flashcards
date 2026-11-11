@@ -2,7 +2,7 @@
 <html lang="ja"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5">
 <meta name="theme-color" content="#fbfaf6">
-<title>図説 英国のインテリア史｜全82枚・通し番号・滑らか読書版</title>
+<title>図説 英国のインテリア史｜全82枚・画面全体ピンチ拡大v3</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;background:#f8f8f4;color:#293437}
 *{box-sizing:border-box}html,body{width:100%;height:100%;height:100dvh;margin:0;overflow:hidden}
@@ -20,17 +20,19 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
 .progress{display:none;height:5px;background:#e3eae5;border-radius:7px;overflow:hidden}.progress.show{display:block}.progress>span{display:block;width:0;height:100%;background:#4b7775;transition:width .15s}
 #busy{position:fixed;inset:0;display:grid;place-items:center;z-index:8;background:#fbfaf7ed;pointer-events:none}
 #busy[hidden]{display:none}.busy-label{max-width:320px;text-align:center;padding:20px;color:#465d60;font-size:14px;line-height:1.7}
-</style><style id="browser-page-pinch-shell-v2">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}</style></head><body>
-<iframe id="reader" title="図説 英国のインテリア史・全82枚の通し番号" sandbox="allow-scripts"></iframe>
+</style><style id="reader-native-page-pinch-shell-v3">
+  html,body,#reader,#setup{touch-action:pan-x pan-y pinch-zoom;}
+</style></head><body>
+<!-- The reader is installed in this top-level document. No iframe may capture native pinch. -->
 <div id="busy" hidden><div class="busy-label" id="busyLabel">読書データを準備しています…</div></div>
 <div id="setup"><main>
  <span class="eyebrow">PRIVATE READING LIBRARY · 82 SCANS</span>
  <h1>図説 英国のインテリア史</h1>
- <p><strong>全82枚・連続読書v2</strong>。原本1〜82枚目を通し番号で表示します。分冊境界でも、同じ読書画面のまま前後の本文・画像データを切り替えます。</p>
+ <p><strong>全82枚・画面全体ピンチ拡大v3</strong>。原本1〜82枚目を通し番号で表示します。分冊境界でも、同じ読書画面のまま前後の本文・画像データを切り替えます。</p>
  <p>縦書き本文20px、独立1桁数字の正立、図版を固定した説明文だけのページ送り、原本JPEGの不変性を維持しています。</p>
  <button type="button" class="button" id="openSaved" hidden>この端末に保存済みの全巻を開く</button>
  <h2>全巻を開く</h2>
- <p>本棚の「Google Driveから保存して読む」で新しい分割ZIPを一度保存します。手動の場合はDriveの「82枚・滑らかページ送りv2」のpart01〜part04を同時選択してください。旧v1の分割ZIPは使用できません。</p>
+ <p>本棚の「Google Driveから保存して読む」で新しい分割ZIPを一度保存します。手動の場合はDriveの「82枚・画面全体ピンチ拡大v3」のpart01〜part04を同時選択してください。旧v1・v2の分割ZIPは使用できません。</p>
  <p><a id="zipLink" href="https://drive.google.com/drive/folders/1WPpY1os7llCyFaDa9C7Bf7vDQb0ee31j" target="_blank" rel="noopener">Googleドライブの非公開本棚フォルダ（v2分割ZIP）</a></p>
  <label class="pick" for="file">全82枚のZIP／part01〜part04を選択</label>
  <input id="file" type="file" multiple accept=".zip,.part01,.part02,.part03,.part04,application/octet-stream">
@@ -51,6 +53,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
  const cache=new Map(),inflight=new Map();
  let previousWindow=-1,currentNavToken=0,opening=false,saving=false;
  const textDecoder=new TextDecoder();
+ const TRUSTED_ENGINE_SHA256='580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca';
  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
  function say(s){$('status').textContent=String(s)}
  function busy(s){$('busyLabel').textContent=String(s);$('busy').hidden=false}
@@ -66,7 +69,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
    const at=Math.max(0,this.blob.size-65557),buf=await this.blob.slice(at).arrayBuffer(),v=new DataView(buf);
    let end=-1;for(let i=v.byteLength-22;i>=0;i--)if(u32(v,i)===0x06054b50&&i+22+u16(v,i+20)<=v.byteLength){end=i;break}
    if(end<0)throw Error('統合ZIPの終了情報が見つかりません');
-   if(u16(v,end+8)!==84)throw Error('統合ZIPは84ファイル（82原本＋読書画面＋目録）のv2を選んでください');
+   if(u16(v,end+8)!==84)throw Error('統合ZIPは84ファイル（82原本＋読書画面＋目録）のv3を選んでください');
    const len=u32(v,end+12),offset=u32(v,end+16);
    if(len<1||len>40000||offset+len>this.blob.size)throw Error('統合ZIPの目録位置が正しくありません');
    const c=new DataView(await this.blob.slice(offset,offset+len).arrayBuffer());let ptr=0;
@@ -110,25 +113,23 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
    const pages=await Promise.all(nums.map(fetchPage));
    if(!book||token!==currentNavToken)return;
    if(!navigate&&current.scan!==scan)return;
-   const frame=$('reader');
-   frame.contentWindow.postMessage({kind:'uk82-stream-window',pages,scan,navigate,itemIndex,size,edge},'*');
+   window.postMessage({kind:'uk82-stream-window',pages,scan,navigate,itemIndex,size,edge},'*');
    previousWindow=scan;
    for(const n of [...cache.keys()])if(Math.abs(n-scan)>4)cache.delete(n);
  }
  async function attach(blob,shouldSave=false){
-  const token=++openToken;opening=true;busy('統合読書v2の目録を確認しています…');
+  const token=++openToken;opening=true;busy('統合読書v3の目録を確認しています…');
   try{
    const candidate=await new ZipReader(blob).init(),m=JSON.parse(await candidate.readText('manifest.json'));
-   if(m.schema!=='uk82-stream-v2'||m.total_scans!==TOTAL||m.range?.[0]!==1||m.range?.[1]!==TOTAL||m.engine!=='reader/engine.html'||m.pages?.length!==TOTAL)
-      throw Error('旧版のZIPです。Google Driveから「滑らかページ送りv2」を選び直してください');
+   if(m.schema!=='uk82-stream-v2'||m.engine_revision!=='native-full-page-pinch-v3-20261112'||m.total_scans!==TOTAL||m.range?.[0]!==1||m.range?.[1]!==TOTAL||m.engine!=='reader/engine.html'||m.pages?.length!==TOTAL)
+      throw Error('旧版のZIPです。Google Driveから「画面全体ピンチ拡大v3」を選び直してください');
    if(m.pages.some((p,i)=>p.scan!==i+1||p.path!==pagePath(i+1)||!candidate.entries.has(p.path)))throw Error('原本1〜82枚の通し番号に欠落があります');
    const html=await candidate.readText(m.engine);
    if(!html.includes('uk82-stream-window')||!html.includes('START_SCAN=1,END_SCAN=82'))throw Error('読書画面のバージョンが一致しません');
    if(token!==openToken)return;
    book=candidate;manifest=m;readerReady=false;current=loadPosition();previousWindow=-1;cache.clear();inflight.clear();
-   if(frameUrl)URL.revokeObjectURL(frameUrl);
-   frameUrl=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
-   $('reader').src=frameUrl;
+   if(document.getElementById('reader-main')){readerReady=true;await sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size});}
+   else await installTopLevelEngine(html);
    if(shouldSave){
      // Store in 4MB IndexedDB chunks only when the user has imported new data.
      saving=true;
@@ -140,12 +141,48 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
    }
   }catch(e){if(token!==openToken)return;opening=false;unbusy();$('setup').hidden=false;say('読み込みエラー：'+(e.message||e));throw e;}
  }
- const getReader=()=>$('reader').contentWindow;
+ const getReader=()=>window;
+ // In the unified reader, the engine is installed as ordinary top-level DOM.
+ // Native visual-viewport pinch does not work reliably inside a sandboxed iframe.
+ async function installTopLevelEngine(html){
+   if(document.getElementById('reader-main'))return;
+   if(!crypto?.subtle)throw Error('安全なHTTPSの読書画面から開いてください');
+   const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(html)));
+   const hex=Array.from(digest,x=>x.toString(16).padStart(2,'0')).join('');
+   if(hex!==TRUSTED_ENGINE_SHA256)throw Error('読書エンジンの検査値が一致しません。v3の正規ZIPを選択してください');
+   const parsed=new DOMParser().parseFromString(html,'text/html');
+   const scriptNodes=[...parsed.body.querySelectorAll('script')];
+   if(scriptNodes.length!==2||!parsed.getElementById('reader-main')||!parsed.getElementById('reader-page'))
+     throw Error('統合読書エンジンの内容が不足しています');
+   for(const style of parsed.querySelectorAll('style')){
+     document.head.appendChild(document.importNode(style,true));
+   }
+   for(const node of [...parsed.body.children]){
+     if(node.tagName==='SCRIPT'||node.tagName==='STYLE')continue;
+     document.body.appendChild(document.importNode(node,true));
+   }
+   for(const script of scriptNodes){
+     const active=document.createElement('script');
+     active.textContent=script.textContent;
+     document.body.appendChild(active);
+   }
+ }
+ // Single-document browser scale is directly visible to the engine; retain a
+ // message notification for coordinated one-finger navigation at zoom > 1.
+ function notifyBrowserZoom(){
+   const scale=Math.max(1,Number(window.visualViewport?.scale)||1);
+   window.postMessage({kind:'uk82-browser-zoom',scale},'*');
+ }
+ if(window.visualViewport){
+   window.visualViewport.addEventListener('resize',notifyBrowserZoom,{passive:true});
+   window.visualViewport.addEventListener('scroll',notifyBrowserZoom,{passive:true});
+ }
+ window.addEventListener('pageshow',notifyBrowserZoom,{passive:true});
  window.addEventListener('message',event=>{
   if(event.source!==getReader()||!event.data||typeof event.data!=='object')return;
   const d=event.data;
   if(d.kind==='uk82-engine-ready'){
-    readerReady=true;sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size}).catch(error=>{unbusy();say('ページ準備失敗：'+error.message)});return;
+    readerReady=true;notifyBrowserZoom();sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size}).catch(error=>{unbusy();say('ページ準備失敗：'+error.message)});return;
   }
   if(d.kind==='uk82-stream-state'){
     if(opening){opening=false;unbusy();$('setup').hidden=true;}
@@ -170,12 +207,12 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
       else if(chosen.length===4){
         const parts=chosen.map(f=>({file:f,index:Number(f.name.match(/\.part(0[1-4])$/i)?.[1]||0),base:f.name.replace(/\.part0[1-4]$/i,'')}));
         const names=new Set(parts.map(x=>x.index)),base=parts[0].base;
-        if(names.size!==4||parts.some(x=>!x.index||x.base!==base))throw Error('同じv2のpart01〜part04を4つ同時に選んでください');
+        if(names.size!==4||parts.some(x=>!x.index||x.base!==base))throw Error('同じv3のpart01〜part04を4つ同時に選んでください');
         parts.sort((a,b)=>a.index-b.index);
-        const expected=[33554432,33554432,33554432,26102857];
-        if(parts.some((x,i)=>x.file.size!==expected[i]))throw Error('新しいv2の分割ファイルではありません。サイズを確認してください');
+        const expected=[33554432,33554432,33554432,26097106];
+        if(parts.some((x,i)=>x.file.size!==expected[i]))throw Error('新しいv3の分割ファイルではありません。サイズを確認してください');
         blob=new Blob(parts.map(x=>x.file),{type:'application/zip'});
-      }else throw Error('v2の統合ZIP、またはpart01〜part04の4個を選んでください');
+      }else throw Error('v3の統合ZIP、またはpart01〜part04の4個を選んでください');
       await attach(blob,true);
     }catch(e){unbusy();say('選択エラー：'+(e.message||e));}
  });
@@ -183,9 +220,9 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
  $('shelf').onclick=()=>{location.href='../../library/'};
  (async()=>{try{
     const saved=await LibraryDB.findBlob(BOOK_ID);
-    if(saved?.blob){$('openSaved').hidden=false;await attach(saved.blob,false)}
-    else say('Google Driveの滑らかページ送りv2を保存してください。書籍本文は非公開です。');
-   }catch(e){unbusy();say('保存済みの旧版は更新が必要です。本棚からv2を再保存するか、新しい4分割ZIPを選んでください。\n'+String(e.message||e));}
+    if(saved?.blob){$('openSaved').hidden=false;if(!new URLSearchParams(location.search).has('import'))await attach(saved.blob,false);else say('確認用v3ファイルを選択してください。旧版は自動読込しません。')}
+    else say('Google Driveの画面全体ピンチ拡大v3を保存してください。書籍本文は非公開です。');
+   }catch(e){unbusy();say('保存済みの旧版は更新が必要です。本棚からv3を再保存するか、新しい4分割ZIPを選んでください。\n'+String(e.message||e));}
  })();
 })();
 </script></body></html>
