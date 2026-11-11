@@ -4,7 +4,7 @@
   "bookId": "world-symbols-001-020",
   "entry": "reader/world-symbols/001-020/index.html",
   "stage": "draft",
-  "version": "20261112-runtime-fix-v1 (private HTML still 20261111_2010)",
+  "version": "20261112-runtime-fix-v2 (original private OCR HTML remains 20261111_2010)",
   "scanRange": [
     1,
     20
@@ -179,8 +179,11 @@
       "status": "not_run"
     },
     "G7-04": {
-      "status": "failed",
-      "note": "Earlier iPhone swipe failure reported. WH1-based gesture handler introduced but no successful real-device recheck; remains failed."
+      "status": "needs_source_review",
+      "note": "Swipe handler corrected to WH1-style symmetric thresholds and tested in Chromium and WebKit synthetic page navigation, fixed figure reuse, and 24 sizes. Actual iPhone Chrome/Safari gestures have not been rechecked by the user; this is not a passed real-device check.",
+      "evidenceRef": "https://github.com/pirokiiiiito-arch/flashcards/actions/runs/43065009458",
+      "syntheticBrowserCI": "passed",
+      "realIPhone": "not_run"
     },
     "G7-05": {
       "status": "not_run"
@@ -255,8 +258,8 @@
     },
     {
       "check": "G7-04",
-      "status": "failed",
-      "detail": "Earlier iPhone swipe failure reported. WH1-based gesture handler introduced but no successful real-device recheck; remains failed."
+      "status": "needs_source_review",
+      "detail": "Code repaired and Chromium/WebKit synthetic regression passed. Real iPhone recheck pending."
     }
   ],
   "displayOnlyRepairs": [
@@ -276,6 +279,9 @@
     "sourceRegionPrecision": "candidate",
     "G104SourceInspection": "not_completed",
     "G204LinkPrecision": "not_completed",
-    "G704RealIPhone": "not_completed"
+    "G704RealIPhone": "not_run",
+    "G704SyntheticBrowser": "passed_chromium_webkit",
+    "G704SyntheticRun": "43065009458",
+    "websiteLoaderVersion": "20261112-v2-gesture-regions"
   }
 }
