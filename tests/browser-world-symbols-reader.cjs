@@ -48,7 +48,10 @@ async function testEngine(engine,name){
   assert.match(await page.locator('#ws-gesture-v5-status').innerText(),/操作修正v5を読込済み/,name+' must execute v5');
   await gotoScan(page,4);
   const at004=await page.locator('#whereSub').innerText();
-  assert.match(at004,/1 \/ [2-9]\d*/,name+' needs multiple reader screens on synthetic scan004');
+  const pagination=at004.match(/読書画面\s+(\d+)\s*\/\s*(\d+)/);
+  assert.ok(pagination,name+' missing scan004 pagination: '+at004);
+  assert.equal(Number(pagination[1]),1,name+' scan004 must start at its first page');
+  assert.ok(Number(pagination[2])>=2,name+' must have multiple reader screens: '+at004);
   await moveTouch(page,false);
   assert.notEqual(await page.locator('#whereSub').innerText(),at004,name+' scan004 up-swipe failed');
   await moveTouch(page,true);
