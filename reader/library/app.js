@@ -166,12 +166,12 @@
       if(group.length<2||group.some((p,i)=>p.index!==i+1)||group.some(p=>!Number.isFinite(p.size)||p.size<=0))continue;
       const uk=base.includes('英国のインテリア史')&&base.includes('一冊統合読書版')&&group.length===4;
       const b=uk?safeBook({id:'uk-interiors',title:'図説 英国のインテリア史',subtitle:'全82枚・通し番号で一冊読書',
-        status:'読書版統合済み／独立全文字校正は継続中',scans:82,parts:group,
+        status:'画面全体ピンチ拡大v3／OCR独立校正継続中',scans:82,parts:group,
         totalBytes:group.reduce((sum,p)=>sum+p.size,0)}):
         safeBook({id:`g_${group[0].id}`,title:normalizeTitle(base),subtitle:`Google Drive／${group.length}分割`,parts:group,
         totalBytes:group.reduce((sum,p)=>sum+p.size,0)});if(b)singles.push(b);
     }
-    // Prefer the newest of the v1/v2 UK bundles; retain prior copies in Drive as a safety backup.
+    // Prefer the newest of the v1/v2/v3 UK bundles; retain prior copies in Drive as a safety backup.
     singles.sort((a,b)=>a.id==='uk-interiors'&&b.id==='uk-interiors' ? String(b.parts?.[0]?.name||'').localeCompare(String(a.parts?.[0]?.name||'')) : 0);
     return singles;
   }
