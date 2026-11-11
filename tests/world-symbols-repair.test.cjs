@@ -13,7 +13,7 @@ test('blank or wrong source book is refused',()=>{
  const doc='<script id="embedded-data" type="application/json">'+JSON.stringify({bookId:'wrong',pages:fake})+'</script>';
  assert.throws(()=>patch.inspect(doc),/書籍ID|スキャン順/);
  fake.forEach(p=>p.dataUrl='');
- assert.throws(()=>patch.inspect(doc.replace('"bookId":"wrong"','"bookId":"sekai-symbol-jiten"')),/空の読書HTML/);
+ const emptyDoc='<script id="embedded-data" type="application/json">'+JSON.stringify({bookId:'sekai-symbol-jiten',pages:fake})+'</script>';assert.throws(()=>patch.inspect(emptyDoc),/空の読書HTML/);
 });
 test('the patch includes WH1 swipe thresholds, native zoom and fixed figure DOM',()=>{
  const code=patch.repair.toString();
