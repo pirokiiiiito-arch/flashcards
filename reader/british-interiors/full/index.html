@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbfaf6">
-<title>図説 英国のインテリア史｜全82枚・通し番号読書版</title>
+<title>図説 英国のインテリア史｜全82枚・通し番号読書版（下スワイプ改善）</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;background:#f8f8f4;color:#293437}
 *{box-sizing:border-box}html,body{width:100%;height:100%;height:100dvh;margin:0;overflow:hidden}
-#reader{display:block;position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf8}
+#reader,#reader-cache{display:block;position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf8}
+#reader-cache{visibility:hidden;pointer-events:none;z-index:-1}
 #setup{position:fixed;inset:0;overflow-y:auto;background:#f6f7f3;padding:calc(18px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));z-index:10}
 #setup[hidden]{display:none}
 main{max-width:500px;margin:12px auto;background:#fff;border:1px solid #dce3dd;border-radius:19px;padding:24px 20px;box-shadow:0 8px 25px #24332c0a}
@@ -58,7 +59,32 @@ a{color:#2d686c;overflow-wrap:anywhere}
                   {start:81,end:82,path:'segments/081-082.html'}];
   const $=id=>document.getElementById(id);
   const bufText=new TextDecoder('utf-8');
-  let zip=null,activeSegment=-1,frameUrl='',pendingTarget=null,opening=false,ready=false,activation=0;
+  let zip=null,activeSegment=-1,frameUrl='',cachedSegment=-1,cachedFrameUrl='',pendingTarget=null,opening=false,ready=false,activation=0;
+  let positionTimer=null;
+  // Retain the immediately previous section's live iframe. Reversing a swipe at
+  // a 20-scan boundary no longer reparses and decodes 30MB of HTML/JPEG data.
+  function resetCache(){
+    const cache=$('reader-cache');if(cache)cache.remove();
+    if(cachedFrameUrl)URL.revokeObjectURL(cachedFrameUrl);
+    cachedFrameUrl='';cachedSegment=-1;
+  }
+  function exchangeCachedSection(){
+    const now=$('reader'),other=$('reader-cache');
+    if(!other||cachedSegment<0)return false;
+    now.id='reader-temp';other.id='reader';now.id='reader-cache';
+    now.setAttribute('aria-hidden','true');other.removeAttribute('aria-hidden');
+    now.tabIndex=-1;other.removeAttribute('tabindex');
+    const oldSegment=activeSegment,oldURL=frameUrl;
+    activeSegment=cachedSegment;frameUrl=cachedFrameUrl;
+    cachedSegment=oldSegment;cachedFrameUrl=oldURL;
+    return true;
+  }
+  function makeFrame(){
+    const node=document.createElement('iframe');node.id='reader';
+    node.setAttribute('title','図説 英国のインテリア史：全82枚');
+    node.setAttribute('sandbox','allow-scripts');
+    return node;
+  }
   let current={scan:1,itemIndex:0,size:20},archiveBlob=null;
   let lastSaved=null;
   function msg(text){$('status').textContent=String(text)}
@@ -66,7 +92,16 @@ a{color:#2d686c;overflow-wrap:anywhere}
   function unbusy(){$('busy').hidden=true}
   function segmentFor(scan){return SEGMENTS.findIndex(s=>s.start<=scan&&scan<=s.end)}
   function loadPosition(){try{const p=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(p&&Number.isInteger(p.scan)&&p.scan>=1&&p.scan<=82&&Number.isInteger(p.itemIndex))return {scan:p.scan,itemIndex:p.itemIndex,size:p.size||20}}catch(_){}return {scan:1,itemIndex:0,size:20}}
-  function savePosition(){try{localStorage.setItem(POSITION_KEY,JSON.stringify(current))}catch(_){}}
+  function flushPosition(){
+    if(positionTimer!==null){clearTimeout(positionTimer);positionTimer=null;}
+    try{localStorage.setItem(POSITION_KEY,JSON.stringify(current))}catch(_){}
+  }
+  function savePosition(){
+    // Avoid synchronous storage writes in the middle of every touch gesture.
+    if(positionTimer!==null)clearTimeout(positionTimer);
+    positionTimer=setTimeout(flushPosition,140);
+  }
+  window.addEventListener('pagehide',flushPosition);
   function u16(v,n){return v.getUint16(n,true)}
   function u32(v,n){return v.getUint32(n,true)}
   class ZipReader{
@@ -108,6 +143,10 @@ a{color:#2d686c;overflow-wrap:anywhere}
         const a=SEGMENTS[i],b=m.segments[i];if(a.start!==b.start||a.end!==b.end||a.path!==b.path||!reader.entries.has(a.path))throw Error('原本番号の連続性を確認できません');
       }
       if(token!==activation)return;
+      // A newly imported book must not keep iframes for a previous ZIP.
+      resetCache();
+      if(frameUrl){URL.revokeObjectURL(frameUrl);frameUrl='';}
+      activeSegment=-1;$('reader')?.removeAttribute('src');
       zip=reader;archiveBlob=blob;current=loadPosition();
       msg('原本1〜82枚の連続した読書データを読み込みました。');
       await openScan(current.scan,{itemIndex:current.itemIndex,size:current.size});
@@ -130,13 +169,27 @@ a{color:#2d686c;overflow-wrap:anywhere}
     if(which===activeSegment && $('reader').contentWindow){
       $('reader').contentWindow.postMessage({kind:'uk82-goto',...pendingTarget},'*');return;
     }
+    if(which===cachedSegment && exchangeCachedSection()){
+      // The previous document is already rendered; just change its page anchor.
+      $('reader').contentWindow.postMessage({kind:'uk82-goto',...pendingTarget},'*');
+      return;
+    }
     const text=await zip.readText(seg.path);
     if(token!==activation)return;
     if(!text.includes('uk82-boundary')||!text.includes(`START_SCAN=${seg.start},END_SCAN=${seg.end}`))throw Error('読書HTMLの通し番号処理を確認できません');
     const blob=new Blob([text],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob);
-    const old=frameUrl;frameUrl=url;activeSegment=which;
-    $('reader').src=url;
-    if(old)setTimeout(()=>URL.revokeObjectURL(old),5000);
+    // At most two live sections: active and one immediately previous. Keeping
+    // the hidden previous iframe at full size avoids re-layout on back swipes.
+    resetCache();
+    const old=$('reader');
+    if(activeSegment>=0){
+      old.id='reader-cache';old.setAttribute('aria-hidden','true');old.tabIndex=-1;
+      cachedSegment=activeSegment;cachedFrameUrl=frameUrl;
+    }else if(frameUrl)URL.revokeObjectURL(frameUrl);
+    const next=makeFrame();old.after(next);
+    if(activeSegment<0)old.remove();
+    frameUrl=url;activeSegment=which;
+    next.src=url;
   }
   window.addEventListener('message',e=>{
     if(e.source!==$('reader').contentWindow||!e.data||typeof e.data!=='object')return;
