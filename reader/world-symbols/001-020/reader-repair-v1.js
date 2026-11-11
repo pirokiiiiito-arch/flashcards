@@ -70,9 +70,9 @@ function repair(html){
  }
  function wsPrepareText(raw){
   let s=String(raw||'').replace(/[ \t　]{3,}/g,' ');
-  s=s.replace(/[ \t　]*\r?\n[ \t　]*/g,(whole,offset,full)=>{
-    const left=(full.slice(0,offset).match(/[^\s]$/)||[])[0]||'';
-    const right=(full.slice(offset+whole.length).match(/^[^\s]/)||[])[0]||'';
+  s=s.replace(/[ \\t　]*\\r?\\n[ \\t　]*/g,(whole,offset,full)=>{
+    const left=(full.slice(0,offset).match(/[^\\s]$/)||[])[0]||'';
+    const right=(full.slice(offset+whole.length).match(/^[^\\s]/)||[])[0]||'';
     return /[A-Za-z0-9]$/.test(left)&&/^[A-Za-z0-9]/.test(right)?' ':'';
   });
   return s;
