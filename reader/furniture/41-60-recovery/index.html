@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>洋家具の歴史と様式 41〜60｜軽量起動</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#273839;background:white}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#f7f8f6;color:#273839;-webkit-text-size-adjust:100%}
+main{max-width:480px;margin:0 auto;padding:26px 18px 36px}
+h1{font-size:22px;line-height:1.45;margin:0 0 12px}
+p,li{font-size:14px;line-height:1.85}
+small{color:#667879}a{color:#226269}
+.panel{background:#fff;border:1px solid #dae2db;border-radius:16px;padding:20px 17px;box-shadow:0 8px 28px #152d2610}
+.pick,.action{display:block;width:100%;border-radius:12px;border:1px solid #a6c6bf;padding:14px 10px;text-align:center;font-size:16px;font-weight:700;cursor:pointer;min-height:49px;background:#fff;color:#244b4f;text-decoration:none;margin:12px 0}
+.pick{background:#285b60;border-color:#285b60;color:#fff}
+.secondary{border-color:#bfd0ca;background:#f2f8f5}
+[hidden]{display:none!important}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#status{font-size:13px;white-space:pre-wrap;line-height:1.65;color:#465f60;min-height:30px;margin:8px 0}
+#launch{margin-top:10px;border-top:1px solid #e2e7e2;padding-top:7px}
+.help{font-size:12px;color:#667677}
+#viewer{position:fixed;inset:0;z-index:20;background:#fff;display:flex;flex-direction:column}
+#viewer button{border:0;border-bottom:1px solid #ddd;background:#eef5f2;min-height:45px;font-size:14px;font-weight:700}
+#viewer iframe{border:0;flex:1;min-height:0;background:#fff}
+</style>
+</head>
+<body>
+<main id="setup">
+<div class="panel">
+<h1>洋家具の歴史と様式<br>41〜60枚目</h1>
+<p>黒い画面になる場合の<strong>軽量起動ページ</strong>です。以前の読書サイトと異なり、保存済みデータの自動読み込みは行いません。</p>
+<ol>
+<li><a href="https://drive.google.com/file/d/1lFGo3f2gWWbehspu2JgoBQYfDG-i8ZsX/view">修正版HTMLをGoogleドライブからiPhoneの「ファイル」に保存</a></li>
+<li>下の「HTMLを選択」をタップして保存したファイルを選ぶ</li>
+<li>表示された「このタブで読む」をタップ</li>
+</ol>
+<label for="file" class="pick">41〜60枚目のHTMLを選択</label>
+<input id="file" type="file" accept=".html,text/html">
+<div id="status" role="status" aria-live="polite">この画面が見えていれば、読書サイト本体は読み込めています。</div>
+<div id="launch" hidden>
+ <a id="same-tab" class="action" href="#">このタブで読む（推奨）</a>
+ <a id="new-tab" class="action secondary" href="#" target="_blank" rel="noopener">新しいタブで読む</a>
+ <button id="embedded" class="action secondary" type="button">このページ内に表示（予備）</button>
+</div>
+<p class="help">最初の読書画面が表示される前にデータを一括解析しない方式です。原本画像・本文をネット上には送信しません。読み込んだHTMLはこのページでは保存せず、次回は選び直します。</p>
+<p class="help">このページ自体が真っ黒で開かない場合は、ファイルの問題ではなくサイトの通信またはChromeの読み込み段階で止まっています。</p>
+<small>軽量起動 v20261111-1</small>
+</div>
+</main>
+<div id="viewer" hidden><button id="close" type="button">戻って別の方法で開く</button><iframe id="reader" title="読書画面" sandbox="allow-scripts"></iframe></div>
+<script>
+'use strict';
+const byId=id=>document.getElementById(id);
+let activeUrl='';
+byId('file').addEventListener('change',async()=>{
+ const file=byId('file').files&&byId('file').files[0];
+ if(!file)return;
+ byId('launch').hidden=true;
+ byId('status').textContent='ファイルの種類を確認中…';
+ try{
+  if(file.size<1000000||file.size>60*1024*1024)throw Error('41〜60枚目の読書HTML（約21MB）を選んでください。');
+  const head=await file.slice(0,120000).text();
+  if(!head.includes('洋家具の歴史と様式')||!head.includes('041〜060')||
+     !head.includes('const BOOK=')||!head.includes('const IMAGES=')||
+     !head.includes('id="stage"'))
+   throw Error('41〜60枚目の読書HTMLではありません。修正版HTMLを選び直してください。');
+  if(activeUrl)URL.revokeObjectURL(activeUrl);
+  activeUrl=URL.createObjectURL(file);
+  byId('same-tab').href=activeUrl;
+  byId('new-tab').href=activeUrl;
+  byId('launch').hidden=false;
+  byId('status').textContent='選択できました：'+file.name+' ('+(file.size/1024/1024).toFixed(1)+'MB)\n下の「このタブで読む」を押してください。';
+ }catch(e){byId('status').textContent='選択できません：'+(e&&e.message||String(e));}
+ byId('file').value='';
+});
+byId('embedded').addEventListener('click',()=>{
+ if(!activeUrl)return;
+ byId('viewer').hidden=false;
+ byId('reader').src=activeUrl;
+ byId('status').textContent='埋め込み方式で開いています。黒画面の場合は「戻って別の方法で開く」をお試しください。';
+});
+byId('close').addEventListener('click',()=>{
+ byId('reader').src='about:blank';byId('viewer').hidden=true;
+});
+</script>
+</body>
+</html>
