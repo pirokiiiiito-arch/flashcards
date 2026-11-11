@@ -59,3 +59,15 @@ test('historical reader edits cannot pass silently',()=>{
   assert.match(gate.validate(tmp).errors.join('|'),/LEGACY_CHANGED/);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
+
+test('cannot bypass checks by declaring a newly created book as historical legacy',()=>{
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'reader-gate-'));
+ try{
+  fs.mkdirSync(path.join(tmp,'reader/quality'),{recursive:true});
+  fs.copyFileSync(path.join(root,'reader/quality/standard.json'),path.join(tmp,'reader/quality/standard.json'));
+  const changed=copy(reg);
+  changed.legacyFrozenEntries['reader/fake-new-book/index.html']='0'.repeat(40);
+  fs.writeFileSync(path.join(tmp,'reader/quality/registry.json'),JSON.stringify(changed));
+  assert.match(gate.validate(tmp).errors.join('|'),/LEGACY_EXCEPTION_LIST_CHANGED/);
+ }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
