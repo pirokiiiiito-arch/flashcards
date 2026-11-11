@@ -78,14 +78,14 @@ html=one(html,"function pagesForCurrent(){",uprightFn+pagesFn+"function pagesFor
  const branch=` if(x.kind==='figure'){
  const capText='［'+x.figure.figureId.replace('FIG-','')+'］'+x.figure.label+'　'+x.text;
  if(keepFigure){
-  const cap=stage.querySelector('.figure-caption');if(cap)cap.textContent=capText;
+  const cap=stage.querySelector('.figure-caption');if(cap){cap.textContent=capText;const capH=Math.max(56,Math.min(220,byId('readingContent').clientHeight*.32));cap.style.height=capH+'px';cap.style.flex='0 0 '+capH+'px';cap.style.overflow='hidden';}
   const frame=stage.querySelector('.figure-frame'),inner=stage.querySelector('.figure-inner'),img=frame?.querySelector('img');
   if(frame&&inner&&img)placeFigureOriginal(frame,inner,img,p,x.figure);
  }else{
   const frame=makeElement('div','figure-frame'),inner=makeElement('div','figure-inner'),img=document.createElement('img');
   img.src=p.dataUrl;img.alt='原本'+pad(p.scan)+'の図版'+x.figure.figureId;
   inner.appendChild(img);frame.appendChild(inner);
-  const cap=makeElement('div','figure-caption',capText);
+  const cap=makeElement('div','figure-caption',capText);const capH=Math.max(56,Math.min(220,byId('readingContent').clientHeight*.32));cap.style.height=capH+'px';cap.style.flex='0 0 '+capH+'px';cap.style.overflow='hidden';
   stage.append(frame,cap);placeFigureOriginal(frame,inner,img,p,x.figure);activateFigurePinch(frame,inner);
  }
 `;

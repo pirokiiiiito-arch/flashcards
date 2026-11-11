@@ -38,3 +38,9 @@ test('synthetic non-copyright fixture repairs to a syntax-valid reader without r
  for(const marker of ['wsWriteVertical','wsSafeCut','Math.abs(dy)>45'])assert.ok(main.includes(marker));
  const again=patch.repair(result.html);assert.equal(result.html,again.html);
 });
+
+test('figure frame keeps a fixed caption region on multi-screen descriptions',()=>{
+ const s=patch.repair.toString();
+ assert.ok(s.includes("cap.style.flex='0 0 '"));
+ assert.ok(s.includes('sameFigure')||s.includes('keepFigure'));
+});
