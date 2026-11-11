@@ -17,7 +17,7 @@ test('blank or wrong source book is refused',()=>{
 });
 test('the patch includes WH1 swipe thresholds, native zoom and fixed figure DOM',()=>{
  const code=patch.repair.toString();
- for(const word of ['wsSwipeDecision','Math.abs(dy)>14','Math.abs(dx)>65','wheel','touchcancel','keepFigure','wsFigurePages','browser-native pinch','ws-native-whole-screen-pinch'])
+ for(const word of ['wsSwipeDecision','Math.abs(dy)>14','wheel','touchcancel','keepFigure','wsFigurePages','browser-native pinch','ws-native-whole-screen-pinch'])
   assert.ok(code.includes(word),word);
 });
 

@@ -183,8 +183,8 @@ gStage.addEventListener('wheel',e=>{if(e.ctrlKey||gZoom()||Math.abs(e.deltaY)<16
  html=one(html,"document.addEventListener('keydown',e=>{if(e.target.matches('textarea,input,select'))return;if(e.key==='ArrowDown'||e.key==='PageDown'){go(1);}if(e.key==='ArrowUp'||e.key==='PageUp'){go(-1);}});",
  "document.addEventListener('keydown',e=>{if(e.target.matches('textarea,input,select'))return;if(['ArrowLeft','ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();go(1);}if(['ArrowRight','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(-1);}});");
  html=one(html,"</style></head><body>","</style><style id=\"ws-native-whole-screen-pinch\">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#readView,#readingStage,.figure-frame,.figure-inner{touch-action:pan-x pinch-zoom!important}#sourceBody,#sourceBody img{touch-action:pan-x pan-y pinch-zoom!important}.ws-one-digit{text-orientation:upright!important;text-combine-upright:none!important}#readingStage.vertical-text{white-space:normal;word-break:normal}.figure-caption{font-size:var(--caption-size)!important;line-height:1.48!important}</style></head><body>");
- html=one(html,"// The original bytes remain in dataUrl. Display layers never resave or redraw original scans.\\nrefresh();",
-  "// The original bytes remain in dataUrl. Display layers never resave or redraw original scans.\\n"+wsSeedRegions.toString()+"\\nwindow.wsRegionInventory=wsSeedRegions(book);\\nrefresh();");
+ html=one(html,"// The original bytes remain in dataUrl. Display layers never resave or redraw original scans.\nrefresh();",
+  "// The original bytes remain in dataUrl. Display layers never resave or redraw original scans.\n"+wsSeedRegions.toString()+"\nwindow.wsRegionInventory=wsSeedRegions(book);\nrefresh();");
  const after=inspect(html);
  if(after.data!==before.data)throw Error("PRIVATE_BOOK_CONTENT_CHANGED");
  return {html,version:"world-symbols-wh1-fix-v2",summary:after};
