@@ -4,7 +4,7 @@
   "bookId": "world-symbols-001-020",
   "entry": "reader/world-symbols/001-020/index.html",
   "stage": "draft",
-  "version": "20261111_2010",
+  "version": "20261112-runtime-fix-v1 (private HTML still 20261111_2010)",
   "scanRange": [
     1,
     20
@@ -29,7 +29,8 @@
       "status": "not_run"
     },
     "G1-04": {
-      "status": "not_run"
+      "status": "failed",
+      "note": "All 20 page entries currently have regions: []; original text-area coordinate inventory is absent."
     },
     "G1-05": {
       "status": "not_run"
@@ -38,7 +39,8 @@
       "status": "not_run"
     },
     "G1-08": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "All 20 printedPage fields are blank; whether printed numbers are present on each source page needs source review."
     },
     "G1-10": {
       "status": "not_run"
@@ -56,7 +58,8 @@
       "status": "not_run"
     },
     "G2-04": {
-      "status": "not_run"
+      "status": "failed",
+      "note": "No region-to-reading-block mapping is registered (regions: [] across all 20 scans)."
     },
     "G2-05": {
       "status": "not_run"
@@ -68,7 +71,8 @@
       "status": "not_run"
     },
     "G3-01": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "No page is proofStatus passed; 17 pages have preliminary OCR or captions."
     },
     "G3-02": {
       "status": "not_run"
@@ -98,7 +102,8 @@
       "status": "not_run"
     },
     "G4-04": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "Japanese word and number/page boundary behavior revised in on-device patch; 24 screen conditions not yet inspected."
     },
     "G4-05": {
       "status": "not_run"
@@ -119,7 +124,8 @@
       "status": "not_run"
     },
     "G5-05": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "Figure DOM continuation and measured caption splits revised in on-device patch; original figure placement and iPhone viewport still need testing."
     },
     "G5-10": {
       "status": "not_run"
@@ -158,14 +164,15 @@
       "status": "not_run"
     },
     "G7-02": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "Standalone one-digit vertical orientation and line wrapping revised; computed CSS on real iPhone not yet inspected."
     },
     "G7-03": {
       "status": "not_run"
     },
     "G7-04": {
       "status": "failed",
-      "note": "User reported swipe behavior differs from the World History 1 reference. No successful cross-book gesture test on iPhone."
+      "note": "Earlier iPhone swipe failure reported. WH1-based gesture handler introduced but no successful real-device recheck; remains failed."
     },
     "G7-05": {
       "status": "not_run"
@@ -200,5 +207,48 @@
     "G8-11": {
       "status": "not_run"
     }
-  }
+  },
+  "investigation": "Source HTML inspected against current canonical 60: 20 original scans, 17 pages with OCR/caption text, 16 figures, zero proofed, zero regions and printedPage fields.",
+  "confirmedDefects": [
+    {
+      "check": "G1-04",
+      "status": "failed",
+      "detail": "All 20 page entries currently have regions: []; original text-area coordinate inventory is absent."
+    },
+    {
+      "check": "G1-08",
+      "status": "needs_source_review",
+      "detail": "All 20 printedPage fields are blank; whether printed numbers are present on each source page needs source review."
+    },
+    {
+      "check": "G2-04",
+      "status": "failed",
+      "detail": "No region-to-reading-block mapping is registered (regions: [] across all 20 scans)."
+    },
+    {
+      "check": "G3-01",
+      "status": "needs_source_review",
+      "detail": "No page is proofStatus passed; 17 pages have preliminary OCR or captions."
+    },
+    {
+      "check": "G4-04",
+      "status": "needs_source_review",
+      "detail": "Japanese word and number/page boundary behavior revised in on-device patch; 24 screen conditions not yet inspected."
+    },
+    {
+      "check": "G5-05",
+      "status": "needs_source_review",
+      "detail": "Figure DOM continuation and measured caption splits revised in on-device patch; original figure placement and iPhone viewport still need testing."
+    },
+    {
+      "check": "G7-02",
+      "status": "needs_source_review",
+      "detail": "Standalone one-digit vertical orientation and line wrapping revised; computed CSS on real iPhone not yet inspected."
+    },
+    {
+      "check": "G7-04",
+      "status": "failed",
+      "detail": "Earlier iPhone swipe failure reported. WH1-based gesture handler introduced but no successful real-device recheck; remains failed."
+    }
+  ]
 }

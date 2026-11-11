@@ -39,7 +39,39 @@ function repair(html){
  }}finally{probe.remove();}return all;
 }\n`;
  html=one(html,"const source=pg();if(source.pageType==='figures'&&Array.isArray(source.figures)&&source.figures.length)return source.figures.map(fig=>({kind:'figure',figure:fig,text:fig.caption}));","const source=pg();if(source.pageType==='figures'&&Array.isArray(source.figures)&&source.figures.length)return wsFigurePages(source);");
- html=one(html,"function pagesForCurrent(){",pagesFn+"function pagesForCurrent(){");
+  const uprightFn=`function wsWriteVertical(el,s){
+  const text=String(s||'');el.replaceChildren();let at=0;
+  for(let i=0;i<text.length;i++){
+   const ch=text[i],left=text[i-1]||'',right=text[i+1]||'';
+   if(/[0-9]/.test(ch)&&!/[0-9A-Za-z.,]/.test(left)&&!/[0-9A-Za-z.,]/.test(right)){
+    if(i>at)el.appendChild(document.createTextNode(text.slice(at,i)));
+    const span=document.createElement('span');span.className='ws-one-digit';span.textContent=ch;el.appendChild(span);at=i+1;
+   }
+  }
+  if(at<text.length)el.appendChild(document.createTextNode(text.slice(at)));
+ }
+ function wsSafeCut(text,k){
+  if(k>=text.length)return k;
+  let best=k;
+  try{if(typeof Intl.Segmenter==='function'){
+   const lower=Math.max(1,Math.floor(k*.72));
+   for(const part of new Intl.Segmenter('ja',{granularity:'word'}).segment(text)){
+    const end=part.index+part.segment.length;
+    if(end>=lower&&end<=k&&end>best*.72)best=end;
+   }
+  }}catch(e){}
+  if(/[0-9０-９〇一二三四五六七八九十百千万]$/.test(text.slice(0,best))
+   &&/^[0-9０-９〇一二三四五六七八九十百千万年月日％%㎝kmｍcmメートル]/.test(text.slice(best))){
+    const m=text.slice(0,best).match(/[0-9０-９〇一二三四五六七八九十百千万]+$/);
+    if(m&&best>m[0].length)best-=m[0].length;
+  }
+  if(/^[、。！？）｣」』]/.test(text.slice(best))&&best>1)best--;
+  return Math.max(1,best);
+ }`;
+html=one(html,"function pagesForCurrent(){",uprightFn+pagesFn+"function pagesForCurrent(){");
+ html=one(html,"probe.textContent=s;return probe.getBoundingClientRect().width <= width+1;","wsWriteVertical(probe,s);return probe.getBoundingClientRect().width <= width+1;");
+ html=one(html,"if(k<rem.length){const trail=","k=wsSafeCut(rem,k);if(k<rem.length){const trail=");
+ html=one(html,"}else{stage.textContent=x.text;}","}else{wsWriteVertical(stage,x.text);}");
  html=span(html,"function activateFigurePinch(frame,inner){","\nfunction renderReader(){","function activateFigurePinch(frame,inner){/* browser-native pinch */}\n");
  html=one(html,"const stage=byId('readingStage');stage.replaceChildren();stage.className=",
  "const stage=byId('readingStage');const figureKey=x.kind==='figure'?(String(p.scan)+':'+x.figure.figureId):'';const keepFigure=!!figureKey&&stage.dataset.figureKey===figureKey&&!!stage.querySelector('.figure-frame');if(!keepFigure)stage.replaceChildren();stage.dataset.figureKey=figureKey;stage.className=");
@@ -71,7 +103,7 @@ gStage.addEventListener('wheel',e=>{if(e.ctrlKey||gZoom()||Math.abs(e.deltaY)<16
  html=span(html,"let touchY=0,touchX=0;","document.addEventListener('keydown',",swipe);
  html=one(html,"document.addEventListener('keydown',e=>{if(e.target.matches('textarea,input,select'))return;if(e.key==='ArrowDown'||e.key==='PageDown'){go(1);}if(e.key==='ArrowUp'||e.key==='PageUp'){go(-1);}});",
  "document.addEventListener('keydown',e=>{if(e.target.matches('textarea,input,select'))return;if(['ArrowLeft','ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();go(1);}if(['ArrowRight','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(-1);}});");
- html=one(html,"</style></head><body>","</style><style id=\"ws-native-whole-screen-pinch\">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#readView{touch-action:pan-x pinch-zoom!important}#sourceBody,#sourceBody img,.figure-frame,.figure-inner{touch-action:pan-x pan-y pinch-zoom!important}</style></head><body>");
+ html=one(html,"</style></head><body>","</style><style id=\"ws-native-whole-screen-pinch\">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#readView{touch-action:pan-x pinch-zoom!important}#sourceBody,#sourceBody img,.figure-frame,.figure-inner{touch-action:pan-x pan-y pinch-zoom!important}.ws-one-digit{text-orientation:upright!important;text-combine-upright:none!important}#readingStage.vertical-text{white-space:normal;word-break:normal}</style></head><body>");
  const after=inspect(html);
  if(after.data!==before.data)throw Error("PRIVATE_BOOK_CONTENT_CHANGED");
  return {html,version:"world-symbols-wh1-fix-v1",summary:after};

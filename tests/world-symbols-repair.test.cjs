@@ -20,3 +20,8 @@ test('the patch includes WH1 swipe thresholds, native zoom and fixed figure DOM'
  for(const word of ['Math.abs(dy)>45','Math.abs(dy)>14','Math.abs(dx)>65','wheel','touchcancel','keepFigure','wsFigurePages','browser-native pinch','ws-native-whole-screen-pinch'])
   assert.ok(code.includes(word),word);
 });
+
+test('single-digit orientation and Japanese word-boundary protection stay in reader patch',()=>{
+ const s=patch.repair.toString();
+ for(const item of ['wsWriteVertical','ws-one-digit','wsSafeCut','Intl.Segmenter','white-space:normal'])assert.ok(s.includes(item),item);
+});
