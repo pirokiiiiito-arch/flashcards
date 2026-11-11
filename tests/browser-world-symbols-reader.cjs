@@ -9,11 +9,23 @@ async function moveTouch(page,down){
  return page.evaluate(down=>{
   const element=document.getElementById('readView');
   const oldY=down?285:455,newY=down?410:330;
-  const make=(y)=>new Touch({identifier:1,target:element,clientX:190,clientY:y,screenX:190,screenY:y,pageX:190,pageY:y});
+  // Construct the event envelope directly: WebKit's Touch constructor can be
+  // unavailable in headless regression even when its touch event handlers work.
+  // This tests the reader's real listeners in both engines without a fake iPhone pass.
+  const make=(y)=>({identifier:1,target:element,clientX:190,clientY:y,screenX:190,screenY:y,pageX:190,pageY:y});
+  const dispatch=(name,touches,changedTouches)=>{
+    const event=new Event(name,{bubbles:true,cancelable:true});
+    Object.defineProperties(event,{
+      touches:{value:touches},
+      targetTouches:{value:touches},
+      changedTouches:{value:changedTouches}
+    });
+    element.dispatchEvent(event);
+  };
   const first=make(oldY),last=make(newY);
-  element.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:[first],targetTouches:[first],changedTouches:[first]}));
-  element.dispatchEvent(new TouchEvent('touchmove',{bubbles:true,cancelable:true,touches:[last],targetTouches:[last],changedTouches:[last]}));
-  element.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[last]}));
+  dispatch('touchstart',[first],[first]);
+  dispatch('touchmove',[last],[last]);
+  dispatch('touchend',[],[last]);
  },down);
 }
 async function gotoScan(page,scan){
