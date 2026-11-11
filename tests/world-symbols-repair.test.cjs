@@ -17,7 +17,7 @@ test('blank or wrong source book is refused',()=>{
 });
 test('the patch includes WH1 swipe thresholds, native zoom and fixed figure DOM',()=>{
  const code=patch.repair.toString();
- for(const word of ['Math.abs(dy)>45','Math.abs(dy)>14','Math.abs(dx)>65','wheel','touchcancel','keepFigure','wsFigurePages','browser-native pinch','ws-native-whole-screen-pinch'])
+ for(const word of ['wsSwipeDecision','Math.abs(dy)>14','Math.abs(dx)>65','wheel','touchcancel','keepFigure','wsFigurePages','browser-native pinch','ws-native-whole-screen-pinch'])
   assert.ok(code.includes(word),word);
 });
 
@@ -51,4 +51,37 @@ test('consecutive OCR body fragments are joined for natural continuous reading w
  assert.ok(code.includes('wsPrepareText'));
  assert.ok(code.includes("last.text+=normalized"));
  assert.ok(code.includes('font-size:var(--caption-size)!important'));
+});
+
+test('candidate regions exist for 20 scans and all sample OCR blocks link back to source regions',()=>{
+ const pages=Array.from({length:20},(_,i)=>({
+  scan:i+1,width:2890,height:4450,regions:[],pageType:i>=4&&i<=7?'figures':i>=8?'prose':'cover',
+  blocks:i===8?[{id:'heading_009',kind:'heading',text:'Heading'},{id:'ocr_009_00',kind:'body',text:'Text'}]:
+   i===4?[{id:'caption_01',kind:'caption',text:'Caption'}]:[],
+  figures:i===4?[{figureId:'FIG-01',cropNorm:[.045,.025,.52,.46]}]:[]
+ }));
+ const result=patch.wsSeedRegions({pages});
+ assert.equal(result.generated.length,20);assert.equal(result.totalBlocks,3);assert.equal(result.mappedBlocks,3);
+ assert.ok(pages.every(p=>p.regions.length>=2 && p.regions.every(r=>r.coordinateStatus==='candidate_needs_source_review')));
+ assert.ok(pages[8].blocks.every(b=>b.sourceRegionIds.length>0));
+ const b=pages[4].blocks[0];assert.equal(b.sourceRegionIds.length,2);
+ assert.ok(pages[4].regions.filter(r=>b.sourceRegionIds.includes(r.regionId)).every(r=>r.linkedBlockIds.includes(b.id)));
+ const saved=pages[8].regions;patch.wsSeedRegions({pages});assert.equal(pages[8].regions,saved);
+});
+test('swipe next/previous is symmetric; diagonal, too slow and zoom are ignored',()=>{
+ assert.equal(patch.wsSwipeDecision(2,-100,200,false),1);
+ assert.equal(patch.wsSwipeDecision(2,100,200,false),-1);
+ assert.equal(patch.wsSwipeDecision(-100,0,200,false),1);
+ assert.equal(patch.wsSwipeDecision(100,0,200,false),-1);
+ assert.equal(patch.wsSwipeDecision(60,61,200,false),0);
+ assert.equal(patch.wsSwipeDecision(0,-100,1800,false),0);
+ assert.equal(patch.wsSwipeDecision(0,-100,200,true),0);
+});
+test('region seeding runs inside patched reader without modifying embedded original data',()=>{
+ const fixed=patch.repair(sourceFixture);
+ assert.ok(fixed.html.includes('window.wsRegionInventory=wsSeedRegions(book)'));
+ assert.ok(fixed.html.includes('world-symbols-wh1-fix-v2'));
+ assert.ok(fixed.html.includes('#readingStage,.figure-frame,.figure-inner{touch-action:pan-x pinch-zoom'));
+ const tag='<script id="embedded-data" type="application/json">';
+ assert.equal(sourceFixture.split(tag)[1].split('</script>')[0],fixed.html.split(tag)[1].split('</script>')[0]);
 });
