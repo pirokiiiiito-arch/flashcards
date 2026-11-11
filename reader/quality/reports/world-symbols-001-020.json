@@ -29,8 +29,10 @@
       "status": "not_run"
     },
     "G1-04": {
-      "status": "failed",
-      "note": "All 20 page entries currently have regions: []; original text-area coordinate inventory is absent."
+      "status": "needs_source_review",
+      "note": "Source scan region candidates added for 001–020 in the private on-device reader patch: normalized/pixel boxes for cover, text, running headers, 16 figures/captions. These are approximate and NOT yet checked against every printed character/label and all source edges.",
+      "implementation": "runtime_source_region_candidates_v2",
+      "verification": "not_run"
     },
     "G1-05": {
       "status": "not_run"
@@ -58,8 +60,10 @@
       "status": "not_run"
     },
     "G2-04": {
-      "status": "failed",
-      "note": "No region-to-reading-block mapping is registered (regions: [] across all 20 scans)."
+      "status": "needs_source_review",
+      "note": "Bidirectional ID links from OCR text blocks to candidate source regions and back are generated on import, preserving the original private OCR bytes. Multiple OCR paragraphs currently share broad candidate regions; exact printed coordinates and omissions are NOT independently verified.",
+      "implementation": "runtime_source_region_candidates_v2",
+      "verification": "not_run"
     },
     "G2-05": {
       "status": "not_run"
@@ -212,12 +216,12 @@
       "status": "not_run"
     }
   },
-  "investigation": "Source HTML inspected against current canonical 60: 20 original scans, 17 pages with OCR/caption text, 16 figures, zero proofed, zero regions and printedPage fields.",
+  "investigation": "Source images reviewed visually; runtime coordinate candidates and OCR↔region links added, but all-text-area and exact source-coordinate coverage remain unverified. Swipe unit tests now use WH1 directional thresholds; iPhone recheck is still required.",
   "confirmedDefects": [
     {
       "check": "G1-04",
-      "status": "failed",
-      "detail": "All 20 page entries currently have regions: []; original text-area coordinate inventory is absent."
+      "status": "needs_source_review",
+      "detail": "Candidate mapping implemented; exact original layout comparison and reciprocal proof pending."
     },
     {
       "check": "G1-08",
@@ -226,8 +230,8 @@
     },
     {
       "check": "G2-04",
-      "status": "failed",
-      "detail": "No region-to-reading-block mapping is registered (regions: [] across all 20 scans)."
+      "status": "needs_source_review",
+      "detail": "Candidate mapping implemented; exact original layout comparison and reciprocal proof pending."
     },
     {
       "check": "G3-01",
@@ -260,5 +264,18 @@
     "Collapse mechanical whitespace runs/newline fragmentation without mutating JSON original",
     "Set mobile figure caption size to WH1 baseline 16.8px at font20",
     "Retain private image and OCR bytes unmodified"
-  ]
+  ],
+  "implementationProgress": {
+    "sourceRegionCandidateGenerator": "implemented_runtime_v2",
+    "coversScanRange": [
+      1,
+      20
+    ],
+    "figuresKnown": 16,
+    "sourceAndOCRBytesChanged": false,
+    "sourceRegionPrecision": "candidate",
+    "G104SourceInspection": "not_completed",
+    "G204LinkPrecision": "not_completed",
+    "G704RealIPhone": "not_completed"
+  }
 }
