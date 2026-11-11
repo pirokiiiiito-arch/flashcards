@@ -53,6 +53,7 @@ async function testEngine(engine,name){
   await page.waitForTimeout(80);
   const afterHeight=await page.locator('#readingContent').evaluate(el=>el.clientHeight);
   assert.ok(afterHeight>=beforeHeight+60,name+' v6 reading area must grow by at least 60 CSS pixels: '+beforeHeight+' -> '+afterHeight);
+  await gotoScan(page,9); // Measure WH1-equivalent 20px prose, not the image-only cover page.
   const metrics=await page.evaluate(()=>({
     height:document.querySelector('#readingContent').clientHeight,
     status:document.querySelector('#ws-gesture-v5-status').getBoundingClientRect().height,
