@@ -25,7 +25,7 @@ input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events
 ol{font-size:13px;line-height:1.8;color:#536369;padding-left:23px}
 a{color:#2c666c}
 </style>
-<style id="browser-page-pinch-shell-v2">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}</style></head>
+<style id="wh2-pinch-shell-v6">#reader{touch-action:pan-x pan-y pinch-zoom}</style></head>
 <body>
 <iframe id="reader" title="世界の歴史2 縦書き読書" sandbox="allow-scripts"></iframe>
 <div id="setup">
@@ -41,12 +41,36 @@ a{color:#2c666c}
   <label class="pick" for="file">読書版HTMLを選択して開く</label>
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
+  <p class="note">更新した読書HTMLを保存して、必ず選び直してください：20261112_0557_【操作修正版・校正継続中・iPhone実機未確認】世界の歴史2_021-040_上下スワイプ・全画面ピンチ両立_v6.html</p>
   <p id="status" role="status" aria-live="polite">読書版HTMLを選択してください。</p>
   <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。別の本・分冊とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」「比較」に切り替えられます。</p>
  </main>
 </div>
 <script>
 'use strict';
+/* WH2 v6 host viewport handshake. Only UI state crosses this boundary. */
+const WH2_VIEWPORT_SESSION=(self.crypto?.randomUUID?.() ||
+ (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)))+'-wh2';
+function wh2SendViewport(){
+ const f=document.getElementById('reader');if(!f?.contentWindow)return;
+ const vv=window.visualViewport;
+ f.contentWindow.postMessage({kind:'wh2-host-viewport-v1',version:1,
+ session:WH2_VIEWPORT_SESSION,scale:Number(vv?.scale||1),
+ offsetLeft:Number(vv?.offsetLeft||0),offsetTop:Number(vv?.offsetTop||0)},'*');
+}
+window.addEventListener('message',e=>{
+ const f=document.getElementById('reader');
+ if(e.source!==f?.contentWindow||e.data?.kind!=='wh2-reader-ready-v1')return;
+ wh2SendViewport();
+});
+document.getElementById('reader').addEventListener('load',wh2SendViewport);
+window.addEventListener('pageshow',wh2SendViewport);
+window.addEventListener('resize',wh2SendViewport);
+window.addEventListener('orientationchange',wh2SendViewport);
+window.visualViewport?.addEventListener('resize',wh2SendViewport);
+window.visualViewport?.addEventListener('scroll',wh2SendViewport);
+setInterval(wh2SendViewport,1800);
+
 const $=id=>document.getElementById(id);
 const DB='wh2-reader-on-device-021-040-v1',STORE='books',KEY='scans021to040',MAX=80*1024*1024;
 let currentBlob=null,activeUrl='';
