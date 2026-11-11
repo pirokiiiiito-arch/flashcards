@@ -44,3 +44,11 @@ test('figure frame keeps a fixed caption region on multi-screen descriptions',()
  assert.ok(s.includes("cap.style.flex='0 0 '"));
  assert.ok(s.includes('sameFigure')||s.includes('keepFigure'));
 });
+
+test('consecutive OCR body fragments are joined for natural continuous reading without changing stored OCR',()=>{
+ const code=patch.repair.toString();
+ assert.ok(code.includes('sourceBlocks=pg().blocks.filter'));
+ assert.ok(code.includes('wsPrepareText'));
+ assert.ok(code.includes("last.text+=normalized"));
+ assert.ok(code.includes('font-size:var(--caption-size)!important'));
+});

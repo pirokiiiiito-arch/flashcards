@@ -99,7 +99,8 @@
       "status": "not_run"
     },
     "G4-03": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "Display-only whitespace cleanup and paragraph grouping implemented; concatenated output vs independently verified original text has not been proven."
     },
     "G4-04": {
       "status": "needs_source_review",
@@ -137,13 +138,16 @@
       "status": "not_run"
     },
     "G6-02": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "OCR contains abnormally long whitespace runs and suspicious Latin or symbol sequences on scans 004, 011, 012, 014, 016, 017, 020. Source comparison required."
     },
     "G6-03": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "Scan 017 has 18 separate OCR body fragments, causing screen underfill in the prior reading algorithm. On-device view now groups contiguous body fragments; source text remains unchanged."
     },
     "G6-05": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "Detected OCR anomalies remain unresolved and must not be ignored or marked corrected without source review."
     },
     "G6-09": {
       "status": "not_run"
@@ -165,7 +169,7 @@
     },
     "G7-02": {
       "status": "needs_source_review",
-      "note": "Standalone one-digit vertical orientation and line wrapping revised; computed CSS on real iPhone not yet inspected."
+      "note": "Standalone one-digit vertical orientation and line wrapping revised; computed CSS on real iPhone not yet inspected. Mobile CSS previously reduced figure caption font to 92%; patch now enforces source 20px => 16.8px via --caption-size."
     },
     "G7-03": {
       "status": "not_run"
@@ -250,5 +254,11 @@
       "status": "failed",
       "detail": "Earlier iPhone swipe failure reported. WH1-based gesture handler introduced but no successful real-device recheck; remains failed."
     }
+  ],
+  "displayOnlyRepairs": [
+    "Group consecutive body OCR fragments into continuous reading flow",
+    "Collapse mechanical whitespace runs/newline fragmentation without mutating JSON original",
+    "Set mobile figure caption size to WH1 baseline 16.8px at font20",
+    "Retain private image and OCR bytes unmodified"
   ]
 }

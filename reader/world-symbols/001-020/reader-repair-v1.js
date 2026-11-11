@@ -67,8 +67,20 @@ function repair(html){
   }
   if(/^[、。！？）｣」』]/.test(text.slice(best))&&best>1)best--;
   return Math.max(1,best);
+ }
+ function wsPrepareText(raw){
+  let s=String(raw||'').replace(/[ \t　]{3,}/g,' ');
+  s=s.replace(/[ \t　]*\r?\n[ \t　]*/g,(whole,offset,full)=>{
+    const left=(full.slice(0,offset).match(/[^\s]$/)||[])[0]||'';
+    const right=(full.slice(offset+whole.length).match(/^[^\s]/)||[])[0]||'';
+    return /[A-Za-z0-9]$/.test(left)&&/^[A-Za-z0-9]/.test(right)?' ':'';
+  });
+  return s;
  }`;
 html=one(html,"function pagesForCurrent(){",uprightFn+pagesFn+"function pagesForCurrent(){");
+ html=one(html,"let blocks=pg().blocks.filter(b=>b.text&&b.text.length);",
+ "const sourceBlocks=pg().blocks.filter(b=>b.text&&b.text.length);let blocks=[];for(const b of sourceBlocks){const normalized=wsPrepareText(b.text);const last=blocks[blocks.length-1];if(b.kind==='body'&&last&&last.kind==='body'){last.text+=normalized;}else{blocks.push({...b,text:normalized,sourceIndex:pg().blocks.indexOf(b)});}}");
+ html=one(html,"all[i].blockIdx=book.pages[index].blocks.indexOf(b);","all[i].blockIdx=(b.sourceIndex ?? book.pages[index].blocks.indexOf(b));");
  html=one(html,"probe.textContent=s;return probe.getBoundingClientRect().width <= width+1;","wsWriteVertical(probe,s);return probe.getBoundingClientRect().width <= width+1;");
  html=one(html,"if(k<rem.length){const trail=","k=wsSafeCut(rem,k);if(k<rem.length){const trail=");
  html=one(html,"}else{stage.textContent=x.text;}","}else{wsWriteVertical(stage,x.text);}");
@@ -103,7 +115,7 @@ gStage.addEventListener('wheel',e=>{if(e.ctrlKey||gZoom()||Math.abs(e.deltaY)<16
  html=span(html,"let touchY=0,touchX=0;","document.addEventListener('keydown',",swipe);
  html=one(html,"document.addEventListener('keydown',e=>{if(e.target.matches('textarea,input,select'))return;if(e.key==='ArrowDown'||e.key==='PageDown'){go(1);}if(e.key==='ArrowUp'||e.key==='PageUp'){go(-1);}});",
  "document.addEventListener('keydown',e=>{if(e.target.matches('textarea,input,select'))return;if(['ArrowLeft','ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();go(1);}if(['ArrowRight','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(-1);}});");
- html=one(html,"</style></head><body>","</style><style id=\"ws-native-whole-screen-pinch\">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#readView{touch-action:pan-x pinch-zoom!important}#sourceBody,#sourceBody img,.figure-frame,.figure-inner{touch-action:pan-x pan-y pinch-zoom!important}.ws-one-digit{text-orientation:upright!important;text-combine-upright:none!important}#readingStage.vertical-text{white-space:normal;word-break:normal}</style></head><body>");
+ html=one(html,"</style></head><body>","</style><style id=\"ws-native-whole-screen-pinch\">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#readView{touch-action:pan-x pinch-zoom!important}#sourceBody,#sourceBody img,.figure-frame,.figure-inner{touch-action:pan-x pan-y pinch-zoom!important}.ws-one-digit{text-orientation:upright!important;text-combine-upright:none!important}#readingStage.vertical-text{white-space:normal;word-break:normal}.figure-caption{font-size:var(--caption-size)!important;line-height:1.48!important}</style></head><body>");
  const after=inspect(html);
  if(after.data!==before.data)throw Error("PRIVATE_BOOK_CONTENT_CHANGED");
  return {html,version:"world-symbols-wh1-fix-v1",summary:after};
