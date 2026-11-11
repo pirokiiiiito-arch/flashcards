@@ -45,9 +45,10 @@ test('diagnostic entry adds a static marker and observer without changing the no
  const html=read('reader/wh1/all/index.html');
  const check=read('reader/wh1/all/figure-check-v9-1.html');
  const expected='<script src="./wh1-display-check-v9.js?revision=display-check-v9-1-20261110"></script>';
- assert.equal(createHash('sha256').update(html).digest('hex'),'fce9e16d4e0b4e4db8bf46894da1a6c7d8c6f96293d32a7dffc7a198e81d228b');
- // The verified normal reader now includes pinch-only original-image controls.
- assert.match(html,/<style id="original-pinch-only-v1">/);
+ // The approved reader now uses native browser viewport zoom of the entire page, not image-only scale.
+ assert.match(html,/<style id="browser-page-pinch-v2">/);
+ assert.match(html,/user-scalable=yes/);
+ assert.doesNotMatch(html,/original-pinch-only-v1|__originalPinchOnly/);
  assert.doesNotMatch(html,/wh1-display-check|確認9\.1/);
  assert.equal(check.split(expected).length-1,1);
  assert.ok(check.indexOf('wh1-figure-viewport-v9.js')<check.indexOf(expected));
