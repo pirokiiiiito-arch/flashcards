@@ -93,11 +93,11 @@ function jsonConstant(text,name){
 }
 async function verify(blob){
  if(!blob||blob.size<1000000||blob.size>MAX)throw Error('洋家具の歴史と様式 041〜060枚目の読書HTMLを選択してください。');
- // iPhoneのメモリを守るため、数十MBの画像base64全体をJSON解析しない。
- // BOOKだけをファイル先頭から読み、HTMLの末尾を別途確認する。
+ // 大量の画像base64を文字列化・再解析せず、先頭のBOOKだけ検査。
  const head=await blob.slice(0,Math.min(blob.size,512*1024)).text();
- if(!/name\\s*=\\s*["']viewport["']/.test(head.slice(0,30000))||
-    !/id\\s*=\\s*["']stage["']/.test(head.slice(0,30000)))throw Error('読書画面の形式が違います。');
+ if(!head.slice(0,30000).includes('name="viewport"')||
+    !head.slice(0,30000).includes('id="stage"'))
+  throw Error('読書画面の形式が違います。');
  const marker=head.indexOf('const IMAGES=');
  if(marker<0)throw Error('本文または画像データが見つかりません。別の読書HTMLを選択してください。');
  let book;
@@ -111,7 +111,8 @@ async function verify(blob){
   if(!rec||rec.n!==i+41||typeof rec.sha256!=='string'||rec.sha256.length!==64)
    throw Error('原本041〜060の番号・順序が一致しません。');
  }
- if(!/"scan041"\\s*:\\s*"data:image\\/(?:jpeg|png|webp);base64,/.test(head.slice(marker)))
+ const firstImage=head.slice(marker,marker+300);
+ if(!['jpeg','png','webp'].some(ext=>firstImage.includes('"scan041":"data:image/'+ext+';base64,')))
   throw Error('原本画像の開始情報が見つかりません。');
  if(!Array.isArray(book.reading_sections)||!Array.isArray(book.figure_groups)||!book.figure_groups.length)
   throw Error('本文または図版の構造が壊れています。');
@@ -128,7 +129,8 @@ async function verify(blob){
      sec.paragraphs.some(p=>typeof p.text!=='string'))
    throw Error('本文データが壊れています。');
  const tail=await blob.slice(Math.max(0,blob.size-2048)).text();
- if(!/<\\/html>\\s*$/i.test(tail))throw Error('ファイルの終端が欠けています。保存し直してください。');
+ if(!tail.trim().toLowerCase().endsWith('</html>'))
+  throw Error('ファイルの終端が欠けています。保存し直してください。');
  return true;
 }
 async function openBook(blob){
