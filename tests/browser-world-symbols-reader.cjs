@@ -3,8 +3,14 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium,webkit}=require('playwright');
 const repair=require('../reader/world-symbols/001-020/reader-repair-v1.js');
-const source=fs.readFileSync(path.join(__dirname,'fixtures/world-symbols-synthetic.html'),'utf8');
-const fixed=repair.repair(source).html;
+const gesture=require('../reader/world-symbols/001-020/reader-gesture-v5.js');
+const originalSource=fs.readFileSync(path.join(__dirname,'fixtures/world-symbols-synthetic.html'),'utf8');
+const match=originalSource.match(/<script id="embedded-data" type="application\/json">([\s\S]*?)<\/script>/);
+if(!match)throw Error('Synthetic book data missing');
+const fakeBook=JSON.parse(match[1]);
+fakeBook.pages[3].blocks=[{id:'synthetic-004-1',kind:'body',text:'検証専用の日本語文章。'.repeat(240)}];
+const source=originalSource.replace(match[1],JSON.stringify(fakeBook));
+const fixed=gesture.wrapHtml(repair.repair(source).html);
 async function moveTouch(page,down){
  return page.evaluate(down=>{
   const element=document.getElementById('readView');
@@ -38,6 +44,16 @@ async function testEngine(engine,name){
   const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:1});
   await page.setContent(fixed,{waitUntil:'domcontentloaded'});
   await page.locator('#readingStage').waitFor();
+  await page.locator('#ws-gesture-v5-status').waitFor();
+  assert.match(await page.locator('#ws-gesture-v5-status').innerText(),/操作修正v5を読込済み/,name+' must execute v5');
+  await gotoScan(page,4);
+  const at004=await page.locator('#whereSub').innerText();
+  assert.match(at004,/1 \/ [2-9]\d*/,name+' needs multiple reader screens on synthetic scan004');
+  await moveTouch(page,false);
+  assert.notEqual(await page.locator('#whereSub').innerText(),at004,name+' scan004 up-swipe failed');
+  await moveTouch(page,true);
+  assert.equal(await page.locator('#whereSub').innerText(),at004,name+' scan004 down-swipe did not return immediately');
+  assert.match(await page.locator('#ws-gesture-v5-status').innerText(),/下→前へ/,name+' did not detect downward gesture');
   await gotoScan(page,9);
   const initial=await page.locator('#whereSub').innerText();
   assert.match(initial,/1 \/ [2-9]\d*/,name+' requires multi-screen synthetic page');
