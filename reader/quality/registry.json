@@ -64,6 +64,16 @@
       "stage": "draft",
       "migratedFromFrozenBlobSha": "d45b42aa6c9f85cd6052f6497f4d0fc4989fed5d",
       "migrationReason": "Replace blocked image-only pinch and sandbox iframe with native full-page browser pinch for all 82 private scans, with 60-item draft audit."
+    },
+    {
+      "id": "wh2-141-160",
+      "entry": "reader/wh2/141-160/index.html",
+      "entryBlobSha": "174d3bc112ff004618fa29aba8d639a57cc115b3",
+      "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/wh2/141-160/index.html?import=1",
+      "report": "reader/quality/reports/wh2-141-160.json",
+      "stage": "draft",
+      "migratedFromFrozenBlobSha": "776f188e9a4b21d844b51ddd2a4ec40e3f2e3ebb",
+      "migrationReason": "The 141–160 loader was updated to select source-corrected private OCR without having a sixty-check report; migrate as an explicitly unverified draft instead of bypassing the frozen-entry gate."
     }
   ]
 }
