@@ -10,7 +10,9 @@ if(!match)throw Error('Synthetic book data missing');
 const fakeBook=JSON.parse(match[1]);
 fakeBook.pages[3].blocks=[{id:'synthetic-004-1',kind:'body',text:'検証専用の日本語文章。'.repeat(240)}];
 const source=originalSource.replace(match[1],JSON.stringify(fakeBook));
-const fixed=gesture.wrapHtml(repair.repair(source).html);
+const compact=require('../reader/world-symbols/001-020/reader-layout-v6.js');
+const v5Only=gesture.wrapHtml(repair.repair(source).html);
+const fixed=compact.wrapHtml(v5Only);
 async function moveTouch(page,down){
  return page.evaluate(down=>{
   const element=document.getElementById('readView');
@@ -42,8 +44,25 @@ async function testEngine(engine,name){
  const browser=await engine.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:1});
+  await page.setContent(v5Only,{waitUntil:'domcontentloaded'});
+  await page.locator('#readingStage').waitFor();
+  const beforeHeight=await page.locator('#readingContent').evaluate(el=>el.clientHeight);
   await page.setContent(fixed,{waitUntil:'domcontentloaded'});
   await page.locator('#readingStage').waitFor();
+  await page.locator('#ws-v6-mark').waitFor();
+  await page.waitForTimeout(80);
+  const afterHeight=await page.locator('#readingContent').evaluate(el=>el.clientHeight);
+  assert.ok(afterHeight>=beforeHeight+60,name+' v6 reading area must grow by at least 60 CSS pixels: '+beforeHeight+' -> '+afterHeight);
+  const metrics=await page.evaluate(()=>({
+    height:document.querySelector('#readingContent').clientHeight,
+    status:document.querySelector('#ws-gesture-v5-status').getBoundingClientRect().height,
+    font:parseFloat(getComputedStyle(document.querySelector('#readingStage')).fontSize),
+    line:getComputedStyle(document.querySelector('#readingStage')).lineHeight
+  }));
+  assert.ok(metrics.status<=13,name+' debug line must not grow or repaginate');
+  assert.equal(metrics.font,20,name+' must preserve WH1 20px font');
+  assert.ok(Math.abs(parseFloat(metrics.line)-30)<0.5,name+' must preserve WH1 line-height 1.50');
+  process.stdout.write('MEASURE '+name+' WH1-style compact text height: '+beforeHeight+' -> '+afterHeight+' px at 390x844\\n');
   await page.locator('#ws-gesture-v5-status').waitFor();
   assert.match(await page.locator('#ws-gesture-v5-status').innerText(),/操作修正v5を読込済み/,name+' must execute v5');
   await gotoScan(page,4);

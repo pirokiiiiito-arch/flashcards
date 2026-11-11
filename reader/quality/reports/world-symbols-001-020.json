@@ -4,7 +4,7 @@
   "bookId": "world-symbols-001-020",
   "entry": "reader/world-symbols/001-020/index.html",
   "stage": "draft",
-  "version": "20261112_v5_gesture_patch",
+  "version": "20261112_v6_compact-layout",
   "scanRange": [
     1,
     20
@@ -171,14 +171,16 @@
       "status": "not_run"
     },
     "G7-01": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "The user observed fewer visible characters per vertical column than World History 1; compact layout v6 must be compared in a real iPhone, not inferred from page count."
     },
     "G7-02": {
       "status": "needs_source_review",
-      "note": "Standalone one-digit vertical orientation and line wrapping revised; computed CSS on real iPhone not yet inspected. Mobile CSS previously reduced figure caption font to 92%; patch now enforces source 20px => 16.8px via --caption-size."
+      "note": "Default text must retain WH1 20px and line-height 1.50; regression must measure CSS and usable reading height."
     },
     "G7-03": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "User screenshot shows pagination counts 10, 9 and 11 for scan009; compact header and fixed status height deployed, re-pagination and full text integrity still require verification."
     },
     "G7-04": {
       "status": "failed",
