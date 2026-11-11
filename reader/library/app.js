@@ -11,7 +11,7 @@
   // Integrated UK Interiors reading edition: 82 continuous scans, OCR verification ongoing.
   // This preview stores no book bytes; images and text are downloaded privately from Drive.
   const UK_PREVIEW = {id:'uk-interiors',title:'図説 英国のインテリア史',subtitle:'全82枚・通し番号で一冊読書',scans:82,
-    status:'読書版統合済み／独立全文字校正は継続中',totalBytes:126766153,parts:[]};
+    status:'画面全体ピンチ拡大v3／OCR独立校正継続中',totalBytes:126760402,parts:[]};
   const $ = id => document.getElementById(id);
   let books=[PREVIEW,UK_PREVIEW], savedIds=new Set(), selected=null, accessToken=null, expiry=0, pendingDownload=null;
   let tokenClient=null, connected=false, isRefreshing=false;
@@ -40,7 +40,7 @@
   }
   async function refreshSaved() {
     const meta=await LibraryDB.listMeta().catch(()=>[]);
-    savedIds=new Set(meta.filter(m=>m.id!=='uk-interiors'||Number(m.size)===126766153).map(m=>m.id));
+    savedIds=new Set(meta.filter(m=>m.id!=='uk-interiors'||Number(m.size)===126760402).map(m=>m.id));
     if(!savedIds.has('wh1') && await LibraryDB.hasBook('wh1')) savedIds.add('wh1');
     const temp=meta.filter(m=>!books.some(b=>b.id===m.id)).map(m=>({id:m.id,title:m.title||m.id,
       subtitle:m.subtitle||'端末に保存済み',scans:m.scans,totalBytes:m.size,parts:[],status:'端末保存済み'}));
