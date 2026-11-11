@@ -32,7 +32,7 @@
 #saveOffline:disabled{opacity:.5}
 </style>
 <style id="wh1-stable-reading-height">#reader{height:100svh!important;}</style>
-</head>
+<style id="browser-page-pinch-v2">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#zoomOut,#zoomIn{display:none!important}#originalImage{cursor:default!important;-webkit-user-drag:none!important}</style></head>
 <body>
 <iframe id="reader" title="世界の歴史1｜全274枚読書" sandbox="allow-scripts" loading="eager"></iframe>
 <div id="setup">
@@ -71,7 +71,7 @@
 <div id="originalOverlay" hidden>
  <div class="originalToolbar"><strong id="originalTitle">原本スキャン</strong><div><button id="zoomOut" aria-label="縮小">A−</button> <button id="zoomIn" aria-label="拡大">A＋</button> <button id="originalClose" aria-label="原本を閉じる">閉じる</button></div></div>
  <div class="originalViewer" id="originalViewer"><div class="originalViewport"><img id="originalImage" alt="改変していない原本JPEG"></div></div>
- <div class="originalFooter">原本画像：2本指ピンチで拡大・縮小。拡大中は1本指で移動できます。</div>
+ <div class="originalFooter">画面全体を2本指ピンチで拡大・縮小できます（画像枠内だけの拡大ではありません）。</div>
 </div>
 <!-- pako.inflateRaw: MIT License, copyright (C) 2014-2017 Vitaly Puzrin and Andrei Tuputcyn. Full license retained below. -->
 <script type="text/plain" id="pako-license">
@@ -422,6 +422,6 @@ if(location.protocol==='https:' && 'serviceWorker' in navigator){
  });
 }
 </script>
-<style id="original-pinch-only-v1">#zoomOut,#zoomIn{display:none!important}#originalImage{cursor:default!important;touch-action:none!important;-webkit-user-drag:none;-webkit-user-select:none;user-select:none}</style><script>(()=>{const viewer=document.getElementById('originalViewer');if(!viewer||window.__originalPinchOnly)return;window.__originalPinchOnly=true;let pinch=null;const dist=(a,b)=>Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1;const mid=(a,b)=>({x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2});viewer.addEventListener('touchstart',e=>{if(e.touches.length!==2)return;const m=mid(e.touches[0],e.touches[1]);pinch={dist:dist(e.touches[0],e.touches[1]),scale:originalScale,x:m.x,y:m.y,scrollX:viewer.scrollLeft,scrollY:viewer.scrollTop};if(e.cancelable)e.preventDefault()},{passive:false});viewer.addEventListener('touchmove',e=>{if(!pinch||e.touches.length!==2)return;const m=mid(e.touches[0],e.touches[1]),next=Math.min(5,Math.max(1,pinch.scale*dist(e.touches[0],e.touches[1])/pinch.dist)),factor=next/pinch.scale;originalScale=next;setOriginalScale();const b=viewer.getBoundingClientRect();viewer.scrollLeft=(pinch.scrollX+pinch.x-b.left)*factor-(m.x-b.left);viewer.scrollTop=(pinch.scrollY+pinch.y-b.top)*factor-(m.y-b.top);if(e.cancelable)e.preventDefault()},{passive:false});viewer.addEventListener('touchend',e=>{if(e.touches.length<2)pinch=null},{passive:true});viewer.addEventListener('touchcancel',()=>{pinch=null},{passive:true});viewer.addEventListener('click',e=>{if(e.target.closest('#originalImage')){e.preventDefault();e.stopImmediatePropagation()}},true)})();</script></body>
+</body>
 </html>
 
