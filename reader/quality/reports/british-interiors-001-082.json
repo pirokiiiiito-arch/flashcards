@@ -1,0 +1,249 @@
+{
+  "schema": "reader-quality-report-v1",
+  "standardFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
+  "bookId": "british-interiors-001-082",
+  "entry": "reader/british-interiors/full/index.html",
+  "stage": "draft",
+  "version": "20261112_0146 native browser visual viewport pinch v3",
+  "scanRange": [
+    1,
+    82
+  ],
+  "privateSource": "Google Drive /読書本棚_200冊_非公開 (four-part ZIP; private images and OCR not in public GitHub)",
+  "deviceVerification": "not_run",
+  "claimsCompleted": false,
+  "observedButNotCertified": {
+    "originalScans": 82,
+    "privateFigureRegistrations": 154,
+    "pageJsonByteIdenticalToStreamV2": 82,
+    "privateZipSha256": "47a6ca0ddfb888cad5b7d62abdd25d289245eb3311f82e9cf79dd4f5a65f0c57",
+    "scanNumberJumpTest": "82 of 82 in Chromium mobile 390px",
+    "representativeNativeZoom": "320/390/430px; samples 30,80,82; visualViewport.scale>4.4",
+    "iframeCount": 0,
+    "imageOnlyLocalTransforms": 0,
+    "browserErrors": 0,
+    "writtenOcrIndependentSecondPass": "not_run",
+    "liveRealIPhone": "not_run"
+  },
+  "checks": {
+    "G1-01": {
+      "status": "not_run"
+    },
+    "G1-02": {
+      "status": "passed",
+      "proof": {
+        "method": "Bitwise comparison of all 82 private pages/*.json including embedded original JPEG against prior stream-v2; no page bytes modified",
+        "evidenceRef": "private:/uk82_zoom_v3/manifest-test-v3.json",
+        "artifactSha256": "47a6ca0ddfb888cad5b7d62abdd25d289245eb3311f82e9cf79dd4f5a65f0c57",
+        "verifiedBy": "ChatGPT programmatic checksum and browser audit"
+      }
+    },
+    "G1-03": {
+      "status": "not_run"
+    },
+    "G1-04": {
+      "status": "not_run"
+    },
+    "G1-05": {
+      "status": "not_run"
+    },
+    "G1-07": {
+      "status": "not_run"
+    },
+    "G1-08": {
+      "status": "needs_source_review",
+      "note": "82/82 scan navigation and center labels passed; complete independent verification of printed page numerals is still pending."
+    },
+    "G1-10": {
+      "status": "not_run"
+    },
+    "G1-12": {
+      "status": "not_run"
+    },
+    "G2-01": {
+      "status": "not_run"
+    },
+    "G2-02": {
+      "status": "not_run"
+    },
+    "G2-03": {
+      "status": "not_run"
+    },
+    "G2-04": {
+      "status": "not_run"
+    },
+    "G2-05": {
+      "status": "not_run"
+    },
+    "G2-07": {
+      "status": "not_run"
+    },
+    "G2-11": {
+      "status": "not_run"
+    },
+    "G3-01": {
+      "status": "needs_source_review",
+      "note": "All 82 pages retained and 16 known OCR anomalies corrected earlier; comprehensive original-text character-by-character checking not complete."
+    },
+    "G3-02": {
+      "status": "not_run"
+    },
+    "G3-03": {
+      "status": "not_run"
+    },
+    "G3-04": {
+      "status": "not_run"
+    },
+    "G3-05": {
+      "status": "not_run"
+    },
+    "G3-06": {
+      "status": "not_run",
+      "note": "Independent second transcription of all original text pages not done."
+    },
+    "G3-07": {
+      "status": "not_run"
+    },
+    "G4-01": {
+      "status": "not_run"
+    },
+    "G4-02": {
+      "status": "not_run"
+    },
+    "G4-03": {
+      "status": "not_run"
+    },
+    "G4-04": {
+      "status": "not_run"
+    },
+    "G4-05": {
+      "status": "needs_source_review",
+      "note": "Four section-boundary jumps and two-way tests passed in browser; entire textual border reconciliation not yet complete."
+    },
+    "G4-09": {
+      "status": "not_run"
+    },
+    "G5-01": {
+      "status": "not_run"
+    },
+    "G5-02": {
+      "status": "not_run"
+    },
+    "G5-03": {
+      "status": "not_run"
+    },
+    "G5-04": {
+      "status": "not_run"
+    },
+    "G5-05": {
+      "status": "needs_source_review",
+      "note": "Figure DOM stays anchored during sampled caption paging; 154 figure identities and every caption continuation not all verified."
+    },
+    "G5-10": {
+      "status": "not_run"
+    },
+    "P20": {
+      "status": "not_run"
+    },
+    "G6-01": {
+      "status": "not_run"
+    },
+    "G6-02": {
+      "status": "not_run"
+    },
+    "G6-03": {
+      "status": "not_run"
+    },
+    "G6-05": {
+      "status": "not_run"
+    },
+    "G6-09": {
+      "status": "not_run"
+    },
+    "G6-11": {
+      "status": "not_run"
+    },
+    "G6-12": {
+      "status": "not_run"
+    },
+    "P22": {
+      "status": "not_run"
+    },
+    "P23": {
+      "status": "not_run"
+    },
+    "G7-01": {
+      "status": "not_run"
+    },
+    "G7-02": {
+      "status": "not_run"
+    },
+    "G7-03": {
+      "status": "not_run"
+    },
+    "G7-04": {
+      "status": "needs_source_review",
+      "note": "Chromium mobile emulation 320/390/430px proved visualViewport scale 4.42–5, full-page pan without page skip, image-local transforms absent, tap image does not open overlay, normal swipe at 1x; iPhone actual gesture and all operation modes not verified."
+    },
+    "G7-05": {
+      "status": "not_run"
+    },
+    "G7-10": {
+      "status": "not_run"
+    },
+    "G7-12": {
+      "status": "not_run"
+    },
+    "G8-01": {
+      "status": "passed",
+      "proof": {
+        "method": "Versioned JST 20261112_0146 naming checked for four Drive ZIP parts and launch shell",
+        "evidenceRef": "drive:1gtD8DHPfkhWzFRWpjGYypxDkic3mLRmT",
+        "artifactSha256": "47a6ca0ddfb888cad5b7d62abdd25d289245eb3311f82e9cf79dd4f5a65f0c57",
+        "verifiedBy": "ChatGPT programmatic checksum and browser audit"
+      }
+    },
+    "G8-02": {
+      "status": "not_run"
+    },
+    "G8-03": {
+      "status": "not_run",
+      "note": "GitHub deployment workflow result not yet confirmed for the v3 migration."
+    },
+    "G8-04": {
+      "status": "not_run",
+      "note": "Physical iPhone testing is separate and not done."
+    },
+    "G8-05": {
+      "status": "not_run"
+    },
+    "G8-07": {
+      "status": "not_run"
+    },
+    "G8-08": {
+      "status": "passed",
+      "proof": {
+        "method": "Read back all four private Drive ZIP pieces and check per-part and rejoined SHA256 equality with pre-upload ZIP",
+        "evidenceRef": "drive:1XHnTat99kPGWRHxJlj5lbl-9LUiQQoST",
+        "artifactSha256": "47a6ca0ddfb888cad5b7d62abdd25d289245eb3311f82e9cf79dd4f5a65f0c57",
+        "verifiedBy": "ChatGPT programmatic checksum and browser audit"
+      }
+    },
+    "G8-11": {
+      "status": "not_run"
+    }
+  },
+  "evidence": {
+    "privateParts": [
+      "1gtD8DHPfkhWzFRWpjGYypxDkic3mLRmT",
+      "1RSnmCZCVQrKZ_xP6mVAZCWJv4x0Sek-F",
+      "1UDXMRa6u8tn_TwueC5GvAvudL3dbhsnQ",
+      "1XHnTat99kPGWRHxJlj5lbl-9LUiQQoST"
+    ],
+    "shellDriveFileId": "1484mxBOYaw8Kil-p-XO0ctX2Jn7spjeB",
+    "sectionPageStream": "82 individually numbered source page files; 1 stable top-level DOM no iframe",
+    "browserAudit": "Private offline Playwright Chromium device emulation. About:blank synthetic HTML used a test-only SubtleCrypto guard bypass; published HTTPS engine requires exact SHA256 verification.",
+    "shaPrivateEngine": "580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca"
+  },
+  "limitations": "This audit certifies neither all OCR text nor real iPhone or every G7-04 suboperation. Browser pinch in nested iframe was observed to fail and is repaired using top-level DOM."
+}
