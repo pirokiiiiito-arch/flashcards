@@ -4,7 +4,7 @@
   "bookId": "world-symbols-001-020",
   "entry": "reader/world-symbols/001-020/index.html",
   "stage": "draft",
-  "version": "20261112-runtime-fix-v4-pointer-swipe (private source HTML unchanged)",
+  "version": "20261112_v5_gesture_patch",
   "scanRange": [
     1,
     20
@@ -181,9 +181,8 @@
       "status": "not_run"
     },
     "G7-04": {
-      "status": "needs_source_review",
-      "note": "Pointer/touch gesture fallback and duplicate suppression added in public loader. Browser simulation and actual iPhone Chrome/Safari remain separate. Do not claim passed until real device confirmation.",
-      "realIPhone": "not_run"
+      "status": "failed",
+      "note": "User's iPhone down-swipe did not return a page under v4 on 2026-11-12. v5 gesture handling is provided but iPhone verification is still needed."
     },
     "G7-05": {
       "status": "not_run"
