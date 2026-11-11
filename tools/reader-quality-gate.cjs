@@ -30,6 +30,13 @@ function reportCheck(book,rep,errors){
  const prefix='REPORT '+book.id+' ';
  if(!rep||rep.schema!=='reader-quality-report-v1'){errors.push(prefix+'missing');return;}
  if(rep.standardFileId!==ID||rep.bookId!==book.id||rep.entry!==book.entry||rep.stage!==book.stage)errors.push(prefix+'identity mismatch');
+ if(book.stage!=='draft'){
+  const a=rep.artifactAudit;
+  if(!a||a.schema!=='reader-artifact-audit-v1'||a.structuralStatus!=='passed'||
+     !/^[0-9a-f]{64}$/.test(a.sourceSha256||'')||a.originals!==rep.scanRange[1]-rep.scanRange[0]+1||
+     a.OCRTextPages<1||a.errors?.length)
+   errors.push(prefix+'private HTML source audit missing/failed - run tools/reader-artifact-audit.cjs');
+ }
  const checks=rep.checks;
  if(!checks||typeof checks!=='object'||Array.isArray(checks)){errors.push(prefix+'check map missing');return;}
  const real=Object.keys(checks).sort(),expected=RULES.slice().sort();

@@ -25,4 +25,4 @@ jobs:
       - name: Enforce canonical sixty checks
         run: |
           node tools/reader-quality-gate.cjs
-          node --test tests/reader-quality-gate.test.cjs
+          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs

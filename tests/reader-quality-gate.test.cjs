@@ -32,6 +32,7 @@ test('cannot mark mandatory original OCR review as not applicable',()=>{
 });
 test('Pages success and device check are separately staged',()=>{
  const r=copy(original);for(const id of gate.RULES)r.checks[id]={status:'passed',proof:proof()};
+ r.artifactAudit={schema:'reader-artifact-audit-v1',structuralStatus:'passed',sourceSha256:crypto.createHash('sha256').update('example private HTML').digest('hex'),originals:20,OCRTextPages:17,errors:[]};
  r.checks['G8-03']={status:'not_run'};r.checks['G8-04']={status:'not_run'};
  assert.equal(run(r,'ready_for_publication'),'');assert.match(run(r,'completed'),/G8-03/);
  r.checks['G8-03']={status:'passed',proof:proof()};
