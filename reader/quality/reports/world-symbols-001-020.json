@@ -4,7 +4,7 @@
   "bookId": "world-symbols-001-020",
   "entry": "reader/world-symbols/001-020/index.html",
   "stage": "draft",
-  "version": "20261112-runtime-fix-v2 (original private OCR HTML remains 20261111_2010)",
+  "version": "20261112-runtime-fix-v3-japanese-body-punctuation (private source HTML remains 20261111_2010)",
   "scanRange": [
     1,
     20
@@ -79,7 +79,8 @@
       "note": "No page is proofStatus passed; 17 pages have preliminary OCR or captions."
     },
     "G3-02": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "User requested comma/period → 、/。 for all body blocks; private imported OCR source unchanged. Reader maps text in memory and stores originalOCRText on export. Punctuation correctness against each original page not independently verified."
     },
     "G3-03": {
       "status": "not_run"
@@ -88,7 +89,8 @@
       "status": "not_run"
     },
     "G3-05": {
-      "status": "not_run"
+      "status": "needs_source_review",
+      "note": "Runtime body punctuation normalization preserves original OCR in originalOCRText; full per-character evidence and source-location review still required."
     },
     "G3-06": {
       "status": "not_run"
@@ -266,7 +268,8 @@
     "Group consecutive body OCR fragments into continuous reading flow",
     "Collapse mechanical whitespace runs/newline fragmentation without mutating JSON original",
     "Set mobile figure caption size to WH1 baseline 16.8px at font20",
-    "Retain private image and OCR bytes unmodified"
+    "Retain private image and OCR bytes unmodified",
+    "Convert ASCII comma/period in body text to Japanese punctuation; preserve originalOCRText in memory and exported HTML; do not alter captions/headings/original images"
   ],
   "implementationProgress": {
     "sourceRegionCandidateGenerator": "implemented_runtime_v2",

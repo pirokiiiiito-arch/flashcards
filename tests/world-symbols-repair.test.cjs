@@ -85,3 +85,30 @@ test('region seeding runs inside patched reader without modifying embedded origi
  const tag='<script id="embedded-data" type="application/json">';
  assert.equal(sourceFixture.split(tag)[1].split('</script>')[0],fixed.html.split(tag)[1].split('</script>')[0]);
 });
+
+
+test('body punctuation commas and periods are converted, with source OCR retained',()=>{
+ const source={pages:[{blocks:[
+  {kind:'body',text:'記号,文字.つづき,終わり.'},
+  {kind:'caption',text:'Fig.1, Image.'},
+  {kind:'heading',text:'Title, A.'}
+ ]}]};
+ assert.equal(patch.wsNormalizeBodyPunctuation(source),4);
+ assert.equal(source.pages[0].blocks[0].text,'記号、文字。つづき、終わり。');
+ assert.equal(source.pages[0].blocks[0].originalOCRText,'記号,文字.つづき,終わり.');
+ assert.equal(source.pages[0].blocks[1].text,'Fig.1, Image.');
+ assert.equal(source.pages[0].blocks[2].text,'Title, A.');
+ assert.equal(patch.wsNormalizeBodyPunctuation(source),0);
+});
+
+test('patched reader renders and exports normalized body without touching embedded source bytes',()=>{
+ const fixed=patch.repair(sourceFixture).html;
+ assert.ok(fixed.includes('function wsBodyPunctuation('));
+ assert.ok(fixed.includes('function wsNormalizeBodyPunctuation('));
+ assert.ok(fixed.includes('function refresh(){wsNormalizeBodyPunctuation(book);'));
+ assert.ok(fixed.includes('wsPrepareText(b.text,b.kind)'));
+ const tag='<script id="embedded-data" type="application/json">';
+ assert.equal(fixed.split(tag)[1].split('</script>')[0],sourceFixture.split(tag)[1].split('</script>')[0]);
+ const js=fixed.slice(fixed.lastIndexOf('<script>')+8,fixed.lastIndexOf('</script>'));
+ assert.doesNotThrow(()=>new vm.Script(js));
+});
