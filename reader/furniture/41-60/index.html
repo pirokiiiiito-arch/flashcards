@@ -93,18 +93,42 @@ function jsonConstant(text,name){
 }
 async function verify(blob){
  if(!blob||blob.size<1000000||blob.size>MAX)throw Error('洋家具の歴史と様式 041〜060枚目の読書HTMLを選択してください。');
- const text=await blob.text();
- if(!/name\s*=\s*["']viewport["']/.test(text.slice(0,30000))||!/id\s*=\s*["']stage["']/.test(text.slice(0,30000)))throw Error('読書画面の形式が違います。');
- let book,images;try{book=jsonConstant(text,'BOOK');images=jsonConstant(text,'IMAGES');}catch(e){throw Error('読書データが破損しています。正しいHTMLを保存し直してください。');}
- if(typeof book.title!=='string'||!book.title.includes('洋家具の歴史と様式')||!Array.isArray(book.scans)||book.scans.length!==20||book.source_scan_count!==20)throw Error('別の本・範囲のHTMLです。洋家具041〜060を選んでください。');
- const validImage=s=>typeof s==='string'&&/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(s)&&s.length>100;
- for(let i=0;i<20;i++)if(book.scans[i].n!==i+41||!validImage(images['scan'+String(i+41).padStart(3,'0')]))throw Error('原本041〜060の画像・順序が不足しています。');
- if(!Array.isArray(book.reading_sections)||!Array.isArray(book.figure_groups)||!book.figure_groups.length)throw Error('本文または図版の構造が壊れています。');
+ // iPhoneのメモリを守るため、数十MBの画像base64全体をJSON解析しない。
+ // BOOKだけをファイル先頭から読み、HTMLの末尾を別途確認する。
+ const head=await blob.slice(0,Math.min(blob.size,512*1024)).text();
+ if(!/name\\s*=\\s*["']viewport["']/.test(head.slice(0,30000))||
+    !/id\\s*=\\s*["']stage["']/.test(head.slice(0,30000)))throw Error('読書画面の形式が違います。');
+ const marker=head.indexOf('const IMAGES=');
+ if(marker<0)throw Error('本文または画像データが見つかりません。別の読書HTMLを選択してください。');
+ let book;
+ try{book=jsonConstant(head.slice(0,marker),'BOOK');}
+ catch(e){throw Error('読書データが破損しています。正しいHTMLを保存し直してください。');}
+ if(typeof book.title!=='string'||!book.title.includes('洋家具の歴史と様式')||
+    !Array.isArray(book.scans)||book.scans.length!==20||book.source_scan_count!==20)
+    throw Error('別の本・範囲のHTMLです。洋家具041〜060を選んでください。');
+ for(let i=0;i<20;i++){
+  const rec=book.scans[i];
+  if(!rec||rec.n!==i+41||typeof rec.sha256!=='string'||rec.sha256.length!==64)
+   throw Error('原本041〜060の番号・順序が一致しません。');
+ }
+ if(!/"scan041"\\s*:\\s*"data:image\\/(?:jpeg|png|webp);base64,/.test(head.slice(marker)))
+  throw Error('原本画像の開始情報が見つかりません。');
+ if(!Array.isArray(book.reading_sections)||!Array.isArray(book.figure_groups)||!book.figure_groups.length)
+  throw Error('本文または図版の構造が壊れています。');
  const ids=new Set();
  for(const g of book.figure_groups){
-  if(typeof g.id!=='string'||ids.has(g.id)||g.scan<21||g.scan>40||typeof g.desc!=='string'||!Array.isArray(g.image_assets)||!g.image_assets.length||g.image_assets.some(x=>!validImage(images[x.key])))throw Error('図版・説明文の対応が壊れています。');ids.add(g.id);
+  if(typeof g.id!=='string'||ids.has(g.id)||g.scan<41||g.scan>60||
+     typeof g.desc!=='string'||!Array.isArray(g.image_assets)||!g.image_assets.length||
+     g.image_assets.some(x=>typeof x.key!=='string'||!x.key))
+   throw Error('図版・説明文の対応が壊れています。');
+  ids.add(g.id);
  }
- for(const s of book.reading_sections)if(typeof s.section!=='string'||!Array.isArray(s.paragraphs)||s.paragraphs.some(p=>typeof p.text!=='string'))throw Error('本文データが壊れています。');
+ for(const sec of book.reading_sections)
+  if(typeof sec.section!=='string'||!Array.isArray(sec.paragraphs)||
+     sec.paragraphs.some(p=>typeof p.text!=='string'))
+   throw Error('本文データが壊れています。');
+ const tail=await blob.slice(Math.max(0,blob.size-2048)).text();
+ if(!/<\\/html>\\s*$/i.test(tail))throw Error('ファイルの終端が欠けています。保存し直してください。');
  return true;
 }
 async function openBook(blob){
