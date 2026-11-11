@@ -106,9 +106,9 @@ function validate(root=ROOT){
   if(b.url!=='https://pirokiiiiito-arch.github.io/flashcards/'+b.entry+'?import=1')
    errors.push('WRONG_IPHONE_WEB_URL '+b.id);
   const html=bytes.toString('utf8');
-  const fileImport=/<input\\b[^>]*type=["']file["']/i.test(html);
-  const classicFrame=/<iframe\\b/i.test(html);
-  const trustedTopLevel=!classicFrame&&/\\binstallTopLevelEngine\\s*\\(/.test(html)&&
+  const fileImport=/<input\b[^>]*type=["']file["']/i.test(html);
+  const classicFrame=/<iframe\b/i.test(html);
+  const trustedTopLevel=!classicFrame&&/\binstallTopLevelEngine\s*\(/.test(html)&&
     /TRUSTED_ENGINE_SHA256='[0-9a-f]{64}'/.test(html)&&/user-scalable=yes/.test(html);
   if(!fileImport||!(classicFrame||trustedTopLevel))errors.push('BAD_FILE_IMPORT_ENTRY '+b.entry);
   if(/data:image\/(?:jpeg|png|webp);base64,/i.test(html))errors.push('PRIVATE_SOURCE_IN_PUBLIC_WEB '+b.entry);
