@@ -1,0 +1,28 @@
+name: Reader quality gate (60 requirements)
+on:
+  pull_request:
+    paths:
+      - 'reader/**'
+      - 'tools/reader-quality-gate.cjs'
+      - 'tests/reader-quality-gate.test.cjs'
+      - '.github/workflows/pages.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reader/**'
+      - 'tools/reader-quality-gate.cjs'
+      - 'tests/reader-quality-gate.test.cjs'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce canonical sixty checks
+        run: |
+          node tools/reader-quality-gate.cjs
+          node --test tests/reader-quality-gate.test.cjs

@@ -18,6 +18,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Gate reader quality against the canonical sixty requirements
+        run: |
+          node tools/reader-quality-gate.cjs
+          node --test tests/reader-quality-gate.test.cjs
       - name: Check word recovery before publication
         run: |
           node --check drive-sync.js

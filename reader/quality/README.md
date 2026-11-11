@@ -1,0 +1,25 @@
+# 60項目・読書本の公開／完成判定ゲート
+
+この仕組みは **既存の60項目を増やすものではありません**。唯一の正本は非公開Google Driveのファイル ID: 1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2。今ある60の項目IDをそのまま索引化し、制作・公開の検査に使います。
+
+## 強制されること
+
+- GitHub Pagesの公開ワークフローは、Checkout直後に node tools/reader-quality-gate.cjs と node --test tests/reader-quality-gate.test.cjs を実行します。失敗するとPagesへは進めません。
+- reader以下の各index.htmlと reader/library/read.html はすべて登録対象です。未登録の入口は拒否。導入前の43入口はGit blob SHAで凍結し、品質合格とみなさず、変更された場合に公開を止めます。
+- 新規・更新書籍は registry.json と個別reports/*.jsonが必要です。60項目すべての状態を明示し、合格には方法、証拠参照、アーティファクトSHA-256、確認者を要求します。
+- draft は制作中のみ。ready_for_publication は Pages公開とiPhone実機確認以外の該当基準を満たした段階。completed はPages公開記録も必要。iphone_verified は実機検査G8-04も別途必要です。
+- 失敗、未実施、要原本確認の該当項目が残る状態ではcompletedへ移行できません。重要な項目を根拠なく対象外にできません。
+- GitHubには読書アプリのコードだけを置き、原本JPEG、OCR本文、書籍ZIP・PDF・EPUB等を公開しません。
+
+## 新しい本の制作工程
+
+1. 原本・校正HTMLはプライベートDriveまたは端末内に保存し、原本のSHA・領域・検査証拠を取得します。
+2. 読書サイト入口を作成し、書籍ID・対象範囲・GitHub Pages URL（末尾 ?import=1）を registry.json に追加します。
+3. 個別reportへ60件の未実施を登録し、実施した検査ごとに根拠を追加します。実際の原本と画面を見ずにpassedとしません。
+4. iPhoneでの上下スワイプとWH1との一致、図版固定、24条件の表示、原本全字照合などを証拠付きで検査します。
+5. ルールを満たした時にだけ完成候補→公開成功→実機確認済みへ進めます。
+
+## 残る制約
+
+このゲートが強制できるのは **GitHubの標準Pages公開経路** です。Google Drive内の非公開バイトやiPhone実機をCIが直接読めるわけではありません。合格報告の実証は人による原本・実機確認が必要です。
+既存の旧版は未検証として凍結するだけで、過去の60項目合格を意味しません。Driveから直接HTMLを配布する別経路や、管理者によるCI改変まではブロックできません。GitHubのブランチ保護・必須チェックの設定がさらに必要です。
