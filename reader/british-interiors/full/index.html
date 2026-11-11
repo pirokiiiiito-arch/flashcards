@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fbfaf6">
+<title>図説 英国のインテリア史｜全82枚・通し番号読書版</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;background:#f8f8f4;color:#293437}
+*{box-sizing:border-box}html,body{width:100%;height:100%;height:100dvh;margin:0;overflow:hidden}
+#reader{display:block;position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf8}
+#setup{position:fixed;inset:0;overflow-y:auto;background:#f6f7f3;padding:calc(18px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));z-index:10}
+#setup[hidden]{display:none}
+main{max-width:500px;margin:12px auto;background:#fff;border:1px solid #dce3dd;border-radius:19px;padding:24px 20px;box-shadow:0 8px 25px #24332c0a}
+.eyebrow{display:block;font-size:11px;font-weight:750;color:#8d5c47;letter-spacing:.14em;margin-bottom:10px}
+h1{font-size:24px;letter-spacing:.02em;line-height:1.4;margin:0 0 10px}h2{font-size:16px;margin:24px 0 10px}
+p{font-size:14px;line-height:1.75;color:#4e5e61;margin:11px 0}
+.status{padding:12px;background:#f5f8f5;border-radius:11px;border:1px solid #e1e7e0;white-space:pre-wrap;min-height:42px;font-size:13px;color:#3b5054}
+.button,label.pick{display:block;width:100%;min-height:48px;text-align:center;border:1px solid #afc0b8;border-radius:11px;background:#fff;color:#315453;padding:12px;margin:12px 0;font:700 15px/1.5 system-ui,sans-serif;cursor:pointer}
+label.pick{background:#315d60;color:#fff;border-color:#315d60}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+a{color:#2d686c;overflow-wrap:anywhere}
+.tiny{font-size:12px;line-height:1.7;color:#6d7875}
+.progress{display:none;height:5px;background:#e3eae5;border-radius:7px;overflow:hidden}.progress.show{display:block}.progress>span{display:block;width:0;height:100%;background:#4b7775;transition:width .15s}
+#busy{position:fixed;inset:0;display:grid;place-items:center;z-index:8;background:#fbfaf7ee;pointer-events:none}
+#busy[hidden]{display:none}.busy-label{max-width:320px;text-align:center;padding:20px;color:#465d60;font-size:14px;line-height:1.7}
+</style>
+</head>
+<body>
+<iframe id="reader" title="図説 英国のインテリア史：全82枚" sandbox="allow-scripts"></iframe>
+<div id="busy" hidden><div class="busy-label" id="busyLabel">読書データを準備しています…</div></div>
+<div id="setup"><main>
+ <span class="eyebrow">PRIVATE READING LIBRARY · 82 SCANS</span>
+ <h1>図説 英国のインテリア史</h1>
+ <p><strong>全82枚・1冊統合読書版</strong>。ページ表示は「原本 1 / 82」から「原本 82 / 82」までの通し番号です。20枚ごとの区切りでは、前へ／次へ／スワイプで自動的に次の範囲へ進みます。</p>
+ <p>縦書き本文20px基準、独立した1桁数字の正立、図版を固定した説明文だけのページ送り、原本JPEGの表示を保持しています。</p>
+ <button type="button" class="button" id="openSaved" hidden>この端末に保存済みの全巻を開く</button>
+ <h2>全巻を開く</h2>
+ <p>本棚から保存した場合は、この画面から自動で開きます。端末に未保存の場合は、Googleドライブの統合ZIP分割ファイル（part01〜part04）4個をすべて保存し、下でまとめて選択してください。</p>
+ <p><a id="zipLink" href="https://drive.google.com/drive/folders/1WPpY1os7llCyFaDa9C7Bf7vDQb0ee31j" target="_blank" rel="noopener">Googleドライブの本棚フォルダ（分割ZIP 4ファイル）</a></p>
+ <label class="pick" for="file">全82枚のZIP／part01〜part04を選択</label>
+ <input id="file" type="file" multiple accept=".zip,.part01,.part02,.part03,.part04,application/octet-stream">
+ <div class="progress" id="progress"><span id="progressBar"></span></div>
+ <p class="status" id="status" role="status" aria-live="polite">この端末の書籍保存状況を確認しています。</p>
+ <p class="tiny"><strong>校正状況：</strong>全82枚の読書形式を統合しましたが、OCRの独立した全文字再校正とiPhone実機での最終照合は未完了です。「読書版の統合完成」と「OCR品質の全項目合格」は区別しています。</p>
+ <p class="tiny">書籍画像・本文はGoogleドライブと、この端末の読書用ZIPにだけ保持し、GitHubには公開していません。保存データを削除すると再読込が必要になります。</p>
+ <button class="button" type="button" id="shelf">私の本棚に戻る</button>
+</main></div>
+<script src="../../library/storage.js"></script>
+<script>
+'use strict';
+(()=>{
+  const BOOK_ID='uk-interiors',POSITION_KEY='UK82_UNIFIED_POSITION_V1';
+  const SEGMENTS=[{start:1,end:20,path:'segments/001-020.html'},
+                  {start:21,end:40,path:'segments/021-040.html'},
+                  {start:41,end:60,path:'segments/041-060.html'},
+                  {start:61,end:80,path:'segments/061-080.html'},
+                  {start:81,end:82,path:'segments/081-082.html'}];
+  const $=id=>document.getElementById(id);
+  const bufText=new TextDecoder('utf-8');
+  let zip=null,activeSegment=-1,frameUrl='',pendingTarget=null,opening=false,ready=false,activation=0;
+  let current={scan:1,itemIndex:0,size:20},archiveBlob=null;
+  let lastSaved=null;
+  function msg(text){$('status').textContent=String(text)}
+  function busy(text){$('busyLabel').textContent=text;$('busy').hidden=false}
+  function unbusy(){$('busy').hidden=true}
+  function segmentFor(scan){return SEGMENTS.findIndex(s=>s.start<=scan&&scan<=s.end)}
+  function loadPosition(){try{const p=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(p&&Number.isInteger(p.scan)&&p.scan>=1&&p.scan<=82&&Number.isInteger(p.itemIndex))return {scan:p.scan,itemIndex:p.itemIndex,size:p.size||20}}catch(_){}return {scan:1,itemIndex:0,size:20}}
+  function savePosition(){try{localStorage.setItem(POSITION_KEY,JSON.stringify(current))}catch(_){}}
+  function u16(v,n){return v.getUint16(n,true)}
+  function u32(v,n){return v.getUint32(n,true)}
+  class ZipReader{
+    constructor(blob){this.blob=blob;this.entries=new Map()}
+    async init(){
+      const tailStart=Math.max(0,this.blob.size-65557),buf=await this.blob.slice(tailStart).arrayBuffer(),v=new DataView(buf);
+      let end=-1;for(let i=v.byteLength-22;i>=0;i--){if(u32(v,i)===0x06054b50&&i+22+u16(v,i+20)<=v.byteLength){end=i;break}}
+      if(end<0)throw Error('統合ZIPの終了情報が見つかりません');
+      if(u16(v,end+8)!==6)throw Error('統合ZIPのファイル数が異なります');
+      const len=u32(v,end+12),offset=u32(v,end+16);
+      if(len<1||offset+len>this.blob.size||len>250000)throw Error('統合ZIPの目次領域が不正です');
+      const central=new DataView(await this.blob.slice(offset,offset+len).arrayBuffer());let at=0;
+      while(at<central.byteLength){
+        if(u32(central,at)!==0x02014b50)throw Error('ZIP目次の形式が正しくありません');
+        const method=u16(central,at+10),size=u32(central,at+20),uncompressed=u32(central,at+24),nLen=u16(central,at+28),eLen=u16(central,at+30),cLen=u16(central,at+32),local=u32(central,at+42);
+        const name=bufText.decode(new Uint8Array(central.buffer,central.byteOffset+at+46,nLen));
+        if(method!==0||size!==uncompressed)throw Error('この読書版は無圧縮形式の統合ZIPを選んでください');
+        if(this.entries.has(name)||name.includes('..')||name.startsWith('/'))throw Error('ZIPのパスが不正です');
+        this.entries.set(name,{size,local});
+        at+=46+nLen+eLen+cLen;
+      }
+      if(at!==central.byteLength||this.entries.size!==6||!this.entries.has('manifest.json'))throw Error('統合ZIPの構成が異なります');
+      return this;
+    }
+    async readText(path){const ent=this.entries.get(path);if(!ent)throw Error('ZIPに必要なファイルがありません：'+path);
+      const header=new DataView(await this.blob.slice(ent.local,ent.local+30).arrayBuffer());
+      if(u32(header,0)!==0x04034b50)throw Error('ZIPのデータヘッダーが破損しています');
+      const start=ent.local+30+u16(header,26)+u16(header,28);
+      if(start+ent.size>this.blob.size)throw Error('ZIPのデータが途中で切れています');
+      return await this.blob.slice(start,start+ent.size).text();}
+  }
+  async function attach(blob,shouldSave=false){
+    const token=++activation;opening=true;ready=false;busy('全82枚の統合読書データを確認しています…');
+    try{
+      const reader=await new ZipReader(blob).init(),m=JSON.parse(await reader.readText('manifest.json'));
+      if(m.schema!=='uk82-unified-zip-v1'||m.total_scans!==82||m.range?.[0]!==1||m.range?.[1]!==82||m.segments?.length!==5)
+        throw Error('別の本のZIPです。英国のインテリア史・全82枚の統合読書ZIPを選んでください');
+      for(let i=0;i<SEGMENTS.length;i++){
+        const a=SEGMENTS[i],b=m.segments[i];if(a.start!==b.start||a.end!==b.end||a.path!==b.path||!reader.entries.has(a.path))throw Error('原本番号の連続性を確認できません');
+      }
+      if(token!==activation)return;
+      zip=reader;archiveBlob=blob;current=loadPosition();
+      msg('原本1〜82枚の連続した読書データを読み込みました。');
+      await openScan(current.scan,{itemIndex:current.itemIndex,size:current.size});
+      if(shouldSave){
+        // Do not delay reading if browser storage quota prevents offline saving.
+        LibraryDB.saveBlob({id:BOOK_ID,title:'図説 英国のインテリア史',subtitle:'全82枚・通し番号',scans:82},blob, (done,total)=>{
+          $('progress').classList.add('show');$('progressBar').style.width=(100*done/total).toFixed(1)+'%';
+        }).then(()=>{$('openSaved').hidden=false;$('progress').classList.remove('show')}).catch(e=>{
+          $('progress').classList.remove('show');console.warn('端末への保存はできませんでした',e);
+        });
+      }
+    }catch(e){if(token!==activation)return;zip=null;opening=false;unbusy();$('setup').hidden=false;msg('読み込みエラー：'+(e.message||e));throw e;}
+  }
+  async function openScan(scan,{itemIndex=0,size=current.size,edge=null}={}){
+    if(!zip)return;
+    const which=segmentFor(scan);if(which<0)throw Error('原本番号の範囲外です');
+    const token=++activation,seg=SEGMENTS[which];
+    pendingTarget={scan,itemIndex,size,edge};ready=false;opening=true;
+    busy(`原本 ${scan} / 82 を準備しています…`);
+    if(which===activeSegment && $('reader').contentWindow){
+      $('reader').contentWindow.postMessage({kind:'uk82-goto',...pendingTarget},'*');return;
+    }
+    const text=await zip.readText(seg.path);
+    if(token!==activation)return;
+    if(!text.includes('uk82-boundary')||!text.includes(`START_SCAN=${seg.start},END_SCAN=${seg.end}`))throw Error('読書HTMLの通し番号処理を確認できません');
+    const blob=new Blob([text],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob);
+    const old=frameUrl;frameUrl=url;activeSegment=which;
+    $('reader').src=url;
+    if(old)setTimeout(()=>URL.revokeObjectURL(old),5000);
+  }
+  window.addEventListener('message',e=>{
+    if(e.source!==$('reader').contentWindow||!e.data||typeof e.data!=='object')return;
+    const data=e.data;
+    if(data.kind==='uk-interiors-reader-ready'){
+      if(!zip||!pendingTarget)return;
+      $('reader').contentWindow.postMessage({kind:'uk82-goto',...pendingTarget},'*');return;
+    }
+    if(data.kind==='uk82-state'){
+      if(!zip)return;
+      if(pendingTarget && data.scan!==pendingTarget.scan)return;
+      if(pendingTarget){pendingTarget=null;ready=true;opening=false;unbusy();$('setup').hidden=true;}
+      current={scan:data.scan,itemIndex:data.itemIndex,size:data.size};savePosition();return;
+    }
+    if(data.kind==='uk82-boundary'){
+      if(opening||!zip)return;
+      const target=Number(data.scan)+Number(data.delta);
+      if(target<1||target>82)return;
+      openScan(target,{itemIndex:0,size:data.size,edge:data.delta<0?'last':null}).catch(console.error);
+      return;
+    }
+    if(data.kind==='uk82-return-to-shelf'){location.href='../../library/';return;}
+    if(data.kind==='uk-interiors-reader-change-file'){
+      $('setup').hidden=false;unbusy();msg('統合ZIPを選び直すか、本棚へ戻ってください。');return;
+    }
+    if(data.kind==='uk-interiors-reader-error'){
+      opening=false;unbusy();$('setup').hidden=false;msg('組版エラー：'+String(data.message||'読み込みに失敗しました'));
+    }
+  });
+  $('file').addEventListener('change',async()=>{
+    const chosen=Array.from($('file').files||[]);$('file').value='';if(!chosen.length)return;
+    try{
+      let archive;
+      if(chosen.length===1&&/\.zip$/i.test(chosen[0].name))archive=chosen[0];
+      else if(chosen.length===4){
+        const parts=chosen.map(f=>({file:f,index:Number(f.name.match(/\.part(0[1-4])$/i)?.[1]||0),base:f.name.replace(/\.part0[1-4]$/i,'')}));
+        const names=new Set(parts.map(x=>x.index)),base=parts[0].base;
+        if(names.size!==4||parts.some(x=>!x.index||x.base!==base))throw Error('part01〜part04を同じ書籍から4つまとめて選んでください');
+        parts.sort((a,b)=>a.index-b.index);
+        const expected=[33554432,33554432,33554432,26225887];
+        if(parts.some((x,i)=>x.file.size!==expected[i]))throw Error('分割ファイルのサイズが一致しません。再取得してください');
+        archive=new Blob(parts.map(x=>x.file),{type:'application/zip'});
+      }else throw Error('統合ZIP 1個、またはpart01〜part04の4個をまとめて選んでください');
+      await attach(archive,true);
+    }catch(e){unbusy();msg('選択エラー：'+(e.message||e));console.warn(e)}
+  });
+  $('openSaved').onclick=async()=>{try{const b=await LibraryDB.findBlob(BOOK_ID);if(!b?.blob)throw Error('保存済みデータが見つかりません');await attach(b.blob,false)}catch(e){msg(e.message||e)}};
+  $('shelf').onclick=()=>{location.href='../../library/'};
+  (async()=>{try{
+      const saved=await LibraryDB.findBlob(BOOK_ID);
+      if(saved?.blob){$('openSaved').hidden=false;await attach(saved.blob,false)}
+      else msg('Googleドライブの統合ZIPを選んでください。本棚から保存した場合は自動で開きます。');
+    }catch(e){unbusy();msg('端末保存を確認できませんでした。統合ZIPから読み込んでください：'+(e.message||e));}
+  })();
+})();
+</script>
+</body>
+</html>
