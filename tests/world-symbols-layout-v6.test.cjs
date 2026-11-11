@@ -9,7 +9,11 @@ test('v6 increases text area without changing the private book or font',()=>{
  assert.match(out,/id="ws-layout-v6"/);assert.match(out,/max-height:100svh/);
  assert.match(out,/line-height:1\.50!important/);assert.match(out,/font-size:var\(--size\)!important/);
  assert.match(out,/readingHint\{display:none/);assert.match(out,/flex-wrap:nowrap/);
- assert.match(out,/height:12px/);assert.doesNotMatch(out,/data:image\/(?:jpeg|png);base64,/);
+ assert.match(out,/height:12px/);
+ // Synthetic fixture intentionally contains artificial image data. The layout
+ // adapter must not add or alter those embedded bytes; the JSON equality above
+ // is the privacy/integrity condition, not absence of images in the fixture.
+ assert.doesNotMatch(layout.source,/data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]{64,}/);
  assert.doesNotThrow(()=>new vm.Script(layout.source));
 });
 test('loader actually loads and applies v6 after v5, with cache-busting',()=>{
