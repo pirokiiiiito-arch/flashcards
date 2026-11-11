@@ -54,6 +54,16 @@
       "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/world-symbols/001-020/index.html?import=1",
       "report": "reader/quality/reports/world-symbols-001-020.json",
       "stage": "draft"
+    },
+    {
+      "id": "british-interiors-001-082",
+      "entry": "reader/british-interiors/full/index.html",
+      "entryBlobSha": "1d15bb8f9f8aa018a4b83bbd0b38a6fe7dbe497d",
+      "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/british-interiors/full/index.html?import=1",
+      "report": "reader/quality/reports/british-interiors-001-082.json",
+      "stage": "draft",
+      "migratedFromFrozenBlobSha": "d45b42aa6c9f85cd6052f6497f4d0fc4989fed5d",
+      "migrationReason": "Replace blocked image-only pinch and sandbox iframe with native full-page browser pinch for all 82 private scans, with 60-item draft audit."
     }
   ]
 }
