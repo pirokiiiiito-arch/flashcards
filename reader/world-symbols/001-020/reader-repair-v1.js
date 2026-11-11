@@ -103,7 +103,7 @@ function extractSwipeV3(){
  const marker='/* world-symbols-wh1-fix-v3 */';
  const src=String(repair).match(/const swipe=\x60([\s\S]*?)\x60;/);
  if(!src)throw Error('SWIPE_V3_SOURCE_MISSING');
- return marker+src[1].slice(src[1].indexOf('\n')).replace('${wsSwipeDecision.toString()}',wsSwipeDecision.toString());
+ return marker+src[1].slice(src[1].indexOf('\n')).replace('${wsSwipeDecision.toString()}',wsSwipeDecision.toString()).replace(/\\n/g,'\n');
 }
 
 function repair(html){
@@ -111,7 +111,7 @@ function repair(html){
  if(html.includes("world-symbols-wh1-fix-v3"))return {html,version:"world-symbols-wh1-fix-v3",summary:before};
  if(html.includes("world-symbols-wh1-fix-v2")){
   const gesture=extractSwipeV3();
-  const updated=span(html,"/* world-symbols-wh1-fix-v3 */","document.addEventListener('keydown',",gesture);
+  const updated=span(html,"/* world-symbols-wh1-fix-v2 */","document.addEventListener('keydown',",gesture);
   if(inspect(updated).data!==before.data)throw Error("PRIVATE_BOOK_CONTENT_CHANGED");
   return {html:updated,version:"world-symbols-wh1-fix-v3",summary:before};
  }
@@ -200,7 +200,7 @@ html=one(html,"function pagesForCurrent(){",uprightFn+pagesFn+"function pagesFor
 `;
  html=span(html," if(x.kind==='figure'){\n  const frame=makeElement('div','figure-frame');"," }else if(x.kind==='empty'){",branch);
  html=span(html,"const sourcePane=byId('sourceBody');let srcGesture=null;","let touchY=0,touchX=0;","const sourcePane=byId('sourceBody');\n");
- const swipe=`/* world-symbols-wh1-fix-v2 */
+ const swipe=`/* world-symbols-wh1-fix-v3 */
 ${wsSwipeDecision.toString()}
 let gX=0,gY=0,gAt=0,gTracking=false,gMulti=false,gWheel=0,gLastCommitAt=0;\nfunction gCommit(move){const now=Date.now();if(!move||now-gLastCommitAt<300)return false;gLastCommitAt=now;go(move);return true;}
 const gStage=byId('readView'),gZoom=()=>!!(window.visualViewport&&window.visualViewport.scale>1.01);
