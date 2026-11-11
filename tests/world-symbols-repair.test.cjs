@@ -30,12 +30,11 @@ const vm=require('node:vm');
 const sourceFixture=fs.readFileSync(require('node:path').join(__dirname,'fixtures/world-symbols-synthetic.html'),'utf8');
 test('synthetic non-copyright fixture repairs to a syntax-valid reader without rewriting book bytes',()=>{
  const result=patch.repair(sourceFixture);
- const first=sourceFixture.match(/<script id="embedded-data" type="application\\/json">([\\s\\S]*?)<\\/script>/);
- const second=result.html.match(/<script id="embedded-data" type="application\\/json">([\\s\\S]*?)<\\/script>/);
- assert.ok(first&&second);
- assert.equal(first[1],second[1]);
+ const tag='<script id="embedded-data" type="application/json">';
+ const dataOf=doc=>doc.split(tag)[1].split('</script>')[0];
+ assert.equal(dataOf(sourceFixture),dataOf(result.html));
  const main=result.html.slice(result.html.lastIndexOf('<script>')+8,result.html.lastIndexOf('</script>'));
  assert.doesNotThrow(()=>new vm.Script(main));
- assert.match(main,/wsWriteVertical/);assert.match(main,/wsSafeCut/);assert.match(main,/Math.abs\\(dy\\)>45/);
+ for(const marker of ['wsWriteVertical','wsSafeCut','Math.abs(dy)>45'])assert.ok(main.includes(marker));
  const again=patch.repair(result.html);assert.equal(result.html,again.html);
 });
