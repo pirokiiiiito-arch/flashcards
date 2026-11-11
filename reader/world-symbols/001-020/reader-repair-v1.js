@@ -202,7 +202,7 @@ html=one(html,"function pagesForCurrent(){",uprightFn+pagesFn+"function pagesFor
  html=span(html,"const sourcePane=byId('sourceBody');let srcGesture=null;","let touchY=0,touchX=0;","const sourcePane=byId('sourceBody');\n");
  const swipe=`/* world-symbols-wh1-fix-v3 */
 ${wsSwipeDecision.toString()}
-let gX=0,gY=0,gAt=0,gTracking=false,gMulti=false,gWheel=0,gLastCommitAt=0;\nfunction gCommit(move){const now=Date.now();if(!move||now-gLastCommitAt<300)return false;gLastCommitAt=now;go(move);return true;}
+let gX=0,gY=0,gAt=0,gTracking=false,gMulti=false,gWheel=0,gLastCommitAt=0,gLastMove=0;\nfunction gCommit(move){const now=Date.now();if(!move||(move===gLastMove&&now-gLastCommitAt<140))return false;gLastCommitAt=now;gLastMove=move;go(move);return true;}
 const gStage=byId('readView'),gZoom=()=>!!(window.visualViewport&&window.visualViewport.scale>1.01);
 gStage.addEventListener('touchstart',e=>{if(e.touches.length!==1||gZoom()){gTracking=false;gMulti=true;return;}if(gMulti)return;gTracking=true;gX=e.touches[0].clientX;gY=e.touches[0].clientY;gAt=Date.now();},{passive:true});
 gStage.addEventListener('touchmove',e=>{if(e.touches.length>1){gTracking=false;gMulti=true;return;}if(!gTracking||gZoom())return;const dx=e.touches[0].clientX-gX,dy=e.touches[0].clientY-gY;if(Math.abs(dy)>14&&Math.abs(dy)>Math.abs(dx)*1.15&&e.cancelable)e.preventDefault();},{passive:false});

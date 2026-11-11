@@ -120,7 +120,7 @@ test('v3 loader has versioned cache bust, touch/pointer dedup and upgrade path',
  const fixed=patch.repair(sourceFixture);
  assert.ok(fixed.html.includes('gStage.addEventListener(\'pointerup\''));
  assert.ok(fixed.html.includes('gCommit(move)'));
- assert.ok(fixed.html.includes('gLastCommitAt<300'));
+ assert.ok(fixed.html.includes('move===gLastMove'));
  const older=fixed.html.replace('/* world-symbols-wh1-fix-v3 */','/* world-symbols-wh1-fix-v2 */');
  const revised=patch.repair(older);
  assert.ok(revised.html.includes('world-symbols-wh1-fix-v3'));
