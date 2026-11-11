@@ -79,8 +79,17 @@ function validate(root=ROOT){
  if(liveKeys.length!==frozenKeys.length||liveKeys.some((p,i)=>p!==frozenKeys[i]||legacy[p]!==FROZEN_LEGACY[p]))
   errors.push('LEGACY_EXCEPTION_LIST_CHANGED: new historical exemptions cannot be invented; migrate book to a checked report');
 
+ // Migrate a frozen route only with explicit verified original hash and complete
+ // 60-item quality report; other frozen routes remain bitwise protected.
  for(const [p,sha] of Object.entries(legacy)){
   if(!allowed(p)||!/^[0-9a-f]{40}$/.test(sha)){errors.push('INVALID_LEGACY '+p);continue;}
+  const migrated=Array.isArray(books)?books.find(b=>b?.entry===p):null;
+  if(migrated){
+    if(migrated.migratedFromFrozenBlobSha!==sha||typeof migrated.migrationReason!=='string'||migrated.migrationReason.trim().length<12)
+      errors.push('UNVERIFIED_MIGRATION '+p+' - original blob SHA and reason required');
+    // Managed route below must match its new blob SHA and provide all 60 statuses.
+    continue;
+  }
   if(seen.has(p))errors.push('DUPLICATE_ROUTE '+p);seen.add(p);
   if(!paths.includes(p)){errors.push('MISSING_LEGACY '+p);continue;}
   if(blobSHA(fs.readFileSync(path.join(root,p)))!==sha)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
@@ -97,7 +106,11 @@ function validate(root=ROOT){
   if(b.url!=='https://pirokiiiiito-arch.github.io/flashcards/'+b.entry+'?import=1')
    errors.push('WRONG_IPHONE_WEB_URL '+b.id);
   const html=bytes.toString('utf8');
-  if(!/<iframe\b/i.test(html)||!/<input\b[^>]*type=["']file["']/i.test(html))errors.push('BAD_FILE_IMPORT_ENTRY '+b.entry);
+  const fileImport=/<input\\b[^>]*type=["']file["']/i.test(html);
+  const classicFrame=/<iframe\\b/i.test(html);
+  const trustedTopLevel=!classicFrame&&/\\binstallTopLevelEngine\\s*\\(/.test(html)&&
+    /TRUSTED_ENGINE_SHA256='[0-9a-f]{64}'/.test(html)&&/user-scalable=yes/.test(html);
+  if(!fileImport||!(classicFrame||trustedTopLevel))errors.push('BAD_FILE_IMPORT_ENTRY '+b.entry);
   if(/data:image\/(?:jpeg|png|webp);base64,/i.test(html))errors.push('PRIVATE_SOURCE_IN_PUBLIC_WEB '+b.entry);
   if(b.stage==='draft'&&!/制作中|校正中|校正継続|未校正|未完了|未確認/.test(html))
    errors.push('UNLABELLED_DRAFT '+b.entry);
