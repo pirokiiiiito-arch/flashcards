@@ -21,7 +21,7 @@ jobs:
       - name: Gate reader quality against the canonical sixty requirements
         run: |
           node tools/reader-quality-gate.cjs
-          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs
+          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/world-symbols-repair.test.cjs
       - name: Check word recovery before publication
         run: |
           node --check drive-sync.js
