@@ -116,7 +116,8 @@ test('patched reader renders and exports normalized body without touching embedd
 test('v3 loader has versioned cache bust, touch/pointer dedup and upgrade path',()=>{
  const shell=fs.readFileSync(require('node:path').join(__dirname,'../reader/world-symbols/001-020/index.html'),'utf8');
  assert.match(shell,/v4-pointer-swipe/);
- assert.match(shell,/操作修正版v4/);
+ assert.match(shell,/操作修正版v5/);
+ assert.match(shell,/WorldSymbolsGestureV5\.wrapHtml/);
  const fixed=patch.repair(sourceFixture);
  assert.ok(fixed.html.includes('gStage.addEventListener(\'pointerup\''));
  assert.ok(fixed.html.includes('gCommit(move)'));
