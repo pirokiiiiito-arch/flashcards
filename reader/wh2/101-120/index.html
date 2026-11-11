@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>世界の歴史2｜Chrome読書版 101〜120</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#f7f8f5;color:#29383a;font-family:-apple-system,system-ui,sans-serif}#reader{position:fixed;inset:0;border:0;width:100%;height:100%;background:#fffefa}#setup{position:fixed;inset:0;z-index:10;display:flex;justify-content:center;align-items:center;padding:20px;overflow:auto;background:#f7f8f5}#setup[hidden]{display:none}main{width:100%;max-width:480px;background:white;border:1px solid #dce5df;border-radius:18px;padding:24px}h1{font-size:22px;margin:0 0 15px}p,li{font-size:14px;line-height:1.8}ol{padding-left:22px}.name{font-size:12px;overflow-wrap:anywhere}.pick,button{display:block;width:100%;padding:13px;margin-top:15px;border:1px solid #b9ceca;border-radius:11px;font-size:15px;cursor:pointer}.pick{background:#315c63;color:white;text-align:center}button{background:white;color:#315c63}button[hidden]{display:none}input{position:absolute;width:1px;height:1px;opacity:0}a{color:#285d67}#status{white-space:pre-wrap;font-size:12px;min-height:22px}.note{font-size:12px;color:#667571}
+</style></head><body>
+<iframe id="reader" title="世界の歴史2・101〜120 読書画面" sandbox="allow-scripts"></iframe>
+<div id="setup"><main><h1>世界の歴史2｜101〜120</h1>
+<p>本文20pxの縦書き読書画面です。上下スワイプと「前へ／次へ」で進み、A−／A＋で文字サイズを変更できます。</p>
+<ol><li><a href="https://drive.google.com/file/d/1ZINwsPhRQwsSvzzXKu-xdGzIcsCCeqN-/view?usp=drivesdk">101〜120の読書HTMLをドライブで確認</a>し、iPhoneの「ファイル」に保存。</li><li>下のボタンで、名前の先頭が日付・時刻、その後に <strong>101-120</strong> とあるHTMLを選んでください。</li></ol>
+<p class="name">今回の版：20261111_0157_【最新・読書用】世界の歴史2_101-120_初回原本転記・スワイプ改善版_独立照合継続中.html</p>
+<p class="note">今回の101〜120版を選び直してください。以前に保存した別分冊のデータには影響しません。</p>
+<label class="pick" for="file">読書版HTMLを選択して開く</label><input type="file" id="file" accept=".html,text/html"><button id="reopen" hidden>端末に保存済みの読書版を開く</button><p id="status" role="status" aria-live="polite">101〜120のHTMLを選択してください。</p>
+<p class="note">このURLには本文・原本画像を公開していません。選んだファイルは端末内で開きます。001〜080のファイルは対象外です。独立した全文再照合・iPhone実機確認は未完了です。</p></main></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),DB='wh2-reader-on-device-101-120-v1',STORE='books',KEY='scans101to120',MAX=80*1024*1024;
+let activeUrl='';
+function database(){return new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
+async function getSaved(){const d=await database();try{return await new Promise((resolve,reject)=>{const r=d.transaction(STORE,'readonly').objectStore(STORE).get(KEY);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error)})}finally{d.close()}}
+async function putSaved(blob,name){const d=await database();try{await new Promise((resolve,reject)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put({blob,name,date:Date.now()},KEY);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)})}finally{d.close()}}
+async function verify(blob){if(!blob||blob.size<1000000||blob.size>MAX)throw Error('101〜120の読書HTMLを選択してください。');const h=await blob.slice(0,65536).text();const t=h.match(/<title[^>]*>([^<]+)<\/title>/i);const title=!!t&&t[1].includes('世界の歴史2')&&/101[〜～-]120/.test(t[1]);const data=/<script\b[^>]*\bid=["']bookdata["'][^>]*>\s*\[\s*\{\s*"scan"\s*:\s*101\s*,/i.test(h);const view=/<meta\b[^>]*\bname=["']viewport["']/i.test(h);if(!title||!data||!view)throw Error('分冊が違うか、ファイル形式を確認できません。世界の歴史2の101〜120を選んでください。');return true}
+async function openBook(blob){await verify(blob);$('status').textContent='読書画面を開いています…';if(activeUrl)URL.revokeObjectURL(activeUrl);const htmlBlob=(blob.type||'').includes('html')?blob:new Blob([blob],{type:'text/html;charset=utf-8'});activeUrl=URL.createObjectURL(htmlBlob);const f=$('reader');f.onload=()=>{$('setup').hidden=true;f.focus()};f.onerror=()=>{$('status').textContent='表示できませんでした。HTMLを選び直してください。'};f.src=activeUrl}
+$('file').addEventListener('change',async()=>{const f=$('file').files?.[0];if(!f)return;try{await verify(f);try{await putSaved(f,f.name)}catch(e){$('status').textContent='端末への保存はできませんが、今回の読書画面は開けます。'}await openBook(f)}catch(e){$('status').textContent=e.message||String(e)}$('file').value=''});
+$('reopen').onclick=async()=>{try{const x=await getSaved();if(!x?.blob)throw Error('保存済みファイルがありません。');await openBook(x.blob)}catch(e){$('status').textContent=e.message||String(e)}};
+window.addEventListener('pageshow',async()=>{try{const x=await getSaved();if(x?.blob){$('reopen').hidden=false;if(!new URLSearchParams(location.search).has('import'))await openBook(x.blob)}}catch(e){$('status').textContent='最初の1回だけ、101〜120のHTMLを選択してください。'}});
+</script></body></html>
