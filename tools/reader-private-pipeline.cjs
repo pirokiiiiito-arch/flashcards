@@ -4,7 +4,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const v=require('./reader-release-control.cjs'),{ID,RULES}=require('./reader-quality-gate.cjs');
 const fail=(ok,s)=>{if(!ok)throw Error(s);};
-function write(root,name,value){const b=typeof value==='string'||Buffer.isBuffer(value)?value:JSON.stringify(value,null,2)+'\n';const file=path.join(root,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,b,{flag:'wx',mode:0o600});return {path:name,sha256:v.hash(b)};}
+function write(root,name,value){const b=typeof value==='string'||Buffer.isBuffer(value)?value:JSON.stringify(value,null,2)+'\n';const file=path.join(root,name);fs.mkdirSync(path.dirname(file),{recursive:true});if(fs.existsSync(file)){fail(v.hash(fs.readFileSync(file))===v.hash(b),'IMMUTABLE_FILE_CONFLICT '+name);}else fs.writeFileSync(file,b,{flag:'wx',mode:0o600});return {path:name,sha256:v.hash(b)};}
 function saveManifest(root,m){const b=JSON.stringify(m,null,2)+'\n',tmp=path.join(root,'.manifest-'+crypto.randomUUID());fs.writeFileSync(tmp,b,{flag:'wx',mode:0o600});fs.renameSync(tmp,path.join(root,'manifest.json'));}
 function load(file){const root=path.dirname(path.resolve(file)),m=JSON.parse(fs.readFileSync(file));fail(m.schema==='reader-private-bundle-v2','WRONG_MANIFEST');return{root,m};}
 function init(htmlFile,root,bookId,loaderFile,sourceIndexFile){
@@ -26,7 +26,7 @@ function init(htmlFile,root,bookId,loaderFile,sourceIndexFile){
  m.boundaries=write(root,'review/boundaries.json',{items:[]});m.display=write(root,'review/display.json',{artifactSha256:m.artifact.sha256,actualPixels:false,fields:{},conditions:[]});
  m.checks=write(root,'review/checks.json',Object.fromEntries(RULES.map(id=>[id,{status:'not_run'}])));saveManifest(root,m);return m;
 }
-function correct(file,eventFile){
+function correctUnsafe(file,eventFile){
  const {root,m}=load(file),raw=v.json(root,m.raw),old=v.json(root,m.canonical),events=v.json(root,m.corrections),e=JSON.parse(fs.readFileSync(eventFile));
  fail(v.objHash(v.replay(raw,events))===v.objHash(old),'PRIOR_CANONICAL_DIVERGED');
  fail(e.expectedCanonicalSha256===m.canonical.sha256,'CANONICAL_VERSION_CONFLICT');
@@ -41,7 +41,7 @@ function correct(file,eventFile){
  m.checks=write(root,'review/checks-revision-'+n+'.json',Object.fromEntries(RULES.map(id=>[id,{status:'not_run'}])));
  m.deliveryState='blocked-rebuild-and-review-required';saveManifest(root,m);return m;
 }
-function build(file){
+function buildUnsafe(file){
  const{root,m}=load(file),data=v.json(root,m.canonical),raw=v.json(root,m.raw),events=v.json(root,m.corrections),template=v.bytes(root,m.template).toString();
  fail(v.objHash(v.replay(raw,events))===v.objHash(data),'CANONICAL_NOT_FROM_CORRECTIONS');
  fail(template.split('{{READER_DATA}}').length===2,'ONE_TEMPLATE_SLOT_REQUIRED');
@@ -49,32 +49,51 @@ function build(file){
  fail(v.objHash(v.extract(html).data)===v.objHash(data),'BUILD_ROUNDTRIP_FAILED');
  const stamp=new Date().toISOString().replace(/[^0-9]/g,'');m.artifact=write(root,'candidates/'+stamp+'-'+v.hash(html).slice(0,12)+'-UNVERIFIED.html',html);m.deliveryState='blocked-evidence-required';saveManifest(root,m);return m;
 }
+function withLock(file,fn){
+ const lock=path.join(path.dirname(path.resolve(file)),'.writer.lock');let handle;
+ try{handle=fs.openSync(lock,'wx',0o600);}catch(e){if(e.code==='EEXIST')throw Error('WORKSPACE_BUSY_OR_RECOVERY_REQUIRED');throw e;}
+ try{fs.writeFileSync(handle,JSON.stringify({pid:process.pid,at:new Date().toISOString()}));return fn();}finally{fs.closeSync(handle);fs.unlinkSync(lock);}
+}
+function correct(file,eventFile){return withLock(file,()=>correctUnsafe(file,eventFile));}
+function build(file){return withLock(file,()=>buildUnsafe(file));}
 function plan(file,request){
  fail(['stage','promote','attach','pages'].includes(request?.operation),'UNKNOWN_DELIVERY_OPERATION');
  const channel=request.channel;fail(['preview','production'].includes(channel),'EXPLICIT_CHANNEL_REQUIRED');
  if(request.operation==='stage')fail(request.createOnly===true&&!request.targetFileId&&!request.normalFileId,'STAGING_MUST_BE_CREATE_ONLY');
- const phase=channel==='preview'?'preview':request.operation==='stage'?'prepare':request.operation==='pages'?'release':'deployed';
+ const phase=channel==='preview'?'preview':request.operation==='stage'?'prepare':request.operation==='pages'?'release':request.deviceVerified===true?'device':'deployed';
  const result=v.validateBundle(file,{phase});fail(result.eligible,'DELIVERY_BLOCKED: '+result.errors.join('; '));
  fail(request.expectedArtifactSha256===result.subject.artifactSha256,'PLAN_ARTIFACT_CHANGED');
  if(channel==='preview')fail(request.operation!=='promote'&&request.createOnly===true&&!request.normalFileId,'PREVIEW_CANNOT_REPLACE_NORMAL');
  if(request.operation==='promote')fail(request.targetFileId&&/^[a-f0-9]{64}$/.test(request.expectedCurrentSha256||''),'COMPARE_AND_SWAP_REQUIRED');
- return {schema:'reader-delivery-plan-v2',operation:request.operation,channel,artifactSha256:result.subject.artifactSha256,subjectSha256:result.subjectSha256,targetFileId:request.targetFileId||null,expectedCurrentSha256:request.expectedCurrentSha256||null,createOnly:request.createOnly===true,postWriteReadbackRequired:true,expiresAt:new Date(Date.now()+15*60*1000).toISOString(),note:'Plan is not upload completion. Connector adapters must check current bytes before writing, then read back the exact target.'};
+ return {schema:'reader-delivery-plan-v2',operation:request.operation,channel,artifactSha256:result.subject.artifactSha256,subjectSha256:result.subjectSha256,targetFileId:request.targetFileId||null,expectedCurrentSha256:request.expectedCurrentSha256||null,createOnly:request.createOnly===true,phase,postWriteReadbackRequired:true,expiresAt:new Date(Date.now()+15*60*1000).toISOString(),note:'Plan is not upload completion. Connector adapters must check current bytes before writing, then read back the exact target.'};
 }
 function exportChecked(file,out,request){
  fail(!fs.existsSync(out),'EXPORT_DESTINATION_EXISTS');const p=plan(file,request),{root,m}=load(file),b=v.bytes(root,m.artifact);
  const jst=new Date(Date.now()+9*60*60*1000).toISOString().replace(/[^0-9]/g,'');
- p.fileName=jst.slice(0,8)+'_'+jst.slice(8,12)+'_'+m.bookId+'_'+(p.channel==='preview'?'PREVIEW-UNVERIFIED':'VERIFIED-READING')+'_'+p.artifactSha256.slice(0,12)+'.html';
+ p.fileName=jst.slice(0,8)+'_'+jst.slice(8,12)+'_'+m.bookId+'_'+(p.channel==='preview'?'PREVIEW-UNVERIFIED':request.operation==='stage'?'STAGING-NOT-RELEASED':'VERIFIED-READING')+'_'+p.artifactSha256.slice(0,12)+'.html';
  fs.mkdirSync(out,{recursive:true,mode:0o700});write(out,p.fileName,b);write(out,'delivery-plan.json',p);return p;
 }
-function issue(file,request,context,keyFile,keyId,policyFile){
- const p=plan(file,request),phase=p.channel==='preview'?'preview':request.operation==='pages'?'release':'deployed',r=v.validateBundle(file,{phase});fail(r.eligible,'RECEIPT_BLOCKED');
- const policy=JSON.parse(fs.readFileSync(policyFile)),priv=fs.readFileSync(keyFile),publicKey=crypto.createPublicKey(priv).export({format:'pem',type:'spki'});
- fail(policy.trustedKeys?.[keyId]===publicKey,'KEY_NOT_APPROVED');
- fail(context.book?.id===r.subject.bookId&&context.book.entry===context.entry&&context.publicFiles?.[context.entry]===r.subject.loaderSha256,'RECEIPT_CONTEXT_MISMATCH');
- const payload={...r,channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,toolSha256:v.hash(fs.readFileSync(path.join(__dirname,'reader-release-control.cjs'))),issuedAt:new Date().toISOString()};
- return {payload,keyId,signature:crypto.sign(null,Buffer.from(v.stable(payload)),priv).toString('base64')};
+function issue(file,request,context){
+ const p=plan(file,request),r=v.validateBundle(file,{phase:p.phase});fail(r.eligible,'RECEIPT_BLOCKED');
+ fail(context.book?.id===r.subject.bookId&&context.book.entry===context.entry&&context.publicFiles?.[context.entry]===r.subject.loaderSha256&&/^[a-f0-9]{64}$/.test(context.reportSha256||''),'RECEIPT_CONTEXT_MISMATCH');
+ const payload={...r,channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,issuedAt:new Date().toISOString(),trustBoundary:'Local evidence attestation, not independent reviewer authentication.'};
+ return {schema:'reader-local-attestation-v1',payload,digest:v.objHash(payload)};
+}
+function verifyPlan(planFile,artifactFile,currentFile){
+ const p=JSON.parse(fs.readFileSync(planFile)),now=Date.now();
+ fail(p.schema==='reader-delivery-plan-v2'&&Number.isFinite(Date.parse(p.expiresAt))&&Date.parse(p.expiresAt)>now,'EXPIRED_OR_INVALID_PLAN');
+ fail(v.hash(fs.readFileSync(artifactFile))===p.artifactSha256,'PLAN_ARTIFACT_CHANGED');
+ if(p.operation==='promote')fail(currentFile&&v.hash(fs.readFileSync(currentFile))===p.expectedCurrentSha256,'TARGET_VERSION_CONFLICT');
+ return p;
+}
+function completePlan(planFile,artifactFile,readbackFile,observedFileId){
+ const p=JSON.parse(fs.readFileSync(planFile));
+ fail(p.schema==='reader-delivery-plan-v2'&&v.hash(fs.readFileSync(artifactFile))===p.artifactSha256,'PLAN_ARTIFACT_CHANGED');
+ fail(observedFileId&&(!p.targetFileId||p.targetFileId===observedFileId),'WRONG_TARGET_READBACK');
+ fail(v.hash(fs.readFileSync(readbackFile))===p.artifactSha256,'POSTWRITE_READBACK_MISMATCH');
+ return {schema:'reader-delivery-completion-v1',planSha256:v.hash(fs.readFileSync(planFile)),artifactSha256:p.artifactSha256,targetFileId:observedFileId,completedAt:new Date().toISOString()};
 }
 if(require.main===module){
- const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])),a[3],a[4],a[5]);else throw Error('Commands: init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT PRIVATE_KEY KEY_ID POLICY');console.log(JSON.stringify(c==='init'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
+ const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
 }
-module.exports={init,correct,build,plan,exportChecked,issue};
+module.exports={init,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};

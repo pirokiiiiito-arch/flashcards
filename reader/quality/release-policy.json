@@ -99,13 +99,11 @@
       "wh2-161-180": "faed0090389105c1909932d98203e49cf32b449f2ea84092991d2e306b819fc1"
     }
   },
-  "trustedKeys": {
-    "local-release-20261112": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAZG3yJ73IxmOIxljwbdE5SHjx9kL8jI+MWtt9Ok2MNLA=\n-----END PUBLIC KEY-----\n"
-  },
+  "trustedKeys": {},
   "receipts": [],
   "notes": [
-    "Baseline preserves compatibility only; no OCR or iPhone certification.",
-    "Private signing key is never stored in GitHub.",
-    "Every new or changed reader asset needs a signed receipt; all existing readers remain byte-identical."
+    "Compatibility snapshot is not OCR certification.",
+    "Private evidence is validated locally; public receipts bind identities and evidence digests but do not authenticate a human reviewer.",
+    "All new or changed reader releases require a locally validated exact-artifact receipt. Unadmitted new files are excluded from the public deployment tree."
   ]
 }

@@ -48,6 +48,7 @@ function audit(html,start,end) {
  }
  if(result.OCRTextPages===0){
   const allConfirmedNoText=book.pages.every(p=>p.hasReadableProse==='no'&&p.proofStatus==='passed');
+  result.allConfirmedNoText=allConfirmedNoText;
   if(!allConfirmedNoText)errors.push('ZERO_OCR_TEXT: do not deliver an empty reader as a reading edition');
  }
  if(/読書用完成|全字校正済み|iPhone実機確認済み/.test(String(book.state||''))&&
