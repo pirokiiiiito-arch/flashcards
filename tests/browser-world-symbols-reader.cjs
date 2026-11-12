@@ -43,10 +43,15 @@ async function gotoScan(page,scan){
 async function testEngine(engine,name){
  const browser=await engine.launch({headless:true});
  try{
+  // A fresh browser document is required: setContent() on the same page
+  // preserves window globals; the gesture v5 singleton would be incorrectly
+  // carried into the v6 document and hide its live status element.
+  const baseline=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:1});
+  await baseline.setContent(v5Only,{waitUntil:'domcontentloaded'});
+  await baseline.locator('#readingStage').waitFor();
+  const beforeHeight=await baseline.locator('#readingContent').evaluate(el=>el.clientHeight);
+  await baseline.close();
   const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:1});
-  await page.setContent(v5Only,{waitUntil:'domcontentloaded'});
-  await page.locator('#readingStage').waitFor();
-  const beforeHeight=await page.locator('#readingContent').evaluate(el=>el.clientHeight);
   await page.setContent(fixed,{waitUntil:'domcontentloaded'});
   await page.locator('#readingStage').waitFor();
   await page.locator('#ws-v6-mark').waitFor();
