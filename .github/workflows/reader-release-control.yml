@@ -1,0 +1,33 @@
+name: Reader release evidence and admission
+on:
+  push:
+    branches: [main, fix/reader-release-evidence-20261112]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reader-release-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Reproduce existing generated reader files before byte verification
+        run: |
+          python3 tools/build-wh1-figure-viewport-v8.py
+          python3 tools/build-wh1-library-v9.py
+      - name: Test evidence failures, canonical revisions and staging safety
+        run: |
+          node --check tools/reader-release-control.cjs
+          node --check tools/reader-private-pipeline.cjs
+          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs
+      - name: Admit only unchanged legacy bytes or signed exact releases
+        run: node tools/reader-release-control.cjs repo
+      - name: Record certification boundary
+        run: echo 'This is release-control validation, NOT a pass of every book OCR check. Existing drafts remain unverified; no private source or signing key is present in CI.'
