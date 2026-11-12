@@ -9,10 +9,12 @@ const match=originalSource.match(/<script id="embedded-data" type="application\/
 if(!match)throw Error('Synthetic book data missing');
 const fakeBook=JSON.parse(match[1]);
 fakeBook.pages[3].blocks=[{id:'synthetic-004-1',kind:'body',text:'検証専用の日本語文章。'.repeat(240)}];
+fakeBook.pages[10].blocks=[{id:'synthetic-011-name',kind:'body',text:'架空の解説です。現代の深層心理学では、C。G。ユングの考え方を参考にする文章が続きます。'.repeat(16)}];
 const source=originalSource.replace(match[1],JSON.stringify(fakeBook));
 const compact=require('../reader/world-symbols/001-020/reader-layout-v6.js');
+const initials=require('../reader/world-symbols/001-020/reader-initials-v7.js');
 const v5Only=gesture.wrapHtml(repair.repair(source).html);
-const fixed=compact.wrapHtml(v5Only);
+const fixed=initials.wrapHtml(compact.wrapHtml(v5Only));
 async function moveTouch(page,down){
  return page.evaluate(down=>{
   const element=document.getElementById('readView');
@@ -69,6 +71,21 @@ async function testEngine(engine,name){
   assert.equal(metrics.font,20,name+' must preserve WH1 20px font');
   assert.ok(Math.abs(parseFloat(metrics.line)-30)<0.5,name+' must preserve WH1 line-height 1.50');
   process.stdout.write('MEASURE '+name+' WH1-style compact text height: '+beforeHeight+' -> '+afterHeight+' px at 390x844\\n');
+  await page.locator('#ws-gesture-v5-status').waitFor();
+  await page.locator('#ws-v7-mark').waitFor();
+  await gotoScan(page,11);
+  const typography=await page.evaluate(()=>{
+    const raw=book.pages[10].blocks[0].originalOCRText;
+    const text=book.pages[10].blocks[0].text;
+    const span=document.querySelector('.ws-proper-name-no-break');
+    const left=text.indexOf('C.G.ユング'),safe=wsSafeCut(text,left+3);
+    return {raw,text,span:span?.textContent,whiteSpace:span?getComputedStyle(span).whiteSpace:null,left,safe};
+  });
+  assert.ok(typography.raw.includes('C。G。'),name+' original OCR must remain available');
+  assert.match(typography.text,/C\.G\.ユング/,name+' original Latin initials lost');
+  assert.equal(typography.span,'C.G.ユング',name+' atomic name span missing');
+  assert.equal(typography.whiteSpace,'nowrap',name+' name can wrap within the reading column');
+  assert.equal(typography.safe,typography.left,name+' name was split by a page boundary');
   await page.locator('#ws-gesture-v5-status').waitFor();
   assert.match(await page.locator('#ws-gesture-v5-status').innerText(),/操作修正v5を読込済み/,name+' must execute v5');
   await gotoScan(page,4);

@@ -42,12 +42,13 @@ a{color:#2c666c}
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
   <p id="status" role="status" aria-live="polite">読書版HTMLを選択してください。</p>
-  <p class="note">表示改善v6：『世界の歴史1』と同じ20px・行間1.50で、読書領域を広く確保します。操作ログは1行固定、ボタン欄は横1行で、ページ数の変動を抑えます。操作修正版v5：読書画面の上部に「操作修正v5を読込済み」が表示されます。下スワイプは前へ、上スワイプは次へ。読み込み時に以前の操作処理を上書きし、操作を検出した時点でページを送ります。この読書入口は『世界の歴史1』準拠の上下スワイプ、図版固定、画面全体ピンチ拡大を読み込み時に適用します。原本画像と読み込み前のOCRは変更しません。本文中の半角「,」「.」は読書・書き出し時に「、」「。」へ置換し、元のOCR文字列も保持します。読書HTMLを保存する場合は読書画面の「読込・保存」から書き出してください。</p><p class="note">原本画像とOCR本文はこのWebサイトに公開しません。この端末のChrome内へ保存します。別の本・分冊とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」「比較」に切り替えられます。</p>
+  <p class="note">原本表記修正v7：スキャン011の「C.G.ユング」を原本どおりに表示し、名前の途中で改ページしません。元のOCR記録は保持します。表示改善v6：『世界の歴史1』と同じ20px・行間1.50で、読書領域を広く確保します。操作ログは1行固定、ボタン欄は横1行で、ページ数の変動を抑えます。操作修正版v5：読書画面の上部に「操作修正v5を読込済み」が表示されます。下スワイプは前へ、上スワイプは次へ。読み込み時に以前の操作処理を上書きし、操作を検出した時点でページを送ります。この読書入口は『世界の歴史1』準拠の上下スワイプ、図版固定、画面全体ピンチ拡大を読み込み時に適用します。原本画像と読み込み前のOCRは変更しません。本文中の半角「,」「.」は読書・書き出し時に「、」「。」へ置換し、元のOCR文字列も保持します。読書HTMLを保存する場合は読書画面の「読込・保存」から書き出してください。</p><p class="note">原本画像とOCR本文はこのWebサイトに公開しません。この端末のChrome内へ保存します。別の本・分冊とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」「比較」に切り替えられます。</p>
  </main>
 </div>
 <script src="./reader-repair-v1.js?v=20261112-v4-pointer-swipe"></script>
 <script src="./reader-gesture-v5.js?v=20261112-v5-touchmove"></script>
 <script src="./reader-layout-v6.js?v=20261112-v6-compact-height"></script>
+<script src="./reader-initials-v7.js?v=20261112-v7-cg-jung"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
@@ -95,7 +96,7 @@ async function openBook(blob){
  currentBlob=blob;
  $('status').textContent='読書画面を開いています…';
  if(activeUrl)URL.revokeObjectURL(activeUrl);
- const result=WorldSymbolsReaderRepair.repair(await blob.text());const gestureFixed=WorldSymbolsGestureV5.wrapHtml(result.html);const layoutFixed=WorldSymbolsLayoutV6.wrapHtml(gestureFixed);const htmlBlob=new Blob([layoutFixed],{type:'text/html;charset=utf-8'});
+ const result=WorldSymbolsReaderRepair.repair(await blob.text());const gestureFixed=WorldSymbolsGestureV5.wrapHtml(result.html);const layoutFixed=WorldSymbolsLayoutV6.wrapHtml(gestureFixed);const initialsFixed=WorldSymbolsInitialsV7.wrapHtml(layoutFixed);const htmlBlob=new Blob([initialsFixed],{type:'text/html;charset=utf-8'});
  activeUrl=URL.createObjectURL(htmlBlob);
  const frame=$('reader');
  frame.onload=()=>{

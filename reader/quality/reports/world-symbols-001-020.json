@@ -4,7 +4,7 @@
   "bookId": "world-symbols-001-020",
   "entry": "reader/world-symbols/001-020/index.html",
   "stage": "draft",
-  "version": "20261112_v6_compact-layout",
+  "version": "20261112_v7_CG_Jung_source_spelling",
   "scanRange": [
     1,
     20
@@ -80,7 +80,7 @@
     },
     "G3-02": {
       "status": "needs_source_review",
-      "note": "User requested comma/period → 、/。 for all body blocks; private imported OCR source unchanged. Reader maps text in memory and stores originalOCRText on export. Punctuation correctness against each original page not independently verified."
+      "note": "Original scan011 verified C.G.ユング; browser-only repair protects initials, full scan OCR review not completed."
     },
     "G3-03": {
       "status": "not_run"
@@ -110,7 +110,7 @@
     },
     "G4-04": {
       "status": "needs_source_review",
-      "note": "Japanese word and number/page boundary behavior revised in on-device patch; 24 screen conditions not yet inspected."
+      "note": "C.G.ユング is protected from splits at reading-page boundaries by v7. All other prose page boundaries remain unverified."
     },
     "G4-05": {
       "status": "not_run"
@@ -180,7 +180,7 @@
     },
     "G7-03": {
       "status": "needs_source_review",
-      "note": "User screenshot shows pagination counts 10, 9 and 11 for scan009; compact header and fixed status height deployed, re-pagination and full text integrity still require verification."
+      "note": "v7 renders the proper name atomically without rewriting original embedded bookdata. Full 20-page reverse-concatenation audit remains unverified."
     },
     "G7-04": {
       "status": "failed",

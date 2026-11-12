@@ -6,7 +6,7 @@ on:
       - 'reader/world-symbols/**'
       - 'tests/world-symbols-repair.test.cjs'
       - 'tests/world-symbols-gesture-v5.test.cjs'
-      - 'tests/world-symbols-layout-v6.test.cjs'
+      - 'tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs'
       - 'tests/browser-world-symbols-reader.cjs'
       - 'tests/fixtures/world-symbols-synthetic.html'
       - '.github/workflows/world-symbols-browser.yml'
