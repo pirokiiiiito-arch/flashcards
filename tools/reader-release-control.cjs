@@ -11,7 +11,17 @@ const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 function stable(x){if(x===null||typeof x!=='object')return JSON.stringify(x);if(Array.isArray(x))return '['+x.map(stable).join(',')+']';return '{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+stable(x[k])).join(',')+'}';}
-const objHash=x=>hash(stable(x)),hex=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
+// Stream the exact stable serialization to avoid allocating the full embedded-image book per hash.
+const stableLargeStrings=new Map();
+function objHash(x){
+ const h=crypto.createHash('sha256');
+ function visit(y,context='root'){
+  if(y===null||typeof y!=='object'){if(typeof y==='string'&&y.length>16384){let buf=stableLargeStrings.get(y);if(!buf){buf=Buffer.from(JSON.stringify(y));stableLargeStrings.set(y,buf);if(stableLargeStrings.size>128)stableLargeStrings.delete(stableLargeStrings.keys().next().value);}h.update(buf);return;}const s=JSON.stringify(y);if(s===undefined){if(context==='array')return;if(context==='object'){h.update('undefined');return;}}h.update(s);return;}
+  if(Array.isArray(y)){h.update('[');y.forEach((z,i)=>{if(i)h.update(',');visit(z,'array');});h.update(']');return;}
+  h.update('{');Object.keys(y).sort().forEach((k,i)=>{if(i)h.update(',');h.update(JSON.stringify(k)+':');visit(y[k],'object');});h.update('}');
+ } visit(x);return h.digest('hex');
+}
+const hex=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 function demand(ok,why){if(!ok)throw Error(why);}
 function safe(root,rel){
  demand(typeof rel==='string'&&rel.length>0&&!rel.includes('\\')&&!path.isAbsolute(rel)&&!rel.split('/').some(p=>p==='..'||p==='.'||p===''),'UNSAFE_PATH');
@@ -47,6 +57,21 @@ function replay(raw,events){
  for(const e of events){
   demand(e.beforeDataSha256===previous&&e.actor&&e.reason&&e.sourceRegion&&hex(e.sourceSha256)&&Number.isFinite(Date.parse(e.at)),'BAD_CORRECTION_EVENT');
   const p=pages.find(x=>x.scan===e.scan);demand(p&&p.sha256===e.sourceSha256,'CORRECTION_SOURCE_MISMATCH');
+  if(e.kind==='source-region-classification'){
+   const keys=['has_any_text','has_readable_prose','original_only_justification'];
+   demand(e.pointer==='classification'&&e.before&&e.after&&objHash(Object.keys(e.after).sort())===objHash(keys.slice().sort()),'CLASSIFICATION_KEYS');
+   demand(keys.every(k=>p[k]===e.before[k]),'CLASSIFICATION_PRECONDITION');
+   const prose=[p.reading_text,...(p.figures||[]).map(f=>f.caption),...(p.boxed_articles||[]).map(b=>b.text)].some(t=>typeof t==='string'&&t.trim().length>0);
+   demand(e.after.has_any_text===true&&e.after.has_readable_prose===prose&&(prose?e.after.original_only_justification===null:typeof e.after.original_only_justification==='string'&&e.after.original_only_justification.length>=20),'CLASSIFICATION_CONTENT_MISMATCH');
+   for(const k of keys)p[k]=e.after[k];previous=objHash(data);demand(previous===e.afterDataSha256,'CORRECTION_CHAIN_BROKEN');continue;
+  }
+  if(e.kind==='register-original-figure'){
+   const f=e.after;
+   demand(e.before===null&&e.pointer==='figures/-'&&Array.isArray(p.figures)&&p.figures.length===0,'REGISTRATION_REQUIRES_EMPTY_FIGURES');
+   demand(f&&f.source_scan===p.scan&&f.caption_source_scan===p.scan&&f.source_sha256===p.sha256&&f.image===p.original&&typeof f.caption==='string'&&f.caption.length>0&&typeof f.id==='string'&&f.id.length>0,'REGISTRATION_SOURCE_MISMATCH');
+   demand(f.representation==='original_JPEG_unchanged'&&Array.isArray(f.source_box_xyxy)&&objHash(f.source_box_xyxy)===objHash([0,0,p.source_image_width,p.source_image_height]),'REGISTRATION_NOT_WHOLE_ORIGINAL');
+   p.figures.push(structuredClone(f));previous=objHash(data);demand(previous===e.afterDataSha256,'CORRECTION_CHAIN_BROKEN');continue;
+  }
   demand(/^(reading_text|title|(?:figures\/\d+\/(?:caption|display_title))|(?:boxed_articles\/\d+\/(?:text|title))|(?:blocks\/\d+\/text))$/.test(e.pointer||''),'UNSAFE_CORRECTION_FIELD');
   const parts=e.pointer.split('/');let target=p;for(const part of parts.slice(0,-1)){demand(target&&Object.hasOwn(target,part),'CORRECTION_PATH_MISSING');target=target[part];}
   const key=parts.at(-1);demand((target[key]??null)===e.before&&typeof e.after==='string','STALE_CORRECTION');
