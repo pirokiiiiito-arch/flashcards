@@ -52,6 +52,7 @@ function build(file){
 function plan(file,request){
  fail(['stage','promote','attach','pages'].includes(request?.operation),'UNKNOWN_DELIVERY_OPERATION');
  const channel=request.channel;fail(['preview','production'].includes(channel),'EXPLICIT_CHANNEL_REQUIRED');
+ if(request.operation==='stage')fail(request.createOnly===true&&!request.targetFileId&&!request.normalFileId,'STAGING_MUST_BE_CREATE_ONLY');
  const phase=channel==='preview'?'preview':request.operation==='stage'?'prepare':request.operation==='pages'?'release':'deployed';
  const result=v.validateBundle(file,{phase});fail(result.eligible,'DELIVERY_BLOCKED: '+result.errors.join('; '));
  fail(request.expectedArtifactSha256===result.subject.artifactSha256,'PLAN_ARTIFACT_CHANGED');
@@ -61,7 +62,9 @@ function plan(file,request){
 }
 function exportChecked(file,out,request){
  fail(!fs.existsSync(out),'EXPORT_DESTINATION_EXISTS');const p=plan(file,request),{root,m}=load(file),b=v.bytes(root,m.artifact);
- fs.mkdirSync(out,{recursive:true,mode:0o700});write(out,p.channel==='preview'?'PREVIEW-UNVERIFIED.html':'VERIFIED-READING.html',b);write(out,'delivery-plan.json',p);return p;
+ const jst=new Date(Date.now()+9*60*60*1000).toISOString().replace(/[^0-9]/g,'');
+ p.fileName=jst.slice(0,8)+'_'+jst.slice(8,12)+'_'+m.bookId+'_'+(p.channel==='preview'?'PREVIEW-UNVERIFIED':'VERIFIED-READING')+'_'+p.artifactSha256.slice(0,12)+'.html';
+ fs.mkdirSync(out,{recursive:true,mode:0o700});write(out,p.fileName,b);write(out,'delivery-plan.json',p);return p;
 }
 function issue(file,request,context,keyFile,keyId,policyFile){
  const p=plan(file,request),phase=p.channel==='preview'?'preview':request.operation==='pages'?'release':'deployed',r=v.validateBundle(file,{phase});fail(r.eligible,'RECEIPT_BLOCKED');
