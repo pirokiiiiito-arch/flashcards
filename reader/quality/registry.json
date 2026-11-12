@@ -144,6 +144,14 @@
       "stage": "draft",
       "migratedFromFrozenBlobSha": "db61c8974a9de46b2f7f44458899d042e6543c75",
       "migrationReason": "An existing WH2 reader entry changed during a separate workstream; migrate it to the canonical 60-item audit as an explicitly unverified draft before allowing publication."
+    },
+    {
+      "id": "wh2-161-180",
+      "entry": "reader/wh2/161-180/index.html",
+      "entryBlobSha": "f2cafaab27623f0df3d44e1e612ed5449d5c5d0d",
+      "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/wh2/161-180/index.html?import=1",
+      "report": "reader/quality/reports/wh2-161-180.json",
+      "stage": "draft"
     }
   ]
 }
