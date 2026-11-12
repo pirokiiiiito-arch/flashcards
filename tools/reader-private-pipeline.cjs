@@ -63,7 +63,7 @@ function plan(file,request){
 function exportChecked(file,out,request){
  fail(!fs.existsSync(out),'EXPORT_DESTINATION_EXISTS');const p=plan(file,request),{root,m}=load(file),b=v.bytes(root,m.artifact);
  const jst=new Date(Date.now()+9*60*60*1000).toISOString().replace(/[^0-9]/g,'');
- p.fileName=jst.slice(0,8)+'_'+jst.slice(8,12)+'_'+m.bookId+'_'+(p.channel==='preview'?'PREVIEW-UNVERIFIED':'VERIFIED-READING')+'_'+p.artifactSha256.slice(0,12)+'.html';
+ p.fileName=jst.slice(0,8)+'_'+jst.slice(8,12)+'_'+m.bookId+'_'+(p.channel==='preview'?'PREVIEW-UNVERIFIED':p.operation==='stage'?'STAGED-NOT-DELIVERED':'VERIFIED-READING')+'_'+p.artifactSha256.slice(0,12)+'.html';
  fs.mkdirSync(out,{recursive:true,mode:0o700});write(out,p.fileName,b);write(out,'delivery-plan.json',p);return p;
 }
 function issue(file,request,context,keyFile,keyId,policyFile){
@@ -74,7 +74,18 @@ function issue(file,request,context,keyFile,keyId,policyFile){
  const payload={...r,channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,toolSha256:v.hash(fs.readFileSync(path.join(__dirname,'reader-release-control.cjs'))),issuedAt:new Date().toISOString()};
  return {payload,keyId,signature:crypto.sign(null,Buffer.from(v.stable(payload)),priv).toString('base64')};
 }
-if(require.main===module){
- const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])),a[3],a[4],a[5]);else throw Error('Commands: init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT PRIVATE_KEY KEY_ID POLICY');console.log(JSON.stringify(c==='init'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
+function certify(file,request,context,policyFile){
+ const p=plan(file,request),phase=p.channel==='preview'?'preview':request.operation==='pages'?'release':'deployed',r=v.validateBundle(file,{phase});fail(r.eligible,'RECEIPT_BLOCKED');
+ const policyBytes=fs.readFileSync(policyFile),policy=JSON.parse(policyBytes);
+ fail(context.book?.id===r.subject.bookId&&context.book.entry===context.entry&&context.publicFiles?.[context.entry]===r.subject.loaderSha256,'RECEIPT_CONTEXT_MISMATCH');
+ const {publicKey,privateKey}=crypto.generateKeyPairSync('ed25519');
+ const publicPem=publicKey.export({format:'pem',type:'spki'}),keyId='review-'+v.hash(publicPem).slice(0,20);
+ const payload={...r,channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,toolSha256:v.hash(fs.readFileSync(path.join(__dirname,'reader-release-control.cjs'))),issuedAt:new Date().toISOString()};
+ const receipt={payload,keyId,signature:crypto.sign(null,Buffer.from(v.stable(payload)),privateKey).toString('base64')};
+ // Only public material leaves this function. KeyObject is never exported to a file.
+ return {receipt,publicKeyRegistration:{keyId,publicKey:publicPem,expectedPolicySha256:v.hash(policyBytes)},note:'Owner-reviewed public-key registration and the signed exact-release receipt must be committed together. This is evidence attestation, not an independent proof of human review.'};
 }
-module.exports={init,correct,build,plan,exportChecked,issue};
+if(require.main===module){
+ const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='certify')r=certify(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])),a[3]);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])),a[3],a[4],a[5]);else throw Error('Commands: init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | certify MANIFEST REQUEST CONTEXT POLICY | issue MANIFEST REQUEST CONTEXT PRIVATE_KEY KEY_ID POLICY');console.log(JSON.stringify(c==='init'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
+}
+module.exports={init,correct,build,plan,exportChecked,issue,certify};
