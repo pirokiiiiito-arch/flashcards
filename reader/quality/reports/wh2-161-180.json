@@ -12,14 +12,15 @@
   "deviceVerification": "not_run",
   "privateArtifact": {
     "driveFileId": "1gCkWx_FWAwaRFIVftuyZVJaHO03MzzRP",
-    "sha256": "9bca559af5d4fa0b5b2e3c9ac6b0620f9fe213a8ed6b02138552766cfea1e4dc",
-    "bytes": 44779598,
+    "sha256": "14f87b4e646b1c8fffaedaf9e11f2ef4f7d74d5141893338560318ca6e20c1a6",
+    "bytes": 44779938,
     "sourceZipSha256": "678edef271b5d7030d2fe91107db12504642cdbb02b30b68890e75a5bc3dd06c",
     "originalCount": 20,
     "figureCount": 13,
-    "boxedArticleCount": 4
+    "boxedArticleCount": 4,
+    "bookdataSha256": "eefe2b35a37b362339b43db4fea59efd1f7588c0db5275f28aebabf239ba6190"
   },
-  "notes": "OCR一次稿・校正継続中。原本ZIP280枚中161〜180の20枚を独立した原本対応表SHAと照合し無加工収録。13図版PNG切出しは原本ピクセル照合。軽量Chromium 8 checks passed. フルOCR独立全字照合、24画面条件、iPhone実機、GitHub Pages公開実測は未実施。全60項目合格・完成を主張しない。",
+  "notes": "OCR一次稿・校正継続中。原本ZIP280枚中161〜180の20枚を独立した原本対応表SHAと照合し無加工収録。13図版PNG切出しは原本ピクセル照合。軽量Chromium 8 checks passed. フルOCR独立全字照合、24画面条件、iPhone実機、GitHub Pages公開実測は未実施。全60項目合格・完成を主張しない。 20261112 18:50 JST: 原本162の『紀元前522〜486年』をOCR誤認『522て486』から読書表示のみ訂正。数字の横倒し表示と本文のCSSは変更なし。元OCRおよびbookdataは不変。",
   "checks": {
     "G1-01": {
       "status": "needs_source_review"
@@ -72,7 +73,7 @@
     },
     "G3-01": {
       "status": "needs_source_review",
-      "note": "Text 161-180 is first-pass vertical OCR, with obvious visual corrections in reader override and raw OCR preserved; independent full word-for-word source check not performed."
+      "note": "Text 161-180 is first-pass vertical OCR, with obvious visual corrections in reader override and raw OCR preserved; independent full word-for-word source check not performed. OCR表示用の『て→〜』のみ原本で文字照合済み。全文未照合状態は維持。"
     },
     "G3-02": {
       "status": "needs_source_review"
