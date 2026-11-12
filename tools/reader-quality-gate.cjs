@@ -35,7 +35,7 @@ function reportCheck(book,rep,errors){
   const a=rep.artifactAudit;
   if(!a||a.schema!=='reader-artifact-audit-v1'||a.structuralStatus!=='passed'||
      !/^[0-9a-f]{64}$/.test(a.sourceSha256||'')||a.originals!==rep.scanRange[1]-rep.scanRange[0]+1||
-     a.OCRTextPages<1||a.errors?.length)
+     (!Number.isInteger(a.OCRTextPages)||a.OCRTextPages<0||(a.OCRTextPages===0&&a.allConfirmedNoText!==true))||a.errors?.length)
    errors.push(prefix+'private HTML source audit missing/failed - run tools/reader-artifact-audit.cjs');
  }
  const checks=rep.checks;
@@ -135,6 +135,6 @@ if(require.main===module){
  for(const x of r.warnings||[])console.log('NOTICE:',x);
  for(const x of r.errors||[])console.error('BLOCK:',x);
  if(r.errors&&r.errors.length)process.exitCode=1;
- else console.log('PASS: canonical sixty-check gate; '+r.paths+' routes, '+r.managed+' managed, '+r.legacy+' frozen legacy');
+ else console.log('SCHEMA PASS ONLY (not OCR certification): '+r.paths+' routes, '+r.managed+' managed, '+r.legacy+' frozen legacy');
 }
 module.exports={validate,standardCheck,reportCheck,blobSHA,entryPaths,RULES,ID};

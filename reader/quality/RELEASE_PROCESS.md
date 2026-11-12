@@ -1,79 +1,75 @@
-# 読書制作・配布制御 v2
+# 読書制作・配布制御：実行手順
 
-正本はGoogle Driveの全書籍共通60項目（ID `1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2`）。本書は既存IDを実行する手順であり、新たな品質項目や別の正本ではない。
+正本はGoogle Driveの全書籍共通60項目（ID `1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2`）。この文書は実行手順であり、別の品質規則ではない。60のIDは増減しない。
 
-## 何を変え、何を変えないか
+## 保存する状態
 
-`reader-release-control.cjs` は私有の原本対応表、領域、独立第2稿、訂正履歴、数値照合、表示検査および証拠ファイルの実体を読む。単にチェック欄をpassedにしても通さない。`reader-private-pipeline.cjs` は一次結果・原本を不変で保存し、校正版からのみ候補HTMLを作る。既存のHTML、スワイプ、ピンチ、数字の向きは本改修では変更しない。既存の45入口・80ファイルは互換用基準であり、OCR合格証ではない。
+原本画像・一次読取り・初期表示処理・設定はimmutableに保存する。校正版はcanonical/revision-*、訂正履歴はcorrections/*、検査証拠はreview/*に別保存する。継続作業はmanifest.jsonから再開し、再initや一次OCRへの差戻しをしない。全作業データは公開リポジトリの外へ保存する。
 
-原本照合そのものを自動生成したり、OCRエンジンの認識精度を上げるプログラムではない。原本を実際に読む作業と、その証拠に対する責任は残る。
+訂正は原本の領域・確認者・理由・前後文字・前版のSHAを必須にする。原本と一次稿を変更せず、新しい校正版を作る。生成元は校正版のみ。訂正時は旧合格を現行版から外し、旧証拠ファイルは履歴として残す。書込みロックと版照合により同時編集を拒否する。中断後のロックは、作業が走っていないことを確認してから回復する。
 
-## 状態遷移（循環を作らない）
+読書HTMLのスワイプ、ピンチ、20px・行間1.50、承認された数字の向きは文字訂正とは別の固定入力である。無断で作り替えない。意図的な表示処理変更では、新しい処理版とその変更理由を記録し、すべての影響する検査を実行する。
 
-| 段階 | 必須の検査 | 許される操作 |
+## 公開までの順序
+
+| 段階 | 必須条件 | 可能な操作 |
 |---|---|---|
-| 作業中 | 全60項目を初期not_runで保存 | 私有ワークスペース内の読取り・訂正・候補生成 |
-| prepare | 制作側57項目。G8-03/04/08をまだ要求しない | 別名の新規・非公開仮保存だけ。通常ファイル上書き不可 |
-| release | prepare＋G8-08（仮保存から再取得した実バイト一致） | 署名付きの公開入口更新。本文は非公開 |
-| deployed | release＋G8-03（同じ入口のデプロイ成功と版確認） | 読書用完成の配布・通常版昇格。更新対象は直前読取りと競合検査し、保存後再読取り |
-| device | deployed＋G8-04（実際のiPhone Chromeの証拠） | 実機確認済みの独立表示 |
-| preview | 対象SHAを指定した明示的な未校正版確認依頼＋構造/原本不変性 | 専用preview入口と新規ファイル。通常版への上書き・完成表示は禁止 |
+| 作業中 | 初期値は60項目ともnot_run | 私有領域で作成・原本照合・訂正 |
+| prepare | 制作側57項目。G8-03/04/08は後続工程 | 新規の非公開仮保存のみ。通常版の置換不可 |
+| release | prepareとG8-08：仮保存の実ファイル再取得一致 | 読書入口を公開するための証拠記録出力 |
+| deployed | releaseとG8-03：対象入口の公開成功・版確認 | 通常版への昇格、検査済み読書版の配布 |
+| device | deployedとG8-04：実際のiPhone Chromeの確認 | 実機確認済みの独立表示 |
+| preview | そのSHAの未校正版について明示的な確認依頼 | 専用preview入口・新規ファイルのみ。通常版置換不可 |
 
-G8-03は公開前に成功を要求しない。G8-08の最初の読戻しは仮保存で実行できる。G8-04未実施だけを理由に読書用完成を永久停止しない。対象外は正本に基づく根拠を必要とし、成功件数には加算しない。原本自体の損傷は明示した原本注記として校正版へ収録し、通常の誤読や未実施の言い換えに使わない。
+公開前に公開成功を要求しない。Driveの最初の読戻しは仮保存で実行する。iPhone未実施だけでは制作側完成を止めないが、既知の失敗を「未実施」と扱わない。prepareの出力名はSTAGING-NOT-RELEASEDであり、配布済み完成版ではない。
 
-## 初回導入と再開
+## 私有側の検査
 
-Node.js 20以上、外部パッケージ不要。すべての私有ファイルはリポジトリの外へ保存する。
+`tools/reader-release-control.cjs check MANIFEST PHASE` は実ファイルを読み、ハッシュ・全ページ・領域座標・双方向の文字対応・独立第2稿・差分解決・全数値・異常文字の原本判定・分冊前後の境界・24条件の実HTML表示を照合する。チェック欄だけpassedでも、証拠実体がない、別版、別範囲、実測結果がfailedなら停止する。
 
-```sh
-node tools/reader-private-pipeline.cjs init PRIVATE_BOOK.html PRIVATE_WORK_DIR BOOK_ID reader/wh2/161-180/index.html SOURCE_INDEX.json
-node tools/reader-release-control.cjs check PRIVATE_WORK_DIR/manifest.json prepare
-```
+原本JPEGの一致はOCR精度の証明ではない。二つの転記が一致しても、両方が列を落とす可能性があるため、全領域と四辺の独立確認が必要。原本の図中文字、本文、独立図説を区別する。英字や数字を異常候補として検出しても自動削除しない。巻頭・巻末には存在しない隣接画像のハッシュを捏造しない。
 
-既存ワークスペースにinitを再実行して上書きしない。継続時は保存したmanifest.jsonを読んで、原本対応表、immutable/*、canonical/*、corrections/*、review/*、candidates/*を一組で復元する。読み込みや転記をやり直して既存校正を捨てない。各ファイル参照は相対pathとsha256。証拠を追加・変更したら実体からハッシュを再計算し、manifestの対応参照を更新する。証拠がない間はnot_runのままにする。
-
-`correct MANIFEST EVENT.json` はexpectedCanonicalSha256、scan、文字フィールドのpointer、before、after、原本領域ID(sourceRegion)、actor、reason、atを要求する。原本画像と一次OCRを変更せず、連鎖ハッシュ付きの新しい訂正版を作る。現行実装は安全側に全60結果をnot_runへ戻す。以前の証拠ファイルは削除しないが、変更版の証拠として再利用しない。
+実画像の検査を軽量フィクスチャで代用しない。24条件の各結果を同一の実HTMLと全対象スキャンへ結び付ける。原本・校正版・表示コード・設定・入口のどれかを変えれば、古い証拠は一致しなくなる。
 
 ```sh
-node tools/reader-private-pipeline.cjs correct PRIVATE_WORK_DIR/manifest.json SOURCE_CONFIRMED_EVENT.json
-node tools/reader-private-pipeline.cjs build PRIVATE_WORK_DIR/manifest.json
+node tools/reader-private-pipeline.cjs init PRIVATE.html PRIVATE_WORK BOOK_ID reader/BOOK/RANGE/index.html SOURCE_INDEX.json
+node tools/reader-private-pipeline.cjs correct PRIVATE_WORK/manifest.json SOURCE_CONFIRMED_EDIT.json
+node tools/reader-private-pipeline.cjs build PRIVATE_WORK/manifest.json
+node tools/reader-release-control.cjs check PRIVATE_WORK/manifest.json prepare
+node tools/reader-private-pipeline.cjs plan PRIVATE_WORK/manifest.json REQUEST.json
+node tools/reader-private-pipeline.cjs export PRIVATE_WORK/manifest.json NEW_EXPORT_DIR REQUEST.json
 ```
 
-原本から独立して第2稿を作り、すべての本文・見出し・図説・囲み記事を領域と双方向対応させる。領域の重なりは見出しと本文の関連など原本に沿って記録する。単に２つのOCR文字列が一致しただけでは、両方が落とした列を検出できないため、四辺と全領域の再点検も必須。
+訂正要求の必須項目はexpectedCanonicalSha256、scan、pointer、before、after、sourceRegion、actor、reason、at。実データを使わないテスト内のfixtureがJSON形状の例だが、試験用の合格記録を実書籍に流用しない。
 
-## 実証ファイル
+## 配布前後の検証
 
-`inventory`：全ページの原本SHA・寸法・領域座標・種類・収録フィールド・独立した２回の点検記録。
-`second`：第1稿とは別のrunId、先に第1稿を見なかった記録、原本対応表SHA、全フィールドの第2稿。
-`resolutions`：2稿差分の原本による解決、未解決事項、数字の全出現位置と原本根拠、機械警告の原本確認。英字を一律削除しない。
-`boundaries`：範囲内の全境界に加え、前分冊との入口・次分冊への出口。巻頭/巻末や写真介在も原本で理由を記録。
-`display`：実配布HTMLのSHA、実画素使用、全収録フィールドと描画文字の一致、全スキャン×320/390/430px×16/18/20/22/24/26/28/30pxの結果。高さ・回転・操作の詳細ログは各項目証拠へ含める。
-`checks`：正確に既存60ID。passed/not_applicableには存在する証拠ファイルのpathとsha256が必要。証拠はcheckId、artifactSha256、subjectSha256、reviewedBy、method、at、全scansを保持する。部分合格や異なる版の結果を全体合格にしない。
-
-subjectSha256は書籍・範囲・原本・一次稿・校正版・表示処理・設定・入口・実HTMLの組み合わせを固定する。本文だけでなく表示コードや入口を変更しても古い証拠は一致しなくなる。実装例はテスト内のsynthetic fixtureを参照するが、テスト用証拠を実書籍へ転用してはならない。
-
-## 配布と署名
+要求はoperation(stage/promote/attach/pages)、channel、expectedArtifactSha256を指定する。stageはcreateOnly:trueかつ更新対象なし。promoteはtargetFileIdと直前に読んだexpectedCurrentSha256が必須。
 
 ```sh
-node tools/reader-private-pipeline.cjs plan PRIVATE_WORK_DIR/manifest.json DELIVERY_REQUEST.json
-node tools/reader-private-pipeline.cjs export PRIVATE_WORK_DIR/manifest.json NEW_EXPORT_DIR DELIVERY_REQUEST.json
+node tools/reader-private-pipeline.cjs verify-plan PLAN.json EXACT_ARTIFACT.html CURRENT_TARGET.html
+# 検査した対象にだけコネクターで書込み、同じファイルIDから再取得する。
+node tools/reader-private-pipeline.cjs complete-plan PLAN.json EXACT_ARTIFACT.html READBACK.html OBSERVED_FILE_ID
 ```
 
-要求にはoperation(stage/promote/attach/pages)、channel(preview/production)、expectedArtifactSha256を指定。stageはcreateOnly:true、上書き対象なし。promoteは直前に読んだtargetFileIdとexpectedCurrentSha256を必須とする。出力にはJST日時・書籍ID・状態・SHA断片を付ける。計画は15分で期限切れ、アップロード完了報告ではない。コネクター実行者は実行直前に計画・現行版・操作対象を照合し、仮保存または通常ファイル更新後に実体を再取得する。同じSHAでも別ファイルを確認したことにしない。
+計画は15分で失効する。出力した計画やアップロード呼出しを完了扱いしない。別IDの再取得・異なるバイト列は完了記録を作れない。プロバイダーが条件付き更新を提供しない場合、読取りから更新までの競合を完全には排除できない。その場合は新規保存を優先し、上書きしたときも再取得を必須にする。
 
-`issue MANIFEST REQUEST CONTEXT PRIVATE_KEY KEY_ID POLICY` は私有ファイルを再検証してからEd25519署名を作る。公開するのは匿名化した判定・ハッシュ・公開資産一覧だけ。CONTEXTはentry、全bookレコード、reportSha256、publicFilesの正確なハッシュを持つ。署名鍵は公開リポジトリにも配布ZIPにも入れない。CIには公開鍵だけを置く。
+## 公開側の扱い
 
-通常配布の入口・台帳・私有HTMLの変更には、対象一致の署名を `release-policy.json` のreceiptsから参照させる。previewは `reader/preview/` 以下のみ。既存基準や信頼鍵をJSONだけで増やして抜け道を作れない。機構自体の改修は別のコードレビュー・回帰試験対象であり、書籍の検査不合格を消すために使わない。
+`issue MANIFEST REQUEST CONTEXT` は私有検査を再実行し、公開用の要約記録とダイジェストを作る。CONTEXTはentry、book、reportSha256、publicFiles。公開するのは判定・証拠のハッシュ・対象識別子だけであり、原本・本文・校正稿は含めない。この記録はファイル一致の検査用で、第三者の署名や目視実施の証明ではない。失われる一時署名鍵に後続工程を依存させない。
 
-## 公開CIと限界
+`release-policy.json` のreceiptsに記録を登録する。通常版は必要項目の全証拠ダイジェストと対象ファイルを照合する。確認版はreader/preview/以下のみ。1冊の記録で他書籍や共通ライブラリを書き換えられない。共通処理の改修は別途の機構変更としてレビューし、影響範囲の再検査を要する。
 
-新しい検査は公開前の最終生成物に対しても実行する。旧ゲートのPASSは台帳形式確認であってOCR完成ではない。既存の未校正版を残すことと、新たな未校正版を通常版へ昇格することを区別する。
+既存の80資産は公開済みの互換用スナップショットであり、校正合格とは扱わない。新規の未登録・未検査資産はソースに保持し、公開用ツリーからだけ除外する。公開済み資産を無根拠に変更・削除した場合は公開処理を止める。除外により既存の読書URLを削除することはない。
 
 ```sh
-node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs
-node tools/reader-release-control.cjs repo
+node tools/reader-publish-stage.cjs SOURCE NEW_PUBLIC_TREE
+READER_AUDIT_ROOT=NEW_PUBLIC_TREE node --test tests/reader-*.test.cjs
+node tools/reader-release-control.cjs repo NEW_PUBLIC_TREE
 ```
 
-機械的に強制されるのは、このプログラムを通る検査・書出し・公開ワークフローである。任意の手動Drive更新、ChatGPTによる直接添付、管理者によるCI改変をこのコードだけで禁止することはできない。したがって「すべての経路を技術的に封鎖した」と言わない。接続ツールから配布する作業にも同じ検査計画を必ず適用するが、その遵守は作業者側の責任境界になる。
+Pagesは全生成処理の後にこの公開用ツリーを作り、その実体を検査してからアップロードする。公開前検査の後に生成物を上書きする順序にはしない。旧ゲートの成功表示はSCHEMA PASS ONLYであり、本文60項目合格の意味ではない。
 
-署名は実施者の証拠提出を認証するものであり、目視が本当に行われたことや誤読ゼロを数学的に証明するものではない。原本照合と実機確認を実施していないのに署名を発行してはならない。
+## 強制できる範囲
+
+検査・書出し・公開ワークフローを通る処理は停止できる。一方、管理者による制御コードの書換え、手動Drive操作、ChatGPTの直接添付、虚偽の目視記録をこのプログラムだけで封鎖できない。公開記録のダイジェストも署名認証ではない。これらを保護できたと表現しない。接続ツールの作業者も毎回同じplan・verify-plan・complete-planを使い、原本照合を実際に行う。

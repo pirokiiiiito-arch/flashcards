@@ -1,17 +1,17 @@
-name: Reader quality gate (60 requirements)
+name: Reader schema and publication admission
 on:
   pull_request:
     paths:
       - 'reader/**'
-      - 'tools/reader-quality-gate.cjs'
-      - 'tests/reader-quality-gate.test.cjs'
+      - 'tools/reader-*.cjs'
+      - 'tests/reader-*.test.cjs'
       - '.github/workflows/pages.yml'
   push:
     branches: [main]
     paths:
       - 'reader/**'
-      - 'tools/reader-quality-gate.cjs'
-      - 'tests/reader-quality-gate.test.cjs'
+      - 'tools/reader-*.cjs'
+      - 'tests/reader-*.test.cjs'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 permissions:
@@ -22,7 +22,17 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - name: Enforce canonical sixty checks
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce unchanged reader assets and prepare admitted deployment
         run: |
-          node tools/reader-quality-gate.cjs
-          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs
+          python3 tools/build-wh1-figure-viewport-v8.py
+          python3 tools/build-wh1-library-v9.py
+          node tools/reader-publish-stage.cjs . "$RUNNER_TEMP/reader-pages"
+      - name: Validate records and evidence control, not OCR truth
+        env:
+          READER_AUDIT_ROOT: ${{ runner.temp }}/reader-pages
+        run: |
+          node tools/reader-release-control.cjs repo "$READER_AUDIT_ROOT"
+          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/reader-release-control.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs

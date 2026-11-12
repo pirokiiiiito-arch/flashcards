@@ -102,8 +102,8 @@
   "trustedKeys": {},
   "receipts": [],
   "notes": [
-    "Baseline preserves compatibility only; no OCR or iPhone certification.",
-    "Release keys are generated in memory only after evidence validation. No private key is uploaded or persisted; approved public keys are registered with their release receipts.",
-    "Every new or changed reader asset needs a signed receipt; all existing readers remain byte-identical."
+    "Compatibility snapshot is not OCR certification.",
+    "Private evidence is validated locally; public receipts bind identities and evidence digests but do not authenticate a human reviewer.",
+    "All new or changed reader releases require a locally validated exact-artifact receipt. Unadmitted new files are excluded from the public deployment tree."
   ]
 }

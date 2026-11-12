@@ -3,8 +3,10 @@
 // Evidence verifier. No network, OCR, or writes to a user's live reader.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const legacy=require('./reader-quality-gate.cjs');
-const ROOT=path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
-const TRUST_ANCHOR='b67e33e6ec0ff82c2081a24fcabcff667d45fd06912a884d0795e97cbd2c1a86';
+const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
+const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
+const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs'];
+function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
@@ -30,7 +32,7 @@ function extract(input){
 function textFields(pages){
  const out={};
  for(const p of pages){const scan=p.scan;const put=(k,v)=>{if(typeof v==='string'&&v.length)out[scan+'/'+k]=v;};
-  put('title',p.title);put('body',p.reading_text??p.ocr);
+  put('title',p.title);put('body',p.reading_text??p.ocr);put('manual_heading',p.manual_heading);
   for(const [i,b]of(p.blocks||[]).entries())put('blocks/'+i,b.text);
   for(const [i,f]of(p.figures||[]).entries()){put('figures/'+i+'/caption',f.caption);put('figures/'+i+'/title',f.display_title);}
   for(const [i,a]of(p.boxed_articles||[]).entries()){put('boxed/'+i+'/text',a.text);put('boxed/'+i+'/title',a.title);}
@@ -62,7 +64,7 @@ function validateBundle(file,{phase='prepare'}={}){
  const errors=[],warnings=['A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan.'],result={schema:SCHEMA,phase,errors,warnings,eligible:false};
  try{
   demand(['preview','prepare','release','deployed','device'].includes(phase),'INVALID_PHASE');
-  const root=path.dirname(path.resolve(file)),m=JSON.parse(fs.readFileSync(file,'utf8'));result.bookId=m.bookId;
+  const root=path.dirname(path.resolve(file)),m=JSON.parse(fs.readFileSync(file,'utf8'));result.bookId=m.bookId;result.implementationSha256=implementationHash();
   demand(m.schema==='reader-private-bundle-v2'&&/^[a-z0-9-]{3,100}$/.test(m.bookId||''),'BUNDLE_IDENTITY');
   demand(m.standardFileId===legacy.ID&&Array.isArray(m.range)&&m.range.length===2&&m.range.every(Number.isInteger)&&m.range[0]>0&&m.range[1]>=m.range[0],'RANGE_OR_STANDARD');
   const raw=json(root,m.raw),canonical=json(root,m.canonical),index=json(root,m.originalIndex),events=json(root,m.corrections),profile=json(root,m.profile),lock=json(root,m.lock);
@@ -95,7 +97,7 @@ function validateBundle(file,{phase='prepare'}={}){
    }
   }
   demand(Object.keys(fields).every(k=>covered.has(k)),'TEXT_WITHOUT_SOURCE_REGION');
-  demand(second.runId&&second.runId!==m.firstPassId&&second.viewedFirst===false&&second.sourceIndexSha256===m.originalIndex.sha256&&second.method&&second.fields&&second.reviewedBy,'SECOND_PASS_NOT_INDEPENDENT');
+  demand(m.firstPassId&&second.runId&&second.runId!==m.firstPassId&&second.viewedFirst===false&&second.sourceIndexSha256===m.originalIndex.sha256&&second.method&&second.fields&&second.reviewedBy,'SECOND_PASS_NOT_INDEPENDENT');
   demand(objHash(Object.keys(second.fields).sort())===objHash(Object.keys(fields).sort()),'SECOND_PASS_FIELD_COVERAGE');
   for(const [k,v]of Object.entries(fields))if(v!==second.fields[k]){
    const r=resolutions.differences?.find(x=>x.field===k&&x.firstSha256===hash(v)&&x.secondSha256===hash(second.fields[k]));
@@ -107,7 +109,7 @@ function validateBundle(file,{phase='prepare'}={}){
   for(const [field,text]of Object.entries(fields))for(const n of text.matchAll(/[0-9０-９〇零一二三四五六七八九十百千万億]+/gu))demand(resolutions.numbers?.some(r=>r.field===field&&r.offset===n.index&&r.text===n[0]&&r.reviewedBy&&regionIDs.has(r.regionId)),'UNVERIFIED_NUMBER '+field);
   const expected=[];for(let s=m.range[0]-1;s<=m.range[1];s++)expected.push(s+'>'+String(s+1));
   demand(Array.isArray(boundaries.items)&&objHash(boundaries.items.map(x=>x.id).sort())===objHash(expected.sort()),'BOUNDARY_COVERAGE');
-  for(const b of boundaries.items)demand(b.reviewedBy&&b.reason&&b.resolved===true&&typeof b.leftTail==='string'&&typeof b.rightHead==='string'&&hex(b.leftSourceSha256)&&hex(b.rightSourceSha256),'UNVERIFIED_BOUNDARY');
+  for(const b of boundaries.items){const [left,right]=b.id.split('>').map(Number);if(index[left])demand(b.leftSourceSha256===index[left],'BOUNDARY_SOURCE_MISMATCH');if(index[right])demand(b.rightSourceSha256===index[right],'BOUNDARY_SOURCE_MISMATCH');demand(b.reviewedBy&&b.reason&&b.resolved===true&&typeof b.leftTail==='string'&&typeof b.rightHead==='string'&&(b.kind==='book_start'?b.leftSourceSha256===null:hex(b.leftSourceSha256))&&(b.kind==='book_end'?b.rightSourceSha256===null:hex(b.rightSourceSha256)),'UNVERIFIED_BOUNDARY');}
   demand(display.artifactSha256===m.artifact.sha256&&display.actualPixels===true&&objHash(display.fields)===objHash(fields),'DISPLAY_NOT_CANONICAL');
   const conditions=new Set();for(const c of display.conditions||[]){demand(c.passed===true&&c.artifactSha256===m.artifact.sha256&&c.actualPixels===true&&objHash(c.scans)===objHash(pages.map(p=>p.scan))&&c.overflowCount===0&&c.roundTripSha256===objHash(fields),'INCOMPLETE_DISPLAY_CONDITION');conditions.add(c.width+'/'+c.fontPx);}
   for(const w of[320,390,430])for(const f of[16,18,20,22,24,26,28,30])demand(conditions.has(w+'/'+f),'MISSING_24_CONDITION '+w+'/'+f);
@@ -116,25 +118,55 @@ function validateBundle(file,{phase='prepare'}={}){
   for(const id of legacy.RULES){
    const c=checks[id],required=!POST.has(id)||(id==='G8-08'&&phase!=='prepare')||(id==='G8-03'&&['deployed','device'].includes(phase))||(id==='G8-04'&&phase==='device');
    demand(c&&['not_run','passed','failed','needs_source_review','not_applicable'].includes(c.status),'INVALID_CHECK_STATE '+id);
+   demand(c.status!=='failed'&&c.status!=='needs_source_review','KNOWN_FAILURE_OR_UNRESOLVED '+id);
    if(required)demand(['passed','not_applicable'].includes(c.status),'CHECK_NOT_PASSED '+id);
    if(c.status==='not_applicable')demand(!REQUIRED.has(id)&&c.reason?.length>=12,'FORBIDDEN_NA '+id);
    if(['passed','not_applicable'].includes(c.status)){
-    const e=json(root,c.evidence);demand(e.checkId===id&&e.artifactSha256===m.artifact.sha256&&e.subjectSha256===result.subjectSha256&&e.reviewedBy&&e.method?.length>=8&&Number.isFinite(Date.parse(e.at))&&Array.isArray(e.scans)&&objHash(e.scans)===objHash(pages.map(p=>p.scan)),'STALE_OR_WRONG_EVIDENCE '+id);
+    const e=json(root,c.evidence);demand(e.checkId===id&&e.artifactSha256===m.artifact.sha256&&e.subjectSha256===result.subjectSha256&&e.result===c.status&&e.reviewedBy&&e.method?.length>=8&&Number.isFinite(Date.parse(e.at))&&Array.isArray(e.scans)&&objHash(e.scans)===objHash(pages.map(p=>p.scan)),'STALE_OR_WRONG_EVIDENCE '+id);
     if(id==='G8-04')demand(e.environment?.realDevice===true&&e.environment?.device==='iPhone'&&e.environment?.browser==='Chrome'&&e.environment?.osVersion,'EMULATION_IS_NOT_IPHONE');
     if(id==='G8-03')demand(e.deployedLoaderSha256===m.loaderSha256&&e.deploymentSucceeded===true,'DEPLOYMENT_NOT_VERIFIED');
     if(id==='G8-08'){const readback=bytes(root,e.readback);demand(hash(readback)===m.artifact.sha256&&e.provider==='google-drive'&&e.fileId,'READBACK_MISMATCH');}
-    result.checks[id]={status:c.status,evidenceSha256:c.evidence.sha256};
+    result.checks[id]={status:c.status,evidenceSha256:c.evidence.sha256,reason:c.reason||null};
    }else result.checks[id]={status:c.status};
   }
+  result.evidenceIndex=Object.fromEntries(['inventory','second','resolutions','boundaries','display','checks','corrections','lock'].map(k=>[k,m[k].sha256]));
   result.eligible=true;result.canonicalFields=Object.keys(fields).length;result.scans=pages.length;result.knownSourceDefects=0;
  }catch(e){errors.push(e.message);}
  return result;
 }
-function verifyEnvelope(envelope,policy){
- demand(envelope?.payload?.schema===SCHEMA&&typeof envelope.keyId==='string','INVALID_RECEIPT');
- const publicKey=policy.trustedKeys?.[envelope.keyId];demand(publicKey,'UNTRUSTED_REVIEW_KEY');
- demand(crypto.verify(null,Buffer.from(stable(envelope.payload)),publicKey,Buffer.from(envelope.signature||'','base64')),'BAD_RECEIPT_SIGNATURE');
+function verifyEnvelope(envelope){
+ demand(envelope?.schema==='reader-local-attestation-v1'&&envelope.payload?.schema===SCHEMA,'INVALID_RECEIPT');
+ demand(hex(envelope.digest)&&envelope.digest===objHash(envelope.payload),'BAD_RECEIPT_DIGEST');
  return envelope.payload;
+}
+function receipts(root,policy){
+ const found=new Map(),authorizedFiles={};
+ for(const rel of policy.receipts||[]){
+  const p=verifyEnvelope(JSON.parse(fs.readFileSync(safe(root,rel))));
+  demand(p.eligible===true&&p.implementationSha256===implementationHash()&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
+  demand(p.entry&&/^reader\/[A-Za-z0-9_./-]+\/index\.html$/.test(p.entry)&&!p.entry.includes('..'),'INVALID_RECEIPT_ENTRY');
+  demand(!found.has(p.subject.bookId),'DUPLICATE_RECEIPT');found.set(p.subject.bookId,p);
+  demand(['preview','production'].includes(p.channel),'BAD_CHANNEL');
+  if(p.channel==='preview')demand(p.authorization&&hex(p.authorization.sha256)&&p.authorization.explicit===true&&p.entry.startsWith('reader/preview/'),'PREVIEW_NOT_AUTHORIZED');
+  else{
+   demand(!p.entry.startsWith('reader/preview/')&&['release','deployed','device'].includes(p.phase),'NOT_RELEASE_ELIGIBLE');
+   demand(objHash(Object.keys(p.checks||{}).sort())===objHash(legacy.RULES.slice().sort()),'RECEIPT_EXACT_60_REQUIRED');
+   demand(p.scans===p.subject.range[1]-p.subject.range[0]+1&&p.knownSourceDefects===0,'INCOMPLETE_RECEIPT');
+   for(const k of ['inventory','second','resolutions','boundaries','display','checks','corrections','lock'])demand(hex(p.evidenceIndex?.[k]),'MISSING_EVIDENCE_DIGEST '+k);
+   for(const id of legacy.RULES){const c=p.checks[id];demand(c&&['not_run','passed','not_applicable'].includes(c.status),'BAD_RECEIPT_CHECK '+id);
+    if(!['G8-03','G8-04'].includes(id))demand(['passed','not_applicable'].includes(c.status),'CERTIFICATE_CHECK_MISSING '+id);
+    if(c.status==='passed'||c.status==='not_applicable')demand(hex(c.evidenceSha256),'RECEIPT_EVIDENCE_MISSING '+id);
+    if(c.status==='not_applicable')demand(!REQUIRED.has(id)&&c.reason?.length>=12,'FORBIDDEN_RECEIPT_NA '+id);
+   }
+  }
+  demand(p.publicFiles?.[p.entry]===p.subject.loaderSha256,'LOADER_RECEIPT_MISSING');
+  const folder=p.entry.slice(0,p.entry.lastIndexOf('/')+1);
+  for(const[f,h]of Object.entries(p.publicFiles||{})){
+   demand(f.startsWith(folder)&&!f.includes('..')&&hex(h),'RECEIPT_OUTSIDE_BOOK_SCOPE');
+   demand(!authorizedFiles[f]||authorizedFiles[f]===h,'CONFLICTING_FILE_RECEIPTS');authorizedFiles[f]=h;
+  }
+ }
+ return {found,authorizedFiles};
 }
 function runtimeFiles(root){const out={};function walk(dir){for(const d of fs.readdirSync(dir,{withFileTypes:true})){const f=path.join(dir,d.name),p=path.relative(root,f).split(path.sep).join('/');if(p==='reader/quality')continue;demand(!d.isSymbolicLink(),'PUBLIC_SYMLINK');if(d.isDirectory())walk(f);else if(d.isFile())out[p]=hash(fs.readFileSync(f));}}walk(path.join(root,'reader'));return out;}
 function validateRepository(root=ROOT){
@@ -142,27 +174,20 @@ function validateRepository(root=ROOT){
  try{
   const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-policy.json'))),reg=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/registry.json')));
   demand(policy.schema==='reader-release-policy-v2'&&policy.standardFileId===legacy.ID,'INVALID_RELEASE_POLICY');
-  demand(objHash(policy.baseline)===TRUST_ANCHOR,'TRUST_ANCHOR_CHANGED');
-  const current=runtimeFiles(root),authorizedFiles={},receipts=new Map();
-  for(const rel of policy.receipts||[]){const p=verifyEnvelope(JSON.parse(fs.readFileSync(safe(root,rel))),policy);
-   demand(p.eligible===true&&p.toolSha256===hash(fs.readFileSync(__filename))&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
-   demand(!receipts.has(p.subject.bookId),'DUPLICATE_RECEIPT');receipts.set(p.subject.bookId,p);
-   demand(['preview','production'].includes(p.channel),'BAD_CHANNEL');
-   if(p.channel==='preview')demand(p.authorization&&hex(p.authorization.sha256)&&p.authorization.explicit===true&&p.entry.startsWith('reader/preview/'),'PREVIEW_NOT_AUTHORIZED');
-   else{demand(['release','deployed','device'].includes(p.phase),'NOT_RELEASE_ELIGIBLE');for(const id of legacy.RULES.filter(x=>!['G8-03','G8-04'].includes(x)))demand(['passed','not_applicable'].includes(p.checks?.[id]?.status),'CERTIFICATE_CHECK_MISSING '+id);}
-   for(const [f,h]of Object.entries(p.publicFiles||{})){demand(f.startsWith('reader/')&&!f.startsWith('reader/quality/')&&hex(h),'BAD_PUBLIC_FILE_RECEIPT');demand(!authorizedFiles[f]||authorizedFiles[f]===h,'CONFLICTING_FILE_RECEIPTS');authorizedFiles[f]=h;}
-  }
+  demand(objHash({baseline:policy.baseline,trustedKeys:policy.trustedKeys})===TRUST_ANCHOR,'TRUST_ANCHOR_CHANGED');
+  const current=runtimeFiles(root),{found:certificateMap,authorizedFiles}=receipts(root,policy);
   for(const [f,h]of Object.entries(current))demand(h===policy.baseline.files[f]||h===authorizedFiles[f],'UNAUTHORIZED_READER_CHANGE '+f);
   for(const f of Object.keys(policy.baseline.files))demand(current[f],'FROZEN_READER_REMOVED '+f);
   for(const b of reg.books){const rep=JSON.parse(fs.readFileSync(safe(root,b.report))),identity=objHash({book:b,artifact:rep.privateArtifact||rep.artifactAudit||null});
    if(policy.baseline.books[b.id]===identity&&b.stage==='draft'&&!rep.claimsCompleted)continue;
-   const p=receipts.get(b.id);demand(p&&p.entry===b.entry&&p.bookRecordSha256===objHash(b)&&p.reportSha256===hash(fs.readFileSync(safe(root,b.report)))&&p.subject.loaderSha256===current[b.entry],'NO_MATCHING_RELEASE_CERTIFICATE '+b.id);
+   const p=certificateMap.get(b.id);demand(p&&p.entry===b.entry&&p.bookRecordSha256===objHash(b)&&p.reportSha256===hash(fs.readFileSync(safe(root,b.report)))&&p.subject.loaderSha256===current[b.entry],'NO_MATCHING_RELEASE_CERTIFICATE '+b.id);
    demand((rep.privateArtifact?.sha256||rep.artifactAudit?.sourceSha256)===p.subject.artifactSha256,'ARTIFACT_CERTIFICATE_MISMATCH');
    if(p.channel==='preview')demand(b.stage==='draft'&&!rep.claimsCompleted,'PREVIEW_CANNOT_BE_COMPLETE');
    else demand(b.stage!=='draft','PRODUCTION_STAGE_MISMATCH');
    if(['completed','iphone_verified'].includes(b.stage))demand(['deployed','device'].includes(p.phase)&&p.checks['G8-03'].status==='passed','PUBLICATION_NOT_READ_BACK');
    if(b.stage==='iphone_verified')demand(p.phase==='device'&&p.checks['G8-04'].status==='passed','DEVICE_NOT_VERIFIED');
   }
+  for(const f of Object.keys(authorizedFiles))demand(current[f]===authorizedFiles[f],'RECEIPT_ASSET_MISSING '+f);
   result.inheritedUnverified=Object.keys(policy.baseline.books).length;
  }catch(e){errors.push(e.message);}
  return result;
@@ -172,4 +197,4 @@ if(require.main===module){
  try{result=command==='repo'?validateRepository(file||ROOT):command==='check'?validateBundle(file,{phase:phase||'prepare'}):{errors:['Usage: reader-release-control.cjs repo [root] | check manifest.json [prepare|release|deployed|device]']};}catch(e){result={errors:[e.message]};}
  console.log(JSON.stringify(result,null,2));if(result.errors.length)process.exitCode=1;
 }
-module.exports={hash,stable,objHash,safe,bytes,json,extract,textFields,originals,replay,anomalies,validateBundle,validateRepository,verifyEnvelope,runtimeFiles,SCHEMA};
+module.exports={hash,stable,objHash,safe,bytes,json,extract,textFields,originals,replay,anomalies,validateBundle,validateRepository,verifyEnvelope,runtimeFiles,receipts,implementationHash,SCHEMA};
