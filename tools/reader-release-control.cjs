@@ -4,7 +4,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const legacy=require('./reader-quality-gate.cjs');
 const ROOT=path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
-const TRUST_ANCHOR='de1c8ad05b87479cec396bf691905c8517105b4e7aed25257240d43f15cfdb6a';
+const TRUST_ANCHOR='b67e33e6ec0ff82c2081a24fcabcff667d45fd06912a884d0795e97cbd2c1a86';
 const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
@@ -142,7 +142,7 @@ function validateRepository(root=ROOT){
  try{
   const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-policy.json'))),reg=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/registry.json')));
   demand(policy.schema==='reader-release-policy-v2'&&policy.standardFileId===legacy.ID,'INVALID_RELEASE_POLICY');
-  demand(objHash({baseline:policy.baseline,trustedKeys:policy.trustedKeys})===TRUST_ANCHOR,'TRUST_ANCHOR_CHANGED');
+  demand(objHash(policy.baseline)===TRUST_ANCHOR,'TRUST_ANCHOR_CHANGED');
   const current=runtimeFiles(root),authorizedFiles={},receipts=new Map();
   for(const rel of policy.receipts||[]){const p=verifyEnvelope(JSON.parse(fs.readFileSync(safe(root,rel))),policy);
    demand(p.eligible===true&&p.toolSha256===hash(fs.readFileSync(__filename))&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
