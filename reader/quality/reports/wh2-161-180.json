@@ -1,0 +1,211 @@
+{
+  "schema": "reader-quality-report-v1",
+  "standardFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
+  "bookId": "wh2-161-180",
+  "entry": "reader/wh2/161-180/index.html",
+  "stage": "draft",
+  "scanRange": [
+    161,
+    180
+  ],
+  "claimsCompleted": false,
+  "deviceVerification": "not_run",
+  "privateArtifact": {
+    "driveFileId": "1gCkWx_FWAwaRFIVftuyZVJaHO03MzzRP",
+    "sha256": "9bca559af5d4fa0b5b2e3c9ac6b0620f9fe213a8ed6b02138552766cfea1e4dc",
+    "bytes": 44779598,
+    "sourceZipSha256": "678edef271b5d7030d2fe91107db12504642cdbb02b30b68890e75a5bc3dd06c",
+    "originalCount": 20,
+    "figureCount": 13,
+    "boxedArticleCount": 4
+  },
+  "notes": "OCR一次稿・校正継続中。原本ZIP280枚中161〜180の20枚を独立した原本対応表SHAと照合し無加工収録。13図版PNG切出しは原本ピクセル照合。軽量Chromium 8 checks passed. フルOCR独立全字照合、24画面条件、iPhone実機、GitHub Pages公開実測は未実施。全60項目合格・完成を主張しない。",
+  "checks": {
+    "G1-01": {
+      "status": "needs_source_review"
+    },
+    "G1-02": {
+      "status": "needs_source_review",
+      "note": "20 original JPEG bytes SHA-256 match separately fetched private ZIP and Drive canonical 280-scan manifest; source image pixels preserved."
+    },
+    "G1-03": {
+      "status": "needs_source_review"
+    },
+    "G1-04": {
+      "status": "needs_source_review"
+    },
+    "G1-05": {
+      "status": "not_run"
+    },
+    "G1-07": {
+      "status": "needs_source_review"
+    },
+    "G1-08": {
+      "status": "not_run"
+    },
+    "G1-10": {
+      "status": "needs_source_review"
+    },
+    "G1-12": {
+      "status": "not_run"
+    },
+    "G2-01": {
+      "status": "needs_source_review"
+    },
+    "G2-02": {
+      "status": "not_run"
+    },
+    "G2-03": {
+      "status": "needs_source_review"
+    },
+    "G2-04": {
+      "status": "not_run"
+    },
+    "G2-05": {
+      "status": "needs_source_review"
+    },
+    "G2-07": {
+      "status": "not_run"
+    },
+    "G2-11": {
+      "status": "not_run"
+    },
+    "G3-01": {
+      "status": "needs_source_review",
+      "note": "Text 161-180 is first-pass vertical OCR, with obvious visual corrections in reader override and raw OCR preserved; independent full word-for-word source check not performed."
+    },
+    "G3-02": {
+      "status": "needs_source_review"
+    },
+    "G3-03": {
+      "status": "not_run"
+    },
+    "G3-04": {
+      "status": "needs_source_review"
+    },
+    "G3-05": {
+      "status": "needs_source_review"
+    },
+    "G3-06": {
+      "status": "needs_source_review"
+    },
+    "G3-07": {
+      "status": "needs_source_review"
+    },
+    "G4-01": {
+      "status": "needs_source_review"
+    },
+    "G4-02": {
+      "status": "not_run"
+    },
+    "G4-03": {
+      "status": "needs_source_review"
+    },
+    "G4-04": {
+      "status": "needs_source_review"
+    },
+    "G4-05": {
+      "status": "not_run"
+    },
+    "G4-09": {
+      "status": "not_run"
+    },
+    "G5-01": {
+      "status": "needs_source_review"
+    },
+    "G5-02": {
+      "status": "needs_source_review"
+    },
+    "G5-03": {
+      "status": "not_run"
+    },
+    "G5-04": {
+      "status": "needs_source_review"
+    },
+    "G5-05": {
+      "status": "needs_source_review",
+      "note": "Lightweight 320px/font30 figure-caption pagination retained identical DOM image across 17 caption segments for sample scan164. Full-source 24 viewports and iPhone are untested; not a full pass."
+    },
+    "G5-10": {
+      "status": "needs_source_review"
+    },
+    "P20": {
+      "status": "needs_source_review"
+    },
+    "G6-01": {
+      "status": "not_run"
+    },
+    "G6-02": {
+      "status": "needs_source_review"
+    },
+    "G6-03": {
+      "status": "not_run"
+    },
+    "G6-05": {
+      "status": "not_run"
+    },
+    "G6-09": {
+      "status": "not_run"
+    },
+    "G6-11": {
+      "status": "not_run"
+    },
+    "G6-12": {
+      "status": "not_run"
+    },
+    "P22": {
+      "status": "not_run"
+    },
+    "P23": {
+      "status": "not_run"
+    },
+    "G7-01": {
+      "status": "needs_source_review"
+    },
+    "G7-02": {
+      "status": "needs_source_review"
+    },
+    "G7-03": {
+      "status": "not_run"
+    },
+    "G7-04": {
+      "status": "needs_source_review",
+      "note": "Chromium CDP 60px up/down swipes passed with 1x, iframe host-zoom 2x disabled book swipe, 1x restored. Real iPhone Chrome/WebKit not verified."
+    },
+    "G7-05": {
+      "status": "not_run"
+    },
+    "G7-10": {
+      "status": "not_run"
+    },
+    "G7-12": {
+      "status": "needs_source_review"
+    },
+    "G8-01": {
+      "status": "not_run"
+    },
+    "G8-02": {
+      "status": "needs_source_review",
+      "note": "Host iframe postMessage scale handshake emulated 1x->2x->1x with 161-180 fixture; not verified on actual iPhone."
+    },
+    "G8-03": {
+      "status": "needs_source_review"
+    },
+    "G8-04": {
+      "status": "needs_source_review",
+      "note": "iPhone hardware not run."
+    },
+    "G8-05": {
+      "status": "not_run"
+    },
+    "G8-07": {
+      "status": "not_run"
+    },
+    "G8-08": {
+      "status": "not_run"
+    },
+    "G8-11": {
+      "status": "needs_source_review"
+    }
+  }
+}
