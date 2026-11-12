@@ -42,7 +42,25 @@ function database(){return new Promise((resolve,reject)=>{const q=indexedDB.open
 async function getSaved(){const d=await database();try{return await new Promise((resolve,reject)=>{const r=d.transaction(STORE,'readonly').objectStore(STORE).get(KEY);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error)})}finally{d.close()}}
 async function putSaved(blob,name){const d=await database();try{await new Promise((resolve,reject)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put({blob,name,date:Date.now()},KEY);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)})}finally{d.close()}}
 async function verify(blob){if(!blob||blob.size<1000000||blob.size>MAX)throw Error('141〜160の読書HTMLを選択してください。');const h=await blob.slice(0,65536).text();const t=h.match(/<title[^>]*>([^<]+)<\/title>/i);const title=!!t&&t[1].includes('世界の歴史2')&&/141[〜～-]160/.test(t[1]);const data=/<script\b[^>]*\bid=["']bookdata["'][^>]*>\s*\[\s*\{\s*"scan"\s*:\s*141\s*,/i.test(h);const view=/<meta\b[^>]*\bname=["']viewport["']/i.test(h);if(!title||!data||!view)throw Error('分冊が違うか、ファイル形式を確認できません。世界の歴史2の141〜160を選んでください。');return true}
-async function openBook(blob){await verify(blob);$('status').textContent='読書画面を開いています…';if(activeUrl)URL.revokeObjectURL(activeUrl);const htmlBlob=(blob.type||'').includes('html')?blob:new Blob([blob],{type:'text/html;charset=utf-8'});activeUrl=URL.createObjectURL(htmlBlob);const f=$('reader');f.onload=()=>{$('setup').hidden=true;f.focus();if(fileForDeferredSave){const item=fileForDeferredSave;fileForDeferredSave=null;setTimeout(async()=>{try{await putSaved(item.blob,item.name)}catch(e){console.warn('端末への自動保存ができませんでした。再度HTMLを選択すれば読めます。',e)}},1200)}};f.onerror=()=>{$('status').textContent='表示できませんでした。HTMLを選び直してください。'};f.src=activeUrl}
+/* Reader v6 repair: patch only the defective 1x iframe swipe guard.
+   Never persist or publish the user's book, image, or OCR payload. */
+async function wh2RestoreStoredSwipe(blob){
+ const old='return (window.parent!==window&&!wh2Host.known)||\n        wh2Host.scale>1.015||wh2LocalScale()>1.015;';
+ const fixed='return (wh2Host.known&&wh2Host.scale>1.015)||wh2LocalScale()>1.015;';
+ const off=Math.max(0,blob.size-524288);
+ const tail=new Uint8Array(await blob.slice(off).arrayBuffer());
+ const needle=new TextEncoder().encode(old);
+ let at=-1;
+ search:for(let i=0;i<=tail.length-needle.length;i++){
+  for(let j=0;j<needle.length;j++)if(tail[i+j]!==needle[j])continue search;
+  at=i;break;
+ }
+ if(at<0)return blob;
+ const position=off+at;
+ return new Blob([blob.slice(0,position),fixed,blob.slice(position+needle.length)],{type:'text/html;charset=utf-8'});
+}
+
+async function openBook(blob){await verify(blob);$('status').textContent='読書画面を開いています…';if(activeUrl)URL.revokeObjectURL(activeUrl);const htmlBlob=(blob.type||'').includes('html')?blob:new Blob([blob],{type:'text/html;charset=utf-8'});activeUrl=URL.createObjectURL(await wh2RestoreStoredSwipe(htmlBlob));const f=$('reader');f.onload=()=>{$('setup').hidden=true;f.focus();if(fileForDeferredSave){const item=fileForDeferredSave;fileForDeferredSave=null;setTimeout(async()=>{try{await putSaved(item.blob,item.name)}catch(e){console.warn('端末への自動保存ができませんでした。再度HTMLを選択すれば読めます。',e)}},1200)}};f.onerror=()=>{$('status').textContent='表示できませんでした。HTMLを選び直してください。'};f.src=activeUrl}
 $('file').addEventListener('change',async()=>{const f=$('file').files?.[0];if(!f)return;try{await verify(f);fileForDeferredSave={blob:f,name:f.name};await openBook(f)}catch(e){fileForDeferredSave=null;$('status').textContent=e.message||String(e)}$('file').value=''});
 $('reopen').onclick=async()=>{try{const x=await getSaved();if(!x?.blob)throw Error('保存済みファイルがありません。');await openBook(x.blob)}catch(e){$('status').textContent=e.message||String(e)}};
 window.addEventListener('pageshow',async()=>{try{const x=await getSaved();if(x?.blob){$('reopen').hidden=false;if(!new URLSearchParams(location.search).has('import'))await openBook(x.blob)}}catch(e){$('status').textContent='最初の1回だけ、141〜160のHTMLを選択してください。'}});
