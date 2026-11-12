@@ -17,17 +17,30 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+      - name: Preserve exact public source revision
+        run: |
+          mkdir -p /tmp/reader-admission-audit
+          git archive --format=tar HEAD > /tmp/reader-admission-audit/source.tar
+          git rev-parse HEAD > /tmp/reader-admission-audit/commit.txt
       - name: Reproduce existing generated reader files before byte verification
         run: |
           python3 tools/build-wh1-figure-viewport-v8.py
           python3 tools/build-wh1-library-v9.py
       - name: Test evidence failures, canonical revisions and staging safety
         run: |
+          set -o pipefail
           node --check tools/reader-release-control.cjs
           node --check tools/reader-private-pipeline.cjs
-          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs
+          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs | tee /tmp/reader-admission-audit/tests.tap
       - name: Admit only unchanged legacy bytes or signed exact releases
         run: node tools/reader-release-control.cjs repo
       - name: Record certification boundary
         run: echo 'This is release-control validation, NOT a pass of every book OCR check. Existing drafts remain unverified; no private source or signing key is present in CI.'
+      - name: Retain reproducible public audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reader-admission-audit-${{ github.run_id }}
+          path: /tmp/reader-admission-audit
+          retention-days: 3
