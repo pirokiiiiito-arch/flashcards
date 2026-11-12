@@ -42,3 +42,23 @@ test('an unverified artifact cannot label itself complete',()=>{
  const r=audit(html);
  assert.match(r.errors.join(' '),/FALSE_COMPLETION_LABEL/);
 });
+
+// Revision safety: a text correction invalidates passes, not known open defects.
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const pipeline=require('../tools/reader-private-pipeline.cjs'),validator=require('../tools/reader-release-control.cjs');
+function reviseKnownIssue(checkId,status){
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'reader-known-defect-'));
+ try{
+  const input=path.join(dir,'input.html'),loader=path.join(dir,'loader.html'),index=path.join(dir,'index.json');
+  fs.writeFileSync(input,fixture());fs.writeFileSync(loader,'synthetic loader');fs.writeFileSync(index,JSON.stringify({'1':sha(picture),'2':sha(picture)}));
+  const work=path.join(dir,'private'),m=pipeline.init(input,work,'test-known-defect',loader,index),manifest=path.join(work,'manifest.json');
+  const checks=validator.json(work,m.checks);checks[checkId]={status};
+  const b=JSON.stringify(checks);fs.writeFileSync(path.join(work,m.checks.path),b);m.checks.sha256=sha(b);fs.writeFileSync(manifest,JSON.stringify(m));
+  const event=path.join(dir,'edit.json');fs.writeFileSync(event,JSON.stringify({scan:1,pointer:'blocks/0/text',before:'検査用の文章。',after:'訂正文。',actor:'test-only',reason:'synthetic source correction',sourceRegion:'r1',at:'2026-11-12',expectedCanonicalSha256:m.canonical.sha256}));
+  const next=pipeline.correct(manifest,event);
+  assert.equal(validator.json(work,next.checks)[checkId].status,'not_run');
+  assert.ok(validator.json(work,next.resolutions).openIssues.some(i=>i.checkId===checkId&&i.priorStatus===status));
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+}
+test('a text edit cannot erase a known device failure during status invalidation',()=>reviseKnownIssue('G8-04','failed'));
+test('unresolved source discrepancies remain open across a new text revision',()=>reviseKnownIssue('G3-07','needs_source_review'));

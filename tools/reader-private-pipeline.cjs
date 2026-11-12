@@ -37,7 +37,14 @@ function correctUnsafe(file,eventFile){
  const record={...e,sourceSha256:p.sha256,beforeDataSha256:v.objHash(old),afterDataSha256:v.objHash(clone)};
  const next=[...events,record];v.replay(raw,next);
  const n=String(next.length).padStart(4,'0');m.canonical=write(root,'canonical/revision-'+n+'.json',clone);m.corrections=write(root,'corrections/revision-'+n+'.json',next);
- // Do not silently carry any old PASS results across a changed revision.
+ // Invalidate old passes, but never erase known defects as merely unperformed.
+ const oldChecks=v.json(root,m.checks),open=v.json(root,m.resolutions);
+ fail(Array.isArray(open.openIssues),'MISSING_ISSUE_LEDGER');
+ for(const [id,c]of Object.entries(oldChecks))if(['failed','needs_source_review'].includes(c.status)){
+  const issueId='prior-check:'+id+':'+m.checks.sha256;
+  if(!open.openIssues.some(x=>x&&x.id===issueId))open.openIssues.push({id:issueId,checkId:id,priorStatus:c.status,priorChecksSha256:m.checks.sha256,reason:'Known defect requires explicit resolution and retest; text correction is not its resolution.'});
+ }
+ m.resolutions=write(root,'review/resolutions-revision-'+n+'.json',open);
  m.checks=write(root,'review/checks-revision-'+n+'.json',Object.fromEntries(RULES.map(id=>[id,{status:'not_run'}])));
  m.deliveryState='blocked-rebuild-and-review-required';saveManifest(root,m);return m;
 }
