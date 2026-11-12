@@ -99,13 +99,11 @@
       "wh2-161-180": "faed0090389105c1909932d98203e49cf32b449f2ea84092991d2e306b819fc1"
     }
   },
-  "trustedKeys": {
-    "local-release-20261112": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAZG3yJ73IxmOIxljwbdE5SHjx9kL8jI+MWtt9Ok2MNLA=\n-----END PUBLIC KEY-----\n"
-  },
+  "trustedKeys": {},
   "receipts": [],
   "notes": [
     "Baseline preserves compatibility only; no OCR or iPhone certification.",
-    "Private signing key is never stored in GitHub.",
+    "Release keys are generated in memory only after evidence validation. No private key is uploaded or persisted; approved public keys are registered with their release receipts.",
     "Every new or changed reader asset needs a signed receipt; all existing readers remain byte-identical."
   ]
 }
