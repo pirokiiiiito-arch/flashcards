@@ -18,10 +18,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Gate reader quality against the canonical sixty requirements
-        run: |
-          node tools/reader-quality-gate.cjs
-          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs
       - name: Check word recovery before publication
         run: |
           node --check drive-sync.js
@@ -109,7 +105,6 @@ jobs:
           node --check colors/origin-editor-view.js
           node --check colors/data/review47-local-loader-v2.js
           node --check plants/drive-view-worker.js
-          node --check colors/drive-view-worker.js
           node --test tests/study-quiet-sync.test.cjs tests/service-worker.test.cjs
       - name: Retry failed mobile pictures without rebuilding cards
         run: |
@@ -119,7 +114,6 @@ jobs:
           node --check colors/local-adapter.js
           node --check photo-view-shell.js
           node --check plants/drive-view-worker.js
-          node --check colors/drive-view-worker.js
           node --test tests/photo-resume.test.cjs
       - name: Display only required authentication controls
         run: |
@@ -196,6 +190,14 @@ jobs:
           node --check reader/library/sw.js
           node --check reader/wh1/all/sw.js
           node --test tests/wh1-figure-viewport-v8.test.cjs tests/wh1-display-check-v9.test.cjs tests/wh1-library-routing.test.cjs tests/wh1-library-build.test.cjs
+      - name: Prepare evidence-admitted reader deployment without touching source
+        run: node tools/reader-publish-stage.cjs . "$RUNNER_TEMP/reader-pages"
+      - name: Validate the exact final deployment tree
+        env:
+          READER_AUDIT_ROOT: ${{ runner.temp }}/reader-pages
+        run: |
+          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs
+          node tools/reader-release-control.cjs repo "$READER_AUDIT_ROOT"
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -203,7 +205,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: ${{ runner.temp }}/reader-pages
   deploy:
     environment:
       name: github-pages

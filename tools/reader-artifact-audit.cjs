@@ -9,10 +9,11 @@ function audit(html,start,end) {
  const source=Buffer.isBuffer(html)?html:Buffer.from(html);
  const result={schema:'reader-artifact-audit-v1',sourceSha256:digest(source),
   structuralStatus:'failed',originals:0,OCRTextPages:0,wholePageProofed:0,scanCount:0,errors,warnings};
- const m=source.toString('utf8').match(/<script\b[^>]*id=["']embedded-data["'][^>]*>([\s\S]*?)<\/script>/i);
- if(!m){errors.push('UNSUPPORTED_FORMAT: no embedded-data JSON, not approved');return result;}
+ const m=source.toString('utf8').match(/<script\b[^>]*id=["'](?:embedded-data|bookdata)["'][^>]*>([\s\S]*?)<\/script>/i);
+ if(!m){errors.push('UNSUPPORTED_FORMAT: no structured embedded-data/bookdata JSON, not approved');return result;}
  let book;
  try{book=JSON.parse(m[1]);}catch(e){errors.push('BAD_BOOK_JSON: '+e.message);return result;}
+ if(Array.isArray(book))book={pages:book};
  if(!book||!Array.isArray(book.pages)){errors.push('NO_STRUCTURED_PAGES');return result;}
  result.bookId=typeof book.bookId==='string'?book.bookId:'unverified';
  result.scanCount=book.pages.length;
@@ -22,17 +23,18 @@ function audit(html,start,end) {
   errors.push('RANGE_OR_PAGE_COUNT_MISMATCH');
  const seen=new Set();
  for(let i=0;i<book.pages.length;i++){
-  const p=book.pages[i]||{},scan=Number(p.scan),plain=Array.isArray(p.blocks)&&p.blocks.some(b=>typeof b.text==='string'&&b.text.trim().length>0);
+  const p=book.pages[i]||{},scan=Number(p.scan),plain=[p.reading_text??p.ocr,...(p.blocks||[]).map(b=>b.text),...(p.boxed_articles||[]).map(b=>b.text),...(p.figures||[]).map(b=>b.caption)].some(t=>typeof t==='string'&&t.trim().length>0);
+  const image=p.dataUrl??p.original,width=p.width??p.source_image_width,height=p.height??p.source_image_height;
   if(seen.has(scan)||scan!==first+i)errors.push('DUPLICATE_OR_OUT_OF_ORDER_SCAN '+String(scan));
   seen.add(scan);
   if(plain)result.OCRTextPages++;
   if(p.proofStatus==='passed')result.wholePageProofed++;
-  if((p.pageType==='prose'||p.hasReadableProse==='yes')&&!plain)
+  if((p.pageType==='prose'||p.hasReadableProse==='yes'||p.has_readable_prose===true)&&!plain)
    errors.push('READABLE_PROSE_WITHOUT_TEXT '+String(scan));
-  if(typeof p.dataUrl!=='string'||!/^data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/=]+$/i.test(p.dataUrl)){
+  if(typeof image!=='string'||!/^data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/=]+$/i.test(image)){
    errors.push('SOURCE_IMAGE_MISSING_OR_INVALID '+String(scan));continue;
   }
-  const encoded=p.dataUrl.slice(p.dataUrl.indexOf(',')+1);
+  const encoded=image.slice(image.indexOf(',')+1);
   const bytes=Buffer.from(encoded,'base64');
   if(!bytes.length||bytes.toString('base64')!==encoded){
    errors.push('INVALID_SOURCE_IMAGE_BASE64 '+String(scan));continue;
@@ -40,12 +42,13 @@ function audit(html,start,end) {
   if(!/^[0-9a-f]{64}$/.test(p.sha256||'')||digest(bytes)!==p.sha256){
    errors.push('SOURCE_SHA256_MISMATCH '+String(scan));continue;
   }
-  if(!Number.isInteger(p.width)||!Number.isInteger(p.height)||p.width<1||p.height<1)
+  if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1)
    errors.push('SOURCE_IMAGE_DIMENSIONS_MISSING '+String(scan));
   else result.originals++;
  }
  if(result.OCRTextPages===0){
   const allConfirmedNoText=book.pages.every(p=>p.hasReadableProse==='no'&&p.proofStatus==='passed');
+  result.allConfirmedNoText=allConfirmedNoText;
   if(!allConfirmedNoText)errors.push('ZERO_OCR_TEXT: do not deliver an empty reader as a reading edition');
  }
  if(/読書用完成|全字校正済み|iPhone実機確認済み/.test(String(book.state||''))&&

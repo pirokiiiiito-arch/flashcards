@@ -1,0 +1,50 @@
+name: Reader release evidence and admission
+on:
+  push:
+    branches: [main, fix/reader-release-evidence-20261112]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reader-release-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve exact public source revision
+        run: |
+          mkdir -p /tmp/reader-admission-audit
+          git archive --format=tar HEAD > /tmp/reader-admission-audit/source.tar
+          git rev-parse HEAD > /tmp/reader-admission-audit/commit.txt
+      - name: Reproduce existing generated reader files before byte verification
+        run: |
+          python3 tools/build-wh1-figure-viewport-v8.py
+          python3 tools/build-wh1-library-v9.py
+      - name: Prepare isolated admitted deployment
+        run: node tools/reader-publish-stage.cjs . "$RUNNER_TEMP/reader-pages"
+      - name: Test evidence failures, canonical revisions and staging safety
+        env:
+          READER_AUDIT_ROOT: ${{ runner.temp }}/reader-pages
+        run: |
+          set -o pipefail
+          node --check tools/reader-release-control.cjs
+          node --check tools/reader-private-pipeline.cjs
+          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs | tee /tmp/reader-admission-audit/tests.tap
+      - name: Verify unchanged legacy bytes and evidence-bound releases
+        run: node tools/reader-release-control.cjs repo "$RUNNER_TEMP/reader-pages"
+      - name: Record certification boundary
+        run: echo 'This is release-control validation, NOT a pass of every book OCR check. Existing drafts remain unverified; no private source or signing key is present in CI.'
+      - name: Retain reproducible public audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reader-admission-audit-${{ github.run_id }}
+          path: /tmp/reader-admission-audit
+          retention-days: 3

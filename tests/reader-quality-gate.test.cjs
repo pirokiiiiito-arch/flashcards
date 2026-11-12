@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
-const gate=require('../tools/reader-quality-gate.cjs'),root=path.resolve(__dirname,'..');
+const gate=require('../tools/reader-quality-gate.cjs'),root=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..');
 const std=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/standard.json')));
 const reg=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/registry.json')));
 const original=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/reports/world-symbols-001-020.json')));
