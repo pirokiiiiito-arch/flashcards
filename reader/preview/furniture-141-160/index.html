@@ -45,7 +45,7 @@ a{color:#2c666c}
   <label class="pick" for="file">修正版HTML（G144B全脚表示修正）を選択</label>
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
-  <p id="status" role="status" aria-live="polite">修正版を選択してください。新版の目印は「図版G144B切れ修正」、標準画面で全72ページです。</p>
+  <p id="status" role="status" aria-live="polite">修正版を選択してください。新版の目印は画面上部の「図版G144B切れ修正」です。ページ数は画面寸法によって変わります。</p>
   <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。原本表示と図版表示に切り替えられます。現時点のOCR校正と実機確認は完了していません。</p>
  </main>
 </div>
@@ -90,7 +90,7 @@ async function verify(blob){
     !head.includes('name="viewport"'))
    throw Error('別のHTMLです。Googleドライブから洋家具141〜160枚目の修正版を保存して選択してください。');
  const marker=head.match(/<meta[^>]*name=[\"']reader-version[\"'][^>]*content=[\"']([^\"']+)/i)?.[1]||'';
- if(marker!==REQUIRED_VERSION)throw Error('旧版の読書HTMLです。脚先の修正は反映されません。Googleドライブから「G144B全脚表示修正」と付く新版を保存し直して選択してください（新版は全72ページ）。');
+ if(marker!==REQUIRED_VERSION)throw Error('旧版の読書HTMLです。脚先の修正は反映されません。Googleドライブから「G144B全脚表示修正」と付く新版を保存し直して選択してください（新版の画面上部に「図版G144B切れ修正」と表示）。');
  return true;
 }
 async function openBook(blob){
