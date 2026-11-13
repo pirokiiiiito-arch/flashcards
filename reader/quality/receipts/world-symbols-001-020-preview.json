@@ -22,11 +22,11 @@
       "originalIndexSha256": "33177660ac558abdd8a175abbb3b6cb8b99d1e29bda4ecbdb35d96d4ee934d69",
       "templateSha256": "1865697c9de870366a567dcf3d63ad37290e86e3b7a81c84a9ef08bf56dcc79f",
       "profileSha256": "b72ecc8eeb65896cb7827e762e2b6a323f9967051475ea9694b95be8da0d903b",
-      "loaderSha256": "19dcd5cb7a2ff75459d834e352436a009565149cf679e565f0c05565653f52d5"
+      "loaderSha256": "1fc62497223f24f43d19da2ec6fa6cffcac364504dcc8ee839086de80770cbe8"
     },
-    "subjectSha256": "b326e9b9da68b5533a368221c6e69a35cbb92d1adede80bb4d6d58b7bac351fa",
+    "subjectSha256": "6941ec6cde7f378f24ff5d57e25a66e8d120cc1604a4747ce2d448579723782a",
     "authorization": {
-      "sha256": "de05e4b3dd3734555ca070fa6799cef80818df23d9e9114ce9707135d60f2c26",
+      "sha256": "de65f554a4327f5ee1ff874778ef78f1e33e00501ddb95da28376cfa4801262d",
       "explicit": true
     },
     "contentCertified": false,
@@ -214,14 +214,14 @@
     },
     "channel": "preview",
     "entry": "reader/preview/world-symbols-001-020/index.html",
-    "bookRecordSha256": "e74ecc384a4b04e0e3b89d01d11ded99898301183b3300175e21dcda39657594",
-    "reportSha256": "ed8a07e3cc4b870deef009f19af99af8d91a383f33cc3cdf11d07164655adfe7",
+    "bookRecordSha256": "742ff105325132027498cff4ed9da9171aa84e0cdb951fd9cbf6e15eb623903c",
+    "reportSha256": "30edea7eff8b0d66f9e4e891cc473db947d43ecc8b824cc21ef5a6cff3abb841",
     "publicFiles": {
-      "reader/preview/world-symbols-001-020/index.html": "19dcd5cb7a2ff75459d834e352436a009565149cf679e565f0c05565653f52d5",
-      "reader/preview/world-symbols-001-020/sw.js": "c04a7a7c7cece4c41ba059f78289d8c8ab27b937a28bca9ba4eb2c79e40c3fd2"
+      "reader/preview/world-symbols-001-020/index.html": "1fc62497223f24f43d19da2ec6fa6cffcac364504dcc8ee839086de80770cbe8",
+      "reader/preview/world-symbols-001-020/sw.js": "376ded36c99ab69c277539dae56d967516baa398bec1893993c096128a5ab11a"
     },
-    "issuedAt": "2026-11-13T04:06:41Z",
+    "issuedAt": "2026-11-13T04:17:45.997Z",
     "trustBoundary": "Local evidence attestation, not independent reviewer authentication."
   },
-  "digest": "49f610e5f16efe62db5bf9fd3bc070e269d458e258e70dd47001739a11dbff5b"
+  "digest": "c6ab155e155e40492113177d2f28ca65171d1845d0dd46767d6d180eaa953c9c"
 }
