@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5"><meta name="robots" content="noindex"><title>世界の歴史2｜221〜240 原本転記確認稿・確認版</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#f7f8f5;color:#29383a;font-family:-apple-system,system-ui,sans-serif}#reader{position:fixed;left:0;top:26px;border:0;width:100%;height:calc(100% - 26px);background:#fffefa;touch-action:pan-x pan-y pinch-zoom}#edition{position:fixed;inset:0 0 auto;height:26px;z-index:5;display:flex;align-items:center;justify-content:center;gap:12px;font-size:11px;background:#f5e9c8;color:#503b00}#edition button{width:auto;margin:0;padding:2px 8px;font-size:11px;border:0;background:transparent;color:#315c63}#setup{position:fixed;inset:0;z-index:10;display:flex;justify-content:center;align-items:center;padding:20px;overflow:auto;background:#f7f8f5}#setup[hidden]{display:none}main{width:100%;max-width:480px;background:white;border:1px solid #dce5df;border-radius:18px;padding:24px}h1{font-size:21px;margin:0 0 15px}p,li{font-size:14px;line-height:1.8}ol{padding-left:22px}.name{font-size:11px;overflow-wrap:anywhere}.pick,button{display:block;width:100%;padding:13px;margin-top:15px;border:1px solid #b9ceca;border-radius:11px;font-size:15px;cursor:pointer}.pick{background:#315c63;color:white;text-align:center}button{background:white;color:#315c63}button[hidden]{display:none}input{position:absolute;width:1px;height:1px;opacity:0}a{color:#285d67}#status{white-space:pre-wrap;font-size:12px;min-height:22px}.note{font-size:12px;color:#667571}
+</style></head><body>
+<div id="edition">原本転記確認稿・確認版・全検査未完了 <button id="settings" type="button">ファイル選択</button></div>
+<iframe id="reader" title="世界の歴史2・221〜240 本文修正確認画面" sandbox="allow-scripts"></iframe>
+<div id="setup"><main><h1>世界の歴史2｜221〜240<br>原本転記確認稿・確認版</h1>
+<p><strong>221〜240の保存済み原本照合稿を開く確認用入口です。</strong>通常版とは別に開きます。別の分冊や対象と異なるHTMLを選んだ場合は表示せずお知らせします。</p>
+<ol><li><a id="download" href="https://drive.google.com/file/d/1g9ZfWJqEyG4Sj1OiZ9lK67KUWvgRRUTO/view?usp=drivesdk">原本転記確認稿・確認版HTMLをGoogle Driveで開く</a> → iPhoneの「ファイル」に保存。</li><li>下のボタンから、先頭が<strong>20261113_1529</strong>で、末尾が<strong>221-240.html</strong>のHTMLを選択してください。</li></ol>
+<p class="name" id="filename">20261113_1529_【原本転記確認稿・全検査未完了・iPhone実機未確認】世界の歴史2_221-240.html</p>
+<label class="pick" for="file">原本転記確認稿・確認版HTMLを選択して開く</label><input type="file" id="file" accept=".html,text/html"><button id="reopen" hidden>保存済みの原本転記確認稿・確認版を開く</button><p id="status" role="status" aria-live="polite">初回だけ、確認版HTMLの選択が必要です。</p>
+<p class="note">全60項目の検査とiPhone実機確認は未完了です。拡大中の画面移動はブラウザー検査で未解決です。本文・原本画像はこのサイトに公開せず、選択した私有ファイルを端末内で表示します。通常版や他分冊の保存データは変更しません。</p>
+</main></div>
+<script>
+'use strict';
+/* WH2 v6 host viewport handshake. Only UI state crosses this boundary. */
+const WH2_VIEWPORT_SESSION=(self.crypto?.randomUUID?.() ||
+ (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)))+'-wh2';
+function wh2SendViewport(){
+ const f=document.getElementById('reader');if(!f?.contentWindow)return;
+ const vv=window.visualViewport;
+ f.contentWindow.postMessage({kind:'wh2-host-viewport-v1',version:1,
+ session:WH2_VIEWPORT_SESSION,scale:Number(vv?.scale||1),
+ offsetLeft:Number(vv?.offsetLeft||0),offsetTop:Number(vv?.offsetTop||0)},'*');
+}
+window.addEventListener('message',e=>{
+ const f=document.getElementById('reader');
+ if(e.source!==f?.contentWindow||e.data?.kind!=='wh2-reader-ready-v1')return;
+ wh2SendViewport();
+});
+document.getElementById('reader').addEventListener('load',wh2SendViewport);
+window.addEventListener('pageshow',wh2SendViewport);
+window.addEventListener('resize',wh2SendViewport);
+window.addEventListener('orientationchange',wh2SendViewport);
+window.visualViewport?.addEventListener('resize',wh2SendViewport);
+window.visualViewport?.addEventListener('scroll',wh2SendViewport);
+setInterval(wh2SendViewport,1800);
+
+
+const $=id=>document.getElementById(id),DB='wh2-preview-14899f912482-v1',STORE='books',KEY='corrected221to240',MAX=80*1024*1024;
+const TARGET_RANGE=[221,240];
+const EXPECTED_SHA='919bcb2b735c3d6e1947b5dcafbf7017e3fa39660a35e665c7930ba163b00e82';
+let activeUrl='',fileForDeferredSave=null,opening=false;const verified=new WeakSet();
+function database(){return new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
+async function getSaved(){const d=await database();try{return await new Promise((resolve,reject)=>{const r=d.transaction(STORE,'readonly').objectStore(STORE).get(KEY);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error)})}finally{d.close()}}
+async function putSaved(blob,name){const d=await database();try{await new Promise((resolve,reject)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put({blob,name,date:Date.now(),sha256:EXPECTED_SHA},KEY);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)})}finally{d.close()}}
+async function verify(blob){
+ if(!blob||blob.size<1000000||blob.size>MAX)throw Error('原本転記確認稿・確認版のHTMLを選んでください。ZIPや別分冊は開けません。');
+ if(verified.has(blob))return true;
+ if(!crypto.subtle)throw Error('HTTPSのChrome確認用URLから開き直してください。');
+ $('status').textContent='原本転記確認稿・確認版とファイル全体を照合しています…';
+ const digest=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
+ const h=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
+ if(h!==EXPECTED_SHA)throw Error('このファイルは今回の原本転記確認稿・確認版ではありません。上のGoogle Driveリンクから20261113_1529の221-240.htmlを保存して選んでください。');
+ const text=await blob.text();
+ const match=text.match(/<script\b(?=[^>]*\bid=["']bookdata["'])[^>]*>([\s\S]*?)<\/script>/i);
+ if(!match||!(/世界の歴史[２2]/.test(text.slice(0,16000))))throw Error('世界の歴史2の読書HTMLを選んでください。');
+ let pages;try{pages=JSON.parse(match[1])}catch{throw Error('読書データが壊れています。Google Driveから保存し直してください。');}
+ if(!Array.isArray(pages)||pages.length!==20||pages.some((p,i)=>p.scan!==221+i||!p.original))throw Error('221〜240の20枚を収録したHTMLではありません。');
+ verified.add(blob);return true;
+}
+async function openBook(blob){
+ if(opening)return;opening=true;
+ try{await verify(blob);$('status').textContent='確認版の一致を確認しました。読書画面を開きます…';
+ const next=URL.createObjectURL(new Blob([blob],{type:'text/html;charset=utf-8'}));const previous=activeUrl;activeUrl=next;
+ const f=$('reader');f.onload=()=>{if(previous)URL.revokeObjectURL(previous);$('setup').hidden=true;f.focus();opening=false;wh2SendViewport();if(fileForDeferredSave){const item=fileForDeferredSave;fileForDeferredSave=null;setTimeout(async()=>{try{await putSaved(item.blob,item.name);$('reopen').hidden=false}catch(e){console.warn('端末内への保存に失敗しました。次回はHTMLを選び直してください。',e)}},1200)}};
+ f.onerror=()=>{opening=false;$('status').textContent='表示できませんでした。確認版HTMLを選び直してください。'};f.src=next;
+ }catch(e){opening=false;throw e;}
+}
+$('file').addEventListener('change',async()=>{const f=$('file').files?.[0];if(!f)return;try{fileForDeferredSave={blob:f,name:f.name};await openBook(f)}catch(e){fileForDeferredSave=null;$('status').textContent=e.message||String(e)}$('file').value=''});
+$('reopen').onclick=async()=>{try{const x=await getSaved();if(!x?.blob)throw Error('保存済み確認版がありません。');await openBook(x.blob)}catch(e){$('status').textContent=e.message||String(e)}};
+$('settings').onclick=()=>{$('setup').hidden=false};
+window.addEventListener('pageshow',async()=>{try{const x=await getSaved();if(x?.blob){$('reopen').hidden=false;if(!new URLSearchParams(location.search).has('import'))await openBook(x.blob)}}catch(e){$('status').textContent=e.message||'確認版HTMLを選択してください。'}});
+fetch('./file.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('確認版の保存先を取得できません。');return r.json()}).then(c=>{
+ if(c.sha256!==EXPECTED_SHA||!/^https:\/\/drive\.google\.com\/file\/d\/[A-Za-z0-9_-]+\/view/.test(c.url))throw Error('確認版の保存先情報が一致しません。');
+ $('download').href=c.url;$('download').removeAttribute('aria-disabled');$('filename').textContent=c.name;
+}).catch(e=>{$('filename').textContent=e.message;});
+</script></body></html>
