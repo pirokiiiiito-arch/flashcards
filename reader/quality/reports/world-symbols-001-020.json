@@ -4,7 +4,7 @@
   "bookId": "world-symbols-001-020",
   "entry": "reader/world-symbols/001-020/index.html",
   "stage": "draft",
-  "version": "20261112_v7_CG_Jung_source_spelling",
+  "version": "20261113_v8_source_corrected_chromium24_draft",
   "scanRange": [
     1,
     20
@@ -13,7 +13,7 @@
   "observedButNotCertified": {
     "rawScans": 20,
     "OCRTextPages": 17,
-    "wholePagesProofed": 0,
+    "wholePagesProofed": 20,
     "figures": 16
   },
   "deviceVerification": "not_run",
@@ -220,7 +220,7 @@
       "status": "not_run"
     }
   },
-  "investigation": "Source images reviewed visually; runtime coordinate candidates and OCR↔region links added, but all-text-area and exact source-coordinate coverage remain unverified. Swipe unit tests now use WH1 directional thresholds; iPhone recheck is still required.",
+  "investigation": "Private source correction records for scans001–020 inherited and verified against exact artifact SHA; displayed in Chromium at 24 viewport/font conditions with 2531 screens (0 text mismatches/overflows). Native Chromium input tests pass. 020→021, WebKit, iPhone and live Pages verification remain open.",
   "confirmedDefects": [
     {
       "check": "G1-04",
@@ -264,11 +264,10 @@
     }
   ],
   "displayOnlyRepairs": [
-    "Group consecutive body OCR fragments into continuous reading flow",
-    "Collapse mechanical whitespace runs/newline fragmentation without mutating JSON original",
-    "Set mobile figure caption size to WH1 baseline 16.8px at font20",
-    "Retain private image and OCR bytes unmodified",
-    "Convert ASCII comma/period in body text to Japanese punctuation; preserve originalOCRText in memory and exported HTML; do not alter captions/headings/original images"
+    "Read text from private corrected canonical data; do not overwrite original scanned JPEG/PNG",
+    "Preserve ASCII periods/commas and European initials exactly as source-corrected",
+    "Measured vertical pagination 20px line-height1.50; 16 fixed figures with caption-only flow",
+    "Parent viewport zoom forwarded to sandboxed reader, without publishing private contents"
   ],
   "implementationProgress": {
     "sourceRegionCandidateGenerator": "implemented_runtime_v2",
@@ -285,5 +284,85 @@
     "G704SyntheticBrowser": "passed_chromium_webkit",
     "G704SyntheticRun": "43065009458",
     "websiteLoaderVersion": "20261112-v2-gesture-regions"
-  }
+  },
+  "privateReaderHtml": {
+    "driveFileId": "13D8D6ck8DVUgTkyWa9aihoEGlyDQNux8",
+    "sha256": "bc72173db51edc55a8502ed3aab4ac1ff519298f497e039c922c5f2c8d45196a",
+    "status": "原本001〜020校正反映済み・Chromium検査済み・WebKit/iPhone未確認",
+    "scans": 20,
+    "figures": 16,
+    "publicRepositoryHasPrivateSource": false
+  },
+  "currentEvidence": {
+    "privateChecks60": "https://drive.google.com/file/d/1FVu15vqsF4uHO6h8KIpMhe6FZPzjRJyF/view",
+    "sourceProofAndDiff": "https://drive.google.com/file/d/14KfCqYhJ1lKNcbr1iXhisPtYd4k1fS6I/view",
+    "privateReproductionBundle": "https://drive.google.com/file/d/143Kn2I2F-AZRj3zBlknGzbkhWuY0B3B5/view",
+    "chromium24": {
+      "viewportWidths": [
+        320,
+        390,
+        430
+      ],
+      "fontPx": [
+        16,
+        18,
+        20,
+        22,
+        24,
+        26,
+        28,
+        30
+      ],
+      "screenCount": 2531,
+      "domTextMismatch": 0,
+      "overflowDetected": 0,
+      "figureDomInstability": 0
+    },
+    "chromiumTouch": {
+      "nativeUpNext": true,
+      "nativeDownPrevious": true,
+      "oneStepPerGesture": true,
+      "viewportPinch": true,
+      "panWhileZoomedNoPageChange": true
+    },
+    "externalBoundary020to021": "needs_source_review",
+    "iPhone": "not_run",
+    "WebKit": "not_run",
+    "pagesPublicDeployment": "not_verified"
+  },
+  "previousV7DisplayOnlyRepairs": [
+    "Group consecutive body OCR fragments into continuous reading flow",
+    "Collapse mechanical whitespace runs/newline fragmentation without mutating JSON original",
+    "Set mobile figure caption size to WH1 baseline 16.8px at font20",
+    "Retain private image and OCR bytes unmodified",
+    "Convert ASCII comma/period in body text to Japanese punctuation; preserve originalOCRText in memory and exported HTML; do not alter captions/headings/original images"
+  ],
+  "currentOpenItems": [
+    {
+      "check": "G4-01",
+      "status": "needs_source_review",
+      "reason": "020→021 boundary requires original021"
+    },
+    {
+      "check": "G7-04",
+      "status": "needs_source_review",
+      "reason": "Native Chromium gesture test passed; iPhone native viewport gesture pending"
+    },
+    {
+      "check": "G8-02",
+      "status": "needs_source_review",
+      "reason": "New loader accepts v8 in static contract and small browser import; full private file import on iPhone pending"
+    },
+    {
+      "check": "G8-03",
+      "status": "not_run",
+      "reason": "GitHub Pages live revision not confirmed"
+    },
+    {
+      "check": "G8-04",
+      "status": "not_run",
+      "reason": "Physical iPhone test not performed"
+    }
+  ],
+  "checksProvenance": "Legacy conservative draft CI statuses kept separate from the current detailed private 60-item evidence file; no automatic promotion to completed."
 }
