@@ -22,9 +22,9 @@
       "originalIndexSha256": "c177321d4ba80bd33bcee2b318f020f5cba333f8a4c727c38bedaf0ff52df464",
       "templateSha256": "cb649c90c7be491016484155bf9b1fd8797284ed59a3997eac0efc0717957b02",
       "profileSha256": "fd24754348fec9c1bfbcd9da5d66e377fb119a5ea7b17e29f49706e2dfb147e2",
-      "loaderSha256": "fd42cff8544942523b59735e2e8852d40c32552ce3c750ee431c12cd54860fa5"
+      "loaderSha256": "6b00e995e4b3f0421fb915e69db6063cbc6bda682d02776e9855f48cf6b7ea19"
     },
-    "subjectSha256": "19ba6700d495d74435a406a73152643a13ef3ba5c3ecf84c59570a300e37916f",
+    "subjectSha256": "a52690fda9fe4fb0c498e573985a98da4680eb31dba033837810cec8a6d4a4dd",
     "authorization": {
       "sha256": "f356478e249b7b6a4db10a7f447d606a7e9e9a3966c99ee420e7574cf9b7b64c",
       "explicit": true
@@ -214,13 +214,13 @@
     },
     "channel": "preview",
     "entry": "reader/preview/castle-001-020/index.html",
-    "bookRecordSha256": "399e8f476391685ed6f5fa8e6348e3014efcdbed165f2e0c47ef8acf1da4e568",
+    "bookRecordSha256": "1a2f81067ea58e24206c7f6ecadb502c7d3d2ceb5b6ec222868db12373e9c449",
     "reportSha256": "4c0dc7856eac9f754a3d1948875b66db94a9d400b919f304379e85eb898dec0a",
     "publicFiles": {
-      "reader/preview/castle-001-020/index.html": "fd42cff8544942523b59735e2e8852d40c32552ce3c750ee431c12cd54860fa5"
+      "reader/preview/castle-001-020/index.html": "6b00e995e4b3f0421fb915e69db6063cbc6bda682d02776e9855f48cf6b7ea19"
     },
-    "issuedAt": "2026-11-13T06:21:58.161Z",
+    "issuedAt": "2026-11-13T06:28:58.731Z",
     "trustBoundary": "Local evidence attestation, not independent reviewer authentication."
   },
-  "digest": "ae13bf6e0a335038e3640e06f4f2ab4a261771380dd66d267d190bad15cbeae5"
+  "digest": "6baada59e6432b84e56ebffdfdcca037d275aa395ef4dbae9f2f63cb64cd03a7"
 }
