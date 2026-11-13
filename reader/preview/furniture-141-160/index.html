@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5">
 <meta name="color-scheme" content="light">
-<meta name="furniture-import-guard" content="20261113_G142_v3">
+<meta name="furniture-import-guard" content="20261113_G157C_v4">
 <title>確認用・校正継続中｜洋家具の歴史と様式 141〜160枚目</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
@@ -33,26 +33,26 @@ a{color:#2c666c}
  <main>
   <h1>洋家具の歴史と様式</h1>
   <h2>141〜160枚目｜確認用・校正継続中</h2>
-  <p class="note">この入口は確認用です。本文・図説の全字校正とiPhone実機検査は未完了で、通常版の完成を意味しません。原本142枚目の図版欠けを修正し、従来の図版サイズを維持した版（G142 v3）専用です。端末に残る旧版は自動表示しません。</p>
+  <p class="note">この入口は確認用です。本文・図説の全字校正とiPhone実機検査は未完了で、通常版の完成を意味しません。G142・G157Cの図版欠けを修正し、121〜140枚目と同じ基本サイズに統一した版（v4）専用です。旧版は自動表示しません。</p>
   <p>iPhoneのChromeで開く、141〜160枚目の読書用Webアプリです。原本画像・縦書き本文・図版と説明・左右照合を切り替えられます。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
-  <h2>G142図版修正版を取り込む</h2>
+  <h2>G157C・画像サイズ統一v4を取り込む</h2>
   <ol>
-   <li>下のリンクから<strong>G142図版切れと表示倍率修正のHTML</strong>をiPhoneの「ファイル」に保存</li>
+   <li>下のリンクから<strong>G157C全景・図版サイズ統一v4のHTML</strong>をiPhoneの「ファイル」に保存</li>
    <li>ここに戻り、下の「ファイルを選択」からHTMLを選ぶ</li>
    <li>次回以降は確認済みの修正版のみ自動で開きます（旧版は開きません）</li>
   </ol>
-  <p><a href="https://drive.google.com/file/d/1DaQFLQRmkGccL15b1tcGjQU_ohgg9Isf/view" target="_blank" rel="noopener noreferrer">G142修正版HTMLをGoogleドライブから保存</a></p>
-  <label class="pick" for="file">G142修正版HTML（画像サイズ維持v3）を選択</label>
+  <p><a href="https://drive.google.com/file/d/1DaQFLQRmkGccL15b1tcGjQU_ohgg9Isf/view" target="_blank" rel="noopener noreferrer">G157C修正版v4をGoogleドライブから保存</a></p>
+  <label class="pick" for="file">G157C修正版HTML（図版サイズ統一v4）を選択</label>
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
-  <p id="status" role="status" aria-live="polite">G142修正版（画面上部に「図版G142上端・脚先／画像サイズ固定修正v3」）を選択してください。</p>
+  <p id="status" role="status" aria-live="polite">修正版v4を選択してください。読書画面上部の「図版G142・G157C全景／画像サイズ統一v4」が目印です。</p>
   <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。原本表示と図版表示に切り替えられます。現時点のOCR校正と実機確認は完了していません。</p>
  </main>
 </div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const REQUIRED_VERSION='20261113_furniture_141_160_G142_complete_fixedscale_v3';
+const REQUIRED_VERSION='20261113_furniture_141_160_G157C_complete_scaling_v4';
 const DB='furniture-reader-on-device-v1',STORE='books',KEY='scans141to160',MAX=60*1024*1024;
 let currentBlob=null,activeUrl='';
 function database(){
@@ -90,7 +90,7 @@ async function verify(blob){
     !head.includes('name="viewport"'))
    throw Error('別のHTMLです。Googleドライブから洋家具141〜160枚目の修正版を選んでください。');
  const version=head.match(/<meta[^>]*name=["']reader-version["'][^>]*content=["']([^"']+)/i)?.[1]||'';
- if(version!==REQUIRED_VERSION)throw Error('旧版のHTMLです。画像が切れたりサイズが変わるため開きません。DriveからG142図版の修正版v3を保存し直してください。');
+ if(version!==REQUIRED_VERSION)throw Error('旧版のHTMLです。画像が切れたりサイズが変わるため開きません。DriveからG157C図版と表示サイズの修正版v4を保存し直してください。');
  return true;
 }
 async function openBook(blob){
@@ -131,10 +131,10 @@ window.addEventListener('pageshow',async()=>{
     await verify(saved.blob);
     $('reopen').hidden=false;
     if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob);
-    else $('status').textContent='修正版v3が保存されています。差し替える場合はファイルを選択してください。';
+    else $('status').textContent='修正版v4が保存されています。差し替える場合はファイルを選択してください。';
    }catch(error){
     $('reopen').hidden=true;
-    $('status').textContent='端末に旧版が保存されています。自動で開かず停止しました。DriveからG142修正版v3を保存して選択してください。';
+    $('status').textContent='端末に旧版が保存されています。自動で開かず停止しました。DriveからG157C修正版v4を保存して選択してください。';
    }
   }
  }catch(e){$('status').textContent='端末に保存済みの読書版はありません。最初の1回だけHTMLを選択してください。';}
