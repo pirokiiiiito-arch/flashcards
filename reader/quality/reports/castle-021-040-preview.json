@@ -1,0 +1,209 @@
+{
+  "schema": "reader-quality-report-v1",
+  "standardFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
+  "bookId": "castle-021-040-preview",
+  "entry": "reader/preview/castle-021-040/index.html",
+  "stage": "draft",
+  "scanRange": [
+    21,
+    40
+  ],
+  "claimsCompleted": false,
+  "deviceVerification": "not_run",
+  "privateArtifact": {
+    "driveFileId": "1BQjqWWTUN6yZkkasK6CpMLGdf1_Am4Bk",
+    "sha256": "b9555ac9696c60662e41e5bd45c9a885fc97753ab0abcdb211492ccd92b0206d",
+    "bytes": 44093350,
+    "originalCount": 20,
+    "figureCount": 25,
+    "status": "校正継続中・未完成"
+  },
+  "notes": [
+    "ユーザーから021〜040のChrome確認用URLを作成する明示依頼があったため、未校正版を専用プレビュー入口からのみ閲覧できるようにする。",
+    "候補HTML原本20JPEGのバイト単位SHA一致を検査。図版画素一致25点は既存制作報告に依拠する。",
+    "独立全文字照合・跨ぎ文字列の自然な接続・全画面タッチ操作・iPhone Chrome実機は未完了。完成版ではない。",
+    "原本画像と本文は非公開のGoogle Drive/ユーザー端末に残し、公開入口には書籍文字と原本の内容を含めない。"
+  ],
+  "checks": {
+    "G1-01": {
+      "status": "not_run"
+    },
+    "G1-02": {
+      "status": "not_run"
+    },
+    "G1-03": {
+      "status": "not_run"
+    },
+    "G1-04": {
+      "status": "not_run"
+    },
+    "G1-05": {
+      "status": "not_run"
+    },
+    "G1-07": {
+      "status": "not_run"
+    },
+    "G1-08": {
+      "status": "not_run"
+    },
+    "G1-10": {
+      "status": "not_run"
+    },
+    "G1-12": {
+      "status": "not_run"
+    },
+    "G2-01": {
+      "status": "not_run"
+    },
+    "G2-02": {
+      "status": "not_run"
+    },
+    "G2-03": {
+      "status": "not_run"
+    },
+    "G2-04": {
+      "status": "not_run"
+    },
+    "G2-05": {
+      "status": "not_run"
+    },
+    "G2-07": {
+      "status": "not_run"
+    },
+    "G2-11": {
+      "status": "not_run"
+    },
+    "G3-01": {
+      "status": "not_run"
+    },
+    "G3-02": {
+      "status": "not_run"
+    },
+    "G3-03": {
+      "status": "not_run"
+    },
+    "G3-04": {
+      "status": "not_run"
+    },
+    "G3-05": {
+      "status": "not_run"
+    },
+    "G3-06": {
+      "status": "not_run"
+    },
+    "G3-07": {
+      "status": "not_run"
+    },
+    "G4-01": {
+      "status": "not_run"
+    },
+    "G4-02": {
+      "status": "not_run"
+    },
+    "G4-03": {
+      "status": "not_run"
+    },
+    "G4-04": {
+      "status": "not_run"
+    },
+    "G4-05": {
+      "status": "not_run"
+    },
+    "G4-09": {
+      "status": "not_run"
+    },
+    "G5-01": {
+      "status": "not_run"
+    },
+    "G5-02": {
+      "status": "not_run"
+    },
+    "G5-03": {
+      "status": "not_run"
+    },
+    "G5-04": {
+      "status": "not_run"
+    },
+    "G5-05": {
+      "status": "not_run"
+    },
+    "G5-10": {
+      "status": "not_run"
+    },
+    "P20": {
+      "status": "not_run"
+    },
+    "G6-01": {
+      "status": "not_run"
+    },
+    "G6-02": {
+      "status": "not_run"
+    },
+    "G6-03": {
+      "status": "not_run"
+    },
+    "G6-05": {
+      "status": "not_run"
+    },
+    "G6-09": {
+      "status": "not_run"
+    },
+    "G6-11": {
+      "status": "not_run"
+    },
+    "G6-12": {
+      "status": "not_run"
+    },
+    "P22": {
+      "status": "not_run"
+    },
+    "P23": {
+      "status": "not_run"
+    },
+    "G7-01": {
+      "status": "not_run"
+    },
+    "G7-02": {
+      "status": "not_run"
+    },
+    "G7-03": {
+      "status": "not_run"
+    },
+    "G7-04": {
+      "status": "not_run"
+    },
+    "G7-05": {
+      "status": "not_run"
+    },
+    "G7-10": {
+      "status": "not_run"
+    },
+    "G7-12": {
+      "status": "not_run"
+    },
+    "G8-01": {
+      "status": "not_run"
+    },
+    "G8-02": {
+      "status": "not_run"
+    },
+    "G8-03": {
+      "status": "not_run"
+    },
+    "G8-04": {
+      "status": "not_run"
+    },
+    "G8-05": {
+      "status": "not_run"
+    },
+    "G8-07": {
+      "status": "not_run"
+    },
+    "G8-08": {
+      "status": "not_run"
+    },
+    "G8-11": {
+      "status": "not_run"
+    }
+  }
+}
