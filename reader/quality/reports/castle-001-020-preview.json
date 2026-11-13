@@ -1,0 +1,454 @@
+{
+  "schema": "reader-quality-report-v1",
+  "standardFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
+  "bookId": "castle-001-020",
+  "entry": "reader/preview/castle-001-020/index.html",
+  "stage": "draft",
+  "scanRange": [
+    1,
+    20
+  ],
+  "claimsCompleted": false,
+  "deviceVerification": "not_run",
+  "privateArtifact": {
+    "sha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+    "scanRange": [
+      1,
+      20
+    ],
+    "format": "scan-book-v2 HTML",
+    "readbackDriveFileId": "1STjhLzK4L3a7YRa5TmAf5I-qTbYDyglp",
+    "status": "source-checked-but-runtime-unverified"
+  },
+  "notes": [
+    "原本20枚と訂正履歴8件の校正データを非公開Driveへ保管。",
+    "Chrome表示24条件・親子倍率通知・スワイプ/ピンチ/拡大中パン・iPhone実機は未検査。",
+    "非公開HTMLの検証専用入口。通常読書版ではなく、既存の読書入口や書籍データを置き換えない。"
+  ],
+  "evidenceDigests": {
+    "canonicalSha256": "8940494cd6bc58b5e3f6ec3797bb5fe960c25dc346b3135fae58db468f9e0c69",
+    "rawSha256": "6de2356b18d7f98fb7dff217b9509942ee65fac998662757562de50dca4f0133",
+    "originalIndexSha256": "c177321d4ba80bd33bcee2b318f020f5cba333f8a4c727c38bedaf0ff52df464",
+    "inventorySha256": "487701d926e3da2a90e6893af4ef0100185e4ab1e4766c26b75e5fecb8318a02",
+    "secondPassSha256": "f930550c098d3b3647ae2a39d262d3a42b51ce6169535e81b034404e0d23128d",
+    "resolutionSha256": "82c1948bf663a172f2582350ee685a1c945f30b21372cfff3a0ff887f738069b",
+    "correctionSha256": "60fd74b7d75153f38b375f3676aeeafd604310f92565d889de946f3353b13e9b",
+    "previewAuthorizationSha256": "f356478e249b7b6a4db10a7f447d606a7e9e9a3966c99ee420e7574cf9b7b64c"
+  },
+  "checks": {
+    "G1-01": {
+      "status": "passed",
+      "proof": {
+        "method": "ZIP自然順・20件のscan順・欠番重複・source SHA・埋込み順と寸法を全件機械照合。",
+        "evidenceRef": "private_bundle/evidence/source-G1-01-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-02": {
+      "status": "passed",
+      "proof": {
+        "method": "元JPEG20枚とHTML内復号バイトのSHA256および完全バイト一致を再検証。",
+        "evidenceRef": "private_bundle/evidence/source-G1-02-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-03": {
+      "status": "passed",
+      "proof": {
+        "method": "原本20枚の格納寸法とEXIFを保持。図13/15の整数転置と元画素一致を検査。",
+        "evidenceRef": "private_bundle/evidence/source-G1-03-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-04": {
+      "status": "passed",
+      "proof": {
+        "method": "一次・独立転記の全領域棚卸し、全255field対応と131図中番号の座標を統合。",
+        "evidenceRef": "private_bundle/evidence/source-G1-04-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-05": {
+      "status": "passed",
+      "proof": {
+        "method": "独立した原本先行の再読取で原本8/13/15等の図主体ページ、独立説明、本文を分類。",
+        "evidenceRef": "private_bundle/evidence/source-G1-05-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-07": {
+      "status": "passed",
+      "proof": {
+        "method": "二稿の四辺・余白点検記録とsource領域対応を突合し、未登録の読書文字がないことを確認。",
+        "evidenceRef": "private_bundle/evidence/source-G1-07-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-08": {
+      "status": "passed",
+      "proof": {
+        "method": "印刷ノンブルを配列番号から分離し、独立原本の記録と全20枚照合。017の不可視番号は推定しない。",
+        "evidenceRef": "private_bundle/evidence/source-G1-08-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-10": {
+      "status": "passed",
+      "proof": {
+        "method": "格納画素座標で全領域と図中番号のboxを機械検証し範囲外・空領域ゼロ。",
+        "evidenceRef": "private_bundle/evidence/source-G1-10-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G1-12": {
+      "status": "passed",
+      "proof": {
+        "method": "小さなルビ、濁点、図中番号、白字図説、辺部を原本の画素一致cropで再読取し裁定。",
+        "evidenceRef": "private_bundle/evidence/source-G1-12-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G2-01": {
+      "status": "not_applicable",
+      "reason": "対象原本の本文は横書き二段組であり、原本の縦書き右から左の列順検査は対象外。横書き順はG2-02で検査。",
+      "evidenceRef": "private_bundle/evidence/source-G2-01-v1.json"
+    },
+    "G2-02": {
+      "status": "passed",
+      "proof": {
+        "method": "横書き二段組の左列から右列への順番、011/017/019の列跨ぎを独立source rowで照合。",
+        "evidenceRef": "private_bundle/evidence/source-G2-02-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G2-03": {
+      "status": "passed",
+      "proof": {
+        "method": "本文・見出し・目次・caption・柱・folio・図中文字の領域と表示登録を別種別で監査。",
+        "evidenceRef": "private_bundle/evidence/source-G2-03-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G2-04": {
+      "status": "passed",
+      "proof": {
+        "method": "255読書field→原本領域と原本領域→fieldを双方向突合。008/009と012/013、014/015、020複合図を明示。",
+        "evidenceRef": "private_bundle/evidence/source-G2-04-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G2-05": {
+      "status": "passed",
+      "proof": {
+        "method": "旧OCR原稿、一次原本修正、独立原本転記、canonical field数を突合。図のみ例外を根拠付きで保持。",
+        "evidenceRef": "private_bundle/evidence/source-G2-05-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G2-07": {
+      "status": "not_applicable",
+      "reason": "対象原本は横書きのため縦書き列末→次列の条件は対象外。横書き行・列跨ぎは独立転記接続表で照合。",
+      "evidenceRef": "private_bundle/evidence/source-G2-07-v1.json"
+    },
+    "G2-11": {
+      "status": "passed",
+      "proof": {
+        "method": "原本由来の章・節・目次階層と本文group対応を二稿の領域・項目順から照合。",
+        "evidenceRef": "private_bundle/evidence/source-G2-11-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G3-01": {
+      "status": "passed",
+      "proof": {
+        "method": "一次全字原本比較と独立原本先行転記を255fieldに対応付け、全差異を原本cropで裁定。",
+        "evidenceRef": "private_bundle/evidence/source-G3-01-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G3-02": {
+      "status": "passed",
+      "proof": {
+        "method": "小書き仮名・濁点・記号・14ルビ・括弧を二稿比較し、15差分001–010と1符号差011–020を裁定。",
+        "evidenceRef": "private_bundle/evidence/source-G3-02-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G3-03": {
+      "status": "passed",
+      "proof": {
+        "method": "gateと同じregexで抽出した数字386箇所を独立source fieldのtoken/offsetと全件照合、source actor/bbox/hashを保存。",
+        "evidenceRef": "private_bundle/evidence/source-G3-03-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G3-04": {
+      "status": "passed",
+      "proof": {
+        "method": "固有名詞の相違は候補の意味に従って改変せず原本字形で確定。出現箇所を原本領域へ逆参照可能。",
+        "evidenceRef": "private_bundle/evidence/source-G3-04-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G3-05": {
+      "status": "passed",
+      "proof": {
+        "method": "旧稿からの73差分と新規8修正eventを出典座標・前後文字・日時・確認者・理由付きで保存しreplay完全一致。",
+        "evidenceRef": "private_bundle/evidence/source-G3-05-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G3-06": {
+      "status": "passed",
+      "proof": {
+        "method": "001–010と011–020を別agentが一次稿を見ず原本から独立転記。固定原稿SHAと各run識別子を保存。",
+        "evidenceRef": "private_bundle/evidence/source-G3-06-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G3-07": {
+      "status": "passed",
+      "proof": {
+        "method": "255field全文比較、空白だけの明示整合、裁定後248一致と7符号/字形差の解決根拠を保持。",
+        "evidenceRef": "private_bundle/evidence/source-G3-07-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G4-01": {
+      "status": "passed",
+      "proof": {
+        "method": "入力先頭0>1、内部19境界、出口20>21の21件に原本SHA・端部アンカー・二稿のsource接続根拠を記録。",
+        "evidenceRef": "private_bundle/evidence/source-G4-01-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G4-02": {
+      "status": "passed",
+      "proof": {
+        "method": "原本スキャン間の文中継続・写真介在・凡例対図の関係を分類。正文9→11の新段落と19→21出口を確認。",
+        "evidenceRef": "private_bundle/evidence/source-G4-02-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G4-03": {
+      "status": "passed",
+      "proof": {
+        "method": "source領域を原本順に組み立てた255fieldとcanonicalを往復一致し、groups参照が各field一回であることを検証。描画逆連結は別途未実施。",
+        "evidenceRef": "private_bundle/evidence/source-G4-03-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G4-04": {
+      "status": "not_run"
+    },
+    "G4-05": {
+      "status": "not_run"
+    },
+    "G4-09": {
+      "status": "passed",
+      "proof": {
+        "method": "sourceで結合した全255fieldの引用符と括弧96組を機械検証し、列跨ぎ結合記録と突合。",
+        "evidenceRef": "private_bundle/evidence/source-G4-09-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G5-01": {
+      "status": "passed",
+      "proof": {
+        "method": "9登録図版と出典画像、各caption ID、020の5写真一体構成を棚卸しして重複欠番を検査。",
+        "evidenceRef": "private_bundle/evidence/source-G5-01-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G5-02": {
+      "status": "passed",
+      "proof": {
+        "method": "9PNGを再デコードし元画像同座標（EXIF整数転置を含む）と全画素一致。一次原本比較で全辺の切れを修正。",
+        "evidenceRef": "private_bundle/evidence/source-G5-02-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G5-03": {
+      "status": "passed",
+      "proof": {
+        "method": "013の1–55、015の1–42の合計131番号位置を原本で独立再読し、番号・座標・凡例IDを保存。",
+        "evidenceRef": "private_bundle/evidence/source-G5-03-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G5-04": {
+      "status": "passed",
+      "proof": {
+        "method": "9caption fieldと9図を双方向照合。別原本にある説明、020の位置別5説明の一対多を維持。",
+        "evidenceRef": "private_bundle/evidence/source-G5-04-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G5-05": {
+      "status": "not_run"
+    },
+    "G5-10": {
+      "status": "not_applicable",
+      "reason": "目次と図版一覧の対象4枚に独立した挿絵はなく、文字・番号だけであることを二稿の原本棚卸しで確認。",
+      "evidenceRef": "private_bundle/evidence/source-G5-10-v1.json"
+    },
+    "P20": {
+      "status": "passed",
+      "proof": {
+        "method": "原本目次・図版一覧の201項目＋8区分見出しの全件を独立転記と対応付け、項目名とページ番号を同fieldに保持。",
+        "evidenceRef": "private_bundle/evidence/source-P20-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G6-01": {
+      "status": "passed",
+      "proof": {
+        "method": "短い献呈、章扉、写真、図中文字のみのページを独立原本の分類と照合し、文字なしへの誤分類を検出。",
+        "evidenceRef": "private_bundle/evidence/source-G6-01-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G6-02": {
+      "status": "passed",
+      "proof": {
+        "method": "本番gateが検出した18英字警告を全件独立原本転記と照合。印刷英題・用語・URLとしてsource根拠付きで確定。",
+        "evidenceRef": "private_bundle/evidence/source-G6-02-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G6-03": {
+      "status": "passed",
+      "proof": {
+        "method": "source各行と列の端部接続、019の旧稿混入文字と列分断の修正を二稿で照合。",
+        "evidenceRef": "private_bundle/evidence/source-G6-03-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G6-05": {
+      "status": "passed",
+      "proof": {
+        "method": "source異常・数字・二稿差異の未解決数ゼロを機械確認。画面未実施は別にnot_runとして保持。",
+        "evidenceRef": "private_bundle/evidence/source-G6-05-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G6-09": {
+      "status": "passed",
+      "proof": {
+        "method": "全255fieldの独立source照合と1字重複/列交換のコピー変異検査により、旧稿由来の異常重複・誤連結を解消。",
+        "evidenceRef": "private_bundle/evidence/source-G6-09-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G6-11": {
+      "status": "not_run"
+    },
+    "G6-12": {
+      "status": "passed",
+      "proof": {
+        "method": "原本を領域別に切り分けて原稿未参照で再読取し、全辺・ルビ・図説・図中ラベルを一次棚卸しへ逆照合。",
+        "evidenceRef": "private_bundle/evidence/source-G6-12-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "P22": {
+      "status": "passed",
+      "proof": {
+        "method": "別のテストコピーに一字削除・一字重複・列順交換・図説リンク交換を注入し、4種すべて検出。正常対照も確認。",
+        "evidenceRef": "private_bundle/evidence/source-P22-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "P23": {
+      "status": "not_run"
+    },
+    "G7-01": {
+      "status": "not_run"
+    },
+    "G7-02": {
+      "status": "not_run"
+    },
+    "G7-03": {
+      "status": "not_run"
+    },
+    "G7-04": {
+      "status": "not_run"
+    },
+    "G7-05": {
+      "status": "not_run"
+    },
+    "G7-10": {
+      "status": "not_run"
+    },
+    "G7-12": {
+      "status": "not_run"
+    },
+    "G8-01": {
+      "status": "not_run"
+    },
+    "G8-02": {
+      "status": "not_run"
+    },
+    "G8-03": {
+      "status": "not_run"
+    },
+    "G8-04": {
+      "status": "not_run"
+    },
+    "G8-05": {
+      "status": "not_run"
+    },
+    "G8-07": {
+      "status": "passed",
+      "proof": {
+        "method": "原本Drive ID、ZIP SHA、raw/canonical/corrections/source index/template/loader各SHAを同book IDとrangeに結合。",
+        "evidenceRef": "private_bundle/evidence/source-G8-07-v1.json",
+        "artifactSha256": "583ce56fd8f5dff22d2c887977768b6b5f4c8126b5df415d111d57b90cce97b5",
+        "verifiedBy": "/root (evidence integration); original-source reviewers identified per field"
+      }
+    },
+    "G8-08": {
+      "status": "not_run"
+    },
+    "G8-11": {
+      "status": "not_run"
+    }
+  }
+}
