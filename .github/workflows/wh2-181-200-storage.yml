@@ -28,3 +28,10 @@ jobs:
           name: wh2-181-200-storage-results
           path: test-results/wh2-181-200-storage.json
           retention-days: 7
+      - name: Package runtime only, never private books or system font files
+        run: tar -C "$HOME/.cache/ms-playwright/chromium_headless_shell-1194" -czf /tmp/reader-browser-runtime.tgz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reader-browser-runtime
+          path: /tmp/reader-browser-runtime.tgz
+          retention-days: 1
