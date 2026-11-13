@@ -1,0 +1,30 @@
+name: WH2 181-200 loader storage check
+on:
+  push:
+    branches: [work/wh2-181-200-storage-check]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  storage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install isolated test browser
+        run: |
+          npm install --no-save --prefix /tmp/reader-browser-tests playwright@1.56.1
+          /tmp/reader-browser-tests/node_modules/.bin/playwright install --with-deps chromium
+      - name: Test exact loader with generated synthetic data
+        env:
+          NODE_PATH: /tmp/reader-browser-tests/node_modules
+        run: node tests/wh2-181-200-storage.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wh2-181-200-storage-results
+          path: test-results/wh2-181-200-storage.json
+          retention-days: 7
