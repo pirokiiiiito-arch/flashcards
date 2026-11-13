@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5">
+<meta name="color-scheme" content="light">
+<meta name="furniture-import-guard" content="20261113_261_280_initial_v2">
+<title>確認用・校正継続中｜洋家具の歴史と様式 261〜280枚目</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#29383a;background:#faf9f4}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+#reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf7}
+#setup{position:fixed;inset:0;z-index:10;overflow-y:auto;background:#f7f8f5;display:flex;justify-content:center;align-items:center;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom))}
+#setup[hidden]{display:none}
+main{width:100%;max-width:480px;padding:26px 23px;border-radius:18px;background:#fff;border:1px solid #e0e5e1;box-shadow:0 12px 35px #213c3810}
+h1{font-size:22px;margin:0 0 6px;line-height:1.4}
+h2{font-size:16px;margin:0 0 12px}
+p{font-size:14px;line-height:1.85;color:#526367;margin:10px 0}
+.note{font-size:12px;color:#6a7779}
+button,.pick{display:block;width:100%;min-height:48px;text-align:center;padding:11px 13px;margin:13px 0;border:1px solid #bdcdcb;border-radius:11px;background:#fff;color:#25474c;font-size:15px;font-weight:600;cursor:pointer}
+.pick{background:#315c63;color:#fff;border-color:#315c63}
+button[hidden]{display:none}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#status{white-space:pre-wrap;min-height:26px;font-size:12px;color:#485e65}
+ol{font-size:13px;line-height:1.8;color:#536369;padding-left:23px}
+a{color:#2c666c}
+</style>
+<style id="browser-page-pinch-shell-v2">html,body,#reader{touch-action:pan-x pan-y pinch-zoom}</style></head>
+<body>
+<iframe id="reader" title="洋家具の歴史と様式 読書" sandbox="allow-scripts"></iframe>
+<div id="setup">
+ <main>
+  <h1>洋家具の歴史と様式</h1>
+  <h2>261〜280枚目｜確認用・校正継続中</h2>
+  <p class="note">この入口は確認用です。本文・図説の全字校正とiPhone実機検査は未完了で、通常版の完成を意味しません。261〜280枚目の原本20枚、家具等の図版60点、関連年表2ページ（全体表示付き）を収録した版専用です。旧版や異なる巻のファイルは自動表示しません。</p>
+  <p>iPhoneのChromeで開く、261〜280枚目の読書用Webアプリです。原本画像・縦書き本文・図版と説明・左右照合を切り替えられます。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
+  <h2>261〜280枚目の読書用HTMLを取り込む</h2>
+  <ol>
+   <li>Google Driveに保存した<strong>261〜280枚目の読書用HTML</strong>をiPhoneの「ファイル」に保存</li>
+   <li>ここに戻り、下の「ファイルを選択」からHTMLを選ぶ</li>
+   <li>次回以降はこの版のHTMLだけを自動で開きます</li>
+  </ol>
+  <p><a href="https://drive.google.com/file/d/1dlCqYRCIi9nRIlyHydoG3Snnzeqsj8ZM/view" target="_blank" rel="noopener noreferrer">261〜280枚目のHTMLをGoogleドライブから保存</a></p>
+  <label class="pick" for="file">261〜280枚目の読書用HTMLを選択</label>
+  <input type="file" id="file" accept=".html,text/html">
+  <button id="reopen" hidden>保存済みの読書版を開く</button>
+  <p id="status" role="status" aria-live="polite">261〜280枚目の読書用HTMLを選択してください。</p>
+  <p class="note">本の画像・本文はGitHubに公開しません。この端末のChrome内へ保存します。この本用に別保存されます。サイトデータを削除すると再読込が必要になります。原本表示と図版表示に切り替えられます。現時点のOCR校正と実機確認は完了していません。</p>
+ </main>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const REQUIRED_VERSION='20261113_furniture_261_280_initial_v2';
+const REQUIRED_SHA256='9b68a93588fd750b45ece4e41d81250d451e074dfef31b12d5df4ef67e2f9ae2';
+const DB='furniture-reader-on-device-v1',STORE='books',KEY='scans261to280',MAX=60*1024*1024;
+let currentBlob=null,activeUrl='';
+function database(){
+ return new Promise((resolve,reject)=>{
+  if(!('indexedDB' in window))return reject(Error('端末保存には対応していません'));
+  const req=indexedDB.open(DB,1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};
+  req.onsuccess=()=>resolve(req.result);
+  req.onerror=()=>reject(req.error||Error('端末保存ができません'));
+ });
+}
+async function getSaved(){
+ const db=await database();
+ try{return await new Promise((resolve,reject)=>{
+  const req=db.transaction(STORE,'readonly').objectStore(STORE).get(KEY);
+  req.onsuccess=()=>resolve(req.result||null);
+  req.onerror=()=>reject(req.error);
+ });}finally{db.close();}
+}
+async function putSaved(blob,name){
+ const db=await database();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).put({blob,name,date:Date.now()},KEY);
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(tx.error);
+  tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+async function verify(blob){
+ if(!blob||blob.size<1000000||blob.size>MAX)throw Error('洋家具の歴史と様式 261〜280枚目の読書HTMLを選択してください。');
+ const head=await blob.slice(0,30000).text();
+ if(!head.includes('洋家具の歴史と様式｜261〜280')||
+    !head.includes('id="stage"')||
+    !head.includes('name="viewport"'))
+   throw Error('別のHTMLです。Googleドライブから洋家具261〜280枚目の修正版を選んでください。');
+ const version=head.match(/<meta[^>]*name=["']reader-version["'][^>]*content=["']([^"']+)/i)?.[1]||'';
+ if(version!==REQUIRED_VERSION)throw Error('別の版のHTMLです。Driveから今回の261〜280枚目の読書用HTMLを保存し直してください。');
+ const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))).map(x=>x.toString(16).padStart(2,'0')).join('');
+ if(digest!==REQUIRED_SHA256)throw Error('今回の261〜280枚目HTMLと内容が一致しません。Google Driveから今回のファイルを保存し直してください。');
+ return true;
+}
+async function openBook(blob){
+ await verify(blob);
+ currentBlob=blob;
+ $('status').textContent='読書画面を開いています…';
+ if(activeUrl)URL.revokeObjectURL(activeUrl);
+ activeUrl=URL.createObjectURL(blob);
+ const frame=$('reader');
+ frame.onload=()=>{
+  $('setup').hidden=true;
+  frame.focus();
+  sendZoomScale();
+ };
+ frame.onerror=()=>{$('status').textContent='表示できませんでした。もう一度ファイルを選択してください。';};
+ frame.src=activeUrl;
+}
+$('file').addEventListener('change',async()=>{
+ const file=$('file').files?.[0];if(!file)return;
+ try{
+  await verify(file);
+  try{await putSaved(file,file.name);}catch(e){
+   $('status').textContent='端末への自動保存はできませんでしたが、今回の読書画面は開けます。';
+  }
+  await openBook(file);
+ }catch(e){$('status').textContent=e?.message||String(e);}
+ $('file').value='';
+});
+$('reopen').onclick=async()=>{
+ try{const doc=await getSaved();if(!doc?.blob)throw Error('保存済みファイルがありません');await openBook(doc.blob)}
+ catch(e){$('status').textContent=e.message||String(e);}
+};
+window.addEventListener('pageshow',async()=>{
+ try{
+  const saved=await getSaved();
+  if(saved?.blob){
+   try{
+    await verify(saved.blob);
+    $('reopen').hidden=false;
+    if(!new URLSearchParams(location.search).has('import'))await openBook(saved.blob);
+    else $('status').textContent='261〜280枚目の読書HTMLが保存されています。差し替える場合はファイルを選択してください。';
+   }catch(error){
+    $('reopen').hidden=true;
+    $('status').textContent='端末に旧版が保存されています。自動で開かず停止しました。Driveから261〜280枚目の今回の確認版を保存して選択してください。';
+   }
+  }
+ }catch(e){$('status').textContent='端末に保存済みの読書版はありません。最初の1回だけHTMLを選択してください。';}
+});
+
+// Parent whole-screen visual viewport state; the private book stays on device.
+function sendZoomScale(){
+ const frame=$('reader');if(!frame?.contentWindow)return;
+ frame.contentWindow.postMessage({type:'furniture-reader-viewport-v1',scale:window.visualViewport?.scale||1},'*');
+}
+window.addEventListener('message',event=>{
+ if(event.source===$('reader').contentWindow&&event.data?.type==='furniture-reader-viewport-request-v1')sendZoomScale();
+});
+window.visualViewport?.addEventListener('resize',sendZoomScale,{passive:true});
+window.visualViewport?.addEventListener('scroll',sendZoomScale,{passive:true});
+</script>
+</body>
+</html>
