@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5"><title>世界の歴史2｜Chrome読書版 181〜200</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#f7f8f5;color:#29383a;font-family:-apple-system,system-ui,sans-serif}#reader{position:fixed;inset:0;border:0;width:100%;height:100%;background:#fffefa}#setup{position:fixed;inset:0;z-index:10;display:flex;justify-content:center;align-items:center;padding:20px;overflow:auto;background:#f7f8f5}#setup[hidden]{display:none}main{width:100%;max-width:480px;background:white;border:1px solid #dce5df;border-radius:18px;padding:24px}h1{font-size:22px;margin:0 0 15px}p,li{font-size:14px;line-height:1.8}ol{padding-left:22px}.name{font-size:12px;overflow-wrap:anywhere}.pick,button{display:block;width:100%;padding:13px;margin-top:15px;border:1px solid #b9ceca;border-radius:11px;font-size:15px;cursor:pointer}.pick{background:#315c63;color:white;text-align:center}button{background:white;color:#315c63}button[hidden]{display:none}input{position:absolute;width:1px;height:1px;opacity:0}a{color:#285d67}#status{white-space:pre-wrap;font-size:12px;min-height:22px}.note{font-size:12px;color:#667571}
+</style><style id="wh2-pinch-shell-v6">#reader{touch-action:pan-x pan-y pinch-zoom}</style></head><body>
+<iframe id="reader" title="世界の歴史2・181〜200 読書画面" sandbox="allow-scripts"></iframe>
+<div id="setup"><main><h1>世界の歴史2｜181〜200</h1>
+<p>本文20pxの縦書き読書画面（原本を読み直した校正稿・iPhone実機未確認）です。上下スワイプと「前へ／次へ」で進み、A−／A＋で文字サイズを変更できます。</p>
+<ol><li><a id="download" aria-disabled="true">181〜200の読書HTMLをGoogle Driveで開く</a>し、iPhoneの「ファイル」に保存。</li><li>下のボタンで、名前の先頭が日付・時刻、その後に <strong>181-200</strong> とあるHTMLを選んでください。</li></ol>
+<p class="name" id="filename">最新ファイルの保存先を確認しています…</p>
+<p class="note">今回の181〜200版を選び直してください。以前に保存した別分冊のデータには影響しません。</p>
+<label class="pick" for="file">読書版HTMLを選択して開く</label><input type="file" id="file" accept=".html,text/html"><button id="reopen" hidden>端末に保存済みの読書版を開く</button><p id="status" role="status" aria-live="polite">181〜200のHTMLを選択してください。</p>
+<p class="note">このURLには本文・原本画像を公開していません。選んだファイルは端末内で開きます。他分冊のHTMLは対象外です。本文・図説は原本と照合した版です。iPhone実機の操作確認は別判定です。</p></main></div>
+<script>
+'use strict';
+/* WH2 v6 host viewport handshake. Only UI state crosses this boundary. */
+const WH2_VIEWPORT_SESSION=(self.crypto?.randomUUID?.() ||
+ (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)))+'-wh2';
+function wh2SendViewport(){
+ const f=document.getElementById('reader');if(!f?.contentWindow)return;
+ const vv=window.visualViewport;
+ f.contentWindow.postMessage({kind:'wh2-host-viewport-v1',version:1,
+ session:WH2_VIEWPORT_SESSION,scale:Number(vv?.scale||1),
+ offsetLeft:Number(vv?.offsetLeft||0),offsetTop:Number(vv?.offsetTop||0)},'*');
+}
+window.addEventListener('message',e=>{
+ const f=document.getElementById('reader');
+ if(e.source!==f?.contentWindow||e.data?.kind!=='wh2-reader-ready-v1')return;
+ wh2SendViewport();
+});
+document.getElementById('reader').addEventListener('load',wh2SendViewport);
+window.addEventListener('pageshow',wh2SendViewport);
+window.addEventListener('resize',wh2SendViewport);
+window.addEventListener('orientationchange',wh2SendViewport);
+window.visualViewport?.addEventListener('resize',wh2SendViewport);
+window.visualViewport?.addEventListener('scroll',wh2SendViewport);
+setInterval(wh2SendViewport,1800);
+
+const $=id=>document.getElementById(id),DB='wh2-reader-on-device-181-200-v1',STORE='books',KEY='scans181to200',MAX=80*1024*1024;
+let activeUrl='',fileForDeferredSave=null;const verified=new WeakSet();
+function database(){return new Promise((resolve,reject)=>{const q=indexedDB.open(DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains(STORE))q.result.createObjectStore(STORE)};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
+async function getSaved(){const d=await database();try{return await new Promise((resolve,reject)=>{const r=d.transaction(STORE,'readonly').objectStore(STORE).get(KEY);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error)})}finally{d.close()}}
+async function putSaved(blob,name){const d=await database();try{await new Promise((resolve,reject)=>{const t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put({blob,name,date:Date.now()},KEY);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)})}finally{d.close()}}
+async function verify(blob){
+ if(!blob||blob.size<1000000||blob.size>MAX)throw Error('世界の歴史2・181〜200の読書HTMLを選択してください。');
+ if(verified.has(blob))return true;
+ const source=await blob.text(),t=source.match(/<title[^>]*>([^<]+)<\/title>/i);
+ if(!t||!t[1].includes('世界の歴史2')||!/181[〜～-]200/.test(t[1]))throw Error('別の書籍または分冊です。181〜200を選んでください。');
+ const m=source.match(/<script\b(?=[^>]*\bid=["']bookdata["'])[^>]*>([\s\S]*?)<\/script>/i);
+ if(!m)throw Error('読書データがありません。');let pages;try{pages=JSON.parse(m[1])}catch(_){throw Error('読書データが破損しています。')}
+ if(!Array.isArray(pages)||pages.length!==20||pages.some((p,i)=>p.scan!==181+i||typeof p.original!=='string'||!/^data:image\/(jpeg|png);base64,/.test(p.original)||!/^[a-f0-9]{64}$/.test(p.sha256||'')||typeof (p.reading_text??p.ocr)!=='string'))throw Error('181〜200の20枚を確認できません。正しいHTMLを選択してください。');
+ if(!/<meta\b[^>]*\bname=["']viewport["']/i.test(source))throw Error('読書画面の設定を確認できません。');
+ verified.add(blob);return true;
+}
+/* Reader v6 repair: patch only the defective 1x iframe swipe guard.
+   Never persist or publish the user's book, image, or OCR payload. */
+async function wh2RestoreStoredSwipe(blob){
+ const old='return (window.parent!==window&&!wh2Host.known)||\n        wh2Host.scale>1.015||wh2LocalScale()>1.015;';
+ const fixed='return (wh2Host.known&&wh2Host.scale>1.015)||wh2LocalScale()>1.015;';
+ const off=Math.max(0,blob.size-524288);
+ const tail=new Uint8Array(await blob.slice(off).arrayBuffer());
+ const needle=new TextEncoder().encode(old);
+ let at=-1;
+ search:for(let i=0;i<=tail.length-needle.length;i++){
+  for(let j=0;j<needle.length;j++)if(tail[i+j]!==needle[j])continue search;
+  at=i;break;
+ }
+ if(at<0)return blob;
+ const position=off+at;
+ return new Blob([blob.slice(0,position),fixed,blob.slice(position+needle.length)],{type:'text/html;charset=utf-8'});
+}
+
+async function openBook(blob){await verify(blob);$('status').textContent='読書画面を開いています…';if(activeUrl)URL.revokeObjectURL(activeUrl);const htmlBlob=(blob.type||'').includes('html')?blob:new Blob([blob],{type:'text/html;charset=utf-8'});activeUrl=URL.createObjectURL(await wh2RestoreStoredSwipe(htmlBlob));const f=$('reader');f.onload=()=>{$('setup').hidden=true;f.focus();if(fileForDeferredSave){const item=fileForDeferredSave;fileForDeferredSave=null;setTimeout(async()=>{try{await putSaved(item.blob,item.name)}catch(e){console.warn('端末への自動保存ができませんでした。再度HTMLを選択すれば読めます。',e)}},1200)}};f.onerror=()=>{$('status').textContent='表示できませんでした。HTMLを選び直してください。'};f.src=activeUrl}
+$('file').addEventListener('change',async()=>{const f=$('file').files?.[0];if(!f)return;try{await verify(f);fileForDeferredSave={blob:f,name:f.name};await openBook(f)}catch(e){fileForDeferredSave=null;$('status').textContent=e.message||String(e)}$('file').value=''});
+$('reopen').onclick=async()=>{try{const x=await getSaved();if(!x?.blob)throw Error('保存済みファイルがありません。');await openBook(x.blob)}catch(e){$('status').textContent=e.message||String(e)}};
+window.addEventListener('pageshow',async()=>{try{const x=await getSaved();if(x?.blob){$('reopen').hidden=false;if(!new URLSearchParams(location.search).has('import'))await openBook(x.blob)}}catch(e){$('status').textContent='最初の1回だけ、181〜200のHTMLを選択してください。'}});
+fetch('./file.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('保存先を取得できません。');return r.json()}).then(c=>{
+ if(!/^https:\/\/drive\.google\.com\/file\/d\/[A-Za-z0-9_-]+\/view/.test(c.url))throw Error('保存先情報を確認できません。');
+ $('download').href=c.url;$('download').removeAttribute('aria-disabled');$('filename').textContent='選ぶファイル：'+c.name;
+}).catch(e=>{$('filename').textContent='Google Driveの「世界の歴史2_保管庫／02_読書HTML・検査記録」から181〜200のHTMLを選んでください。';});
+</script></body></html>
