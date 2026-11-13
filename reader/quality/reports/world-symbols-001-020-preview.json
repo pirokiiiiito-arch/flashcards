@@ -1,0 +1,230 @@
+{
+  "schema": "reader-quality-report-v1",
+  "standardFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
+  "bookId": "world-symbols",
+  "entry": "reader/preview/world-symbols-001-020/index.html",
+  "stage": "draft",
+  "version": "20261113_v8_source_corrected_preview",
+  "scanRange": [
+    1,
+    20
+  ],
+  "claimsCompleted": false,
+  "deviceVerification": "not_run",
+  "privateArtifact": {
+    "driveFileId": "13D8D6ck8DVUgTkyWa9aihoEGlyDQNux8",
+    "sha256": "bc72173db51edc55a8502ed3aab4ac1ff519298f497e039c922c5f2c8d45196a",
+    "bytes": 23265947,
+    "originalCount": 20,
+    "figureCount": 16
+  },
+  "notes": "This is explicitly requested iPhone-review-only preview. It is not certified/completed: source boundary 020→021 and iPhone/WebKit checks remain open. User-supplied private corrected HTML is imported through local File input. No scanned JPEG, figures or OCR text are in the public repo.",
+  "chromiumLocalEvidence": {
+    "widths": [
+      320,
+      390,
+      430
+    ],
+    "fontPx": [
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28,
+      30
+    ],
+    "screenInstances": 2531,
+    "textMismatches": 0,
+    "overflows": 0,
+    "figureRecreations": 0,
+    "touchUpDownAndPinch": "passed_chromium_not_iphone",
+    "privateEvidenceDriveIds": [
+      "188ZDxHbKDYkxK96q_x7NtXYcWMUswBqn",
+      "1gKe_ftYByPrCX6axeOcvwSQCk_Sz6xfc"
+    ]
+  },
+  "checks": {
+    "G1-01": {
+      "status": "not_run"
+    },
+    "G1-02": {
+      "status": "not_run"
+    },
+    "G1-03": {
+      "status": "not_run"
+    },
+    "G1-04": {
+      "status": "not_run"
+    },
+    "G1-05": {
+      "status": "not_run"
+    },
+    "G1-07": {
+      "status": "not_run"
+    },
+    "G1-08": {
+      "status": "not_run"
+    },
+    "G1-10": {
+      "status": "not_run"
+    },
+    "G1-12": {
+      "status": "not_run"
+    },
+    "G2-01": {
+      "status": "not_run"
+    },
+    "G2-02": {
+      "status": "not_run"
+    },
+    "G2-03": {
+      "status": "not_run"
+    },
+    "G2-04": {
+      "status": "not_run"
+    },
+    "G2-05": {
+      "status": "not_run"
+    },
+    "G2-07": {
+      "status": "not_run"
+    },
+    "G2-11": {
+      "status": "not_run"
+    },
+    "G3-01": {
+      "status": "not_run"
+    },
+    "G3-02": {
+      "status": "not_run"
+    },
+    "G3-03": {
+      "status": "not_run"
+    },
+    "G3-04": {
+      "status": "not_run"
+    },
+    "G3-05": {
+      "status": "not_run"
+    },
+    "G3-06": {
+      "status": "not_run"
+    },
+    "G3-07": {
+      "status": "not_run"
+    },
+    "G4-01": {
+      "status": "not_run"
+    },
+    "G4-02": {
+      "status": "not_run"
+    },
+    "G4-03": {
+      "status": "not_run"
+    },
+    "G4-04": {
+      "status": "not_run"
+    },
+    "G4-05": {
+      "status": "not_run"
+    },
+    "G4-09": {
+      "status": "not_run"
+    },
+    "G5-01": {
+      "status": "not_run"
+    },
+    "G5-02": {
+      "status": "not_run"
+    },
+    "G5-03": {
+      "status": "not_run"
+    },
+    "G5-04": {
+      "status": "not_run"
+    },
+    "G5-05": {
+      "status": "not_run"
+    },
+    "G5-10": {
+      "status": "not_run"
+    },
+    "P20": {
+      "status": "not_run"
+    },
+    "G6-01": {
+      "status": "not_run"
+    },
+    "G6-02": {
+      "status": "not_run"
+    },
+    "G6-03": {
+      "status": "not_run"
+    },
+    "G6-05": {
+      "status": "not_run"
+    },
+    "G6-09": {
+      "status": "not_run"
+    },
+    "G6-11": {
+      "status": "not_run"
+    },
+    "G6-12": {
+      "status": "not_run"
+    },
+    "P22": {
+      "status": "not_run"
+    },
+    "P23": {
+      "status": "not_run"
+    },
+    "G7-01": {
+      "status": "not_run"
+    },
+    "G7-02": {
+      "status": "not_run"
+    },
+    "G7-03": {
+      "status": "not_run"
+    },
+    "G7-04": {
+      "status": "not_run"
+    },
+    "G7-05": {
+      "status": "not_run"
+    },
+    "G7-10": {
+      "status": "not_run"
+    },
+    "G7-12": {
+      "status": "not_run"
+    },
+    "G8-01": {
+      "status": "not_run"
+    },
+    "G8-02": {
+      "status": "not_run"
+    },
+    "G8-03": {
+      "status": "not_run"
+    },
+    "G8-04": {
+      "status": "not_run"
+    },
+    "G8-05": {
+      "status": "not_run"
+    },
+    "G8-07": {
+      "status": "not_run"
+    },
+    "G8-08": {
+      "status": "not_run"
+    },
+    "G8-11": {
+      "status": "not_run"
+    }
+  }
+}
