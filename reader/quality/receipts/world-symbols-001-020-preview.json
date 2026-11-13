@@ -1,0 +1,227 @@
+{
+  "schema": "reader-local-attestation-v1",
+  "payload": {
+    "schema": "reader-release-v2",
+    "phase": "preview",
+    "errors": [],
+    "warnings": [
+      "A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan."
+    ],
+    "eligible": true,
+    "bookId": "world-symbols",
+    "implementationSha256": "ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af",
+    "subject": {
+      "bookId": "world-symbols",
+      "range": [
+        1,
+        20
+      ],
+      "artifactSha256": "bc72173db51edc55a8502ed3aab4ac1ff519298f497e039c922c5f2c8d45196a",
+      "canonicalSha256": "3b70ffb1b5a1c9398322c6601fbb26f7032f31159585fadf909357930d18c466",
+      "rawSha256": "d66ada073b19e5c556e91a661ea7e36fe0b6e6277bc82bf5b3d4e7f172667242",
+      "originalIndexSha256": "33177660ac558abdd8a175abbb3b6cb8b99d1e29bda4ecbdb35d96d4ee934d69",
+      "templateSha256": "1865697c9de870366a567dcf3d63ad37290e86e3b7a81c84a9ef08bf56dcc79f",
+      "profileSha256": "b72ecc8eeb65896cb7827e762e2b6a323f9967051475ea9694b95be8da0d903b",
+      "loaderSha256": "19dcd5cb7a2ff75459d834e352436a009565149cf679e565f0c05565653f52d5"
+    },
+    "subjectSha256": "b326e9b9da68b5533a368221c6e69a35cbb92d1adede80bb4d6d58b7bac351fa",
+    "authorization": {
+      "sha256": "de05e4b3dd3734555ca070fa6799cef80818df23d9e9114ce9707135d60f2c26",
+      "explicit": true
+    },
+    "contentCertified": false,
+    "checks": {
+      "G1-01": {
+        "status": "not_run"
+      },
+      "G1-02": {
+        "status": "not_run"
+      },
+      "G1-03": {
+        "status": "not_run"
+      },
+      "G1-04": {
+        "status": "not_run"
+      },
+      "G1-05": {
+        "status": "not_run"
+      },
+      "G1-07": {
+        "status": "not_run"
+      },
+      "G1-08": {
+        "status": "not_run"
+      },
+      "G1-10": {
+        "status": "not_run"
+      },
+      "G1-12": {
+        "status": "not_run"
+      },
+      "G2-01": {
+        "status": "not_run"
+      },
+      "G2-02": {
+        "status": "not_run"
+      },
+      "G2-03": {
+        "status": "not_run"
+      },
+      "G2-04": {
+        "status": "not_run"
+      },
+      "G2-05": {
+        "status": "not_run"
+      },
+      "G2-07": {
+        "status": "not_run"
+      },
+      "G2-11": {
+        "status": "not_run"
+      },
+      "G3-01": {
+        "status": "not_run"
+      },
+      "G3-02": {
+        "status": "not_run"
+      },
+      "G3-03": {
+        "status": "not_run"
+      },
+      "G3-04": {
+        "status": "not_run"
+      },
+      "G3-05": {
+        "status": "not_run"
+      },
+      "G3-06": {
+        "status": "not_run"
+      },
+      "G3-07": {
+        "status": "not_run"
+      },
+      "G4-01": {
+        "status": "not_run"
+      },
+      "G4-02": {
+        "status": "not_run"
+      },
+      "G4-03": {
+        "status": "not_run"
+      },
+      "G4-04": {
+        "status": "not_run"
+      },
+      "G4-05": {
+        "status": "not_run"
+      },
+      "G4-09": {
+        "status": "not_run"
+      },
+      "G5-01": {
+        "status": "not_run"
+      },
+      "G5-02": {
+        "status": "not_run"
+      },
+      "G5-03": {
+        "status": "not_run"
+      },
+      "G5-04": {
+        "status": "not_run"
+      },
+      "G5-05": {
+        "status": "not_run"
+      },
+      "G5-10": {
+        "status": "not_run"
+      },
+      "P20": {
+        "status": "not_run"
+      },
+      "G6-01": {
+        "status": "not_run"
+      },
+      "G6-02": {
+        "status": "not_run"
+      },
+      "G6-03": {
+        "status": "not_run"
+      },
+      "G6-05": {
+        "status": "not_run"
+      },
+      "G6-09": {
+        "status": "not_run"
+      },
+      "G6-11": {
+        "status": "not_run"
+      },
+      "G6-12": {
+        "status": "not_run"
+      },
+      "P22": {
+        "status": "not_run"
+      },
+      "P23": {
+        "status": "not_run"
+      },
+      "G7-01": {
+        "status": "not_run"
+      },
+      "G7-02": {
+        "status": "not_run"
+      },
+      "G7-03": {
+        "status": "not_run"
+      },
+      "G7-04": {
+        "status": "not_run"
+      },
+      "G7-05": {
+        "status": "not_run"
+      },
+      "G7-10": {
+        "status": "not_run"
+      },
+      "G7-12": {
+        "status": "not_run"
+      },
+      "G8-01": {
+        "status": "not_run"
+      },
+      "G8-02": {
+        "status": "not_run"
+      },
+      "G8-03": {
+        "status": "not_run"
+      },
+      "G8-04": {
+        "status": "not_run"
+      },
+      "G8-05": {
+        "status": "not_run"
+      },
+      "G8-07": {
+        "status": "not_run"
+      },
+      "G8-08": {
+        "status": "not_run"
+      },
+      "G8-11": {
+        "status": "not_run"
+      }
+    },
+    "channel": "preview",
+    "entry": "reader/preview/world-symbols-001-020/index.html",
+    "bookRecordSha256": "e74ecc384a4b04e0e3b89d01d11ded99898301183b3300175e21dcda39657594",
+    "reportSha256": "ed8a07e3cc4b870deef009f19af99af8d91a383f33cc3cdf11d07164655adfe7",
+    "publicFiles": {
+      "reader/preview/world-symbols-001-020/index.html": "19dcd5cb7a2ff75459d834e352436a009565149cf679e565f0c05565653f52d5",
+      "reader/preview/world-symbols-001-020/sw.js": "c04a7a7c7cece4c41ba059f78289d8c8ab27b937a28bca9ba4eb2c79e40c3fd2"
+    },
+    "issuedAt": "2026-11-13T04:06:41Z",
+    "trustBoundary": "Local evidence attestation, not independent reviewer authentication."
+  },
+  "digest": "49f610e5f16efe62db5bf9fd3bc070e269d458e258e70dd47001739a11dbff5b"
+}
