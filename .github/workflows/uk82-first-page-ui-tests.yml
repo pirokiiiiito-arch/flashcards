@@ -27,3 +27,4 @@ jobs:
         run: |
           node --test tests/uk82-first-page-button.test.cjs
           node --test tests/wh1-library-build.test.cjs
+          node --test tests/reader-first-page-ui-release.test.cjs
