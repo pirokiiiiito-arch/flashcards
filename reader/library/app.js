@@ -26,8 +26,8 @@
   function shelfSortTitle(book) {
     const reading = typeof book.sortTitle === 'string' ? book.sortTitle.trim() : '';
     if(reading) return reading.normalize('NFKC');
-    const title = String(book.title || '').normalize('NFKC').replace(/\\s+/g, ' ').trim();
-    if(/^世界の歴史(?=\\s*\\d)/.test(title)) return title.replace(/^世界の歴史/, 'せかいのれきし');
+    const title = String(book.title || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
+    if(/^世界の歴史(?=\s*\d)/.test(title)) return title.replace(/^世界の歴史/, 'せかいのれきし');
     return knownReadings.get(title) || title;
   }
   function compareBookTitles(a, b) {
