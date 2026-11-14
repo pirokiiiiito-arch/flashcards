@@ -64,6 +64,7 @@
     const temp=meta.filter(m=>!books.some(b=>b.id===m.id)).map(m=>({id:m.id,title:m.title||m.id,sortTitle:m.sortTitle||'',
       subtitle:m.subtitle||'端末に保存済み',scans:m.scans,totalBytes:m.size,parts:[],status:'端末保存済み'}));
     for(const b of temp)books.push(b);
+    books.sort(compareBookTitles);
     renderShelf();
   }
   function card(book,index) {
@@ -264,7 +265,8 @@
     }finally{pendingDownload=null;}
   }
   function registerSW(){if('serviceWorker' in navigator&&location.protocol==='https:')
-    navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}).catch(()=>{});
+    navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'})
+      .then(reg=>reg.update().catch(()=>{})).catch(()=>{});
   }
   $('settingsButton').onclick=openSettings;$('connectButton').onclick=()=>tokenValid()?refreshCloud():openSettings();
   $('settingsClose').onclick=closeSettings;$('settingsBackdrop').onclick=closeSettings;
