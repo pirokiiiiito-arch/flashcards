@@ -94,15 +94,18 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
    addEventListener:(type,cb)=>{events[type]=cb;}}};
  vm.runInNewContext(script,ctx,{timeout:1000});
  const blocked="main.addEventListener(type,e=>e.stopImmediatePropagation(),{capture:true,passive:true});";
- const source='<script id="wh2-parent-viewport-receiver-v6">'+blocked;
+ const source='<script id="wh2-parent-viewport-receiver-v6">'+blocked+
+  '<div id="notice">画面説明だけを除去</div><main id="main">本文そのもの</main>';
  const updated=ctx.window.WH1ExactPager.decorate(source);
  assert.ok(updated.includes('!wh2Host.known||wh2IsZoomed()'));
  assert.ok(!updated.includes(blocked));
+ assert.doesNotMatch(updated,/<div id="notice">/,'beige notice ribbon disappears from the rendered book');
+ assert.ok(updated.includes('<main id="main">本文そのもの</main>'),'reading content remains byte-identical');
  assert.equal(ctx.window.WH1ExactPager.decorate(source+blocked),source+blocked,
   'unexpected source layout must not silently enable gestures');
  events.message({source:child,data:{kind:'wh2-reader-ready-v1'}});
  assert.equal(sent.length,0,'unrecognized source must not get a viewport handshake');
- const otherBook='<main>Unrelated reader with different touch controls</main>';
+ const otherBook='<div id="notice">他の本の案内</div><main>Unrelated reader with different touch controls</main>';
  assert.equal(ctx.window.WH1ExactPager.decorate(otherBook),otherBook,
   'other books remain unchanged even if the route ID differs');
  events.message({source:child,data:{kind:'wh2-reader-ready-v1'}});

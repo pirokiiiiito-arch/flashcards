@@ -130,7 +130,12 @@ THE SOFTWARE.
   window.WH1ExactPager.decorate=function(html){
    wh2Active=html.includes('<script id="wh2-parent-viewport-receiver-v6">')&&
       html.split(blocked).length===2;
-   if(wh2Active)html=html.replace(blocked,ready);
+   if(wh2Active){
+    html=html.replace(blocked,ready);
+    // The beige #notice is a source-status ribbon, never part of the reading text.
+    // Remove it only from the rendered copy; leave ZIP/OCR/original bytes intact.
+    html=html.replace(/<div id="notice">[^<]*<\/div>\s*/, '');
+   }
    return decorate(html);
   };
  }
