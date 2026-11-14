@@ -8,12 +8,12 @@ function stage(root,destination){
  if(fs.existsSync(destination))throw Error('STAGE_DESTINATION_EXISTS');
  if(destination===root||root.startsWith(destination+path.sep)||destination.startsWith(root+path.sep))throw Error('STAGE_MUST_BE_OUTSIDE_SOURCE');
  const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-policy.json')));
- const{authorizedFiles,found}=v.receipts(root,policy),current=v.runtimeFiles(root),quarantined=[];
+ const{authorizedFiles,found}=v.receipts(root,policy),authorizedUI=v.admittedFirstPageUI(root,policy),current=v.runtimeFiles(root),quarantined=[];
  for(const[f,h]of Object.entries(policy.baseline.files)){
   if(!current[f])throw Error('PUBLISHED_FILE_REMOVED '+f);
-  if(current[f]!==h&&authorizedFiles[f]!==current[f])throw Error('PUBLISHED_FILE_CHANGED_WITHOUT_EVIDENCE '+f);
+  if(current[f]!==h&&authorizedFiles[f]!==current[f]&&authorizedUI[f]!==current[f])throw Error('PUBLISHED_FILE_CHANGED_WITHOUT_EVIDENCE '+f);
  }
- for(const[f,h]of Object.entries(current))if(policy.baseline.files[f]!==h&&authorizedFiles[f]!==h)quarantined.push(f);
+ for(const[f,h]of Object.entries(current))if(policy.baseline.files[f]!==h&&authorizedFiles[f]!==h&&authorizedUI[f]!==h)quarantined.push(f);
  for(const f of Object.keys(authorizedFiles))if(current[f]!==authorizedFiles[f])throw Error('RECEIPT_ASSET_MISSING '+f);
  const blocked=new Set(quarantined),temp=destination+'.tmp-'+process.pid;
  if(fs.existsSync(temp))throw Error('STALE_STAGE_TEMP');
