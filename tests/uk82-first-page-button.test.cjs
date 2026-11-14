@@ -23,21 +23,26 @@ test('reader loader remains parseable and source verification is retained',()=>{
 test('first-page control is on the public host and stays visible after reader repaint',()=>{
  assert.match(loader,/<button type="button" id="firstPageButton" aria-label="本の先頭へ戻る" hidden>最初へ<\/button>/);
  assert.match(loader,/#firstPageButton\[hidden\]\{display:none!important\}/);
+ assert.match(loader,/<button type="button" id="backToShelfButton" aria-label="私の本棚に戻る" hidden>本棚へ<\/button>/);
+ assert.match(loader,/#backToShelfButton\[hidden\]\{display:none!important\}/);
+ assert.match(loader,/backToShelfButton\.onclick=\(\)=>\{if\(!book\|\|!readerReady\)return;flushPosition\(\);location\.href=/);
  assert.match(loader,/#firstPageButton\{[\s\S]*?position:fixed!important;z-index:2147483000!important/);
  assert.match(loader,/readerReady=true;placeFirstPageButton\(\);notifyBrowserZoom\(\)/);
  assert.match(loader,/if\(opening\)\{opening=false;unbusy\(\);\$\('setup'\)\.hidden=true;\}[\s\S]*?placeFirstPageButton\(\);/);
  const fn=extract(/ function placeFirstPageButton\(\)\{[\s\S]*?\n \}/,'placement function');
  let appended=0;
  const body={append(b){appended++;b.parentElement=body;}};
- const button={parentElement:null,hidden:true};
- const sandbox={document:{body},firstPageButton:button,readerReady:true,book:{}};
+ const button={parentElement:null,hidden:true},shelf={parentElement:null,hidden:true};
+ const sandbox={document:{body},firstPageButton:button,backToShelfButton:shelf,readerReady:true,book:{}};
  vm.createContext(sandbox);
  vm.runInContext(fn+'\nplaceFirstPageButton();placeFirstPageButton();',sandbox);
- assert.equal(appended,1,'button stays attached to host body, not volatile private engine');
+ assert.equal(appended,2,'both controls stay attached to host body, not volatile private engine');
  assert.equal(button.hidden,false);
- const absent={document:{body},firstPageButton:{parentElement:null,hidden:true},readerReady:false,book:{}};
+ assert.equal(shelf.hidden,false);
+ const absent={document:{body},firstPageButton:{parentElement:null,hidden:true},backToShelfButton:{parentElement:null,hidden:true},readerReady:false,book:{}};
  vm.createContext(absent);vm.runInContext(fn+'\nplaceFirstPageButton();',absent);
  assert.equal(absent.firstPageButton.hidden,true,'button cannot appear before reader is ready');
+ assert.equal(absent.backToShelfButton.hidden,true,'shelf link cannot appear before reader is ready');
 });
 test('tapping first page requests scan 1, paragraph 0 without damaging saved position',async()=>{
  const code=extract(/ firstPageButton\.onclick=\(\)=>\{[\s\S]*?\n \};/,'first-page click handler');
@@ -59,4 +64,16 @@ test('tapping first page requests scan 1, paragraph 0 without damaging saved pos
  assert.equal(current.scan,5,'saved reader position must update only upon confirmed stream state');
  sandbox.readerReady=false;button.onclick();
  assert.equal(calls.length,1);
+});
+
+test('bookshelf button persists current position before same-tab navigation',()=>{
+ const code=extract(/ backToShelfButton\.onclick=\(\)=>\{[^\n]*\};/,'bookshelf click handler');
+ const button={},location={href:'book'},calls=[];
+ const sandbox={backToShelfButton:button,book:{},readerReady:true,location,flushPosition:()=>calls.push('saved')};
+ vm.createContext(sandbox);vm.runInContext(code,sandbox);
+ button.onclick();
+ assert.deepEqual(calls,['saved']);
+ assert.equal(location.href,'../../library/');
+ sandbox.readerReady=false;location.href='book';button.onclick();assert.equal(location.href,'book');
+ assert.deepEqual(calls,['saved']);
 });
