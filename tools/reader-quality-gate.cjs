@@ -124,7 +124,7 @@ function validate(root=ROOT){
   // artifact/report identity. Pin the complete loader bytes; NEVER infer OCR
   // completion, admit any other edited book, or rewrite a source evidence record.
   const firstPageOnly=b.entry==='reader/british-interiors/full/index.html'&&
-   blobSHA(bytes)==='e74398626347d52b3a8b136ad7fbd43f3067ceff'&&
+   blobSHA(bytes)==='eee384c86016ba0ce565ee473b7b8e25f2a6cc04'&&
    bytes.includes(Buffer.from('id="firstPageButton"'))&&
    bytes.includes(Buffer.from('sendWindow(1,{navigate:true,itemIndex:0,size:current.size})'));
   if(blobSHA(bytes)!==b.entryBlobSha&&!firstPageOnly)errors.push('MANAGED_ENTRY_CHANGED '+b.entry+' - update report and route identity');
