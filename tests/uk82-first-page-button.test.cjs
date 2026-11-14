@@ -20,29 +20,64 @@ test('reader loader remains parseable and source verification is retained',()=>{
  assert.match(loader,/m\.total_scans!==TOTAL/);
  assert.match(loader,/d\.kind==='uk82-stream-state'/);
 });
-test('first-page control is on the public host and stays visible after reader repaint',()=>{
+test('UK controls match WH1: bookshelf strip above the reader, no floating text overlays',()=>{
+ const wh1=fs.readFileSync(path.join(__dirname,'../reader/wh1/all/index.html'),'utf8');
+ assert.match(wh1,/#bookshelfNav\{[\s\S]*?min-height:calc\(44px \+ env\(safe-area-inset-top\)\)/);
+ assert.match(loader,/<nav id="ukBookshelfNav" aria-label="読書ナビゲーション" hidden>/);
+ assert.match(loader,/<button type="button" id="backToShelfButton" aria-label="私の本棚に戻る" hidden>◀ 本棚へ<\/button>/);
  assert.match(loader,/<button type="button" id="firstPageButton" aria-label="本の先頭へ戻る" hidden>最初へ<\/button>/);
+ assert.match(loader,/#ukBookshelfNav\{[\s\S]*?min-height:calc\(44px \+ env\(safe-area-inset-top\)\)/);
+ assert.match(loader,/#reader-main\{[\s\S]*?top:calc\(44px \+ env\(safe-area-inset-top\)\)!important/);
+ assert.match(loader,/#firstPageButton\{\s*position:static!important/);
  assert.match(loader,/#firstPageButton\[hidden\]\{display:none!important\}/);
- assert.match(loader,/<button type="button" id="backToShelfButton" aria-label="私の本棚に戻る" hidden>本棚へ<\/button>/);
  assert.match(loader,/#backToShelfButton\[hidden\]\{display:none!important\}/);
- assert.match(loader,/backToShelfButton\.onclick=\(\)=>\{if\(!book\|\|!readerReady\)return;flushPosition\(\);location\.href=/);
- assert.match(loader,/#firstPageButton\{[\s\S]*?position:fixed!important;z-index:2147483000!important/);
+ assert.match(loader,/#ukBookshelfNav\[hidden\]\{display:none!important\}/);
+ assert.doesNotMatch(loader,/top:calc\(58px \+ env\(safe-area-inset-top\)\)!important/);
  assert.match(loader,/readerReady=true;placeFirstPageButton\(\);notifyBrowserZoom\(\)/);
  assert.match(loader,/if\(opening\)\{opening=false;unbusy\(\);\$\('setup'\)\.hidden=true;\}[\s\S]*?placeFirstPageButton\(\);/);
+});
+test('navigation mounts first page next to the actual menu and shelf above private text',()=>{
  const fn=extract(/ function placeFirstPageButton\(\)\{[\s\S]*?\n \}/,'placement function');
- let appended=0;
- const body={append(b){appended++;b.parentElement=body;}};
- const button={parentElement:null,hidden:true},shelf={parentElement:null,hidden:true};
- const sandbox={document:{body},firstPageButton:button,backToShelfButton:shelf,readerReady:true,book:{}};
+ const mounted=[],marks=[];
+ const body={append(el){mounted.push(el);el.parentElement=body;}};
+ const nav={parentElement:null,hidden:true,appendChild(el){el.parentElement=nav;}};
+ const first={parentElement:null,hidden:true},shelf={hidden:true};
+ const header={classList:{add(name){marks.push(name);}}};
+ const menu={textContent:'目次',parentElement:null,getAttribute(){return '';}};
+ const other={textContent:'原本',getAttribute(){return '';}};
+ const actions={
+  classList:{add(name){marks.push(name);}},
+  querySelectorAll(){return [menu,other];},
+  closest(tag){return tag==='header'?header:null;},
+  insertBefore(el,ref){assert.equal(ref,menu);el.parentElement=actions;mounted.push(el);}
+ };
+ menu.parentElement=actions;
+ const reader={querySelectorAll(){return [menu,other];}};
+ const sandbox={document:{body},$:(id)=>id==='ukBookshelfNav'?nav:reader,
+   firstPageButton:first,backToShelfButton:shelf,readerReady:true,book:{}};
  vm.createContext(sandbox);
  vm.runInContext(fn+'\nplaceFirstPageButton();placeFirstPageButton();',sandbox);
- assert.equal(appended,2,'both controls stay attached to host body, not volatile private engine');
- assert.equal(button.hidden,false);
- assert.equal(shelf.hidden,false);
- const absent={document:{body},firstPageButton:{parentElement:null,hidden:true},backToShelfButton:{parentElement:null,hidden:true},readerReady:false,book:{}};
- vm.createContext(absent);vm.runInContext(fn+'\nplaceFirstPageButton();',absent);
- assert.equal(absent.firstPageButton.hidden,true,'button cannot appear before reader is ready');
- assert.equal(absent.backToShelfButton.hidden,true,'shelf link cannot appear before reader is ready');
+ assert.equal(nav.parentElement,body);
+ assert.equal(first.parentElement,actions,'first-page button is on the native toolbar');
+ assert.deepEqual(marks,['uk-bookshelf-actions','uk-bookshelf-header','uk-bookshelf-actions','uk-bookshelf-header']);
+ assert.equal(mounted.length,2,'no duplicates after a redraw');
+ assert.equal(nav.hidden,false);assert.equal(first.hidden,false);assert.equal(shelf.hidden,false);
+ const missing={document:{body},$:()=>nav,firstPageButton:{hidden:true},backToShelfButton:{hidden:true},
+   readerReady:false,book:{}};
+ vm.createContext(missing);vm.runInContext(fn+'\nplaceFirstPageButton();',missing);
+ assert.equal(missing.firstPageButton.hidden,true,'no early control before book opens');
+});
+test('an unexpected private toolbar uses a non-overlapping navigation fallback',()=>{
+ const fn=extract(/ function placeFirstPageButton\(\)\{[\s\S]*?\n \}/,'placement function');
+ const body={append(el){el.parentElement=body;}};
+ const nav={parentElement:null,hidden:true,appendChild(el){el.parentElement=nav;}};
+ const first={parentElement:null,hidden:true},shelf={hidden:true};
+ const reader={querySelectorAll(){return [];}};
+ const sandbox={document:{body},$:(id)=>id==='ukBookshelfNav'?nav:reader,
+    firstPageButton:first,backToShelfButton:shelf,readerReady:true,book:{}};
+ vm.createContext(sandbox);vm.runInContext(fn+'\nplaceFirstPageButton();',sandbox);
+ assert.equal(first.parentElement,nav);
+ assert.equal(nav.hidden,false);
 });
 test('tapping first page requests scan 1, paragraph 0 without damaging saved position',async()=>{
  const code=extract(/ firstPageButton\.onclick=\(\)=>\{[\s\S]*?\n \};/,'first-page click handler');
