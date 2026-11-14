@@ -349,6 +349,11 @@ function handleChildState(d){
 window.addEventListener('message',e=>{
  if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1)return;
  const d=e.data;
+ if(d.type==='returnShelf'){
+  savePosition();
+  location.href='./';
+  return;
+ }
  if(d.type==='bookStart'){
   closeMenu();
   if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});
@@ -379,7 +384,7 @@ function setOriginalScale(){const viewer=$('originalViewer'),img=$('originalImag
 function closeOriginal(){$('originalOverlay').hidden=true;}
 $('zipInput').addEventListener('change',async()=>{if(!$('zipInput').files?.length)return;try{await loadBook(pickedArchive($('zipInput').files),true);}catch(e){console.warn(e);setHint(e.message||String(e));}finally{$('zipInput').value='';}});
 $('resume').onclick=async()=>{try{const saved=await dbRead();if(!saved?.blob)throw Error('保存された書籍がありません');await loadBook(saved.blob,false);}catch(e){setHint(e.message||String(e));clearBusy();}};
-$('menuClose').onclick=closeMenu;$('menuReturn').onclick=closeMenu;$('shelfReturn').onclick=()=>{location.href='./';};
+$('menuClose').onclick=closeMenu;$('menuReturn').onclick=closeMenu;$('shelfReturn').onclick=()=>{savePosition();location.href='./';};
 $('partGo').onclick=()=>{const i=Number($('partChoice').value);closeMenu();openSegment(i,{scan:SEGMENTS[i].start});};
 $('scanGo').onclick=()=>{const v=Number($('scanNumber').value);if(!Number.isInteger(v)||v<1||v>totalScans){alert('1〜'+totalScans+'の番号を入力してください');return;}closeMenu();openSegment(segmentForScan(v),{scan:v});};
 $('scanNumber').addEventListener('keydown',e=>{if(e.key==='Enter')$('scanGo').click();});
