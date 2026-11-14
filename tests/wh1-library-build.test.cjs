@@ -82,7 +82,7 @@ test('shelf worker fetches fresh app code and serves the correct reader offline 
  for(const [request,fallback]of [
   ['', 'index.html'],['read.html?id=wh1','read.html'],['read.html?id=another-book','read.html'],
   ['read-wh1-v9.html?id=wh1','read-wh1-v9.html'],['read-wh1-v9.html?id=g_saved_wh1','read-wh1-v9.html'],
-  ['app.js','app.js?v='+revision],['wh1-pager-v9.js?old=1','wh1-pager-v9.js?v='+revision],
+  ['app.js','app.js?v='+shelfRevision],['wh1-pager-v9.js?old=1','wh1-pager-v9.js?v='+revision],
   ['wh1-display-check-v9.js?old=1','wh1-display-check-v9.js?revision=display-check-v9-1-20261110']
  ])assert.equal(await (await fetchRoute(request)).text(),'current:'+scope+fallback);
  assert.ok(requests.every(x=>x.options.cache==='no-cache'));
