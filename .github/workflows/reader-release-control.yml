@@ -36,7 +36,7 @@ jobs:
           set -o pipefail
           node --check tools/reader-release-control.cjs
           node --check tools/reader-private-pipeline.cjs
-          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs | tee /tmp/reader-admission-audit/tests.tap
+          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/reader-first-page-ui-release.test.cjs | tee /tmp/reader-admission-audit/tests.tap
       - name: Verify unchanged legacy bytes and evidence-bound releases
         run: node tools/reader-release-control.cjs repo "$RUNNER_TEMP/reader-pages"
       - name: Record certification boundary

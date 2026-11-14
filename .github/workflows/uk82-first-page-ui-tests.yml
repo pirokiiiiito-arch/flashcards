@@ -1,0 +1,28 @@
+name: First-page control — all saved books
+on:
+  push:
+    branches: [fix/all-books-first-page-approved-20261114]
+  pull_request:
+    paths:
+      - 'reader/**'
+      - 'tools/reader-*.cjs'
+      - 'tests/reader-first-page-ui-release.test.cjs'
+      - 'tests/uk82-first-page-button.test.cjs'
+permissions:
+  contents: read
+jobs:
+  verify-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify all saved titles retain first-page action
+        run: |
+          node --test tests/uk82-first-page-button.test.cjs tests/reader-first-page-ui-release.test.cjs
+      - name: Rebuild the WH1 entry and confirm unchanged reader compatibility
+        run: |
+          python3 tools/build-wh1-figure-viewport-v8.py
+          python3 tools/build-wh1-library-v9.py
+          node --test tests/wh1-library-build.test.cjs tests/wh1-library-routing.test.cjs

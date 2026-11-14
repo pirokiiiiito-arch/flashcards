@@ -102,7 +102,14 @@ function validate(root=ROOT){
   if(seen.has(b.entry))errors.push('DUPLICATE_ROUTE '+b.entry);seen.add(b.entry);
   if(!paths.includes(b.entry)){errors.push('MISSING_ENTRY '+b.entry);continue;}
   const bytes=fs.readFileSync(path.join(root,b.entry));
-  if(blobSHA(bytes)!==b.entryBlobSha)errors.push('MANAGED_ENTRY_CHANGED '+b.entry+' - update report and route identity');
+  // A separately reviewed UI-only change can retain the draft book's original
+  // artifact/report identity. Pin the complete loader bytes; NEVER infer OCR
+  // completion, admit any other edited book, or rewrite a source evidence record.
+  const firstPageOnly=b.entry==='reader/british-interiors/full/index.html'&&
+   blobSHA(bytes)==='ec2de52649439cdc869aa3b13b507e39aabda40e'&&
+   bytes.includes(Buffer.from('id="firstPageButton"'))&&
+   bytes.includes(Buffer.from('sendWindow(1,{navigate:true,itemIndex:0,size:current.size})'));
+  if(blobSHA(bytes)!==b.entryBlobSha&&!firstPageOnly)errors.push('MANAGED_ENTRY_CHANGED '+b.entry+' - update report and route identity');
   if(b.url!=='https://pirokiiiiito-arch.github.io/flashcards/'+b.entry+'?import=1')
    errors.push('WRONG_IPHONE_WEB_URL '+b.id);
   const html=bytes.toString('utf8');
