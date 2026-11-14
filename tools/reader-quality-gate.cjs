@@ -15,7 +15,9 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/furniture/41-60/index.html':'2b1de6206aa96955878fe325d1ffbd889c965157',
  'reader/furniture/61-80/index.html':'66d992182b0b0c8adcf25004acb70e3ea01b17d4',
  'reader/furniture/81-100/index.html':'de367028d3280ea5df0ed0b27a8870ecc023e3c1',
- 'reader/furniture/101-120/index.html':'ba2a8368c92648188cad613a958aae282af2335b'
+ 'reader/furniture/101-120/index.html':'ba2a8368c92648188cad613a958aae282af2335b',
+ 'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
+ 'reader/library/read.html':'4a3c4996edc0a5a3fb9928383a6daaeebc288149'
 });
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
@@ -103,9 +105,10 @@ function validate(root=ROOT){
   if(seen.has(p))errors.push('DUPLICATE_ROUTE '+p);seen.add(p);
   if(!paths.includes(p)){errors.push('MISSING_LEGACY '+p);continue;}
   const data=fs.readFileSync(path.join(root,p));
-  const actual=blobSHA(data),uiPinned=BOOKSHELF_NAV_UI_BLOBS[p]===actual&&
+  const actual=blobSHA(data),expectedHref=p==='reader/library/read.html'?'./':'../../library/';
+  const uiPinned=BOOKSHELF_NAV_UI_BLOBS[p]===actual&&
     data.includes(Buffer.from('id="bookshelfNav"'))&&
-    data.includes(Buffer.from('id="backToBookshelf" href="../../library/"'))&&
+    data.includes(Buffer.from('id="backToBookshelf" href="'+expectedHref+'"'))&&
     data.includes(Buffer.from('id="bookshelf-nav-ui-v1"'));
   if(actual!==sha&&!uiPinned)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
  }

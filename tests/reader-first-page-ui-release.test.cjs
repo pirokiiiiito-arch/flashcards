@@ -20,7 +20,9 @@ test('an unexpected byte in a book loader still blocks publication',()=>{
 });
 test('unrelated existing books remain protected from unauthorized changes',()=>{
  const r=snapshot();fs.appendFileSync(path.join(r,'reader/wh2/161-180/index.html'),'\n<!-- unauthorized edit -->');
- assert.match(v.validateRepository(r).errors.join('|'),/UNAUTHORIZED_READER_CHANGE/);
+ // The first-page workflow runs before WH1 derivatives are built. The existing
+ // managed-entry integrity gate must still reject this unrelated loader edit.
+ assert.match(v.validateRepository(r).errors.join('|'),/MANAGED_ENTRY_CHANGED reader\/wh2\/161-180\/index\.html|UNAUTHORIZED_READER_CHANGE reader\/wh2\/161-180\/index\.html/);
 });
 test('every other saved book uses the existing shared first-page navigation',()=>{
  const shared=fs.readFileSync(path.join(root,'reader/library/wh1-exact-pagination.js'),'utf8');
