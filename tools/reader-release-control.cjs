@@ -13,6 +13,15 @@ const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c643
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
  'reader/british-interiors/full/index.html':'ec2de52649439cdc869aa3b13b507e39aabda40e'
 });
+// Exact byte-pinned public navigation only. This does not certify OCR or source files.
+const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
+ 'reader/furniture/01-20/index.html':'8e3b3fea0cd67d64f8153f163628a0898186d86b',
+ 'reader/furniture/21-40/index.html':'04ab41fe54d2a7b0363ea2248a07e2f72cfe23f5',
+ 'reader/furniture/41-60/index.html':'2b1de6206aa96955878fe325d1ffbd889c965157',
+ 'reader/furniture/61-80/index.html':'66d992182b0b0c8adcf25004acb70e3ea01b17d4',
+ 'reader/furniture/81-100/index.html':'de367028d3280ea5df0ed0b27a8870ecc023e3c1',
+ 'reader/furniture/101-120/index.html':'ba2a8368c92648188cad613a958aae282af2335b'
+});
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
@@ -222,14 +231,28 @@ function admittedFirstPageUI(root,policy){
  }
  return approved;
 }
+function admittedBookshelfNavUI(root,policy){
+ const approved={};
+ for(const [f,pin] of Object.entries(BOOKSHELF_NAV_UI_GIT_BLOBS)){
+  const baseline=policy.baseline.files[f];demand(hex(baseline),'BOOKSHELF_NAV_BASELINE_MISSING '+f);
+  const data=fs.readFileSync(safe(root,f)),sha=hash(data);
+  if(sha===baseline)continue;
+  const gitBlob=crypto.createHash('sha1').update('blob '+data.length+String.fromCharCode(0)).update(data).digest('hex');
+  demand(gitBlob===pin,'BOOKSHELF_NAV_UI_BYTES_NOT_REVIEWED '+f);
+  const html=data.toString('utf8');
+  demand(html.includes('id="bookshelfNav"')&&html.includes('id="backToBookshelf" href="../../library/"')&&html.includes('id="bookshelf-nav-ui-v1"'),'BOOKSHELF_NAV_CONTROL_MISSING '+f);
+  approved[f]=sha;
+ }
+ return approved;
+}
 function validateRepository(root=ROOT){
  const result=legacy.validate(root),errors=result.errors;result.contentCertification=false;
  try{
   const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-policy.json'))),reg=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/registry.json')));
   demand(policy.schema==='reader-release-policy-v2'&&policy.standardFileId===legacy.ID,'INVALID_RELEASE_POLICY');
   demand(objHash({baseline:policy.baseline,trustedKeys:policy.trustedKeys})===TRUST_ANCHOR,'TRUST_ANCHOR_CHANGED');
-  const current=runtimeFiles(root),{found:certificateMap,authorizedFiles}=receipts(root,policy),authorizedUI=admittedFirstPageUI(root,policy);
-  for(const [f,h]of Object.entries(current))demand(h===policy.baseline.files[f]||h===authorizedFiles[f]||h===authorizedUI[f],'UNAUTHORIZED_READER_CHANGE '+f);
+  const current=runtimeFiles(root),{found:certificateMap,authorizedFiles}=receipts(root,policy),authorizedUI=admittedFirstPageUI(root,policy),authorizedNav=admittedBookshelfNavUI(root,policy);
+  for(const [f,h]of Object.entries(current))demand(h===policy.baseline.files[f]||h===authorizedFiles[f]||h===authorizedUI[f]||h===authorizedNav[f],'UNAUTHORIZED_READER_CHANGE '+f);
   for(const f of Object.keys(policy.baseline.files))demand(current[f],'FROZEN_READER_REMOVED '+f);
   for(const b of reg.books){const rep=JSON.parse(fs.readFileSync(safe(root,b.report))),identity=objHash({book:b,artifact:rep.privateArtifact||rep.artifactAudit||null});
    if(policy.baseline.books[b.id]===identity&&b.stage==='draft'&&!rep.claimsCompleted)continue;
@@ -250,4 +273,4 @@ if(require.main===module){
  try{result=command==='repo'?validateRepository(file||ROOT):command==='check'?validateBundle(file,{phase:phase||'prepare'}):{errors:['Usage: reader-release-control.cjs repo [root] | check manifest.json [prepare|release|deployed|device]']};}catch(e){result={errors:[e.message]};}
  console.log(JSON.stringify(result,null,2));if(result.errors.length)process.exitCode=1;
 }
-module.exports={hash,stable,objHash,safe,bytes,json,extract,textFields,originals,replay,anomalies,validateBundle,validateRepository,verifyEnvelope,runtimeFiles,receipts,admittedFirstPageUI,implementationHash,SCHEMA};
+module.exports={hash,stable,objHash,safe,bytes,json,extract,textFields,originals,replay,anomalies,validateBundle,validateRepository,verifyEnvelope,runtimeFiles,receipts,admittedFirstPageUI,admittedBookshelfNavUI,implementationHash,SCHEMA};
