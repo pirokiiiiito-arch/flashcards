@@ -190,6 +190,7 @@ jobs:
           node --check reader/library/sw.js
           node --check reader/wh1/all/sw.js
           node --test tests/wh1-figure-viewport-v8.test.cjs tests/wh1-display-check-v9.test.cjs tests/wh1-library-routing.test.cjs tests/wh1-library-build.test.cjs
+          node --test tests/uk82-first-page-button.test.cjs tests/reader-first-page-ui-release.test.cjs
       - name: Prepare evidence-admitted reader deployment without touching source
         run: node tools/reader-publish-stage.cjs . "$RUNNER_TEMP/reader-pages"
       - name: Validate the exact final deployment tree
