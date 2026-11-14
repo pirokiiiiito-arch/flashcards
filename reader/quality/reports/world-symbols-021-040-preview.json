@@ -1,0 +1,367 @@
+{
+  "schema": "reader-quality-report-v1",
+  "standardFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
+  "bookId": "world-symbols-021-040",
+  "entry": "reader/preview/world-symbols-021-040/index.html",
+  "stage": "draft",
+  "version": "20261114_v8.2_partial_source_corrected_explicit_preview",
+  "scanRange": [
+    21,
+    40
+  ],
+  "state": "部分原本訂正を反映・全字校正継続中・iPhone実機未確認",
+  "claimsCompleted": false,
+  "deviceVerification": "not_run",
+  "privateSource": "Scanned images, OCR and corrected reading text remain only in private Google Drive/local iPhone file. Public importer contains no book text or images.",
+  "privateArtifact": {
+    "sha256": "c28047ba2e9033713d55c291f459fd6456744b161f5d8bc7f940add791e22e14",
+    "driveFileId": "1hp0t0GSEsc0XKSX-KJlVDHc5LkMi4sav",
+    "bytes": 19548606,
+    "scans": 20,
+    "sourceReview": "partial",
+    "sameIdReadbackPassed": true,
+    "publiclyEmbedded": false
+  },
+  "sourceReview": {
+    "confirmedCorrectionTypes": 6,
+    "verifiedCaptions": 5,
+    "fullSourceProof": false,
+    "secondIndependentProof": false,
+    "uncertifiedScans": [
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40
+    ],
+    "preExistingReview": "021,023,024,025 first-pass only; 022 blank"
+  },
+  "display": {
+    "browser": "Headless Chromium Linux (not WebKit/iPhone)",
+    "heightPx": 844,
+    "conditions": 24,
+    "passed": 24,
+    "screens": 3368,
+    "textMismatch": 0,
+    "overflows": 0,
+    "figureRecreation": 0
+  },
+  "checks": {
+    "G7-04": {
+      "status": "not_run",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G4-04": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G7-02": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G8-02": {
+      "status": "not_run",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G1-01": {
+      "status": "passed",
+      "scope": "source-unchanged and indexing or draft labeling only",
+      "evidence": "Full ZIP contains 528 source images. Verified exact JPEG source order for 21-40, all SHA, dimensions and zero missing/duplicate scans."
+    },
+    "G1-02": {
+      "status": "passed",
+      "scope": "source-unchanged and indexing or draft labeling only",
+      "evidence": "Embedded original 20 JPEG bytes equal extracted source originals; all SHA256 match pre-build index."
+    },
+    "G1-03": {
+      "status": "passed",
+      "scope": "source-unchanged and indexing or draft labeling only",
+      "evidence": "No resize/rotation/reencoding performed; embedded source images identical in bytes and size to originals."
+    },
+    "G1-04": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G1-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G1-07": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G1-08": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G1-10": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G1-12": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G2-01": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G2-02": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G2-03": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G2-04": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G2-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G2-07": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G2-11": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G3-01": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G3-02": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G3-03": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G3-04": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G3-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G3-06": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G3-07": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G4-01": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "020->021 separate introduction; 025->026 word continuation die Fahrt ins + Blaue; 040->041 ア+テナイの人びとが seen in scan images; other internal boundaries not manually fully checked."
+    },
+    "G4-02": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G4-03": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G4-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G4-09": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G5-01": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G5-02": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "20 provisional cropped image pixels equal same coordinate rectangle from original JPEG; figure completeness and coordinate margins NOT independently source-verified."
+    },
+    "G5-03": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G5-04": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Five captions on scans 028,029,040 matched to figure IDs and source image, remaining captions pending."
+    },
+    "G5-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Chromium figure element identity checked for 24 conditions; captions are unverified placeholders, and native gestures in iPhone are not tested."
+    },
+    "G5-10": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "P20": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G6-01": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G6-02": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G6-03": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G6-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G6-09": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G6-11": {
+      "status": "not_run",
+      "scope": "021-040",
+      "evidence": "No sufficient execution and evidence to mark passed."
+    },
+    "G6-12": {
+      "status": "not_run",
+      "scope": "021-040",
+      "evidence": "No sufficient execution and evidence to mark passed."
+    },
+    "P22": {
+      "status": "not_run",
+      "scope": "021-040",
+      "evidence": "No sufficient execution and evidence to mark passed."
+    },
+    "P23": {
+      "status": "not_run",
+      "scope": "021-040",
+      "evidence": "No sufficient execution and evidence to mark passed."
+    },
+    "G7-01": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "New Chromium 24×844px geometry tested on corrected private v8.2, 0 overflows; remaining heights, safe-area/viewport zoom not yet tested, so status needs_source_review."
+    },
+    "G7-03": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Candidate HTML bookdata->rendered page roundtrip 24/24 with 0 mismatches; source OCR still unproofed so cannot claim full source equivalence."
+    },
+    "G7-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G7-10": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G7-12": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G8-01": {
+      "status": "passed",
+      "scope": "source-unchanged and indexing or draft labeling only",
+      "evidence": "File name uses YYYYMMDD_HHMM JST and explicitly declares OCR draft/source review and iPhone not verified."
+    },
+    "G8-03": {
+      "status": "not_run",
+      "scope": "021-040",
+      "evidence": "No sufficient execution and evidence to mark passed."
+    },
+    "G8-04": {
+      "status": "not_run",
+      "scope": "021-040",
+      "evidence": "No sufficient execution and evidence to mark passed."
+    },
+    "G8-05": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    },
+    "G8-07": {
+      "status": "passed",
+      "scope": "source-unchanged and indexing or draft labeling only",
+      "evidence": "Artifact version, original JPEG SHA256 per scan, source ZIP and figure IDs recorded with study data."
+    },
+    "G8-08": {
+      "status": "not_run",
+      "scope": "021-040",
+      "evidence": "No sufficient execution and evidence to mark passed."
+    },
+    "G8-11": {
+      "status": "needs_source_review",
+      "scope": "021-040 + boundaries 020->021/040->041 as applicable",
+      "evidence": "Source-wide letter proof/second independent pass/figure caption and full interaction review not completed; see per-scan review list. Chromium 24 conditions are partial supporting evidence only."
+    }
+  },
+  "evidence": {
+    "originalSHAAndHistory": "https://drive.google.com/file/d/1phpaWt-EVY-5KXW8PbjF9YoycENQxr9L/view",
+    "chromium24": "https://drive.google.com/file/d/1CRW9Yc6AT7kSlhbeyAmNtjW8cjM85bUt/view",
+    "full60": "https://drive.google.com/file/d/1ypqWX-mhwrq9Rks2EfG_Sk7C02KZUo2m/view"
+  },
+  "contentCertified": false
+}
