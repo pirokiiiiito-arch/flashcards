@@ -47,3 +47,23 @@ test('existing private book engine remains hash-pinned and no original source is
  assert.match(generic,/\$\('firstPageButton'\)\.hidden=BOOK_ID==='wh1'/);
  assert.doesNotMatch(uk,/<script id="(?:bookdata|embedded-data)"/);
 });
+
+test('generic future books and the existing WH1 both navigate to their first page',()=>{
+ const generic=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const match=generic.match(/function goToBeginning\(\)\{[\s\S]*?\n\}\nwindow\.addEventListener\('message'/);
+ assert.ok(match,'shared reader exposes an executable beginning action');
+ const body=match[0].replace(/\nwindow\.addEventListener\('message'$/,'');
+ for(const activeSegment of [0,2]){
+  let calls=[],closed=0;
+  const fn=new Function('bookZip','SEGMENTS','activeSegment','closeMenu','closeOriginal','issueChild','openSegment','setHint','console',body+';return goToBeginning;');
+  const go=fn({},[{}, {}, {}],activeSegment,()=>closed++,()=>closed++,
+   (action,data)=>calls.push({kind:'bridge',action,data}),
+   (index,destination)=>{calls.push({kind:'segment',index,destination});return Promise.resolve();},
+   ()=>{throw Error('Unexpected error')},console);
+  go();
+  assert.equal(closed,2);
+  assert.equal(calls.length,1);
+  if(activeSegment===0){assert.equal(calls[0].action,'goto');assert.equal(calls[0].data.destination.mode,'first');}
+  else{assert.equal(calls[0].index,0);assert.equal(calls[0].destination.mode,'first');}
+ }
+});
