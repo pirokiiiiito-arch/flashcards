@@ -30,11 +30,15 @@
 #storageBanner button{font-size:11px;min-width:34px;min-height:32px;border:1px solid #bccbc1;background:white;border-radius:7px}
 #offlineState{font-size:12px;line-height:1.6;color:#526c6b;background:#f4f7f4;border-radius:9px;padding:8px 10px;margin-top:12px}
 #saveOffline:disabled{opacity:.5}
+/* Shared reader: visible first-page action without changing any private book ZIP. */
+#firstPageButton{position:fixed;z-index:12;top:calc(28px + env(safe-area-inset-top));left:24%;min-width:88px;min-height:44px;border:1px solid #cbd6cf;border-radius:10px;background:#fffefa;color:#273b3c;padding:8px 12px;font-size:15px;font-weight:600;box-shadow:0 1px 4px #223b3119}
+#firstPageButton[hidden]{display:none!important}
 </style>
 <style id="wh1-stable-reading-height">#reader{height:100svh!important;}</style>
 <style id="browser-page-pinch-v2">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#zoomOut,#zoomIn{display:none!important}#originalImage{cursor:default!important;-webkit-user-drag:none!important}</style></head>
 <body>
 <iframe id="reader" title="世界の歴史1｜全274枚読書" sandbox="allow-scripts" loading="eager"></iframe>
+<button id="firstPageButton" type="button" aria-label="本の先頭へ戻る" hidden>最初へ</button>
 <div id="setup">
  <section class="setup-card">
   <div class="eyebrow">PRIVATE BOOK READER · OFFLINE</div>
@@ -283,9 +287,9 @@ async function loadBook(file,shouldSave=true){
   fillManifest(m);bookZip=book;
   if(shouldSave)void saveCurrentBook();
   else setStorageState('このiPhoneに保存した書籍を開きました。次回も自動で開きます。',{show:false});
-  $('setup').hidden=true;$('reader').style.display='block';
+  $('setup').hidden=true;$('reader').style.display='block';$('firstPageButton').hidden=false;
   currentState=restorePosition();await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});
- }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
+ }catch(err){clearBusy();$('setup').hidden=false;$('firstPageButton').hidden=true;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
 }
 function positionText(){const s=SEGMENTS[currentState.segment];return s?`スキャン ${currentState.scan} / ${totalScans}　｜　区間 ${s.start}〜${s.end}　｜　文字 ${currentState.size}px`: '全巻';}
 function showMenu(){if(!bookZip)return;$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
@@ -346,15 +350,16 @@ function handleChildState(d){
  if(wh1ExactPager)wh1ExactPager.onState({...d,scan:currentState.scan});
  $('menuSummary').textContent=positionText();
 }
+function goToBeginning(){
+ if(!bookZip||!SEGMENTS.length)return;
+ closeMenu();closeOriginal();
+ if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});
+ else openSegment(0,{mode:'first'}).catch(err=>{console.warn('先頭への移動に失敗しました',err);setHint('先頭への移動に失敗しました: '+(err.message||err));});
+}
 window.addEventListener('message',e=>{
  if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1)return;
  const d=e.data;
- if(d.type==='bookStart'){
-  closeMenu();
-  if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});
-  else openSegment(0,{mode:'first'}).catch(err=>console.warn('先頭への移動に失敗しました',err));
-  return;
- }
+ if(d.type==='bookStart'){goToBeginning();return;}
  if(d.segment!==activeSegment)return;
  if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);
@@ -379,13 +384,14 @@ function setOriginalScale(){const viewer=$('originalViewer'),img=$('originalImag
 function closeOriginal(){$('originalOverlay').hidden=true;}
 $('zipInput').addEventListener('change',async()=>{if(!$('zipInput').files?.length)return;try{await loadBook(pickedArchive($('zipInput').files),true);}catch(e){console.warn(e);setHint(e.message||String(e));}finally{$('zipInput').value='';}});
 $('resume').onclick=async()=>{try{const saved=await dbRead();if(!saved?.blob)throw Error('保存された書籍がありません');await loadBook(saved.blob,false);}catch(e){setHint(e.message||String(e));clearBusy();}};
+$('firstPageButton').onclick=goToBeginning;
 $('menuClose').onclick=closeMenu;$('menuReturn').onclick=closeMenu;$('shelfReturn').onclick=()=>{location.href='./';};
 $('partGo').onclick=()=>{const i=Number($('partChoice').value);closeMenu();openSegment(i,{scan:SEGMENTS[i].start});};
 $('scanGo').onclick=()=>{const v=Number($('scanNumber').value);if(!Number.isInteger(v)||v<1||v>totalScans){alert('1〜'+totalScans+'の番号を入力してください');return;}closeMenu();openSegment(segmentForScan(v),{scan:v});};
 $('scanNumber').addEventListener('keydown',e=>{if(e.key==='Enter')$('scanGo').click();});
 $('localToc').onclick=()=>{closeMenu();issueChild('localToc');};
 $('menuOriginal').onclick=()=>{closeMenu();openOriginal(currentState.scan);};
-$('reimport').onclick=()=>{closeMenu();$('reader').style.display='none';$('setup').hidden=false;};
+$('reimport').onclick=()=>{closeMenu();$('reader').style.display='none';$('firstPageButton').hidden=true;$('setup').hidden=false;};
 $('saveOffline').onclick=async()=>{closeMenu();await saveCurrentBook();};
 $('storageDismiss').onclick=()=>{$('storageBanner').hidden=true;};
 $('originalClose').onclick=closeOriginal;
