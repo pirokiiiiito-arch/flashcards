@@ -17,7 +17,7 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/furniture/81-100/index.html':'de367028d3280ea5df0ed0b27a8870ecc023e3c1',
  'reader/furniture/101-120/index.html':'ba2a8368c92648188cad613a958aae282af2335b',
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
- 'reader/library/read.html':'4a3c4996edc0a5a3fb9928383a6daaeebc288149'
+ 'reader/library/read.html':'5e1f177754b895a5b1c05c9437044dd6482aee7f'
 });
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);

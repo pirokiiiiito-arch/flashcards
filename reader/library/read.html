@@ -114,6 +114,39 @@ THE SOFTWARE.
 <script src="./storage.js"></script>
 <script src="./wh1-reader-routing.js?v=wh1-library-v9-20261110"></script>
 <script src="./wh1-exact-pagination.js"></script>
+<script id="wh2-unified-swipe-host-v1">
+/* WH2 reader UI only. The saved ZIP, OCR text and original scans are untouched.
+   Keep swipes disabled until the parent has supplied the actual viewport scale. */
+(() => {
+ 'use strict';
+ const target='wh2-all-preview-20261114';
+ const isTarget=()=>new URLSearchParams(location.search).get('id')===target;
+ const blocked="main.addEventListener(type,e=>e.stopImmediatePropagation(),{capture:true,passive:true});";
+ const ready="main.addEventListener(type,e=>{if(!wh2Host.known||wh2IsZoomed())e.stopImmediatePropagation();},{capture:true,passive:true});";
+ const decorate=window.WH1ExactPager?.decorate;
+ if(typeof decorate==='function'){
+  window.WH1ExactPager.decorate=function(html){
+   if(isTarget()&&html.includes('<script id="wh2-parent-viewport-receiver-v6">')&&
+      html.split(blocked).length===2)html=html.replace(blocked,ready);
+   return decorate(html);
+  };
+ }
+ const session='wh2-bookshelf-swipe-20261114';
+ function sendViewport(){
+  if(!isTarget())return;
+  const frame=document.getElementById('reader'),scale=Number(window.visualViewport?.scale||1);
+  if(frame?.contentWindow&&Number.isFinite(scale)&&scale>=0.5&&scale<=10)
+   frame.contentWindow.postMessage({kind:'wh2-host-viewport-v1',version:1,session,scale},'*');
+ }
+ window.addEventListener('message',e=>{
+  if(isTarget()&&e.source===document.getElementById('reader')?.contentWindow&&
+     e.data?.kind==='wh2-reader-ready-v1')sendViewport();
+ });
+ window.visualViewport?.addEventListener('resize',sendViewport);
+ window.visualViewport?.addEventListener('scroll',sendViewport);
+ window.addEventListener('resize',sendViewport);
+})();
+</script>
 <script>
 'use strict';
 const BOOK_ID=new URLSearchParams(location.search).get('id')||'wh1';let bookTitle='読書',totalScans=274;const SEGMENTS=[];let manifest=null,bookZip=null,activeSegment=-1,pendingDest=null,pendingLoaded=false,frameURL='',currentState={segment:0,key:'',scan:1,size:20},originalURL='',originalScale=1,loadToken=0,saving=false;

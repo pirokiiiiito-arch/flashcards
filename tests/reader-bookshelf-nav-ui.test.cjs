@@ -1,6 +1,6 @@
 'use strict';
 // Synthetic host-navigation tests only. Do not infer OCR or real-iPhone acceptance.
-const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),os=require('node:os');
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),os=require('node:os'),vm=require('node:vm');
 const gate=require('../tools/reader-release-control.cjs');
 const root=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..');
 const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-policy.json')));
@@ -55,7 +55,10 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
   assert.ok(approved[p]);
   const restored=html.replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
     .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'');
-  assert.equal(blobSHA(restored),registry.legacyFrozenEntries[p],'OCR/reader engine remains byte-identical to baseline');
+  const originalReader=p==='reader/library/read.html'
+    ?restored.replace(/\\n<script id="wh2-unified-swipe-host-v1">[\\s\\S]*?<\\/script>(?=\\n<script>\\n'use strict';)/,'')
+    :restored;
+  assert.equal(blobSHA(originalReader),registry.legacyFrozenEntries[p],'OCR/reader engine remains byte-identical to baseline');
  }
 });
 test('generated bookshelf and WH1 HTML retain links with exact build reproduction',()=>{
@@ -77,4 +80,36 @@ test('an unreviewed generated WH1 artifact fails even if both source hosts are a
   fs.appendFileSync(path.join(tmp,'reader/wh1/all/figure-check-v9-1.html'),'\n<!-- unsigned derived edit -->');
   assert.throws(()=>gate.admittedBookshelfNavUI(tmp,policy),/SHARED_SHELF_DERIVATIVE_NOT_REPRODUCIBLE/);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
+});
+
+test('WH2 swipe-only enhancement gates one-finger page turns on authoritative parent zoom',()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const script=html.match(/<script id="wh2-unified-swipe-host-v1">([\\s\\S]*?)<\\/script>/)?.[1];
+ assert.ok(script,'one self-contained public gesture bridge must exist');
+ const events={},viewportEvents={},sent=[],child={postMessage:d=>sent.push(d)};
+ const ctx={URLSearchParams,location:{search:'?id=wh2-all-preview-20261114'},
+  document:{getElementById:id=>id==='reader'?{contentWindow:child}:null},
+  window:{WH1ExactPager:{decorate:x=>x},
+   visualViewport:{scale:1,addEventListener:(type,cb)=>{viewportEvents[type]=cb;}},
+   addEventListener:(type,cb)=>{events[type]=cb;}}};
+ vm.runInNewContext(script,ctx,{timeout:1000});
+ const blocked="main.addEventListener(type,e=>e.stopImmediatePropagation(),{capture:true,passive:true});";
+ const source='<script id="wh2-parent-viewport-receiver-v6">'+blocked;
+ const updated=ctx.window.WH1ExactPager.decorate(source);
+ assert.ok(updated.includes('!wh2Host.known||wh2IsZoomed()'));
+ assert.ok(!updated.includes(blocked));
+ assert.equal(ctx.window.WH1ExactPager.decorate(source+blocked),source+blocked,
+  'unexpected source layout must not silently enable gestures');
+ ctx.location.search='?id=some-other-book';
+ assert.equal(ctx.window.WH1ExactPager.decorate(source),source,'other books remain unchanged');
+ ctx.location.search='?id=wh2-all-preview-20261114';
+ events.message({source:child,data:{kind:'wh2-reader-ready-v1'}});
+ assert.equal(sent[0].kind,'wh2-host-viewport-v1');assert.equal(sent[0].scale,1);
+ assert.ok(sent[0].session.length>=12);
+ ctx.window.visualViewport.scale=2;
+ viewportEvents.resize();
+ assert.equal(sent.at(-1).scale,2,'zoomed viewport disables page-swipe capture');
+ ctx.window.visualViewport.scale=1;
+ viewportEvents.scroll();
+ assert.equal(sent.at(-1).scale,1,'zoom reset can restore swiping');
 });
