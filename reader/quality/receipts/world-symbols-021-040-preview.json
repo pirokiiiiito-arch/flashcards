@@ -216,7 +216,7 @@
     "channel": "preview",
     "entry": "reader/preview/world-symbols-021-040/index.html",
     "bookRecordSha256": "9fd444d71dcdf5174c2ec3faa8fa4ff79f8371a87d1705d07e7a96ca96e10d18",
-    "reportSha256": "dc729e374016d243ddc760a6872b692145f033d4e94d73252fbec38c0c9b8140",
+    "reportSha256": "09fa70700382f3c4b76613570f4012013fdde0f1766203d652f4474ec697764e",
     "publicFiles": {
       "reader/preview/world-symbols-021-040/index.html": "81d5e29bb3f588fc183d06ceb84a0989d34e3e6747312887da647925a9db8796",
       "reader/preview/world-symbols-021-040/sw.js": "a9fe85436059d05dee53cd726c90290b90178f4b4405a996a07b839310aaaf71"
@@ -224,5 +224,5 @@
     "issuedAt": "2026-11-14T06:09:16.569608Z",
     "trustBoundary": "Local evidence attestation, not independent reviewer authentication."
   },
-  "digest": "95c7c53e07852503864c0d92605331482eb30570773a2c45070aab3de14ecef5"
+  "digest": "da0511c28b1510d801edbc2f7baa378630781db011ddb42d57129a158e89d70d"
 }
