@@ -20,6 +20,9 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
 .progress{display:none;height:5px;background:#e3eae5;border-radius:7px;overflow:hidden}.progress.show{display:block}.progress>span{display:block;width:0;height:100%;background:#4b7775;transition:width .15s}
 #busy{position:fixed;inset:0;display:grid;place-items:center;z-index:8;background:#fbfaf7ed;pointer-events:none}
 #busy[hidden]{display:none}.busy-label{max-width:320px;text-align:center;padding:20px;color:#465d60;font-size:14px;line-height:1.7}
+#reader-bookshelf-back-uk{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:36px;padding:5px 8px;border:1px solid #bbcec8;border-radius:9px;background:#fff;color:#2b5351;font:650 12px/1.3 system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+#reader-bookshelf-back-uk:focus-visible{outline:2px solid #368f91;outline-offset:2px}
+.head-actions,.toolbar-actions,.header-actions{flex-wrap:wrap!important;gap:5px!important}
 </style><style id="reader-native-page-pinch-shell-v3">
   html,body,#reader,#setup{touch-action:pan-x pan-y pinch-zoom;}
 </style></head><body>
@@ -60,6 +63,20 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
  function unbusy(){$('busy').hidden=true}
  function loadPosition(){try{const p=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(Number.isInteger(p?.scan)&&p.scan>=1&&p.scan<=TOTAL&&Number.isInteger(p.itemIndex))return {scan:p.scan,itemIndex:p.itemIndex,size:p.size||20}}catch(e){}return {scan:1,itemIndex:0,size:20}}
  function flushPosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=null;try{localStorage.setItem(POSITION_KEY,JSON.stringify(current))}catch(e){}}
+ // Shared bookshelf return control, inserted into the engine toolbar outside the reading page.
+ function ensureShelfButton(){
+   if(document.getElementById('reader-bookshelf-back-uk'))return true;
+   const root=document.getElementById('reader-main');if(!root)return false;
+   const existing=[...document.querySelectorAll('button,a')].find(el=>!document.getElementById('setup')?.contains(el)&&/^(?:本棚へ|本棚に戻る|私の本棚に戻る)$/.test(el.textContent.trim()));
+   if(existing)return true;
+   const actions=document.querySelector('.head-actions,.toolbar-actions,.header-actions,.reader-head-actions,#reader-header .actions,.reader-toolbar .actions,.toolbar-line,.reader-toolbar,#reader-header,.reader-header,header');
+   if(!actions)return false;
+   const button=document.createElement('button');button.id='reader-bookshelf-back-uk';button.type='button';button.textContent='本棚へ';
+   button.setAttribute('aria-label','現在の読書位置を保存して本棚に戻る');
+   button.addEventListener('click',()=>{flushPosition();location.href='../../library/';});
+   actions.insertBefore(button,actions.firstChild);
+   return true;
+ }
  function schedulePosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=setTimeout(flushPosition,320)}
  window.addEventListener('pagehide',flushPosition);
  const u16=(v,n)=>v.getUint16(n,true),u32=(v,n)=>v.getUint32(n,true);
@@ -130,6 +147,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
    book=candidate;manifest=m;readerReady=false;current=loadPosition();previousWindow=-1;cache.clear();inflight.clear();
    if(document.getElementById('reader-main')){readerReady=true;await sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size});}
    else await installTopLevelEngine(html);
+   ensureShelfButton();
    if(shouldSave){
      // Store in 4MB IndexedDB chunks only when the user has imported new data.
      saving=true;
@@ -182,7 +200,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
   if(event.source!==getReader()||!event.data||typeof event.data!=='object')return;
   const d=event.data;
   if(d.kind==='uk82-engine-ready'){
-    readerReady=true;notifyBrowserZoom();sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size}).catch(error=>{unbusy();say('ページ準備失敗：'+error.message)});return;
+    ensureShelfButton();readerReady=true;notifyBrowserZoom();sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size}).catch(error=>{unbusy();say('ページ準備失敗：'+error.message)});return;
   }
   if(d.kind==='uk82-stream-state'){
     if(opening){opening=false;unbusy();$('setup').hidden=true;}
@@ -195,7 +213,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
     sendWindow(scan,{navigate:true,edge:d.edge||null,size:d.size||current.size}).catch(e=>{unbusy();say('次の原本を開けません：'+e.message)});
     return;
   }
-  if(d.kind==='uk82-stream-return-to-shelf'){location.href='../../library/';return}
+  if(d.kind==='uk82-stream-return-to-shelf'){flushPosition();location.href='../../library/';return}
   if(d.kind==='uk-interiors-reader-change-file'){$('setup').hidden=false;unbusy();say('読書データを選び直すか、本棚に戻ってください。');return}
   if(d.kind==='uk-interiors-reader-error'){$('setup').hidden=false;unbusy();say('読書の組版エラー：'+String(d.message||'不明'));}
  });
