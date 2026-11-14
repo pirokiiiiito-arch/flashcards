@@ -35,4 +35,4 @@ jobs:
           READER_AUDIT_ROOT: ${{ runner.temp }}/reader-pages
         run: |
           node tools/reader-release-control.cjs repo "$READER_AUDIT_ROOT"
-          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/reader-release-control.test.cjs tests/reader-first-page-ui-release.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs
+          node --test tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/reader-release-control.test.cjs tests/reader-first-page-ui-release.test.cjs tests/reader-bookshelf-nav-ui.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs
