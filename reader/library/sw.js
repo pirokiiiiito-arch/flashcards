@@ -1,10 +1,10 @@
 /* Offline cache for the app shell only. Never cache private Drive book content. */
 'use strict';
-const CACHE='private-bookshelf-shell-v10-wh1-reader9';
+const CACHE='private-bookshelf-shell-v11-title-order';
 const REVISION='wh1-library-v9-20261110';
 const local=path=>new URL(path,self.registration.scope).href;
 const ASSETS=[
-  './index.html','./app.css','./app.js?v='+REVISION,
+  './index.html','./app.css','./app.js?v=bookshelf-title-order-v1-20261114',
   './wh1-reader-routing.js?v='+REVISION,
   './storage.js','./book-covers.js','./read.html','./wh1-exact-pagination.js',
   './read-wh1-v9.html','./wh1-pager-v9.js?v='+REVISION,
