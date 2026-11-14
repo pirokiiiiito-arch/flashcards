@@ -1,6 +1,6 @@
 /* Application files only. Never delete or rewrite the private book IndexedDB. */
 'use strict';
-const CACHE_NAME='wh1-unified-reader-shell-v13-display-check91';
+const CACHE_NAME='wh1-unified-reader-shell-v14-bookshelf-return';
 const local=path=>new URL(path,self.registration.scope).toString();
 const SHELL_URL=local('index.html');
 const REPAIR_URL=local('figure-repair-v9.html');
@@ -8,11 +8,11 @@ const LEGACY_REPAIR_URL=local('figure-repair-v8.html');
 const CHECK_URL=local('figure-check-v9-1.html');
 const MANIFEST_URL=local('manifest.webmanifest');
 const ICON_URL=local('apple-touch-icon.png');
-const PAGINATION_URL=local('wh1-exact-pagination.js?v=figure-viewport-v9-20261110');
+const PAGINATION_URL=local('wh1-exact-pagination.js?v=bookshelf-return-20261114-v2');
 const VIEWPORT_URL=local('wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110');
 const CHECK_SCRIPT_URL=local('wh1-display-check-v9.js?revision=display-check-v9-1-20261110');
 self.addEventListener('install',event=>{
- event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll([SHELL_URL,REPAIR_URL,LEGACY_REPAIR_URL,CHECK_URL,MANIFEST_URL,ICON_URL,PAGINATION_URL,VIEWPORT_URL,CHECK_SCRIPT_URL].map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting()));
+ event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll([SHELL_URL,MANIFEST_URL,ICON_URL,PAGINATION_URL,VIEWPORT_URL,CHECK_SCRIPT_URL].map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting()));
 });
 self.addEventListener('activate',event=>{
  // Keep previous application caches for already-open documents and rollback.
