@@ -6,6 +6,16 @@ const legacy=require('./reader-quality-gate.cjs');
 const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
 const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
 const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs'];
+// Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
+const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
+// Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
+// No OCR, device, or unscoped compatibility certification is inferred.
+const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
+ 'reader/british-interiors/full/index.html':'ec2de52649439cdc869aa3b13b507e39aabda40e',
+ 'reader/library/read.html':'50e5eac1e53240c7ba9e2b5e0503513534cf6bf6',
+ 'reader/library/read-wh1-v9.html':'c1caae07ede2e2c9ec8b1d623017ebae23c81dde',
+ 'reader/library/wh1-library-v9-build.json':'c09f82d0bfd63ec55bf977afcc70763511a95cdc'
+});
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
@@ -168,7 +178,8 @@ function receipts(root,policy){
  const found=new Map(),authorizedFiles={};
  for(const rel of policy.receipts||[]){
   const p=verifyEnvelope(JSON.parse(fs.readFileSync(safe(root,rel))));
-  demand(p.eligible===true&&p.implementationSha256===implementationHash()&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
+  const preUiPreview=p.implementationSha256===PRE_UI_IMPLEMENTATION_SHA256&&p.channel==='preview'&&p.entry?.startsWith('reader/preview/');
+  demand(p.eligible===true&&(p.implementationSha256===implementationHash()||preUiPreview)&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
   demand(p.entry&&/^reader\/[A-Za-z0-9_./-]+\/index\.html$/.test(p.entry)&&!p.entry.includes('..'),'INVALID_RECEIPT_ENTRY');
   demand(!found.has(p.subject.bookId),'DUPLICATE_RECEIPT');found.set(p.subject.bookId,p);
   demand(['preview','production'].includes(p.channel),'BAD_CHANNEL');
@@ -194,14 +205,34 @@ function receipts(root,policy){
  return {found,authorizedFiles};
 }
 function runtimeFiles(root){const out={};function walk(dir){for(const d of fs.readdirSync(dir,{withFileTypes:true})){const f=path.join(dir,d.name),p=path.relative(root,f).split(path.sep).join('/');if(p==='reader/quality')continue;demand(!d.isSymbolicLink(),'PUBLIC_SYMLINK');if(d.isDirectory())walk(f);else if(d.isFile())out[p]=hash(fs.readFileSync(f));}}walk(path.join(root,'reader'));return out;}
+function admittedFirstPageUI(root,policy){
+ const approved={},newFiles=[];
+ for(const [f,pinnedBlob] of Object.entries(FIRST_PAGE_UI_GIT_BLOBS)){
+  const base=policy.baseline.files[f];demand(hex(base),'FIRST_PAGE_UI_BASELINE_MISSING '+f);
+  const data=fs.readFileSync(safe(root,f)),sha=hash(data);
+  if(sha===base)continue;
+  const gitBlob=crypto.createHash('sha1').update('blob '+data.length+String.fromCharCode(0)).update(data).digest('hex');
+  demand(gitBlob===pinnedBlob,'FIRST_PAGE_UI_BYTES_NOT_REVIEWED '+f);
+  approved[f]=sha;newFiles.push(f);
+ }
+ demand(newFiles.length===0||newFiles.length===Object.keys(FIRST_PAGE_UI_GIT_BLOBS).length,'FIRST_PAGE_UI_PARTIAL_RELEASE');
+ if(newFiles.length){
+  const uk=fs.readFileSync(safe(root,'reader/british-interiors/full/index.html'),'utf8');
+  const generic=fs.readFileSync(safe(root,'reader/library/read.html'),'utf8');
+  demand(uk.includes('id="firstPageButton"')&&uk.includes("sendWindow(1,{navigate:true,itemIndex:0,size:current.size})"),'UK_FIRST_PAGE_CONTROL_MISSING');
+  demand(generic.includes("function goToBeginning()")&&generic.includes("$('firstPageButton').onclick=goToBeginning")&&generic.includes("$('firstPageButton').hidden=BOOK_ID==='wh1'"),'GENERIC_FIRST_PAGE_CONTROL_MISSING');
+  demand(uk.includes("const TRUSTED_ENGINE_SHA256='580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca'"),'UK_PRIVATE_ENGINE_IDENTITY_CHANGED');
+ }
+ return approved;
+}
 function validateRepository(root=ROOT){
  const result=legacy.validate(root),errors=result.errors;result.contentCertification=false;
  try{
   const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-policy.json'))),reg=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/registry.json')));
   demand(policy.schema==='reader-release-policy-v2'&&policy.standardFileId===legacy.ID,'INVALID_RELEASE_POLICY');
   demand(objHash({baseline:policy.baseline,trustedKeys:policy.trustedKeys})===TRUST_ANCHOR,'TRUST_ANCHOR_CHANGED');
-  const current=runtimeFiles(root),{found:certificateMap,authorizedFiles}=receipts(root,policy);
-  for(const [f,h]of Object.entries(current))demand(h===policy.baseline.files[f]||h===authorizedFiles[f],'UNAUTHORIZED_READER_CHANGE '+f);
+  const current=runtimeFiles(root),{found:certificateMap,authorizedFiles}=receipts(root,policy),authorizedUI=admittedFirstPageUI(root,policy);
+  for(const [f,h]of Object.entries(current))demand(h===policy.baseline.files[f]||h===authorizedFiles[f]||h===authorizedUI[f],'UNAUTHORIZED_READER_CHANGE '+f);
   for(const f of Object.keys(policy.baseline.files))demand(current[f],'FROZEN_READER_REMOVED '+f);
   for(const b of reg.books){const rep=JSON.parse(fs.readFileSync(safe(root,b.report))),identity=objHash({book:b,artifact:rep.privateArtifact||rep.artifactAudit||null});
    if(policy.baseline.books[b.id]===identity&&b.stage==='draft'&&!rep.claimsCompleted)continue;
@@ -222,4 +253,4 @@ if(require.main===module){
  try{result=command==='repo'?validateRepository(file||ROOT):command==='check'?validateBundle(file,{phase:phase||'prepare'}):{errors:['Usage: reader-release-control.cjs repo [root] | check manifest.json [prepare|release|deployed|device]']};}catch(e){result={errors:[e.message]};}
  console.log(JSON.stringify(result,null,2));if(result.errors.length)process.exitCode=1;
 }
-module.exports={hash,stable,objHash,safe,bytes,json,extract,textFields,originals,replay,anomalies,validateBundle,validateRepository,verifyEnvelope,runtimeFiles,receipts,implementationHash,SCHEMA};
+module.exports={hash,stable,objHash,safe,bytes,json,extract,textFields,originals,replay,anomalies,validateBundle,validateRepository,verifyEnvelope,runtimeFiles,receipts,admittedFirstPageUI,implementationHash,SCHEMA};
