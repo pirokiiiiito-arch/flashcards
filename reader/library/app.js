@@ -16,6 +16,25 @@
   let books=[PREVIEW,UK_PREVIEW], savedIds=new Set(), selected=null, accessToken=null, expiry=0, pendingDownload=null;
   let tokenClient=null, connected=false, isRefreshing=false;
   const num = new Intl.NumberFormat('ja-JP');
+  // Sort visible book titles by Japanese reading, independent of Drive/catalog insertion order.
+  // Catalog entries can provide sortTitle for future books with ambiguous kanji readings.
+  const titleCollator = new Intl.Collator('ja', {numeric:true, sensitivity:'variant'});
+  const knownReadings = new Map([
+    ['図説 英国のインテリア史', 'ずせつ えいこくのいんてりあし'],
+    ['図でみる 洋家具の歴史と様式', 'ずでみる ようかぐのれきしとようしき']
+  ]);
+  function shelfSortTitle(book) {
+    const reading = typeof book.sortTitle === 'string' ? book.sortTitle.trim() : '';
+    if(reading) return reading.normalize('NFKC');
+    const title = String(book.title || '').normalize('NFKC').replace(/\\s+/g, ' ').trim();
+    if(/^世界の歴史(?=\\s*\\d)/.test(title)) return title.replace(/^世界の歴史/, 'せかいのれきし');
+    return knownReadings.get(title) || title;
+  }
+  function compareBookTitles(a, b) {
+    return titleCollator.compare(shelfSortTitle(a), shelfSortTitle(b))
+      || titleCollator.compare(a.title, b.title)
+      || titleCollator.compare(a.id, b.id);
+  }
   const say = (message) => {const t=$('toast');t.textContent=message;t.hidden=false;clearTimeout(say.timer);say.timer=setTimeout(()=>t.hidden=true,4500);};
   const setCloud = (title,detail,live=false) => {$('cloudTitle').textContent=title;$('cloudMessage').textContent=detail;connected=live;$('connectButton').textContent=live?'接続済み':'接続する';};
   const nice = value => Number.isFinite(Number(value)) ? `${Math.round(Number(value)/1024/1024)} MB` : '容量不明';
@@ -35,14 +54,14 @@
     const parts=b.parts.filter(p=>p&&/^[A-Za-z0-9_-]{12,128}$/.test(p.id||'')&&Number(p.size)>0)
       .map(p=>({id:p.id,name:String(p.name||''),size:Number(p.size)}));
     if(parts.length!==b.parts.length)return null;
-    return {id:b.id,title:b.title.slice(0,140),subtitle:String(b.subtitle||'').slice(0,170),
+    return {id:b.id,title:b.title.slice(0,140),sortTitle:typeof b.sortTitle==='string'?b.sortTitle.slice(0,140):'',subtitle:String(b.subtitle||'').slice(0,170),
       status:String(b.status||''),scans:Number(b.scans)||null,totalBytes:Number(b.totalBytes)||parts.reduce((s,p)=>s+p.size,0),parts,coverFileId:/^[A-Za-z0-9_-]{12,128}$/.test(b.coverFileId||'')?b.coverFileId:null,format:'unified-zip-v1'};
   }
   async function refreshSaved() {
     const meta=await LibraryDB.listMeta().catch(()=>[]);
     savedIds=new Set(meta.filter(m=>m.id!=='uk-interiors'||Number(m.size)===126760402).map(m=>m.id));
     if(!savedIds.has('wh1') && await LibraryDB.hasBook('wh1')) savedIds.add('wh1');
-    const temp=meta.filter(m=>!books.some(b=>b.id===m.id)).map(m=>({id:m.id,title:m.title||m.id,
+    const temp=meta.filter(m=>!books.some(b=>b.id===m.id)).map(m=>({id:m.id,title:m.title||m.id,sortTitle:m.sortTitle||'',
       subtitle:m.subtitle||'端末に保存済み',scans:m.scans,totalBytes:m.size,parts:[],status:'端末保存済み'}));
     for(const b of temp)books.push(b);
     renderShelf();
@@ -70,7 +89,7 @@
     return button;
   }
   function renderShelf(){const q=$('searchInput').value.trim().toLowerCase();const target=$('shelf');target.replaceChildren();
-    const matching=books.filter(b=>b.title.toLowerCase().includes(q));
+    const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles);
     matching.forEach((b,i)=>target.append(card(b,i)));
     $('bookCount').textContent=String(books.length);$('emptyState').hidden=matching.length!==0;
   }
@@ -189,7 +208,7 @@
       for(const b of [...catalog,...found]){if(seen.has(b.id))continue;seen.add(b.id);books.push(b);}
       if(!books.some(x=>x.id==='wh1'))books.unshift(PREVIEW);
       if(!books.some(x=>x.id===UK_PREVIEW.id))books.push(UK_PREVIEW);
-      books.sort((a,b)=>a.id==='wh1'?-1:b.id==='wh1'?1:a.title.localeCompare(b.title,'ja'));
+      // The shelf renderer applies the same title order for cloud, offline and search results.
       await refreshSaved();setCloud('Google Driveに接続済み',`${books.length}冊の書籍を同期しました`,true);
     }catch(e){setCloud('同期できませんでした',e.message||'再接続をお試しください');say('同期エラー: '+(e.message||String(e)));}
     finally{isRefreshing=false;$('refreshButton').disabled=false;}
