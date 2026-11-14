@@ -119,15 +119,18 @@ THE SOFTWARE.
    Keep swipes disabled until the parent has supplied the actual viewport scale. */
 (() => {
  'use strict';
- const target='wh2-all-preview-20261114';
- const isTarget=()=>new URLSearchParams(location.search).get('id')===target;
+ // Identify the WH2 reader by its two exact ZIP-script fingerprints, not the
+ // URL query id: the Google Drive bookshelf assigns its own g_<file-id> key.
+ let wh2Active=false;
+ const isTarget=()=>wh2Active;
  const blocked="main.addEventListener(type,e=>e.stopImmediatePropagation(),{capture:true,passive:true});";
  const ready="main.addEventListener(type,e=>{if(!wh2Host.known||wh2IsZoomed())e.stopImmediatePropagation();},{capture:true,passive:true});";
  const decorate=window.WH1ExactPager?.decorate;
  if(typeof decorate==='function'){
   window.WH1ExactPager.decorate=function(html){
-   if(isTarget()&&html.includes('<script id="wh2-parent-viewport-receiver-v6">')&&
-      html.split(blocked).length===2)html=html.replace(blocked,ready);
+   wh2Active=html.includes('<script id="wh2-parent-viewport-receiver-v6">')&&
+      html.split(blocked).length===2;
+   if(wh2Active)html=html.replace(blocked,ready);
    return decorate(html);
   };
  }

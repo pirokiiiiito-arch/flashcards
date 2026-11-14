@@ -87,7 +87,7 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
  const script=html.match(/<script id="wh2-unified-swipe-host-v1">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(script,'one self-contained public gesture bridge must exist');
  const events={},viewportEvents={},sent=[],child={postMessage:d=>sent.push(d)};
- const ctx={URLSearchParams,location:{search:'?id=wh2-all-preview-20261114'},
+ const ctx={URLSearchParams,location:{search:'?id=g_private_drive_file'},
   document:{getElementById:id=>id==='reader'?{contentWindow:child}:null},
   window:{WH1ExactPager:{decorate:x=>x},
    visualViewport:{scale:1,addEventListener:(type,cb)=>{viewportEvents[type]=cb;}},
@@ -100,9 +100,15 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
  assert.ok(!updated.includes(blocked));
  assert.equal(ctx.window.WH1ExactPager.decorate(source+blocked),source+blocked,
   'unexpected source layout must not silently enable gestures');
- ctx.location.search='?id=some-other-book';
- assert.equal(ctx.window.WH1ExactPager.decorate(source),source,'other books remain unchanged');
- ctx.location.search='?id=wh2-all-preview-20261114';
+ events.message({source:child,data:{kind:'wh2-reader-ready-v1'}});
+ assert.equal(sent.length,0,'unrecognized source must not get a viewport handshake');
+ const otherBook='<main>Unrelated reader with different touch controls</main>';
+ assert.equal(ctx.window.WH1ExactPager.decorate(otherBook),otherBook,
+  'other books remain unchanged even if the route ID differs');
+ events.message({source:child,data:{kind:'wh2-reader-ready-v1'}});
+ assert.equal(sent.length,0,'unrelated book must not receive WH2 zoom messages');
+ assert.ok(ctx.window.WH1ExactPager.decorate(source).includes('!wh2Host.known||wh2IsZoomed()'),
+  'returning to WH2 restores swipe handling based on ZIP contents');
  events.message({source:child,data:{kind:'wh2-reader-ready-v1'}});
  assert.equal(sent[0].kind,'wh2-host-viewport-v1');assert.equal(sent[0].scale,1);
  assert.ok(sent[0].session.length>=12);
