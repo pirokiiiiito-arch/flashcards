@@ -16,5 +16,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify versioned public loader only (no private book or iPhone claims)
-        run: node --test tests/uk82-first-page-button.test.cjs
+      - name: Build candidate and print exact generated public UI file identities
+        run: |
+          python3 tools/build-wh1-figure-viewport-v8.py
+          python3 tools/build-wh1-library-v9.py
+          echo "GENERATED_WH1_HTML_GITBLOB=$(git hash-object reader/library/read-wh1-v9.html)"
+          echo "GENERATED_WH1_REPORT_GITBLOB=$(git hash-object reader/library/wh1-library-v9-build.json)"
+          sha256sum reader/library/read-wh1-v9.html reader/library/wh1-library-v9-build.json
+      - name: Verify synthetic UK82 UI, shared reader and WH1 preservation
+        run: |
+          node --test tests/uk82-first-page-button.test.cjs
+          node --test tests/wh1-library-build.test.cjs
