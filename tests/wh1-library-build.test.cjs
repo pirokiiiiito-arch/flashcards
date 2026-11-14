@@ -11,6 +11,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const bytes=p=>fs.readFileSync(path.join(root,p));
 const folder='reader/library/';
 const revision='wh1-library-v9-20261110';
+const shelfRevision='bookshelf-title-order-v2-20261114';
 
 test('shelf WH1 entry retains every storage/reader operation and only adds current renderer plus static marker',()=>{
  const base=read(folder+'read.html'),html=read(folder+'read-wh1-v9.html');
@@ -63,7 +64,7 @@ test('shelf worker fetches fresh app code and serves the correct reader offline 
  const c={URL,Request,Response,console,
   self:{registration:{scope},addEventListener:(name,fn)=>{handlers[name]=fn;},
    skipWaiting:async()=>{skipped++;},clients:{claim:async()=>{claimed++;}}},
-  caches:{open:async name=>{assert.equal(name,'private-bookshelf-shell-v10-wh1-reader9');return cache;},
+  caches:{open:async name=>{assert.equal(name,'private-bookshelf-shell-v12-title-order');return cache;},
    match:()=>{throw Error('Must not read an older named cache');},delete:()=>{throw Error('Must preserve caches');}},
   fetch:async(req,options)=>{requests.push({url:req.url,options});throw Error('Offline fixture');}
  };
@@ -71,7 +72,7 @@ test('shelf worker fetches fresh app code and serves the correct reader offline 
  let pending;handlers.install({waitUntil:p=>{pending=p;}});await pending;
  handlers.activate({waitUntil:p=>{pending=p;}});await pending;
  assert.equal(claimed,1);assert.equal(skipped,1);
- assert.ok(entries.has(scope+'app.js?v='+revision));
+ assert.ok(entries.has(scope+'app.js?v='+shelfRevision));
  assert.ok(entries.has(scope+'wh1-reader-routing.js?v='+revision));
  async function fetchRoute(relative,mode='navigate'){
   let response;const work=[];
@@ -87,7 +88,7 @@ test('shelf worker fetches fresh app code and serves the correct reader offline 
  assert.ok(requests.every(x=>x.options.cache==='no-cache'));
  c.fetch=async(req,options)=>{assert.equal(options.cache,'no-cache');return new Response('fresh app');};
  assert.equal(await (await fetchRoute('app.js','cors')).text(),'fresh app');
- assert.equal(writes.at(-1),scope+'app.js?v='+revision);
+ assert.equal(writes.at(-1),scope+'app.js?v='+shelfRevision);
  for(const request of [
   {url:'https://www.googleapis.com/drive/v3/files/private?alt=media',method:'GET'},
   {url:scope+'private-book.zip',method:'GET'},

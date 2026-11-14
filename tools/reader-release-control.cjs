@@ -27,6 +27,12 @@ const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
  'reader/library/read.html':'616f71e6f2a050b468d23ec9dcd35e5b87d9c76c'
 });
+// Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
+const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
+ 'reader/library/app.js':'13b8a1942af8b87e95ff4883b8fd1f0d04981a10',
+ 'reader/library/index.html':'0b0362b78bd36762b725dcca458cf714af57653b',
+ 'reader/library/sw.js':'10400fb284f67e4afae55a8c3f0de5a9277f3b02'
+});
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
@@ -309,6 +315,29 @@ function admittedBookshelfNavUI(root,policy){
    demand(actual.equals(Buffer.from(expectedText,'utf8')),'SHARED_SHELF_DERIVATIVE_NOT_REPRODUCIBLE '+f);
    if(hash(actual)!==policy.baseline.files[f])approved[f]=hash(actual);
   }
+ }
+ // The sort revision changes only the publicly served bookshelf UI and cache.
+ // Require all three exact files together; never waive frozen book readers.
+ let sortChanged=0;
+ for(const [f,pin] of Object.entries(BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS)){
+  const baseline=policy.baseline.files[f];demand(hex(baseline),'BOOKSHELF_SORT_BASELINE_MISSING '+f);
+  const data=fs.readFileSync(safe(root,f)),sha=hash(data);
+  if(sha===baseline)continue;
+  const gitBlob=crypto.createHash('sha1').update('blob '+data.length+String.fromCharCode(0)).update(data).digest('hex');
+  demand(gitBlob===pin,'BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED '+f);
+  approved[f]=sha;sortChanged++;
+ }
+ demand(sortChanged===0||sortChanged===Object.keys(BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS).length,
+   'BOOKSHELF_SORT_UI_PARTIAL_RELEASE');
+ if(sortChanged){
+  const app=fs.readFileSync(safe(root,'reader/library/app.js'),'utf8');
+  const index=fs.readFileSync(safe(root,'reader/library/index.html'),'utf8');
+  const sw=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8');
+  demand(app.includes('function compareBookTitles(a, b)')&&
+    app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
+    index.includes('app.js?v=bookshelf-title-order-v2-20261114')&&
+    sw.includes('private-bookshelf-shell-v12-title-order')&&
+    sw.includes('app.js?v=bookshelf-title-order-v2-20261114'),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }

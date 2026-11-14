@@ -119,3 +119,16 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
  viewportEvents.scroll();
  assert.equal(sent.at(-1).scale,1,'zoom reset can restore swiping');
 });
+
+test('existing Japanese bookshelf title order uses only three exact public UI files',()=>{
+ const approved=gate.admittedBookshelfNavUI(root,policy);
+ for(const f of ['reader/library/app.js','reader/library/index.html','reader/library/sw.js']){
+  assert.ok(approved[f],'published title-order source must be explicitly admitted: '+f);
+ }
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'bookshelf-sort-reject-'));
+ try{
+  fs.cpSync(path.join(root,'reader'),path.join(temp,'reader'),{recursive:true});
+  fs.appendFileSync(path.join(temp,'reader/library/app.js'),'\\n// unauthorized app change');
+  assert.throws(()=>gate.admittedBookshelfNavUI(temp,policy),/BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED/);
+ }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
