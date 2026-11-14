@@ -28,7 +28,7 @@ h1{font-size:22px;line-height:1.55;margin:0 0 10px}p,li{font-size:14px;line-heig
 <p><strong>確認版（読書用完成ではありません）。</strong>原本と本文はご自身のGoogle Driveから読み込みます。公開サイトに本の本文・画像をアップロードしません。</p>
 <label class="choose" for="book-file">Google Driveの読書HTMLを選ぶ</label>
 <ol><li>iPhoneのファイル選択から「ブラウズ」→「Google Drive」→「中世ヨーロッパの城塞」を開きます。</li><li>下記のファイルを選びます。Driveのプレビューではなく、この画面の選択ボタンを使用してください。</li></ol>
-<p class="filename"><strong>20261114_1528_【確認用・独立校正未完了】中世ヨーロッパの城塞_121-140.html</strong></p>
+<p class="filename"><strong>20261114_1548_【確認用・独立校正未完了】中世ヨーロッパの城塞_121-140.html</strong></p>
 <button id="reopen" type="button" hidden>端末に保存した本を開く</button>
 <p id="status" class="status" role="status" aria-live="polite">読書HTMLを選んでください。</p>
 <p class="caution">標準本文20px、列間1.50。上スワイプで次、下スワイプで前。ブラウザーの2本指ピンチで画面全体を拡大し、拡大中は画面を移動します。本文の校正とiPhone実機操作は検査継続中です。修正版は必ず選び直してください。</p>
@@ -39,7 +39,7 @@ h1{font-size:22px;line-height:1.55;margin:0 0 10px}p,li{font-size:14px;line-heig
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 const BOOK_ID='castle-121-140',TITLE='中世ヨーロッパの城塞',RANGE='[121,140]';
-const VERIFIED_CANDIDATE_SHA='e8f7550a71943ca8a788a0f2ff7b5b0e9a22478d2fd19be35ed27ae5a231a6d0';
+const VERIFIED_CANDIDATE_SHA='bcb3d5c04ca4a21ae1f86c5ddf842156630920fa0fe7443caf040e01a3864146';
 const EXPECTED_SOURCE_SHA={"121":"fea0a17454a85cd201cc640014ceea8802e62891ec74be073c803b35a5d77562","122":"102a36c92632f433bfc8b75d6694d7ad87c43139706b09b748c47f9c7fb99dff","123":"f9c0320c98fde0dfe5d2cedcf35b280e4963d6cb523a02473211df48d66a595b","124":"4d6913457eaafc920ae43ddd300dfa1d42d98c6080a2d958a583d6aed62ec3db","125":"a710fdbb1b7811b5325cf4d9e16bc6822812dd4f93e719ddc6b8e46a5c3cd713","126":"c29d349ec2f2ebbf5b0ad52778ed19437694bc12a8070ebc99cf72b26ed082c7","127":"f2991f72399a24f05d6db52dc5a58fc24c5f8cdacd1a3dcfc9cae12d3111ce55","128":"67ad8621184aa331e9a7c08220c5b3c5b1823c94bffd78020aa2e1e434e7fdbd","129":"73d10756fcd0d61215583f4c5228bd9dcf0b911ddb7bc8edd8a4f25035ca38e9","130":"50b15209664f97570475e2e4368ac08e24eaecec8934773e54181d1538bd2c83","131":"1d278fc9349bcb77736d04a6480dc24b9cf318b6b5b8004198176286e6b1fc9b","132":"5276f4f998d7762b8d848c052fcdd966c77a94ffdb8da7487d5d97e1601162ba","133":"b2894a1a360b31944c20caa6bfa0945ce38afb5d421cbb8242b8e23ca3ac4c3b","134":"b63f283a17b37c8a02fc6fcd145d6e0799bebc5b6caaccd2d20ddd991ad19220","135":"c0778e631a49d0ee026a25ad1eab6a8ccdccc356ff009f4d30f4f13fac96c93e","136":"a758bcab96913ddd43dcd2b307fc2d5fbea0e56304215710c44da16f70352fd8","137":"00622993af0a69529fcc4da98d80e7aac178a860bca3890330dcfa5d1efb26fb","138":"fd50656cc9ea68ce55bcca247efdb03c060e2eda619d16b27d6a77d6a2b3015b","139":"46892912923a1d5e6b89c44a16062bd37bfb31d16fb76b63aad4750daa034f29","140":"483de9f1b8ad72154c474eef2b3f694085493e8db7bab672cf9e3d44603f41c2"};
 const DB='castle-reader-local-v2',STORE='chunks',META='metadata',KEY='castle-121-140';
 const CHUNK=4*1024*1024;
