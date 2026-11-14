@@ -84,7 +84,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
  }
  firstPageButton.onclick=()=>{
    if(!book||!readerReady)return;
-   current={...current,scan:1,itemIndex:0};schedulePosition();
+   // Persist scan 1 only after the reader confirms navigation via uk82-stream-state.
    sendWindow(1,{navigate:true,itemIndex:0,size:current.size}).catch(e=>{opening=false;unbusy();say('先頭への移動に失敗しました：'+(e.message||e));});
  };
  window.addEventListener('pagehide',flushPosition);
