@@ -16,6 +16,10 @@ p{font-size:14px;line-height:1.75;color:#4e5e61;margin:11px 0}
 .button,label.pick{display:block;width:100%;min-height:48px;text-align:center;border:1px solid #afc0b8;border-radius:11px;background:#fff;color:#315453;padding:12px;margin:12px 0;font:700 15px/1.5 system-ui,sans-serif;cursor:pointer}
 label.pick{background:#315d60;color:#fff;border-color:#315d60}
 input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+/* First-page control is part of the public shell; private book ZIP and its engine stay unchanged. */
+#firstPageButton{flex:0 0 auto;min-height:42px;min-width:82px;padding:8px 11px;background:#fffefa;border:1px solid #c9d4cd;border-radius:10px;color:#273b3c;font:600 15px/1.2 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;cursor:pointer}
+#firstPageButton.reader-floating{position:fixed;z-index:12;top:calc(28px + env(safe-area-inset-top));left:24%;box-shadow:0 1px 4px #223b3119}
+#firstPageButton[hidden]{display:none!important}
 a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;color:#6d7875}
 .progress{display:none;height:5px;background:#e3eae5;border-radius:7px;overflow:hidden}.progress.show{display:block}.progress>span{display:block;width:0;height:100%;background:#4b7775;transition:width .15s}
 #busy{position:fixed;inset:0;display:grid;place-items:center;z-index:8;background:#fbfaf7ed;pointer-events:none}
@@ -25,6 +29,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
 </style></head><body>
 <!-- The reader is installed in this top-level document. No iframe may capture native pinch. -->
 <div id="busy" hidden><div class="busy-label" id="busyLabel">読書データを準備しています…</div></div>
+<button type="button" id="firstPageButton" aria-label="本の先頭へ戻る" hidden>最初へ</button>
 <div id="setup"><main>
  <span class="eyebrow">PRIVATE READING LIBRARY · 82 SCANS</span>
  <h1>図説 英国のインテリア史</h1>
@@ -48,6 +53,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
 (()=>{
  const BOOK_ID='uk-interiors',POSITION_KEY='UK82_UNIFIED_POSITION_V1',TOTAL=82;
  const $=id=>document.getElementById(id);
+ const firstPageButton=$('firstPageButton');
  let book=null,manifest=null,frameUrl='',readerReady=false,openToken=0,positionTimer=null;
  let current={scan:1,itemIndex:0,size:20};
  const cache=new Map(),inflight=new Map();
@@ -61,6 +67,25 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
  function loadPosition(){try{const p=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(Number.isInteger(p?.scan)&&p.scan>=1&&p.scan<=TOTAL&&Number.isInteger(p.itemIndex))return {scan:p.scan,itemIndex:p.itemIndex,size:p.size||20}}catch(e){}return {scan:1,itemIndex:0,size:20}}
  function flushPosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=null;try{localStorage.setItem(POSITION_KEY,JSON.stringify(current))}catch(e){}}
  function schedulePosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=setTimeout(flushPosition,320)}
+ function placeFirstPageButton(){
+   const main=$('reader-main');
+   if(!main||!readerReady)return;
+   // Reuse the current reader's button row when available; otherwise use an unobtrusive floating control.
+   const buttons=[...document.body.querySelectorAll('button')].filter(b=>b!==firstPageButton&&!b.closest('#setup')&&!b.closest('#busy')&&b.getClientRects().length>0);
+   if(buttons.some(b=>b.textContent.trim()==='最初へ')){firstPageButton.hidden=true;return;}
+   const label=b=>((b.textContent||'')+' '+(b.getAttribute('aria-label')||'')).trim();
+   const original=buttons.find(b=>/原本|原画像/.test(label(b)));
+   const contents=buttons.find(b=>/全巻|目次/.test(label(b)));
+   if(original){original.insertAdjacentElement('afterend',firstPageButton);firstPageButton.classList.remove('reader-floating');}
+   else if(contents){contents.insertAdjacentElement('beforebegin',firstPageButton);firstPageButton.classList.remove('reader-floating');}
+   else{document.body.append(firstPageButton);firstPageButton.classList.add('reader-floating');}
+   firstPageButton.hidden=false;
+ }
+ firstPageButton.onclick=()=>{
+   if(!book||!readerReady)return;
+   current={...current,scan:1,itemIndex:0};schedulePosition();
+   sendWindow(1,{navigate:true,itemIndex:0,size:current.size}).catch(e=>{opening=false;unbusy();say('先頭への移動に失敗しました：'+(e.message||e));});
+ };
  window.addEventListener('pagehide',flushPosition);
  const u16=(v,n)=>v.getUint16(n,true),u32=(v,n)=>v.getUint32(n,true);
  class ZipReader{
@@ -187,6 +212,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
   if(d.kind==='uk82-stream-state'){
     if(opening){opening=false;unbusy();$('setup').hidden=true;}
     current={scan:d.scan,itemIndex:d.itemIndex,size:d.size};schedulePosition();
+    placeFirstPageButton();
     if(d.scan!==previousWindow)sendWindow(d.scan,{navigate:false}).catch(e=>console.warn('前後ページの先読み失敗',e));
     return;
   }
