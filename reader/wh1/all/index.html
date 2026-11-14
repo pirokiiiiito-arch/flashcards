@@ -45,6 +45,7 @@
   <ol class="instructions"><li>統合書籍ZIP1個、または分割データpart01〜part08の8個を「ファイル」アプリの「このiPhone内」に保存（Google Drive内のままではオフラインで開けない場合があります）</li><li>下のボタンでZIPを1個、または分割データ8個をすべてまとめて選択する</li><li>読み込み後は全巻を読めます。端末保存が「完了」と表示されるまでページを閉じないでください。保存できた端末では次回自動で続きから開けます</li></ol>
   <label class="button primary large" for="zipInput">統合書籍データを選んで開く</label>
   <input id="zipInput" type="file" multiple>
+  <a class="button large" href="../../library/">本棚へ</a>
   <button class="button large" id="resume" hidden>このiPhoneに保存した本を開く</button>
   <p id="offlineState" role="status">端末保存状態：未確認</p>
   <p id="hint" role="status" aria-live="polite">統合書籍ZIP1個、または分割データpart01〜part08の8個を選択してください。</p>
@@ -63,7 +64,7 @@
   <button class="button large primary" id="partGo">選んだ区間を開く</button>
   <label for="scanNumber">スキャン番号から読む（1〜274）</label>
   <div class="formRow"><input type="number" min="1" max="274" step="1" id="scanNumber" placeholder="例：131"><button class="button" id="scanGo">移動</button></div>
-  <div class="menuActions"><button class="button" id="localToc">この区間の目次</button><button class="button" id="menuOriginal">現在の原本</button><button class="button" id="saveOffline">本を端末に保存</button><button class="button" id="reimport">書籍を再読込</button><button class="button" id="menuReturn">読書に戻る</button></div>
+  <div class="menuActions"><button class="button" id="localToc">この区間の目次</button><button class="button" id="menuOriginal">現在の原本</button><button class="button" id="saveOffline">本を端末に保存</button><button class="button" id="reimport">書籍を再読込</button><button class="button" id="menuReturn">読書に戻る</button><button class="button" id="shelfReturn">本棚へ</button></div>
   <label>主な見出し</label><div class="menuToc" id="allHeadings"></div>
   <p class="subtle">書籍画像と本文は端末内の読書用ZIPから読み込みます。</p>
  </section>
@@ -368,6 +369,11 @@ function handleChildState(d){
 window.addEventListener('message',e=>{
  if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1)return;
  const d=e.data;
+ if(d.type==='returnShelf'){
+  savePosition();
+  location.href='../../library/';
+  return;
+ }
  if(d.type==='bookStart'){
   closeMenu();
   if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});
@@ -399,6 +405,7 @@ function closeOriginal(){$('originalOverlay').hidden=true;}
 $('zipInput').addEventListener('change',async()=>{if(!$('zipInput').files?.length)return;try{await loadBook(pickedArchive($('zipInput').files),true);}catch(e){console.warn(e);setHint(e.message||String(e));}finally{$('zipInput').value='';}});
 $('resume').onclick=async()=>{try{const saved=await dbRead();if(!saved?.blob)throw Error('保存された書籍がありません');await loadBook(saved.blob,false);}catch(e){setHint(e.message||String(e));clearBusy();}};
 $('menuClose').onclick=closeMenu;$('menuReturn').onclick=closeMenu;
+$('shelfReturn').onclick=()=>{savePosition();location.href='../../library/';};
 $('partGo').onclick=()=>{const i=Number($('partChoice').value);closeMenu();openSegment(i,{scan:SEGMENTS[i].start});};
 $('scanGo').onclick=()=>{const v=Number($('scanNumber').value);if(!Number.isInteger(v)||v<1||v>274){alert('1〜274の番号を入力してください');return;}closeMenu();openSegment(segmentForScan(v),{scan:v});};
 $('scanNumber').addEventListener('keydown',e=>{if(e.key==='Enter')$('scanGo').click();});
