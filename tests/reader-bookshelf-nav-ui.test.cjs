@@ -100,6 +100,13 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
  assert.ok(updated.includes('!wh2Host.known||wh2IsZoomed()'));
  assert.ok(!updated.includes(blocked));
  assert.doesNotMatch(updated,/<div id="notice">/,'beige notice ribbon disappears from the rendered book');
+ const fullSource='<html><head></head><body>'+source+'<div class="original-status">隠す注意表示</div></body></html>';
+ const styled=ctx.window.WH1ExactPager.decorate(fullSource);
+ assert.match(styled, /id="wh2-wh1-parity-ui"/);
+ assert.match(styled, /#notice,.original-status\{display:none!important\}/);
+ assert.match(styled, /id="wh2-wh1-parity-bridge"/);
+ assert.match(styled, /#wh2-wh1-progress-box/);
+ assert.ok(styled.includes('本文そのもの'),'reader content must remain untouched');
  assert.ok(updated.includes('<main id="main">本文そのもの</main>'),'reading content remains byte-identical');
  assert.equal(ctx.window.WH1ExactPager.decorate(source+blocked),source+blocked,
   'unexpected source layout must not silently enable gestures');

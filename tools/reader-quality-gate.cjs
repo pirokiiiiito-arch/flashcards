@@ -17,7 +17,7 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/furniture/81-100/index.html':'de367028d3280ea5df0ed0b27a8870ecc023e3c1',
  'reader/furniture/101-120/index.html':'ba2a8368c92648188cad613a958aae282af2335b',
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
- 'reader/library/read.html':'746789e4357f0ee159800978666153058efafea1'
+ 'reader/library/read.html':'9bd362b536ae249d5e90830fe3cf022317e8cdc8'
 });
 // Narrow, byte-exact admission for the independently reviewed bookshelf title-order UI.
 const BOOKSHELF_TITLE_ORDER_INDEX_BLOB='0b0362b78bd36762b725dcca458cf714af57653b';
