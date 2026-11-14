@@ -17,8 +17,16 @@ p{font-size:14px;line-height:1.75;color:#4e5e61;margin:11px 0}
 label.pick{background:#315d60;color:#fff;border-color:#315d60}
 input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 /* First-page control is part of the public shell; private book ZIP and its engine stay unchanged. */
-#firstPageButton{flex:0 0 auto;min-height:42px;min-width:82px;padding:8px 11px;background:#fffefa;border:1px solid #c9d4cd;border-radius:10px;color:#273b3c;font:600 15px/1.2 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;cursor:pointer}
-#firstPageButton.reader-floating{position:fixed;z-index:12;top:calc(28px + env(safe-area-inset-top));left:24%;box-shadow:0 1px 4px #223b3119}
+#firstPageButton{
+ position:fixed!important;z-index:2147483000!important;
+ top:calc(58px + env(safe-area-inset-top))!important;
+ left:calc(12px + env(safe-area-inset-left))!important;
+ display:block;visibility:visible;
+ min-height:42px;min-width:82px;padding:8px 13px;
+ background:#fffefa;color:#273b3c;border:1px solid #b8c8c0;border-radius:10px;
+ font:600 15px/1.2 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+ box-shadow:0 3px 10px #223b312b;cursor:pointer;
+}
 #firstPageButton[hidden]{display:none!important}
 a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;color:#6d7875}
 .progress{display:none;height:5px;background:#e3eae5;border-radius:7px;overflow:hidden}.progress.show{display:block}.progress>span{display:block;width:0;height:100%;background:#4b7775;transition:width .15s}
@@ -68,17 +76,10 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
  function flushPosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=null;try{localStorage.setItem(POSITION_KEY,JSON.stringify(current))}catch(e){}}
  function schedulePosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=setTimeout(flushPosition,320)}
  function placeFirstPageButton(){
-   const main=$('reader-main');
-   if(!main||!readerReady)return;
-   // Reuse the current reader's button row when available; otherwise use an unobtrusive floating control.
-   const buttons=[...document.body.querySelectorAll('button')].filter(b=>b!==firstPageButton&&!b.closest('#setup')&&!b.closest('#busy')&&b.getClientRects().length>0);
-   if(buttons.some(b=>b.textContent.trim()==='最初へ')){firstPageButton.hidden=true;return;}
-   const label=b=>((b.textContent||'')+' '+(b.getAttribute('aria-label')||'')).trim();
-   const original=buttons.find(b=>/原本|原画像/.test(label(b)));
-   const contents=buttons.find(b=>/全巻|目次/.test(label(b)));
-   if(original){original.insertAdjacentElement('afterend',firstPageButton);firstPageButton.classList.remove('reader-floating');}
-   else if(contents){contents.insertAdjacentElement('beforebegin',firstPageButton);firstPageButton.classList.remove('reader-floating');}
-   else{document.body.append(firstPageButton);firstPageButton.classList.add('reader-floating');}
+   // Keep the action outside the ZIP-provided reader DOM. It cannot be
+   // clipped or removed when the private reader updates the toolbar.
+   if(!readerReady||!book)return;
+   if(firstPageButton.parentElement!==document.body)document.body.append(firstPageButton);
    firstPageButton.hidden=false;
  }
  firstPageButton.onclick=()=>{
@@ -153,7 +154,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
    if(!html.includes('uk82-stream-window')||!html.includes('START_SCAN=1,END_SCAN=82'))throw Error('読書画面のバージョンが一致しません');
    if(token!==openToken)return;
    book=candidate;manifest=m;readerReady=false;current=loadPosition();previousWindow=-1;cache.clear();inflight.clear();
-   if(document.getElementById('reader-main')){readerReady=true;await sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size});}
+   if(document.getElementById('reader-main')){readerReady=true;placeFirstPageButton();await sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size});}
    else await installTopLevelEngine(html);
    if(shouldSave){
      // Store in 4MB IndexedDB chunks only when the user has imported new data.
@@ -164,7 +165,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
        saving=false;$('progress').classList.remove('show');console.warn('端末保存は未完了',e);
      });
    }
-  }catch(e){if(token!==openToken)return;opening=false;unbusy();$('setup').hidden=false;say('読み込みエラー：'+(e.message||e));throw e;}
+  }catch(e){if(token!==openToken)return;opening=false;unbusy();firstPageButton.hidden=true;$('setup').hidden=false;say('読み込みエラー：'+(e.message||e));throw e;}
  }
  const getReader=()=>window;
  // In the unified reader, the engine is installed as ordinary top-level DOM.
@@ -207,7 +208,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
   if(event.source!==getReader()||!event.data||typeof event.data!=='object')return;
   const d=event.data;
   if(d.kind==='uk82-engine-ready'){
-    readerReady=true;notifyBrowserZoom();sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size}).catch(error=>{unbusy();say('ページ準備失敗：'+error.message)});return;
+    readerReady=true;placeFirstPageButton();notifyBrowserZoom();sendWindow(current.scan,{navigate:true,itemIndex:current.itemIndex,size:current.size}).catch(error=>{unbusy();say('ページ準備失敗：'+error.message)});return;
   }
   if(d.kind==='uk82-stream-state'){
     if(opening){opening=false;unbusy();$('setup').hidden=true;}
@@ -222,8 +223,8 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
     return;
   }
   if(d.kind==='uk82-stream-return-to-shelf'){location.href='../../library/';return}
-  if(d.kind==='uk-interiors-reader-change-file'){$('setup').hidden=false;unbusy();say('読書データを選び直すか、本棚に戻ってください。');return}
-  if(d.kind==='uk-interiors-reader-error'){$('setup').hidden=false;unbusy();say('読書の組版エラー：'+String(d.message||'不明'));}
+  if(d.kind==='uk-interiors-reader-change-file'){firstPageButton.hidden=true;$('setup').hidden=false;unbusy();say('読書データを選び直すか、本棚に戻ってください。');return}
+  if(d.kind==='uk-interiors-reader-error'){firstPageButton.hidden=true;$('setup').hidden=false;unbusy();say('読書の組版エラー：'+String(d.message||'不明'));}
  });
  $('file').addEventListener('change',async()=>{
     const chosen=Array.from($('file').files||[]);$('file').value='';if(!chosen.length)return;
