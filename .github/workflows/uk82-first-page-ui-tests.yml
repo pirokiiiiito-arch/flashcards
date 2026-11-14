@@ -1,0 +1,20 @@
+name: UK82 first-page control — synthetic UI checks
+on:
+  pull_request:
+    paths:
+      - 'reader/british-interiors/full/index.html'
+      - 'tests/uk82-first-page-button.test.cjs'
+      - '.github/workflows/uk82-first-page-ui-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify versioned public loader only (no private book or iPhone claims)
+        run: node --test tests/uk82-first-page-button.test.cjs
