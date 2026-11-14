@@ -1,5 +1,7 @@
 name: UK82 first-page control — synthetic UI checks
 on:
+  push:
+    branches: [fix/bookshelf-all-first-page-verified-20261114]
   pull_request:
     paths:
       - 'reader/british-interiors/full/index.html'
