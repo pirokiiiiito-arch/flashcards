@@ -108,7 +108,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
    // "最初へ" joins the existing menu controls when their toolbar is available.
    if(nav.parentElement!==document.body)document.body.append(nav);
    const buttons=reader?[...reader.querySelectorAll('button')]:[];
-   const menu=buttons.find(b=>(b.textContent||'').replace(/\\s+/g,'').trim()==='目次'
+   const menu=buttons.find(b=>(b.textContent||'').replace(/\s+/g,'').trim()==='目次'
      ||/目次/.test(b.getAttribute('aria-label')||''));
    const actions=menu?.parentElement;
    if(actions&&actions!==reader&&actions.querySelectorAll('button').length>=2){
