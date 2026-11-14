@@ -6,7 +6,8 @@
     "errors": [],
     "warnings": [
       "A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan.",
-      "Private source has incomplete full-letter and independent proof; public entry is a deliberately unverified draft."
+      "Private source has incomplete full-letter and independent proof; public entry is a deliberately unverified draft.",
+      "Supplemental source-proof review page loads user-selected private ZIP only in-browser; first-pass text remains uncertified."
     ],
     "eligible": true,
     "bookId": "world-symbols-021-040",
@@ -219,10 +220,11 @@
     "reportSha256": "09fa70700382f3c4b76613570f4012013fdde0f1766203d652f4474ec697764e",
     "publicFiles": {
       "reader/preview/world-symbols-021-040/index.html": "81d5e29bb3f588fc183d06ceb84a0989d34e3e6747312887da647925a9db8796",
-      "reader/preview/world-symbols-021-040/sw.js": "a9fe85436059d05dee53cd726c90290b90178f4b4405a996a07b839310aaaf71"
+      "reader/preview/world-symbols-021-040/sw.js": "a9fe85436059d05dee53cd726c90290b90178f4b4405a996a07b839310aaaf71",
+      "reader/preview/world-symbols-021-040/review.html": "2a087951c7ae8b9d37bf14f863cb77d736ac1e6152dde6a94b88705dac7d34d4"
     },
-    "issuedAt": "2026-11-14T06:09:16.569608Z",
+    "issuedAt": "2026-11-14T13:40:00.000Z",
     "trustBoundary": "Local evidence attestation, not independent reviewer authentication."
   },
-  "digest": "da0511c28b1510d801edbc2f7baa378630781db011ddb42d57129a158e89d70d"
+  "digest": "997855cd334f36f7c15350c639cedcd5b8284b16d83666790b9c65c42bd9248f"
 }
