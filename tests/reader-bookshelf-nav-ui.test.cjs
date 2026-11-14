@@ -56,7 +56,7 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
   const restored=html.replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
     .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'');
   const originalReader=p==='reader/library/read.html'
-    ?restored.replace(/\\n<script id="wh2-unified-swipe-host-v1">[\\s\\S]*?<\\/script>(?=\\n<script>\\n'use strict';)/,'')
+    ?restored.replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'')
     :restored;
   assert.equal(blobSHA(originalReader),registry.legacyFrozenEntries[p],'OCR/reader engine remains byte-identical to baseline');
  }
@@ -84,7 +84,7 @@ test('an unreviewed generated WH1 artifact fails even if both source hosts are a
 
 test('WH2 swipe-only enhancement gates one-finger page turns on authoritative parent zoom',()=>{
  const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
- const script=html.match(/<script id="wh2-unified-swipe-host-v1">([\\s\\S]*?)<\\/script>/)?.[1];
+ const script=html.match(/<script id="wh2-unified-swipe-host-v1">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(script,'one self-contained public gesture bridge must exist');
  const events={},viewportEvents={},sent=[],child={postMessage:d=>sent.push(d)};
  const ctx={URLSearchParams,location:{search:'?id=wh2-all-preview-20261114'},
