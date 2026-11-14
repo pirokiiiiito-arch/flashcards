@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=yes">
+<title>世界シンボル事典 021〜040｜原本照合確認 2026-11-14 22:40</title>
+<style>
+:root{color-scheme:light;--ink:#24323a;--accent:#235967;--paper:#f9f7f0;--line:#d4dbda}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;background:var(--paper);color:var(--ink)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:12px 14px}
+h1{font-size:19px;margin:0 0 5px}header p{font-size:12px;margin:4px 0;line-height:1.65}
+.tag{display:inline-block;color:#725522;background:#f4e9cf;border-radius:12px;padding:3px 9px;font-size:12px;font-weight:600}
+main{padding:12px;max-width:1300px;margin:auto}
+.box{border:1px solid var(--line);border-radius:10px;background:white;padding:12px;margin:0 0 12px}
+.box p,.help{font-size:13px;line-height:1.7}
+button,label.filebtn{border:1px solid #a9b8b9;background:white;border-radius:9px;padding:11px 13px;font-size:14px;min-height:42px;color:var(--ink);cursor:pointer}
+label.filebtn{display:inline-flex;align-items:center;background:var(--accent);color:#fff;border-color:var(--accent)}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+button:disabled{opacity:.4;cursor:not-allowed}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls select{font:inherit;padding:9px;border:1px solid var(--line);border-radius:8px;background:white;min-height:42px}
+#notice{font-size:13px;line-height:1.6;white-space:pre-wrap;color:#425662}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+.panel{background:white;border:1px solid var(--line);border-radius:10px;min-width:0;overflow:hidden}
+.panel h2{font-size:15px;margin:0;padding:10px;border-bottom:1px solid var(--line);background:#f3f5f4}
+.original{padding:10px;overflow:auto;max-height:72dvh;text-align:center}
+.original img{display:block;max-width:100%;height:auto;margin:auto;user-select:none}
+#sourceImage{cursor:zoom-in}
+.details{padding:10px;max-height:72dvh;overflow:auto}
+.details .status{padding:7px;background:#fff5e5;border-radius:8px;font-size:12px}
+.block{border-bottom:1px solid #e7e7e1;padding:10px 0}
+.block h3{font-size:13px;margin:0 0 8px;word-break:break-word}
+.block p{font-size:15px;line-height:1.85;white-space:pre-wrap;word-break:break-word;margin:0}
+.block details{margin-top:6px}
+.block summary{font-size:12px;color:#567;cursor:pointer}
+.block .ocr{font-size:13px;color:#725c3f;background:#f9f6f0;padding:7px;border-radius:6px}
+footer{padding:12px 14px;color:#58666c;font-size:12px}
+#fullscreen{position:fixed;inset:0;background:rgba(10,16,18,.9);z-index:10;display:none;align-items:center;justify-content:center;flex-direction:column;padding:8px}
+#fullscreen.open{display:flex}#fullscreen img{max-width:100%;max-height:calc(100dvh - 60px);object-fit:contain;overflow:auto}#fullscreen button{align-self:flex-end;margin-bottom:8px}
+#notes{width:100%;min-height:90px;padding:9px;border:1px solid var(--line);border-radius:8px;font:14px/1.6 inherit}
+a{color:#1c5b77;overflow-wrap:anywhere}
+@media(max-width:660px){main{padding:7px}.grid{gap:6px;grid-template-columns:46% 54%}.original{padding:3px;max-height:66dvh}.details{padding:7px;max-height:66dvh}.block p{font-size:13px;line-height:1.7}.panel h2{font-size:12px;padding:7px}h1{font-size:17px}.box{padding:10px}}
+</style></head>
+<body>
+<header>
+  <h1>世界シンボル事典　021〜040</h1>
+  <span class="tag">原本照合・第1回転記稿／独立第2回未完</span>
+  <p>確認入口 制作：2026年11月14日 22:40（日本時間）</p>
+  <p>これは<strong>読書HTMLではありません</strong>。原本JPEGと第1回転記候補を端末内で比較する確認用画面です。全字校正合格やiPhone実機検査済みを意味しません。</p>
+</header>
+<main>
+<div class="box">
+ <p><strong>読み込み手順：</strong>Google Driveの
+ <a href="https://drive.google.com/file/d/11GldO_eVsy6VQyEdqLXaFTz2Seme9Duq/view" target="_blank" rel="noopener">2026年11月14日20:57保存の確認用ZIP</a>
+ をiPhoneの「ファイル」に保存し、この画面でZIPを選択します。原本や転記稿は公開サーバーへ送信されず、端末内で読み込みます。</p>
+ <div class="controls">
+  <label class="filebtn" for="zip">原本・第1回転記ZIPを選択</label><input id="zip" type="file" accept=".zip,application/zip">
+  <button id="chooseFiles" type="button">ZIP解凍済みファイルを選択</button><input id="loose" type="file" accept=".jpg,.jpeg,.txt,.json,image/jpeg,text/plain,application/json" multiple>
+ </div>
+ <p id="notice" role="status">ZIPを読み込むと、021〜040の原本と第1回転記候補を表示します。</p>
+</div>
+<div class="box">
+ <div class="controls">
+   <button id="prev" type="button" disabled>前へ</button>
+   <label for="scanSelect">原本スキャン</label>
+   <select id="scanSelect" disabled></select>
+   <button id="next" type="button" disabled>次へ</button>
+ </div>
+</div>
+<div class="grid">
+ <section class="panel"><h2>原本JPEG（無変更）</h2><div class="original" id="source"><p class="help">ZIPを読み込んでください。</p></div></section>
+ <section class="panel"><h2>第1回転記稿（未確定）</h2><div class="details" id="draft"><p class="help">第2回照合が未完了の作業稿です。</p></div></section>
+</div>
+<div class="box" style="margin-top:12px">
+ <label for="notes"><strong>照合メモ（この端末内だけ）</strong></label>
+ <textarea id="notes" placeholder="例：026 原本右段の『冠』は確認済み。見落としのある位置を記録"></textarea>
+ <div class="controls"><button id="saveMemo" disabled>メモをJSONで保存</button><button id="copyMemo" disabled>メモをコピー</button></div>
+ <p class="help">メモはChatGPTやGoogle Driveへ自動送信されません。誤字を見つけたら、ページ番号・原本上の位置・正しい文字を記録してください。</p>
+</div>
+</main>
+<div id="fullscreen" role="dialog" aria-label="原本画像を拡大"><button id="closeFull">閉じる</button><img alt="原本拡大" id="fullImg"></div>
+<footer>非公開の原本・本文はGitHubへ配置していません。原本のSHA照合はZIP内の manifest と一致するか端末上で確認します。公式な全字校正は、独立第2稿との比較・差分解決後に判定します。</footer>
+<script>
+'use strict';
+const S={entries:new Map(),manifest:null,current:26,pages:[],notes:{},urls:[],sourceName:''};
+const $=id=>document.getElementById(id);
+const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const textDecoder=new TextDecoder('utf-8');
+const notice=(s)=>{$('notice').textContent=s};
+const fixed=n=>String(n).padStart(3,'0');
+function clearUrls(){for(const u of S.urls)URL.revokeObjectURL(u);S.urls.length=0}
+function get(name){return S.entries.get(name)}
+function txt(name){const b=get(name);return b?textDecoder.decode(b):null}
+async function inflateRaw(data){
+ if(typeof DecompressionStream!=='function')throw Error('ブラウザーがZIPの展開に対応していません。ZIPを「ファイル」アプリで解凍し、上の「ZIP解凍済みファイルを選択」を使用してください。');
+ const stream=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+ return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function readZip(file){
+ const buf=await file.arrayBuffer();
+ const dv=new DataView(buf);
+ if(dv.byteLength<22)throw Error('ZIPファイルが短すぎます');
+ let eocd=-1;
+ for(let n=buf.byteLength-22;n>=Math.max(0,buf.byteLength-66000);n--){if(dv.getUint32(n,true)===0x06054b50){eocd=n;break}}
+ if(eocd<0)throw Error('ZIPの終端情報が見つかりません');
+ let num=dv.getUint16(eocd+10,true),p=dv.getUint32(eocd+16,true);
+ if(num>300 || num<1)throw Error('このZIPのファイル数は対応範囲外です');
+ const out=new Map();let total=0;
+ for(let i=0;i<num;i++){
+  if(p+46>dv.byteLength||dv.getUint32(p,true)!==0x02014b50)throw Error('ZIPのディレクトリが破損しています');
+  const method=dv.getUint16(p+10,true),size=dv.getUint32(p+20,true),usize=dv.getUint32(p+24,true);
+  const fnlen=dv.getUint16(p+28,true),extra=dv.getUint16(p+30,true),comment=dv.getUint16(p+32,true),local=dv.getUint32(p+42,true);
+  const name=textDecoder.decode(new Uint8Array(buf,p+46,fnlen));
+  p+=46+fnlen+extra+comment;
+  total+=usize;
+  if(total>100*1024*1024)throw Error('展開後サイズが安全上限を超えています');
+  if(!name.startsWith('unmodified_source_JPEG/')&&!name.startsWith('first_source_transcriptions/')&&!name.startsWith('inherited_021_025_first_drafts/')&&!['README_JP.txt','SOURCE_SHA_MANIFEST.json'].includes(name))continue;
+  if(local+30>dv.byteLength||dv.getUint32(local,true)!==0x04034b50)throw Error('ZIPのデータ位置が破損しています');
+  const start=local+30+dv.getUint16(local+26,true)+dv.getUint16(local+28,true);
+  if(start+size>dv.byteLength)throw Error('ZIP内部の範囲が不正です');
+  const raw=new Uint8Array(buf,start,size);
+  let bytes=method===0?raw:method===8?await inflateRaw(raw):null;
+  if(!bytes)throw Error('ZIPの圧縮方式に未対応です: '+method);
+  if(bytes.length!==usize)throw Error('ZIPの展開後サイズが一致しません: '+name);
+  out.set(name,bytes);
+ }
+ return out;
+}
+async function verifyImage(scan){
+ const name='unmodified_source_JPEG/scan_'+fixed(scan)+'.jpg',bytes=get(name);
+ if(!bytes||!S.manifest)return '画像の検証情報なし';
+ const info=S.manifest.pages.find(p=>p.scan===scan);
+ if(!info)return '検証用manifestにページがありません';
+ const hash=await crypto.subtle.digest('SHA-256',bytes);
+ const h=[...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
+ return h===info.sha256?'原本SHA-256一致':'警告：原本画像のSHAが不一致';
+}
+function render(){
+ const n=S.current,ns=fixed(n);$('scanSelect').value=String(n);
+ clearUrls();
+ const src=$('source'),dr=$('draft');
+ const jpg=get('unmodified_source_JPEG/scan_'+ns+'.jpg')||get('scan_'+ns+'.jpg');
+ if(jpg){
+  const url=URL.createObjectURL(new Blob([jpg],{type:'image/jpeg'}));S.urls.push(url);
+  src.innerHTML='<img id="sourceImage" src="'+url+'" alt="原本スキャン'+ns+'"><p class="help" id="shaLine">原本SHA確認中…（画像をタップすると拡大）</p>';
+  $('sourceImage').addEventListener('click',()=>{$('fullscreen').classList.add('open');$('fullImg').src=url});
+  verifyImage(n).then(r=>{if($('shaLine'))$('shaLine').textContent=r+'／画像をタップすると拡大'}).catch(e=>{if($('shaLine'))$('shaLine').textContent=e.message});
+ }else src.innerHTML='<p class="help">このページのJPEGがありません。</p>';
+ let j=null;const js=txt('first_source_transcriptions/scan'+ns+'_source_first_pass.json');
+ try{if(js)j=JSON.parse(js)}catch(e){}
+ if(j&&Array.isArray(j.blocks)){
+  const items=j.blocks.map(b=>'<section class="block"><h3>'+escapeHtml(b.id)+' ・ '+escapeHtml(b.kind||'本文')+'／差分候補 '+(b.changesCount||0)+'群</h3><p>'+escapeHtml(b.sourceTranscriptionCandidate||'')+'</p><details><summary>比較元の旧OCRを表示</summary><p class="ocr">'+escapeHtml(b.originalOcrReading||'')+'</p></details></section>').join('');
+  dr.innerHTML='<p class="status">第1回転記候補・第2回独立照合未完／原本 '+n+'／'+j.blocks.length+'領域</p>'+items;
+ }else if(n===22){
+  dr.innerHTML='<p class="status">原本022：白紙の第1回分類（第2回独立確認は未完）</p>';
+ }else{
+  const draft=txt('inherited_021_025_first_drafts/scan_'+ns+'.txt');
+  dr.innerHTML='<p class="status">引継ぎ第1稿・第2回独立照合未完</p><section class="block"><p>'+escapeHtml(draft||'該当ページの転記稿が見つかりません')+'</p></section>';
+ }
+ $('notes').value=S.notes[n]||'';
+ $('prev').disabled=S.pages.indexOf(n)<=0;$('next').disabled=S.pages.indexOf(n)>=S.pages.length-1;
+}
+function setPage(n){S.notes[S.current]=$('notes').value;S.current=n;render()}
+async function assign(entries,source){
+ S.entries=entries;S.sourceName=source;S.notes={};clearUrls();
+ const m=txt('SOURCE_SHA_MANIFEST.json');S.manifest=null;
+ if(m){try{S.manifest=JSON.parse(m)}catch(e){}}
+ if(S.manifest && JSON.stringify(S.manifest.range)!=='[21,40]')throw Error('対象が021〜040のZIPではありません');
+ const pages=[...Array(20)].map((_,i)=>i+21);
+ const count=pages.filter(n=>get('unmodified_source_JPEG/scan_'+fixed(n)+'.jpg')).length;
+ if(count<1)throw Error('021〜040の原本JPEGが見つかりません');
+ S.pages=pages;S.current=26;
+ $('scanSelect').innerHTML=pages.map(n=>'<option value="'+n+'">'+fixed(n)+'</option>').join('');
+ $('scanSelect').disabled=false;$('saveMemo').disabled=false;$('copyMemo').disabled=false;
+ render();notice('読み込み済み：'+source+'／原本JPEG '+count+'/20枚。第1回転記稿は未確定です。');
+}
+$('zip').addEventListener('change',async e=>{
+ const f=e.target.files?.[0];if(!f)return;
+ notice('ZIPを端末内で読み込み中…');
+ try{await assign(await readZip(f),f.name)}catch(err){notice('読込エラー：'+(err?.message||err))}
+});
+$('chooseFiles').addEventListener('click',()=>{$('loose').click()});
+$('loose').addEventListener('change',async e=>{
+ const fs=[...e.target.files||[]];if(!fs.length)return;
+ const out=new Map(S.entries);
+ for(const f of fs){const name=f.name;let prefix=name.endsWith('.jpg')?'unmodified_source_JPEG/':name.startsWith('scan')&&name.endsWith('.json')?'first_source_transcriptions/':name.startsWith('scan')&&name.endsWith('.txt')?'inherited_021_025_first_drafts/':'';out.set(prefix+name,new Uint8Array(await f.arrayBuffer()))}
+ try{await assign(out,'選択した解凍済みファイル')}catch(err){notice('選択ファイルの読み込みに失敗：'+err.message)}
+});
+$('prev').onclick=()=>{const i=S.pages.indexOf(S.current);if(i>0)setPage(S.pages[i-1])};
+$('next').onclick=()=>{const i=S.pages.indexOf(S.current);if(i<S.pages.length-1)setPage(S.pages[i+1])};
+$('scanSelect').onchange=e=>setPage(Number(e.target.value));
+$('closeFull').onclick=()=>{$('fullscreen').classList.remove('open')};
+$('fullscreen').addEventListener('click',e=>{if(e.target===$('fullscreen'))$('closeFull').click()});
+function notesObject(){S.notes[S.current]=$('notes').value;return {book:'世界シンボル事典',range:[21,40],kind:'user_review_notes_not_verified',sourceArchive:S.sourceName,notes:S.notes}}
+$('saveMemo').onclick=()=>{
+ const blob=new Blob([JSON.stringify(notesObject(),null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='世界シンボル事典_021-040_照合メモ.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+$('copyMemo').onclick=()=>{const s=JSON.stringify(notesObject(),null,2);navigator.clipboard.writeText(s).then(()=>notice('照合メモをコピーしました。Google Driveなどへ自動送信はしていません。')).catch(()=>notice('コピーできませんでした。メモ欄を長押ししてコピーしてください。'))};
+</script></body></html>
