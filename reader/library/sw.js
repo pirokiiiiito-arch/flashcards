@@ -1,13 +1,15 @@
 /* Offline cache for the app shell only. Never cache private Drive book content. */
 'use strict';
-const CACHE='private-bookshelf-shell-v11-bookshelf-return';
-const REVISION='bookshelf-return-20261114-v2';
+const CACHE='private-bookshelf-shell-v10-wh1-reader9';
+const REVISION='wh1-library-v9-20261110';
 const local=path=>new URL(path,self.registration.scope).href;
 const ASSETS=[
   './index.html','./app.css','./app.js?v='+REVISION,
   './wh1-reader-routing.js?v='+REVISION,
-  './storage.js','./book-covers.js','./read.html',
-  './wh1-exact-pagination.js?v='+REVISION,
+  './storage.js','./book-covers.js','./read.html','./wh1-exact-pagination.js',
+  './read-wh1-v9.html','./wh1-pager-v9.js?v='+REVISION,
+  './wh1-figure-viewport-v9.js?v='+REVISION,
+  './wh1-display-check-v9.js?revision=display-check-v9-1-20261110',
   './manifest.webmanifest','./apple-touch-icon.png'
 ].map(local);
 // Only these public application files are cached. Private book URLs are excluded.

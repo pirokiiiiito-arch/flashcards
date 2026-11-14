@@ -8,7 +8,6 @@
   // the exact total-page measurement accounts for the same toolbar height.
   const TOP_START_STYLE = `<style id="wh1-top-start-style">
 #wh1-start-top{font-size:12px;min-height:40px;padding:6px 8px;white-space:nowrap}
-#reader-bookshelf-back{min-height:36px;padding:5px 7px;font-size:12px;white-space:nowrap}
 @media(max-width:520px){
  .toolbar-line{flex-wrap:wrap!important;column-gap:4px!important;row-gap:4px!important}
  .toolbar-line .brand{flex:1 1 100%!important;width:100%!important;min-width:0!important}
@@ -54,13 +53,6 @@
       const menu=document.getElementById('open-menu');
       actions.insertBefore(first,menu||actions.firstChild);
     }
-if(actions&&!document.getElementById('reader-bookshelf-back')){
- const shelf=document.createElement('button');
- shelf.id='reader-bookshelf-back';shelf.className='nav-button';shelf.type='button';shelf.textContent='本棚へ';
- shelf.setAttribute('aria-label','現在の読書位置を保存して本棚に戻る');
- shelf.addEventListener('click',function(){window.parent.postMessage({wh1bridge:1,type:'returnShelf'},'*');});
- actions.insertBefore(shelf,actions.firstChild);
-}
   })();</script>`;
   const MEASURE_BRIDGE = `<script>(function(){
     window.addEventListener('message',async function(e){
