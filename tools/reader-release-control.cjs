@@ -22,6 +22,11 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
  'reader/furniture/81-100/index.html':'de367028d3280ea5df0ed0b27a8870ecc023e3c1',
  'reader/furniture/101-120/index.html':'ba2a8368c92648188cad613a958aae282af2335b'
 });
+// Pin both public WH1 hosts separately from private book content.
+const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
+ 'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
+ 'reader/library/read.html':'4a3c4996edc0a5a3fb9928383a6daaeebc288149'
+});
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
@@ -242,6 +247,68 @@ function admittedBookshelfNavUI(root,policy){
   const html=data.toString('utf8');
   demand(html.includes('id="bookshelfNav"')&&html.includes('id="backToBookshelf" href="../../library/"')&&html.includes('id="bookshelf-nav-ui-v1"'),'BOOKSHELF_NAV_CONTROL_MISSING '+f);
   approved[f]=sha;
+ }
+ let sharedChanged=0;
+ for(const [f,pin] of Object.entries(SHARED_SHELF_UI_GIT_BLOBS)){
+  const base=policy.baseline.files[f];demand(hex(base),'SHARED_SHELF_BASELINE_MISSING '+f);
+  const data=fs.readFileSync(safe(root,f)),sha=hash(data);
+  if(sha===base)continue;
+  const blob=crypto.createHash('sha1').update('blob '+data.length+String.fromCharCode(0)).update(data).digest('hex');
+  demand(blob===pin,'SHARED_SHELF_UI_BYTES_NOT_REVIEWED '+f);
+  const href=f==='reader/library/read.html'?'./':'../../library/',html=data.toString('utf8');
+  demand(html.includes('<nav id="bookshelfNav"')&&html.includes('id="backToBookshelf" href="'+href+'"')&&html.includes('id="bookshelf-nav-ui-v1"'),'SHARED_SHELF_CONTROL_MISSING '+f);
+  approved[f]=sha;sharedChanged++;
+ }
+ demand(sharedChanged===0||sharedChanged===Object.keys(SHARED_SHELF_UI_GIT_BLOBS).length,'SHARED_SHELF_PARTIAL_RELEASE');
+ if(sharedChanged){
+  // The two public hosts are built into multiple Pages files. Admit ONLY the
+  // exact deterministic results of their trusted build scripts, not an arbitrary
+  // edit to a generated reader/diagnostic/book-report entry.
+  const index=fs.readFileSync(safe(root,'reader/wh1/all/index.html'),'utf8');
+  const read=fs.readFileSync(safe(root,'reader/library/read.html'),'utf8');
+  const viewport='<script src="./wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110"></script>';
+  const check='<script src="./wh1-display-check-v9.js?revision=display-check-v9-1-20261110"></script>';
+  demand(index.includes(viewport)&&index.includes('<body>')&&index.includes('<title>'),'WH1_DERIVATIVE_SOURCE_INVALID');
+  const fallback='<aside id="wh1-display-check-fallback" role="status" '+
+    'style="position:fixed;z-index:45;right:8px;top:calc(6px + env(safe-area-inset-top));'+
+    'max-width:128px;padding:4px 7px;border:1px solid #c6d8d2;border-radius:7px;'+
+    'background:#fffdf7;color:#233539;font:11px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;'+
+    'pointer-events:none">確認9.1 · 確認待ち</aside>';
+  const checkHtml=index.replace(viewport,viewport+'\n'+check)
+    .replace('<title>','<title>確認9.1｜')
+    .replace('<body>','<body>\n'+fallback);
+  const wh1Report={revision:'figure-viewport-v9-20261110',entry:'figure-repair-v9.html',
+    aliases:['figure-repair-v8.html'],index_sha256:hash(index),private_book_modified:false,
+    verification:'Build checks only. Browser and real-iPhone verification are separate.'};
+  const navPager='<script src="./wh1-exact-pagination.js"></script>';
+  const libraryScripts='<script src="./wh1-pager-v9.js?v=wh1-library-v9-20261110"></script>\n'+
+    '<script src="./wh1-figure-viewport-v9.js?v=wh1-library-v9-20261110"></script>\n'+
+    '<script src="./wh1-display-check-v9.js?revision=display-check-v9-1-20261110"></script>';
+  demand(read.split(navPager).length===2,'LIBRARY_DERIVATIVE_PAGER_MISSING');
+  const library=read.replace(navPager,libraryScripts).replace('<title>','<title>確認9.1｜')
+    .replace('<body>','<body>\n'+fallback);
+  const copyPaths=['wh1-exact-pagination.js','wh1-figure-viewport-v9.js','wh1-display-check-v9.js'];
+  const copyDests=['wh1-pager-v9.js','wh1-figure-viewport-v9.js','wh1-display-check-v9.js'];
+  const copied=Object.fromEntries(copyDests.map((dest,i)=>[dest,hash(fs.readFileSync(safe(root,'reader/wh1/all/'+copyPaths[i])))]));
+  const libraryReport={revision:'wh1-library-v9-20261110',entry:'read-wh1-v9.html',
+    reader_sha256:hash(library),modules_sha256:copied,private_book_modified:false,
+    storage:'Existing LibraryDB and BOOK_POSITION_<original book id> retained',
+    verification:'Build checks only. Browser and real-iPhone verification are separate.'};
+  const expected={
+    'reader/wh1/all/figure-repair-v9.html':index,
+    'reader/wh1/all/figure-repair-v8.html':index,
+    'reader/wh1/all/figure-check-v9-1.html':checkHtml,
+    'reader/wh1/all/figure-repair-v9-build.json':JSON.stringify(wh1Report,null,2)+'\n',
+    'reader/wh1/all/figure-repair-v8-build.json':JSON.stringify(wh1Report,null,2)+'\n',
+    'reader/library/read-wh1-v9.html':library,
+    'reader/library/wh1-library-v9-build.json':JSON.stringify(libraryReport,null,2)+'\n'
+  };
+  for(const [f,expectedText] of Object.entries(expected)){
+   demand(hex(policy.baseline.files[f]),'SHARED_SHELF_DERIVATIVE_BASELINE_MISSING '+f);
+   const actual=fs.readFileSync(safe(root,f));
+   demand(actual.equals(Buffer.from(expectedText,'utf8')),'SHARED_SHELF_DERIVATIVE_NOT_REPRODUCIBLE '+f);
+   if(hash(actual)!==policy.baseline.files[f])approved[f]=hash(actual);
+  }
  }
  return approved;
 }
