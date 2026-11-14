@@ -88,7 +88,7 @@
     if(!tokenValid()){closeSheet('book');openSettings();say('先にGoogle Driveと接続してください');return;}
     await download(selected);
   }
-  function readerHref(book){if(book.id==='uk-interiors')return `../british-interiors/full/?id=${encodeURIComponent(book.id)}&ui=first-page-fixed-20261114`;return window.WH1ReaderRouting?.href(book)||`./read.html?id=${encodeURIComponent(book.id)}`;}
+  function readerHref(book){if(book.id==='uk-interiors')return `../british-interiors/full/?id=${encodeURIComponent(book.id)}`;return window.WH1ReaderRouting?.href(book)||`./read.html?id=${encodeURIComponent(book.id)}`;}
   async function deleteLocal(){if(!selected)return;
     if(!confirm(`${selected.title}の端末保存データを削除しますか？Google Driveの原本は消えません。`))return;
     try{await LibraryDB.removeBook(selected.id);savedIds.delete(selected.id);closeSheet('book');renderShelf();say('端末保存データを削除しました');}
