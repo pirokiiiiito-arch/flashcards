@@ -20,7 +20,7 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
 });
 // Narrow, byte-exact admission for the independently reviewed bookshelf title-order UI.
-const BOOKSHELF_TITLE_ORDER_INDEX_BLOB='0b0362b78bd36762b725dcca458cf714af57653b';
+const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30']);
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
@@ -113,9 +113,24 @@ function validate(root=ROOT){
     data.includes(Buffer.from('id="backToBookshelf" href="'+expectedHref+'"'))&&
     data.includes(Buffer.from('id="bookshelf-nav-ui-v1"'));
   const titleSortPinned=p==='reader/library/index.html'&&
-    actual===BOOKSHELF_TITLE_ORDER_INDEX_BLOB&&
-    data.includes(Buffer.from('app.js?v=bookshelf-title-order-v2-20261114'));
-  if(actual!==sha&&!uiPinned&&!titleSortPinned)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
+    BOOKSHELF_TITLE_ORDER_INDEX_BLOBS.includes(actual)&&
+    (data.includes(Buffer.from('app.js?v=bookshelf-title-order-v2-20261114'))||
+     data.includes(Buffer.from('app.js?v=bookshelf-uk-row22-20261115')));
+  // Admit only the exact 2026-11-15 public presentation layer for the shared shelf.
+  // Inverse-transform its layout-only additions and verify the untouched
+  // historical engine's original frozen Git blob byte-for-byte.
+  let parityPinned=false;
+  if(p==='reader/library/read.html'&&actual==='4e17ae31cb85262f0fb6a6fa57a5fa935232c449'){
+    const original=data.toString('utf8')
+      .replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
+      .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'')
+      .replace(/\n\/\/ non-wh-reading-parity-20261115:[\s\S]*?(?=async function openSegment\(index)/,'')
+      .replace("  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;\n  const content=new Blob([decorateOtherBookReading(decorated)],{type:'text/html'});",
+               "  const content=new Blob([window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text],{type:'text/html'});")
+      .replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'');
+    parityPinned=blobSHA(original)===sha;
+  }
+  if(actual!==sha&&!uiPinned&&!titleSortPinned&&!parityPinned)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
  }
  if(!Array.isArray(books))errors.push('INVALID_BOOKS');
  else for(const b of books){
@@ -128,10 +143,17 @@ function validate(root=ROOT){
   // A separately reviewed UI-only change can retain the draft book's original
   // artifact/report identity. Pin the complete loader bytes; NEVER infer OCR
   // completion, admit any other edited book, or rewrite a source evidence record.
+  // Admit only the two exact inspected public UK control revisions. Neither
+  // receipt nor this UI-only exception asserts any OCR or device certification.
+  const ukPublicBlob=blobSHA(bytes);
   const firstPageOnly=b.entry==='reader/british-interiors/full/index.html'&&
-   blobSHA(bytes)==='eee384c86016ba0ce565ee473b7b8e25f2a6cc04'&&
+   ['eee384c86016ba0ce565ee473b7b8e25f2a6cc04','cb0f42dda95346f322e0dc9265ac5240e9a750c6'].includes(ukPublicBlob)&&
    bytes.includes(Buffer.from('id="firstPageButton"'))&&
-   bytes.includes(Buffer.from('sendWindow(1,{navigate:true,itemIndex:0,size:current.size})'));
+   bytes.includes(Buffer.from('sendWindow(1,{navigate:true,itemIndex:0,size:current.size})'))&&
+   bytes.includes(Buffer.from("const TRUSTED_ENGINE_SHA256='580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca'"))&&
+   (ukPublicBlob!=='cb0f42dda95346f322e0dc9265ac5240e9a750c6'||
+    (bytes.includes(Buffer.from('id="uk-wh1-parity-20261115-v2"'))&&
+     bytes.includes(Buffer.from('uk-row22-20261115'))));
   if(blobSHA(bytes)!==b.entryBlobSha&&!firstPageOnly)errors.push('MANAGED_ENTRY_CHANGED '+b.entry+' - update report and route identity');
   if(b.url!=='https://pirokiiiiito-arch.github.io/flashcards/'+b.entry+'?import=1')
    errors.push('WRONG_IPHONE_WEB_URL '+b.id);

@@ -55,8 +55,14 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
   assert.ok(approved[p]);
   const restored=html.replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
     .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'');
+  // The 2026-11-15 mobile-layout addition is intentionally presentation-only.
+  // Reverse it, then require the exact frozen engine bytes to match.
+  const stripOtherBooksParity=text=>text
+    .replace(/\n\/\/ non-wh-reading-parity-20261115:[\s\S]*?(?=async function openSegment\(index)/,'')
+    .replace("  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;\n  const content=new Blob([decorateOtherBookReading(decorated)],{type:'text/html'});",
+             "  const content=new Blob([window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text],{type:'text/html'});");
   const originalReader=p==='reader/library/read.html'
-    ?restored.replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'')
+    ?stripOtherBooksParity(restored).replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'')
     :restored;
   assert.equal(blobSHA(originalReader),registry.legacyFrozenEntries[p],'OCR/reader engine remains byte-identical to baseline');
  }

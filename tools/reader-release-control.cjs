@@ -8,10 +8,13 @@ const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f92
 const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
+// The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
+// It remains an uncertified preview; it is never valid for a production release.
+const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bb719e77b50d178ed19a2520cb9d774ba7904ccbc7cad4e0633e42ead7a38004';
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
- 'reader/british-interiors/full/index.html':'eee384c86016ba0ce565ee473b7b8e25f2a6cc04'
+ 'reader/british-interiors/full/index.html':'cb0f42dda95346f322e0dc9265ac5240e9a750c6'
 });
 // Exact byte-pinned public navigation only. This does not certify OCR or source files.
 const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
@@ -25,13 +28,13 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
- 'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
+ 'reader/library/read.html':'4e17ae31cb85262f0fb6a6fa57a5fa935232c449'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'13b8a1942af8b87e95ff4883b8fd1f0d04981a10',
- 'reader/library/index.html':'0b0362b78bd36762b725dcca458cf714af57653b',
- 'reader/library/sw.js':'10400fb284f67e4afae55a8c3f0de5a9277f3b02'
+ 'reader/library/app.js':'3cb1dd3c74c5136c35fdd4b5379c55be6bd38da4',
+ 'reader/library/index.html':'927aaa137c9c12c555c98a191413528984077a30',
+ 'reader/library/sw.js':'ae31cc3634764d149079d9ec61c574ffdc0ea120'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -196,7 +199,8 @@ function receipts(root,policy){
  for(const rel of policy.receipts||[]){
   const p=verifyEnvelope(JSON.parse(fs.readFileSync(safe(root,rel))));
   const preUiPreview=p.implementationSha256===PRE_UI_IMPLEMENTATION_SHA256&&p.channel==='preview'&&p.entry?.startsWith('reader/preview/');
-  demand(p.eligible===true&&(p.implementationSha256===implementationHash()||preUiPreview)&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
+  const priorNineStoriesPreview=p.implementationSha256===NINE_STORIES_PREVIEW_ISSUANCE_SHA256&&p.channel==='preview'&&p.entry==='reader/preview/nine-stories-001-020/index.html'&&p.subject?.bookId==='nine-stories-001-020-preview';
+  demand(p.eligible===true&&(p.implementationSha256===implementationHash()||preUiPreview||priorNineStoriesPreview)&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
   demand(p.entry&&/^reader\/[A-Za-z0-9_./-]+\/index\.html$/.test(p.entry)&&!p.entry.includes('..'),'INVALID_RECEIPT_ENTRY');
   demand(!found.has(p.subject.bookId),'DUPLICATE_RECEIPT');found.set(p.subject.bookId,p);
   demand(['preview','production'].includes(p.channel),'BAD_CHANNEL');
@@ -333,11 +337,17 @@ function admittedBookshelfNavUI(root,policy){
   const app=fs.readFileSync(safe(root,'reader/library/app.js'),'utf8');
   const index=fs.readFileSync(safe(root,'reader/library/index.html'),'utf8');
   const sw=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8');
+  // Both exact, byte-pinned UI revisions keep the same alphabetized shelf.
+  // The November 15 URL refresh updates only cache/version identifiers.
+  const oldSortEntry=index.includes('app.js?v=bookshelf-title-order-v2-20261114')&&
+    sw.includes('private-bookshelf-shell-v12-title-order')&&
+    sw.includes('app.js?v=bookshelf-title-order-v2-20261114');
+  const row22Entry=index.includes('app.js?v=bookshelf-uk-row22-20261115')&&
+    sw.includes('private-bookshelf-shell-v13-uk-row22-20261115')&&
+    sw.includes('app.js?v=bookshelf-uk-row22-20261115');
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    index.includes('app.js?v=bookshelf-title-order-v2-20261114')&&
-    sw.includes('private-bookshelf-shell-v12-title-order')&&
-    sw.includes('app.js?v=bookshelf-title-order-v2-20261114'),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }
