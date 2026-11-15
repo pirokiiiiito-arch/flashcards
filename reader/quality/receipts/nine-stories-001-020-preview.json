@@ -10,7 +10,7 @@
     ],
     "eligible": true,
     "bookId": "nine-stories-001-020-preview",
-    "implementationSha256": "bb719e77b50d178ed19a2520cb9d774ba7904ccbc7cad4e0633e42ead7a38004",
+    "implementationSha256": "16b1beda664a80408180829ca44ed67949f0e6603d2652a816951fd76bfb3439",
     "subject": {
       "bookId": "nine-stories-001-020-preview",
       "range": [
@@ -18,9 +18,9 @@
         20
       ],
       "artifactSha256": "9e4ddbc152103bdf6c66363086741fb63824eb4fea98b4e6c3caa4055f42accb",
-      "loaderSha256": "c5fd79aa50bad34d00e158feb9ebe9a6fa2df2c80f28d39c79630acb5a293bc3"
+      "loaderSha256": "846e499e775dc7d06e4960e0e809aabe1fe12468f5c0f3a975a94af359af0203"
     },
-    "subjectSha256": "602643d000df42cf89b181b025efcb48d56eae1d71fa70eb3c01df875c477fea",
+    "subjectSha256": "547d57c7965a529d5b98f9c2430465513f5d593bbc921444fe6cdff75122c692",
     "authorization": {
       "sha256": "69726bb2af66595452e99975028b29d653e2fb523c9812532d79547d41f4cbd5",
       "explicit": true
@@ -210,12 +210,12 @@
     },
     "channel": "preview",
     "entry": "reader/preview/nine-stories-001-020/index.html",
-    "bookRecordSha256": "8cca7a2aaf8145cdb0f80cf9eb559be884468ab7a8b56cbe25a9817a9c0f5ae0",
+    "bookRecordSha256": "864291ae5f97cf19cbf3b764a72ecbe8cda56d536430422b6e192841646d09d3",
     "reportSha256": "8a62c7e4e9e5a2e2b0306d3d41b1f22d26b612b59d25294457d50cf111445508",
     "publicFiles": {
-      "reader/preview/nine-stories-001-020/index.html": "c5fd79aa50bad34d00e158feb9ebe9a6fa2df2c80f28d39c79630acb5a293bc3"
+      "reader/preview/nine-stories-001-020/index.html": "846e499e775dc7d06e4960e0e809aabe1fe12468f5c0f3a975a94af359af0203"
     },
     "trustBoundary": "Local preview attestation only, not proof of book OCR completion or real iPhone testing."
   },
-  "digest": "6b1cbf77c71115d03bd05bdb0b93582b17e633c2d4e5248492782fccd2744720"
+  "digest": "faeb979d033a5213e0373a42eee2ce190effd9b6d0dfcf11007d969867de2588"
 }
