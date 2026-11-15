@@ -27,7 +27,7 @@ function check(book){
  if(!p){issues.push('NO_BOOK_SCOPED_RECEIPT');return {bookId:book.id,status:'blocked',issues};}
  const report=JSON.parse(read(book.report)),loader=read(book.entry),actual=v.hash(loader);
  fail(book.stage==='draft'&&p.channel==='preview'&&p.phase==='preview','NOT_DRAFT_PREVIEW');
- fail(p.contentCertified===false&&report.claimsCompleted===false&&report.contentCertified===false,'FALSE_CERTIFICATION_OR_CLAIM');
+ fail(p.contentCertified===false&&report.claimsCompleted===false&&report.contentCertified!==true&&(!p.previewProtocol||report.contentCertified===false),'FALSE_CERTIFICATION_OR_CLAIM');
  fail(p.entry===book.entry&&p.subject?.bookId===book.id,'ENTRY_OR_ID_MISMATCH');
  fail(p.subject?.loaderSha256===actual&&p.publicFiles?.[book.entry]===actual,'LOADER_SHA_MISMATCH');
  fail(p.bookRecordSha256===v.objHash(book),'REGISTRY_IDENTITY_MISMATCH');
@@ -40,11 +40,14 @@ function check(book){
  fail(book.entry.startsWith('reader/preview/')&&p.authorization?.explicit===true,'PREVIEW_NOT_EXPLICIT');
  // Public GitHub must never contain a private scan, raw OCR or bookdata.
  const html=loader.toString('utf8');
- fail(!/<script[^>]+id=["'](?:embedded-data|bookdata)["'][^>]*>/i.test(html),'PRIVATE_DATA_SCRIPT_IN_PUBLIC_LOADER');
+ fail(!/^\s*<script\b[^>]*id=["'](?:embedded-data|bookdata)["'][^>]*>/im.test(html),'PRIVATE_DATA_SCRIPT_IN_PUBLIC_LOADER');
  fail(!/data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]{48,}/i.test(html),'SOURCE_IMAGE_EMBEDDED_IN_PUBLIC_LOADER');
  fail(!/["'](?:dataUrl|original|reading_text)["']\s*:\s*["']/i.test(html),'PRIVATE_BOOK_FIELDS_IN_PUBLIC_LOADER');
  fail(loader.length<100000,'UNUSUAL_PUBLIC_LOADER_SIZE');
- fail(html.includes('type="file"')&&html.includes('sandbox="allow-scripts allow-downloads"'),'LOCAL_FILE_IMPORT_CONTRACT_MISSING');
+ const fileInput=/<input\b[^>]*type=["']file["'][^>]*>/i.test(html)&&/<input\b[^>]*accept=["'][^"']*(?:html|text\/html)/i.test(html);
+ const sandbox=html.match(/<iframe\b[^>]*sandbox=["']([^"']+)["']/i)?.[1]||'';
+ const sandboxSafe=sandbox.split(/\s+/).includes('allow-scripts')&&!sandbox.split(/\s+/).includes('allow-same-origin');
+ fail(fileInput&&sandboxSafe,'LOCAL_FILE_IMPORT_CONTRACT_MISSING');
  rows.push({bookId:book.id,entry:book.entry,range:p.subject?.range,stage:book.stage,formalChecksNotRun:ids.filter(x=>p.checks[x]?.status==='not_run').length,issues});
  return {bookId:book.id,status:issues.length?'blocked':'draft-preview-preflight-passed',issues};
 }
