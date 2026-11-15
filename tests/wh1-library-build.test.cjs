@@ -11,7 +11,19 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const bytes=p=>fs.readFileSync(path.join(root,p));
 const folder='reader/library/';
 const revision='wh1-library-v9-20261110';
-const shelfRevision='bookshelf-uk-near-full-text-cut-v1-20261115';
+// The exact release is pinned separately by reader-release-control.
+ // This test verifies cross-file cache agreement without a second stale version constant.
+ const swCode=read(folder+'sw.js');
+ const shelfRevision=swCode.match(/'\.\/app\.js\?v=([^']+)'/)?.[1];
+ const shelfCache=swCode.match(/const CACHE='([^']+)'/)?.[1];
+ test('bookshelf version and cache are derived from the same source and cannot drift',()=>{
+  assert.match(shelfRevision||'',/^bookshelf-uk-[a-z0-9-]+-202611\d{2}$/);
+  assert.match(shelfCache||'',/^private-bookshelf-shell-v\d+-uk-[a-z0-9-]+-202611\d{2}$/);
+  assert.ok(read(folder+'index.html').includes('./app.js?v='+shelfRevision));
+  assert.ok(swCode.includes("./app.js?v="+shelfRevision));
+  assert.ok(read(folder+'app.js').includes('&v='+shelfRevision.slice('bookshelf-'.length).replace(/^uk-/,'uk-')));
+ });
+
 
 test('shelf WH1 entry retains every storage/reader operation and only adds current renderer plus static marker',()=>{
  const base=read(folder+'read.html'),html=read(folder+'read-wh1-v9.html');
@@ -64,7 +76,7 @@ test('shelf worker fetches fresh app code and serves the correct reader offline 
  const c={URL,Request,Response,console,
   self:{registration:{scope},addEventListener:(name,fn)=>{handlers[name]=fn;},
    skipWaiting:async()=>{skipped++;},clients:{claim:async()=>{claimed++;}}},
-  caches:{open:async name=>{assert.equal(name,'private-bookshelf-shell-v19-uk-near-full-text-cut-v1-20261115');return cache;},
+  caches:{open:async name=>{assert.equal(name,shelfCache);return cache;},
    match:()=>{throw Error('Must not read an older named cache');},delete:()=>{throw Error('Must preserve caches');}},
   fetch:async(req,options)=>{requests.push({url:req.url,options});throw Error('Offline fixture');}
  };

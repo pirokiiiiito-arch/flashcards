@@ -1,0 +1,42 @@
+name: Book creation - private preview preflight
+on:
+  pull_request:
+    paths:
+      - 'reader/preview/**'
+      - 'reader/quality/registry.json'
+      - 'reader/quality/reports/**'
+      - 'reader/quality/receipts/**'
+      - 'tools/reader-book-preflight.cjs'
+      - 'tests/reader-book-preflight.test.cjs'
+  push:
+    branches: [main]
+    paths:
+      - 'reader/preview/**'
+      - 'reader/quality/registry.json'
+      - 'reader/quality/reports/**'
+      - 'reader/quality/receipts/**'
+      - 'tools/reader-book-preflight.cjs'
+      - 'tests/reader-book-preflight.test.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: book-preflight-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  preview-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate book creation checks and rejection fixtures
+        run: |
+          node --check tools/reader-book-preflight.cjs
+          node --test tests/reader-book-preflight.test.cjs
+      - name: Validate every registered preview before new-book publication
+        run: node tools/reader-book-preflight.cjs --all
+      - name: Record verification boundary
+        run: echo 'PUBLIC-LOADER PREFLIGHT ONLY. This does not mark 60 OCR checks passed or a real iPhone verified.'
