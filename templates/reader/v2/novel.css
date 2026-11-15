@@ -24,3 +24,8 @@ body.novel-reading .text-flow .novel-narration:not(.continued)::before {
 body.novel-reading .text-flow .novel-narration.source-indented:not(.continued)::before {
  content:none!important;
 }
+
+/* Novel headings only: black, including the off-screen pagination measuring frame. */
+body.novel-reading .text-flow .section-heading {
+ color:#000;
+}
