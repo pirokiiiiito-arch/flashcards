@@ -8,7 +8,7 @@
 *{box-sizing:border-box}html,body{width:100%;height:100%;height:100dvh;margin:0;overflow:hidden}
 #reader{display:block;position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf8}
 #setup{position:fixed;inset:0;overflow-y:auto;background:#f6f7f3;padding:calc(18px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));z-index:10}
-#setup[hidden]{display:none}main{max-width:500px;margin:12px auto;background:#fff;border:1px solid #dce3dd;border-radius:19px;padding:24px 20px;box-shadow:0 8px 25px #24332c0a}
+#setup[hidden]{display:none}#setup main{max-width:500px;margin:12px auto;background:#fff;border:1px solid #dce3dd;border-radius:19px;padding:24px 20px;box-shadow:0 8px 25px #24332c0a}
 .eyebrow{display:block;font-size:11px;font-weight:750;color:#8d5c47;letter-spacing:.14em;margin-bottom:10px}
 h1{font-size:24px;letter-spacing:.02em;line-height:1.4;margin:0 0 10px}h2{font-size:16px;margin:24px 0 10px}
 p{font-size:14px;line-height:1.75;color:#4e5e61;margin:11px 0}
@@ -57,25 +57,60 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
 .progress{display:none;height:5px;background:#e3eae5;border-radius:7px;overflow:hidden}.progress.show{display:block}.progress>span{display:block;width:0;height:100%;background:#4b7775;transition:width .15s}
 #busy{position:fixed;inset:0;display:grid;place-items:center;z-index:8;background:#fbfaf7ed;pointer-events:none}
 #busy[hidden]{display:none}.busy-label{max-width:320px;text-align:center;padding:20px;color:#465d60;font-size:14px;line-height:1.7}
-</style><style id="uk-wh1-parity-20261115">
-/* Public-facing presentation only. Engine ZIP, page JSON, OCR and images stay intact. */
-#ukBookshelfNav{background:#f7f8f3!important;border-bottom:1px solid #d9ded8!important;padding-left:21px!important;padding-right:14px!important;min-height:calc(50px + env(safe-area-inset-top))!important}
-#backToShelfButton{min-height:38px!important;padding:7px 12px!important;border:1px solid #bccbc5!important;border-radius:10px!important;background:white!important;font-size:15px!important}
-#reader-main{top:calc(50px + env(safe-area-inset-top))!important;height:calc(100dvh - 50px - env(safe-area-inset-top))!important}
-.uk-bookshelf-header, #reader-main header{background:#f7f8f3!important;box-shadow:none!important;border-bottom:1px solid #d9ded8!important}
-.uk-bookshelf-header .uk-bookshelf-actions{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px!important;flex-wrap:nowrap!important}
-.uk-bookshelf-actions button,#firstPageButton{border:1px solid #cddad6!important;border-radius:10px!important;background:white!important;color:#27373a!important;min-height:36px!important;padding:5px 8px!important;font-weight:550!important}
-#reader-main .reading,#reader-main .paper,#reader-main .page{background:#fffdf8!important}
-#reader-main .reading .inner{line-height:1.50!important;letter-spacing:0!important}
-#reader-main footer{background:#f7f8f3!important;border-top:1px solid #e0e5df!important;min-height:52px!important}
-#reader-main footer button{background:white!important;border:1px solid #d7dfda!important;border-radius:11px!important;min-height:40px!important}
-@media(max-width:375px){.uk-bookshelf-actions{gap:3px!important}.uk-bookshelf-actions button{padding:4px 6px!important;font-size:12px!important}}
+</style><style id="uk-wh1-parity-20261115-v2">
+/* WH1 screenshot reference. Only the public reader chrome/layout is overridden.
+   The verified ZIP engine, JPEG pixels, figure SVG, OCR and reader state stay unchanged. */
+body{padding-top:calc(44px + env(safe-area-inset-top))!important;box-sizing:border-box!important}
+#ukBookshelfNav{
+ height:calc(44px + env(safe-area-inset-top))!important;
+ min-height:calc(44px + env(safe-area-inset-top))!important;
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ padding:calc(3px + env(safe-area-inset-top)) 11px 3px!important;
+ background:#f7f8f3!important;border-bottom:1px solid #d9ded8!important;gap:8px!important;
+}
+#backToShelfButton{min-height:36px!important;padding:6px 12px!important;border:1px solid #bccbc5!important;border-radius:10px!important;background:white!important;font-size:14px!important}
+#ukShelfStatus{display:inline-block;min-width:0;max-width:55%;padding:5px 7px;border:1px solid #a6b8ad;border-radius:6px;background:#fffdfa;color:#52635f;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#reader-main.reader-main{position:relative!important;top:auto!important;bottom:auto!important;height:auto!important;flex:1 1 0%!important;min-height:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important;background:#fffdf8!important;display:flex!important}
+header.toolbar{position:relative!important;flex:0 0 auto!important;padding:7px 11px 5px!important;background:#f7f8f3!important;border-bottom:1px solid #d9ded8!important;box-shadow:none!important}
+.toolbar .toolbar-line{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:start!important;max-width:none!important;width:100%!important;gap:5px!important}
+.toolbar .brand{display:block!important;flex:none!important;width:100%!important;min-height:19px!important;overflow:hidden!important}
+.toolbar .brand strong{display:block!important;font-size:15px!important;font-weight:700!important;line-height:1.25!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important}
+.toolbar .brand small{display:none!important}
+.toolbar .toolbar-actions{display:flex!important;width:100%!important;min-width:0!important;align-items:center!important;justify-content:space-between!important;flex-wrap:nowrap!important;gap:4px!important}
+.toolbar .toolbar-actions>.tool-btn,#firstPageButton{position:static!important;min-width:0!important;min-height:35px!important;padding:5px 8px!important;flex:0 0 auto!important;background:#fff!important;border:1px solid #cddad6!important;border-radius:10px!important;color:#27373a!important;font-size:13px!important;font-weight:550!important;line-height:1.25!important;white-space:nowrap!important}
+#ukFontGroup{margin-left:auto!important;display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:center!important;min-height:35px!important;padding:0 3px!important;border:1px solid #cddad6!important;border-radius:10px!important;background:#fff!important;white-space:nowrap!important}
+#ukFontGroup .tool-btn{border:0!important;background:transparent!important;box-shadow:none!important;border-radius:7px!important;min-height:33px!important;padding:3px 5px!important;color:#27373a!important;font-size:17px!important;font-weight:700!important}
+#ukFontGroup .font-size{display:inline-block!important;min-width:35px!important;color:#657577!important;font-size:11px!important;white-space:nowrap!important;text-align:center!important}
+#reader-main .sheet{border:0!important;border-radius:0!important;box-shadow:none!important;max-width:560px!important;margin:0 auto!important;background:#fffdf8!important}
+#reader-main .reading-stage,#reader-main .scan-scroll,#reader-main .segment{background:#fffdf8!important}
+#reader-main .text-flow{font-size:var(--size)!important;line-height:1.50!important;letter-spacing:0!important}
+#reader-main .text-flow p{line-height:inherit!important}
+footer.reader-footer{position:relative!important;flex:0 0 auto!important;background:#f7f8f3!important;border-top:1px solid #e0e5df!important;padding:4px 10px 5px!important;box-shadow:none!important}
+footer.reader-footer .progress-line{height:2px!important;max-width:none!important;margin:0 auto 5px!important;background:#e6e7df!important}
+footer.reader-footer .progress-line>div{background:#a77b63!important}
+footer.reader-footer .footer-inner{display:grid!important;grid-template-columns:minmax(60px,1fr) minmax(146px,2fr) minmax(60px,1fr)!important;align-items:center!important;gap:5px!important;max-width:none!important}
+footer.reader-footer .nav-btn{min-height:40px!important;padding:7px 12px!important;background:white!important;color:#273b3e!important;border:1px solid #d7dfda!important;border-radius:11px!important;font-size:14px!important;font-weight:550!important}
+footer.reader-footer .location{min-width:0!important;overflow:hidden!important;text-align:center!important;white-space:nowrap!important}
+footer.reader-footer .location>#location,footer.reader-footer .location>#position{display:none!important}
+#ukPageDisplay{display:flex;min-width:0;align-items:center;flex-direction:column;justify-content:center;gap:3px;white-space:nowrap}
+#ukPageMajor{display:block;font-size:15px;font-weight:700;color:#253536;font-variant-numeric:tabular-nums;line-height:1.1}
+#ukPageMinor{display:block;font-size:10px;font-weight:400;color:#87918f;line-height:1.4;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:375px){
+ header.toolbar{padding-left:9px!important;padding-right:9px!important}
+ .toolbar .toolbar-actions{gap:3px!important}
+ .toolbar .toolbar-actions>.tool-btn,#firstPageButton{font-size:12px!important;padding:4px 6px!important}
+ #ukFontGroup{padding:0 1px!important}
+ #ukFontGroup .tool-btn{padding:3px 4px!important;font-size:16px!important}
+ #ukFontGroup .font-size{min-width:29px!important;font-size:10px!important}
+ footer.reader-footer{padding:4px 8px 5px!important}
+ footer.reader-footer .nav-btn{padding:7px 8px!important;min-width:59px!important}
+}
 </style><style id="reader-native-page-pinch-shell-v3">
   html,body,#reader,#setup{touch-action:pan-x pan-y pinch-zoom;}
 </style></head><body>
 <!-- The reader is installed in this top-level document. No iframe may capture native pinch. -->
 <div id="busy" hidden><div class="busy-label" id="busyLabel">読書データを準備しています…</div></div>
-<nav id="ukBookshelfNav" aria-label="読書ナビゲーション" hidden><button type="button" id="backToShelfButton" aria-label="私の本棚に戻る" hidden>◀ 本棚へ</button></nav>
+<nav id="ukBookshelfNav" aria-label="読書ナビゲーション" hidden><button type="button" id="backToShelfButton" aria-label="私の本棚に戻る" hidden>◀ 本棚へ</button><span id="ukShelfStatus">OCR独立校正継続中</span></nav>
 <button type="button" id="firstPageButton" aria-label="本の先頭へ戻る" hidden>最初へ</button>
 <div id="setup"><main>
  <span class="eyebrow">PRIVATE READING LIBRARY · 82 SCANS</span>
@@ -114,26 +149,49 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
  function loadPosition(){try{const p=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(Number.isInteger(p?.scan)&&p.scan>=1&&p.scan<=TOTAL&&Number.isInteger(p.itemIndex))return {scan:p.scan,itemIndex:p.itemIndex,size:p.size||20}}catch(e){}return {scan:1,itemIndex:0,size:20}}
  function flushPosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=null;try{localStorage.setItem(POSITION_KEY,JSON.stringify(current))}catch(e){}}
  function schedulePosition(){if(positionTimer!==null)clearTimeout(positionTimer);positionTimer=setTimeout(flushPosition,320)}
+
+ // Match the WH1 screenshot: a standalone bookshelf strip, title row, and
+ // an action row containing 原本 / 最初へ / 全巻 / A− size A＋.
+ function ensureWh1Footer(){
+   const container=document.querySelector('footer.reader-footer .location');
+   if(!container)return;
+   if(!$('ukPageDisplay')){
+     const box=document.createElement('span');box.id='ukPageDisplay';
+     const major=document.createElement('strong');major.id='ukPageMajor';
+     const minor=document.createElement('small');minor.id='ukPageMinor';
+     box.append(major,minor);container.append(box);
+     $('location')?.setAttribute('aria-hidden','true');
+     $('position')?.setAttribute('aria-hidden','true');
+   }
+ }
+ function updateWh1Footer(d={}){
+   ensureWh1Footer();
+   if(!$('ukPageMajor'))return;
+   const scan=clamp(Number(d.scan||current.scan)||1,1,TOTAL);
+   const index=Math.max(0,Number(d.itemIndex??current.itemIndex)||0);
+   const pages=Math.max(0,Number(d.inScanPages)||0);
+   $('ukPageMajor').textContent=scan+' / '+TOTAL;
+   $('ukPageMinor').textContent='原本 '+scan+' / '+TOTAL+' ｜ 読書 '+(index+1)+(pages?' / '+pages:'');
+ }
  function placeFirstPageButton(){
    if(!readerReady||!book)return;
-   const nav=$('ukBookshelfNav'),reader=$('reader-main');
-   // The library button stays outside the private engine, in its own 44px strip.
-   // "最初へ" joins the existing menu controls when their toolbar is available.
+   const nav=$('ukBookshelfNav'),actions=document.querySelector('header.toolbar .toolbar-actions');
+   const original=$('open-original'),menu=$('open-menu');
+   // Never put 最初へ in the bookshelf strip or overlay it on the text.
+   if(!actions||!original||!menu)return;
    if(nav.parentElement!==document.body)document.body.append(nav);
-   const buttons=reader?[...reader.querySelectorAll('button')]:[];
-   const menu=buttons.find(b=>(b.textContent||'').replace(/\s+/g,'').trim()==='目次'
-     ||/目次/.test(b.getAttribute('aria-label')||''));
-   const actions=menu?.parentElement;
-   if(actions&&actions!==reader&&actions.querySelectorAll('button').length>=2){
-     actions.classList.add('uk-bookshelf-actions');
-     const header=actions.closest('header');
-     if(header)header.classList.add('uk-bookshelf-header');
-     if(firstPageButton.parentElement!==actions)actions.insertBefore(firstPageButton,menu);
-   }else if(firstPageButton.parentElement!==nav){
-     // Unexpected engine toolbar: remain usable without covering the book.
-     nav.appendChild(firstPageButton);
+   menu.textContent='全巻';menu.setAttribute('aria-label','全巻の目次を開く');
+   let fontGroup=$('ukFontGroup');
+   if(!fontGroup){
+     fontGroup=document.createElement('span');fontGroup.id='ukFontGroup';
+     for(const id of ['smaller','current-size','larger']){
+       const el=$(id);if(el)fontGroup.append(el);
+     }
    }
+   if([original,firstPageButton,menu,fontGroup].some((node,i)=>node.parentElement!==actions||actions.children[i]!==node))
+     actions.append(original,firstPageButton,menu,fontGroup);
    nav.hidden=false;firstPageButton.hidden=false;backToShelfButton.hidden=false;
+   updateWh1Footer();
  }
  firstPageButton.onclick=()=>{
    if(!book||!readerReady)return;
@@ -267,7 +325,7 @@ a{color:#2d686c;overflow-wrap:anywhere}.tiny{font-size:12px;line-height:1.7;colo
   if(d.kind==='uk82-stream-state'){
     if(opening){opening=false;unbusy();$('setup').hidden=true;}
     current={scan:d.scan,itemIndex:d.itemIndex,size:d.size};schedulePosition();
-    placeFirstPageButton();
+    placeFirstPageButton();updateWh1Footer(d);
     if(d.scan!==previousWindow)sendWindow(d.scan,{navigate:false}).catch(e=>console.warn('前後ページの先読み失敗',e));
     return;
   }
