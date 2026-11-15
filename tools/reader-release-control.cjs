@@ -8,6 +8,9 @@ const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f92
 const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
+// The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
+// It remains an uncertified preview; it is never valid for a production release.
+const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bb719e77b50d178ed19a2520cb9d774ba7904ccbc7cad4e0633e42ead7a38004';
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
@@ -196,7 +199,8 @@ function receipts(root,policy){
  for(const rel of policy.receipts||[]){
   const p=verifyEnvelope(JSON.parse(fs.readFileSync(safe(root,rel))));
   const preUiPreview=p.implementationSha256===PRE_UI_IMPLEMENTATION_SHA256&&p.channel==='preview'&&p.entry?.startsWith('reader/preview/');
-  demand(p.eligible===true&&(p.implementationSha256===implementationHash()||preUiPreview)&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
+  const priorNineStoriesPreview=p.implementationSha256===NINE_STORIES_PREVIEW_ISSUANCE_SHA256&&p.channel==='preview'&&p.entry==='reader/preview/nine-stories-001-020/index.html'&&p.subject?.bookId==='nine-stories-001-020-preview';
+  demand(p.eligible===true&&(p.implementationSha256===implementationHash()||preUiPreview||priorNineStoriesPreview)&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
   demand(p.entry&&/^reader\/[A-Za-z0-9_./-]+\/index\.html$/.test(p.entry)&&!p.entry.includes('..'),'INVALID_RECEIPT_ENTRY');
   demand(!found.has(p.subject.bookId),'DUPLICATE_RECEIPT');found.set(p.subject.bookId,p);
   demand(['preview','production'].includes(p.channel),'BAD_CHANNEL');
