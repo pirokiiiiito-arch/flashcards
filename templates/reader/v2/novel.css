@@ -1,0 +1,26 @@
+/* Novel-only typesetting layer. Standard 20px / line-height 1.50 / layout unchanged.
+   A dialogue 「 always begins a distinct vertical column without extra indentation.
+   Apply identically to #text-flow and the hidden #measure-text. */
+body.novel-reading .text-flow .novel-paragraph {
+ display:block!important;
+ margin:0!important;
+ padding:0!important;
+ line-height:inherit!important;
+ letter-spacing:0;
+ white-space:normal!important;
+ overflow-wrap:anywhere!important;
+}
+body.novel-reading .text-flow .novel-dialogue {
+ text-indent:0!important;
+ break-before:auto;
+}
+body.novel-reading .text-flow .novel-dialogue:not(.continued)::before {
+ content:none!important;
+}
+body.novel-reading .text-flow .novel-narration:not(.continued)::before {
+ content:"\3000";
+}
+/* The original text already contains one U+3000: avoid another synthetic indent. */
+body.novel-reading .text-flow .novel-narration.source-indented:not(.continued)::before {
+ content:none!important;
+}

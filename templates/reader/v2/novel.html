@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5">
+<meta name="theme-color" content="#fffdf8">
+<title>小説専用読書テンプレート｜会話文は新しい縦列から</title>
+<link rel="stylesheet" href="./standard.css">
+<link rel="stylesheet" href="./novel.css">
+</head>
+<body class="novel-reading">
+<nav class="shelf-strip" aria-label="本棚ナビゲーション">
+  <a class="shelf-link" href="../../../reader/library/">◀ 本棚へ</a>
+  <output class="shelf-status" id="shelf-status">小説用の表示見本</output>
+</nav>
+<header class="toolbar">
+  <h1 class="book-title" id="book-title"></h1>
+  <div class="controls" role="toolbar" aria-label="読書操作">
+    <div class="control-left">
+      <button type="button" id="original" class="tool-btn" disabled>原本</button>
+      <button type="button" id="first" class="tool-btn">最初へ</button>
+      <button type="button" id="all" class="tool-btn">全巻</button>
+    </div>
+    <div class="font-control" aria-label="本文の文字サイズ">
+      <button type="button" id="smaller" aria-label="文字を小さく">A−</button>
+      <output id="current-size">20px</output>
+      <button type="button" id="larger" aria-label="文字を大きく">A＋</button>
+    </div>
+  </div>
+</header>
+<main class="reader-main" id="reader-main">
+  <article class="sheet" id="sheet" aria-label="読書ページ">
+    <div class="stage">
+      <div class="text-flow" id="text-flow" hidden></div>
+      <div class="figure-stage" id="figure-stage" hidden>
+        <div class="figure-frame">
+          <img id="figure-image" alt="原本画像" hidden>
+          <div id="figure-placeholder" class="figure-placeholder">
+            <strong>原本画像の読み込み待ち</strong>
+            <span>JPEG・PNG・WebPを画素変換せず表示します。</span>
+            <input id="figure-file" type="file" accept="image/jpeg,image/png,image/webp" aria-label="原本画像を選択">
+          </div>
+        </div>
+        <div class="caption-box">
+          <div id="figure-caption-label" class="figure-caption-label"></div>
+          <div class="caption-flow" id="figure-caption"></div>
+        </div>
+      </div>
+    </div>
+  </article>
+</main>
+<div class="sheet measure-sheet" id="measure-sheet" aria-hidden="true">
+  <div class="stage">
+    <div class="text-flow" id="measure-text" hidden></div>
+    <div class="figure-stage" id="measure-figure" hidden>
+      <div class="figure-frame"></div>
+      <div class="caption-box">
+        <div id="measure-caption-label" class="figure-caption-label"></div>
+        <div class="caption-flow" id="measure-caption"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<footer class="reader-footer">
+  <div class="progress-line" aria-hidden="true"><span id="progress-fill"></span></div>
+  <div class="footer-inner">
+    <button type="button" class="page-nav" id="prev">前へ</button>
+    <div class="page-location" role="status" aria-live="polite">
+      <strong id="page-major">―</strong>
+      <small id="page-minor">読み込み中</small>
+    </div>
+    <button type="button" class="page-nav" id="next">次へ</button>
+  </div>
+</footer>
+<div class="dialog-backdrop" id="menu-backdrop" hidden>
+  <section class="dialog" role="dialog" aria-modal="true" aria-label="全巻">
+    <div class="dialog-head"><strong>全巻</strong><button id="menu-close" type="button" aria-label="閉じる">×</button></div>
+    <div id="menu-items"></div>
+    <p class="help">この短編は見本用に書いた架空の文章です。『ナイン・ストーリーズ』の本文やスキャン画像は公開していません。「から始まるセリフは新しい縦列で表示します。</p>
+    <label class="help">本文用の原本画像を試す
+      <input id="source-file" type="file" accept="image/jpeg,image/png,image/webp">
+    </label>
+  </section>
+</div>
+<div class="dialog-backdrop" id="original-backdrop" hidden>
+  <section class="dialog" role="dialog" aria-modal="true" aria-label="原本画像">
+    <div class="dialog-head"><strong>原本（変換なし）</strong><button id="original-close" type="button" aria-label="閉じる">×</button></div>
+    <img id="original-image" class="original-view" alt="原本画像">
+  </section>
+</div>
+<script>window.READER_BOOK={"id":"novel-reader-v1-public-demo","kind":"text","title":"小説専用テンプレート（表示見本）","status":"小説用・架空の短編","totalScans":3,"blocks":[{"type":"heading","scan":1,"text":"雨あがりの停留所"},{"type":"body","scan":1,"text":"雨がやむと、坂の下の停留所には小さな明かりがともった。路面に残った水たまりが、遠くの雲を映していた。"},{"type":"body","scan":1,"text":"彼女はベンチの隣に立ち、向こうの通りを指さした。「あの灯り、まだ消えていないね」"},{"type":"body","scan":1,"text":"「きっと誰かが待っているんだよ」少年は少し声をひそめて答えた。"},{"type":"body","scan":2,"text":"「でも、もう遅い時間だよ」「もう少しだけ、ここにいよう」"},{"type":"body","scan":2,"text":"風が吹くと、街路樹の葉が一度に揺れた。道を渡る人の姿が、雨上がりの光のなかでゆっくりと小さくなっていった。彼女は自分の足元を見つめ、それからもう一度、まっすぐ前を向いた。"},{"type":"body","scan":2,"text":"待合室の古い看板には「ただいま運行中」と書かれていた。これは作品中のセリフではないため、このブロックでは表示上の自動改行をしない。","quoteMode":"inline"},{"type":"body","scan":3,"text":"「明日もここに来る？」と彼女がたずねた。"},{"type":"body","scan":3,"text":"「うん、もし晴れたら」"},{"type":"body","scan":3,"text":"ふたりが振り返ると、遠くでバスの窓がひとつ光った。朝から続いていた雨の気配は、もうどこにもなかった。"}]};</script>
+<script src="./novel-dialogue.js"></script>
+<script src="./novel.js"></script>
+</body>
+</html>

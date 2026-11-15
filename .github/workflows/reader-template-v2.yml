@@ -4,12 +4,16 @@ on:
     paths:
       - 'templates/reader/v2/**'
       - 'tests/reader-template-v2.test.cjs'
+      - 'tests/reader-novel-template.test.cjs'
+      - 'tools/verify-novel-template-pages.cjs'
       - '.github/workflows/reader-template-v2.yml'
   push:
     branches: [main]
     paths:
       - 'templates/reader/v2/**'
       - 'tests/reader-template-v2.test.cjs'
+      - 'tests/reader-novel-template.test.cjs'
+      - 'tools/verify-novel-template-pages.cjs'
       - '.github/workflows/reader-template-v2.yml'
   workflow_dispatch:
 permissions:
@@ -26,7 +30,10 @@ jobs:
       - name: Validate isolated template source without private book assets
         run: |
           node --check templates/reader/v2/standard.js
-          node --test tests/reader-template-v2.test.cjs
+          node --check templates/reader/v2/novel-dialogue.js
+          node --check templates/reader/v2/novel.js
+          node --check tools/verify-novel-template-pages.cjs
+          node --test tests/reader-template-v2.test.cjs tests/reader-novel-template.test.cjs
       - name: Package exact public v2 template bytes for browser verification
         if: always()
         uses: actions/upload-artifact@v4

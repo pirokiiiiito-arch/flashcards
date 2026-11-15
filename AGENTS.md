@@ -19,6 +19,11 @@ Read the canonical sixty-item Google Drive standard `1CngvhZvJPQsGizwmaVKC_old4V
 
 Resume by restoring the entire private workspace, inspecting manifest and correction history, and verifying input hashes. Save the checkpoint before ending a long run. Preserve unresolved status honestly; stopping a bad release alone is not completion of the source proofreading task.
 
+## Japanese fiction dialogue — separate layout, unchanged source
+
+For novels (including Nine Stories), prefer the isolated `templates/reader/v2/novel.html` plus `novel-dialogue.js`, `novel.css`, and `novel.js`, keeping WH1's 20px, 1.50 line height, vertical right-to-left layout and all navigation. Every *top-level spoken* opening `「` starts a **new vertical column** with no dialogue indentation. Do not change literal OCR/canonical characters merely to create line breaks. Distinguish embedded terms/quoted titles that are not speech (`quoteMode:"inline"` with source-grounded justification). Confirm source-block round-trip equality and visual column starts with version-specific tests. Never migrate preexisting book files or resume paused scans just because the public fiction demo was built; use the complete evidence gates and a new, reviewed private artifact for actual book application.
+
+
 ## Evidence gates before advancing or claiming completion
 
 For **every future scan-book** create/revise/rebuild task, use the execution-evidence progression in `reader/quality/BOOK_CREATION_PROCESS.md`. Run `node tools/reader-evidence-gate.cjs PRIVATE/manifest.json prepare` before private staging, `release` after actual same-ID Google Drive readback, `deployed` for production deployment evidence, and `device` only with real iPhone confirmation. The gate calls the existing canonical sixty-item validator. A failed/unknown prerequisite blocks promotion and any completion claim. The only exception is an explicitly requested, uncertified preview; its `preview` pass never counts as a full-book pass.
