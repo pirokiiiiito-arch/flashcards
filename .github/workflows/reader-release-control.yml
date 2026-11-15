@@ -27,6 +27,8 @@ jobs:
         run: |
           python3 tools/build-wh1-figure-viewport-v8.py
           python3 tools/build-wh1-library-v9.py
+      - name: Audit v9 release verifier hash (temporary diagnostic)
+        run: node -e "console.log('V9_IMPL_HASH',require('./tools/reader-release-control.cjs').implementationHash())"
       - name: Prepare isolated admitted deployment
         run: node tools/reader-publish-stage.cjs . "$RUNNER_TEMP/reader-pages"
       - name: Test evidence failures, canonical revisions and staging safety
