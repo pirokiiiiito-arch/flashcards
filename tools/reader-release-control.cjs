@@ -32,9 +32,9 @@ const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'3cb1dd3c74c5136c35fdd4b5379c55be6bd38da4',
- 'reader/library/index.html':'927aaa137c9c12c555c98a191413528984077a30',
- 'reader/library/sw.js':'ae31cc3634764d149079d9ec61c574ffdc0ea120'
+ 'reader/library/app.js':'49fc312aa1749fbadee1713afd3ceaacfdea2fb9',
+ 'reader/library/index.html':'299fa919db5a07ad65be0de2f5464168691b5f90',
+ 'reader/library/sw.js':'e50d0a506d4573e32519ca54574a07a4f8982d04'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -345,9 +345,13 @@ function admittedBookshelfNavUI(root,policy){
   const row22Entry=index.includes('app.js?v=bookshelf-uk-row22-20261115')&&
     sw.includes('private-bookshelf-shell-v13-uk-row22-20261115')&&
     sw.includes('app.js?v=bookshelf-uk-row22-20261115');
+  const safeBottomEntry=index.includes('app.js?v=bookshelf-uk-safe-bottom-v2-20261115')&&
+    sw.includes('private-bookshelf-shell-v14-uk-safe-bottom-v2-20261115')&&
+    sw.includes('app.js?v=bookshelf-uk-safe-bottom-v2-20261115')&&
+    app.includes('&v=uk-safe-bottom-v2-20261115');
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }
