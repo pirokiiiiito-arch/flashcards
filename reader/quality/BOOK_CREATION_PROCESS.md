@@ -6,6 +6,37 @@
 
 新しく作る本は `templates/reader/v2/{text,image,mixed}.html` と `standard.css`／`standard.js` を基準とする。v1は既存参照用としてバイト不変で保持。v2のUI自動試験に通っても、原本全文字・60項目・iPhone実機の合格ではない。実書籍の文章と図版を公開見本に含めず、私有HTMLへ統合して別途検査する。
 
+## 工程別の実行証拠ゲート（2026-11-16運用変更）
+
+**新しい品質検査項目は追加しない。** 正本60項目と既存 `reader-release-control.cjs` の判定をそのまま使い、作業の**進行判定**と**完了表現**だけを証拠に基づいて制御する。口頭の「確認済み」、チェック欄だけの `passed`、Actions 成功だけで先に進んだり公開完了と報告したりしない。
+
+| 段階 | 進行前に必要な証拠 | 許される判定 |
+|---|---|---|
+| 原本・継続データ | 既存の私有マニフェスト、原本・前版・訂正履歴、SHA/範囲照合 | 検査前は作業中。未確認を校正済みにしない |
+| 原本独立照合・組版 | 原本の全領域、独立第2稿、訂正差分、原本・本文一致、実配布候補の24条件を含む正本60項目の制作側証拠 | `prepare` が合格した場合に限り非公開の新規仮保存 |
+| Google Drive 仮保存・読戻し | 同一DriveファイルIDの実体を再取得し、現行読書HTMLの SHA-256 と一致する G8-08 証拠 | `release` 合格の場合に限り公開承認の証拠作成へ |
+| 公開入口の承認・配信 | 公開専用ローダーの登録・正本ゲート・GitHub Pages配信後の**対象URLのHTTP 200と配信HTML SHA-256一致** | `deployed` と公開HTTP照合がそろって初めて「公開時点で配信確認済み」 |
+| iPhone実機 | G8-04 の実機結果と対象版の証拠。Chromium代用不可 | `device` を満たすまで「実機確認済み」としない |
+
+段階判定は検証済みの中核コードを呼び出す**読取専用**コマンドで確認する。下位工程に不備があれば後続は `not_evaluated` とし、完了報告を止める。
+
+```sh
+node tools/reader-evidence-gate.cjs PRIVATE/manifest.json prepare PRIVATE/reports/prepare-evidence.json
+node tools/reader-evidence-gate.cjs PRIVATE/manifest.json release PRIVATE/reports/release-evidence.json
+node tools/reader-evidence-gate.cjs PRIVATE/manifest.json deployed PRIVATE/reports/deployed-evidence.json
+node tools/reader-evidence-gate.cjs PRIVATE/manifest.json device PRIVATE/reports/device-evidence.json
+```
+
+これらは**私有ファイルを読んで判定するのみ**。報告ファイルも公開GitHubには置かない。従来の `reader-private-pipeline.cjs plan / verify-plan / complete-plan` と `reader-release-control.cjs check` は引き続き必須。進行判定の新設はそれらを置き換えない。
+
+**未校正プレビューだけは別経路**。利用者から当該SHAの明示的な確認依頼があり、`preview` ゲートと専用 `reader/preview/` の承認が通った場合に限り、未完成と明示して確認用として配布できる。`preview` の成功は `prepare / release / deployed / device` に昇格しない。
+
+GitHub Pages の公開処理は `tools/reader-verify-pages.cjs` により、承認記録のある読書入口について公開された**実バイト**を確認し、その結果を Actions の `reader-public-delivery-evidence` として残す。検査が失敗・未実施・実行不能なら、URLを「公開確認済み」と報告しない。GitHubソース内にファイルが存在するだけでは配信済みとは限らない。
+
+**手戻りを減らす運用：** SHA が不変で証拠が現行版と結び付く工程だけ既存証拠を再利用できる。変更された本文・原本・表示処理・設定・入口に依存する証拠は失効させ、影響範囲を再検査する。依存しない検査は並列に進められるが、前提未達の合格・完成宣言は不可。エラー時は工程名・原因・実行済み証拠・未実施を区別して報告する。
+
+**強制範囲：** 公式の private pipeline／GitHub Actions を使う工程はゲートで止められる。ChatGPTの手動URL案内、外部サービスへの直接書込み、実機操作の実施そのものをプログラムが自動的に保証するわけではない。これらも同じ証拠確認を作業者が行う。
+
 ## 開始トリガー
 
 利用者が「新しい本を作る」「次の20ページを作る」「既存本の読書画面を直す」と依頼するたびに、次の順番を実行する。
