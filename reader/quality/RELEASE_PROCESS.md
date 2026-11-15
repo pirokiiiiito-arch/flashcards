@@ -1,5 +1,7 @@
 # 読書制作・配布制御：実行手順
 
+**全書籍に対する制作開始時の強制手順**：`reader/quality/BOOK_CREATION_PROCESS.md`（実行機構v3）とGoogle Driveの現行60項目正本を読む。新規本／次の20スキャン／既存版修正のたびに同じ手順を実行する。これは検査項目を増やすものではない。
+
 正本はGoogle Driveの全書籍共通60項目（ID `1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2`）。この文書は実行手順であり、別の品質規則ではない。60のIDは増減しない。
 
 ## 保存する状態
@@ -73,3 +75,18 @@ Pagesは全生成処理の後にこの公開用ツリーを作り、その実体
 ## 強制できる範囲
 
 検査・書出し・公開ワークフローを通る処理は停止できる。一方、管理者による制御コードの書換え、手動Drive操作、ChatGPTの直接添付、虚偽の目視記録をこのプログラムだけで封鎖できない。公開記録のダイジェストも署名認証ではない。これらを保護できたと表現しない。接続ツールの作業者も毎回同じplan・verify-plan・complete-planを使い、原本照合を実際に行う。
+
+## 現行v3の自動プレビュー確認と版引継ぎ（追加）
+
+新規プレビューを登録すると `.github/workflows/reader-book-creation.yml` が実行される。GitHubでの登録を伴わないGoogle Driveだけの修正作業でも、作業者は同じ手順・入力ハッシュ・読戻しと検査結果を記録する。次の20枚を依頼されたことは校正省略を意味しない。
+
+```sh
+node tools/reader-book-preflight.cjs BOOK_ID
+node tools/reader-book-preflight.cjs --all
+node tools/reader-publish-stage.cjs SOURCE NEW_PUBLIC_TREE
+node tools/reader-release-control.cjs repo NEW_PUBLIC_TREE
+```
+
+この自動preflightは公開ローダーの私有データ流出防止・証跡・登録・範囲・60状態の整合検査であり、実原本OCRの全字校正を代替しない。旧プレビューの証跡は発行時の書籍ID・entry・issuer・digestに完全一致したもののみ互換として受け入れる。新規の未校正プレビューはissuer変更後も同じ原本ハッシュ・レポート・公開ローダーと結びつく `reader-immutable-preview-v3` を用いる。これは通常版の品質合格を保証しない。共有本棚の最新版はSWを正本にindexと突合し、SHA固定・オフライン・互換性の回帰テストを維持する。
+
+GitHub Pagesは全資産を含むため、共有本棚の不許可変更があれば公開を止め、原因となるbookIdやpathを調査する。公開済みの正しい本を削除しない。公開後は実URLと配信バイトを確認する。最終報告には **Chrome確認用URL（公開中・未公開を明記）・Drive版URL・残る検査** を必ず載せる。
