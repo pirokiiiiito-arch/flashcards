@@ -376,13 +376,76 @@ function destinationForScan(destination={}){
    return {...destination,key:'scan:'+destination.scan};
  return destination;
 }
+
+// non-wh-reading-parity-20261115: presentation only, for other bookshelf books.
+// Never modify original scans, OCR source, pagination state or import files.
+function decorateOtherBookReading(html){
+ if(BOOK_ID==='wh1'||/wh2-parent-viewport-receiver-v6|wh2-wh1-parity-ui/.test(html))return html;
+ if(!html.includes('</head>')||!html.includes('</body>'))return html;
+ const style=`<style id="bookshelf-other-books-wh1-layout">
+ :root{--paper:#fffdf8;--chrome:#f7f8f3}
+ html,body{background:#fffdf8!important}
+ header{background:var(--chrome)!important;border-bottom:1px solid #d9ded8!important;box-shadow:none!important;padding:10px 11px 5px!important}
+ .headline{min-height:19px!important;gap:9px!important}
+ .headline .brand{font-size:15px!important;font-weight:750!important;line-height:1.25!important}
+ .controls{display:flex!important;flex-wrap:nowrap!important;justify-content:space-between!important;align-items:center!important;gap:4px!important;margin-top:3px!important;min-width:0}
+ .controls button{background:#fff!important;border:1px solid #cddad6!important;border-radius:10px!important;min-height:34px!important;font-size:12px!important;font-weight:550!important;padding:5px 8px!important;white-space:nowrap!important;color:#27373a!important}
+ #main,.paper,.reading,.toc-reader{background:#fffdf8!important}
+ .reading{padding:11px 12px 14px 9px!important}
+ .reading .inner{font-size:var(--size,20px)!important;line-height:1.50!important;letter-spacing:0!important}
+ footer{background:var(--chrome)!important;border-top:1px solid #e0e5df!important;padding:5px 10px!important;gap:8px!important;min-height:52px!important;flex:0 0 auto!important}
+ footer #prev,footer #next{background:#fff!important;color:#273b3e!important;border:1px solid #d7dfda!important;border-radius:11px!important;min-height:40px!important;min-width:65px!important;padding:7px 9px!important;font-size:14px!important}
+ #other-books-progress-track{height:2px;flex:0 0 2px;background:#e6e7df;position:relative;overflow:hidden}
+ #other-books-progress-fill{display:block;height:100%;width:0;background:#8f7566}
+ #other-books-progress-box{flex:1 1 auto;min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+ #other-books-progress-major{font-size:15px;font-weight:700;color:#253536;line-height:1.1;font-variant-numeric:tabular-nums}
+ #other-books-progress-minor{font-size:10px;color:#87918f;line-height:1.4;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ @media(max-width:375px){header{padding-left:8px!important;padding-right:8px!important}.controls{gap:3px!important}.controls button{font-size:11px!important;padding:4px 6px!important}footer{padding:5px 8px!important;gap:5px!important}footer #prev,footer #next{min-width:59px!important}}
+ </style>`;
+ const bridge=`<script id="bookshelf-other-books-parity-bridge">
+ (()=>{const q=id=>document.getElementById(id),controls=document.querySelector('header .controls'),footer=document.querySelector('footer');
+ if(!footer)return;
+ if(controls){
+ const toc=[...controls.querySelectorAll('button')].find(b=>/目次|全巻/.test(b.textContent||''));
+ if(toc&&/目次/.test(toc.textContent||''))toc.textContent='全巻';
+ const first=[...controls.querySelectorAll('button')].find(b=>/最初へ/.test(b.textContent||''));
+ if(!first&&toc){
+  const b=document.createElement('button');b.type='button';b.textContent='最初へ';b.setAttribute('aria-label','本の最初へ');
+  b.addEventListener('click',()=>window.parent.postMessage({wh1bridge:1,type:'bookStart'},'*'));
+  toc.before(b);
+ }
+ }
+ const next=q('next'),progress=q('progress'),counter=q('counter');
+ if(!next||!counter)return;
+ const track=document.createElement('div');track.id='other-books-progress-track';
+ const fill=document.createElement('span');fill.id='other-books-progress-fill';track.append(fill);footer.before(track);
+ const box=document.createElement('div');box.id='other-books-progress-box';
+ const major=document.createElement('strong');major.id='other-books-progress-major';
+ const minor=document.createElement('small');minor.id='other-books-progress-minor';
+ box.append(major,minor);footer.insertBefore(box,next);
+ if(progress)progress.style.display='none';
+ const update=()=>{
+  const s=(counter.textContent||'').trim(),m=s.match(/(?:原本\\s*)?(\\d+)\\s*\\/\\s*(\\d+)/);
+  major.textContent=m?m[1]+' / '+m[2]:s;
+  minor.textContent=(progress?.textContent||'').trim()+(s?' ｜ '+s:'');
+  if(m&&Number(m[2])>0)fill.style.width=(Math.min(100,100*Number(m[1])/Number(m[2]))).toFixed(2)+'%';
+ };
+ new MutationObserver(update).observe(counter,{childList:true,subtree:true,characterData:true});
+ if(progress)new MutationObserver(update).observe(progress,{childList:true,subtree:true,characterData:true});
+ update();
+ })();
+ <\/script>`;
+ return html.replace('</head>',style+'</head>').replace('</body>',bridge+'</body>');
+}
+
 async function openSegment(index,destination={}){
  if(!bookZip||index<0||index>=SEGMENTS.length)return;
  const token=++loadToken,s=SEGMENTS[index];pendingDest=destinationForScan(destination);pendingLoaded=false;
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
   const text=await bookZip.readText(s.part);if(token!==loadToken)return;
-  const content=new Blob([window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text],{type:'text/html'});
+  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
+  const content=new Blob([decorateOtherBookReading(decorated)],{type:'text/html'});
   if(frameURL) URL.revokeObjectURL(frameURL);
   frameURL=URL.createObjectURL(content);activeSegment=index;
   $('reader').src=frameURL;
