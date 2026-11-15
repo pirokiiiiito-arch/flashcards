@@ -5,6 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.resolve(__dirname,'../templates/reader/v2');
 const read=f=>fs.readFileSync(path.join(root,f),'utf8');
 const novel=require('../templates/reader/v2/novel-dialogue.js');
+const {checkPublicNovel,files:publicDemoFiles}=require('../tools/verify-novel-template-pages.cjs');
 const demo=read('novel.html'),css=read('novel.css'),js=read('novel.js');
 const data=JSON.parse(demo.match(/<script>window\.READER_BOOK=({[\s\S]*?});<\/script>/)?.[1]||'null');
 
@@ -102,4 +103,35 @@ test('the public sample demonstrates automatic dialogue and a deliberately inlin
  assert.ok(inline);
  assert.deepEqual(novel.expandOne(inline,1).map(x=>x.text),[inline.text]);
  assert.equal(parts.map(x=>x.text).join(''),data.blocks.map(x=>x.text).join(''));
+});
+
+test('post-deploy novel URL evidence requires HTTP 200 and identical actual bytes',async()=>{
+ const repo=path.resolve(root,'../../..');
+ assert.equal(publicDemoFiles.length,5);
+ const okFetch=async url=>{
+  const location=new URL(url);
+  return new Response(fs.readFileSync(path.join(repo,location.pathname.slice('/flashcards/'.length))),{
+   status:200,headers:{'content-type':'text/html'}
+  });
+ };
+ const okay=await checkPublicNovel(repo,okFetch,{attempts:1,wait:async()=>{}});
+ assert.equal(okay.eligible,true);
+ assert.equal(okay.checks.length,5);
+ assert.ok(okay.checks.every(x=>x.status==='verified'&&x.httpStatus===200&&x.expectedSha256===x.observedSha256));
+ assert.equal(okay.contentCertified,false);
+ assert.equal(okay.iphoneVerified,false);
+ const badFetch=async url=>{
+  if(url.includes('novel.html'))return new Response('404',{status:404});
+  return okFetch(url);
+ };
+ const blocked=await checkPublicNovel(repo,badFetch,{attempts:1,wait:async()=>{}});
+ assert.equal(blocked.eligible,false);
+ assert.equal(blocked.checks.find(x=>x.entry.endsWith('/novel.html')).error,'HTTP_404');
+ const wrongBytes=async url=>{
+  if(url.includes('novel.js'))return new Response('stale bytes',{status:200});
+  return okFetch(url);
+ };
+ const stale=await checkPublicNovel(repo,wrongBytes,{attempts:1,wait:async()=>{}});
+ assert.equal(stale.eligible,false);
+ assert.equal(stale.checks.find(x=>x.entry.endsWith('/novel.js')).error,'DEPLOYED_BYTES_DIFFER');
 });
