@@ -10,7 +10,7 @@ const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs'
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
 // It remains an uncertified preview; it is never valid for a production release.
-const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bb719e77b50d178ed19a2520cb9d774ba7904ccbc7cad4e0633e42ead7a38004';
+const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bcfa5f214bc6bb1a0f144cbb231af93cd4dc2f47e53bcdbddf2089c2f66c14d4';
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
@@ -28,7 +28,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
- 'reader/library/read.html':'4e17ae31cb85262f0fb6a6fa57a5fa935232c449'
+ 'reader/library/read.html':'f681ad2b69a35be8854cb905c0cee212c7e6be64'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
@@ -282,6 +282,15 @@ function admittedBookshelfNavUI(root,policy){
   // edit to a generated reader/diagnostic/book-report entry.
   const index=fs.readFileSync(safe(root,'reader/wh1/all/index.html'),'utf8');
   const read=fs.readFileSync(safe(root,'reader/library/read.html'),'utf8');
+  // The exact source blob is pinned above: validate the intended
+  // furniture-only public start button, never changing private OCR or scans.
+  demand(read.includes('id="goToBookStart" type="button"')&&
+    read.includes("hidden=!/洋家具の歴史と様式/.test(bookTitle)")&&
+    read.includes("if(d.type==='bookStart'){goToBookStart();return;}")&&
+    read.includes("if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}})")&&
+    read.includes("else openSegment(0,{mode:'first'})")&&
+    read.includes("$('goToBookStart').addEventListener('click',goToBookStart)"),
+    'FURNITURE_BOOK_START_CONTROL_MISSING');
   const viewport='<script src="./wh1-figure-viewport-v9.js?v=figure-viewport-v9-20261110"></script>';
   const check='<script src="./wh1-display-check-v9.js?revision=display-check-v9-1-20261110"></script>';
   demand(index.includes(viewport)&&index.includes('<body>')&&index.includes('<title>'),'WH1_DERIVATIVE_SOURCE_INVALID');
