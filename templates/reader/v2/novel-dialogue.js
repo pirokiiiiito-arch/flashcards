@@ -1,5 +1,5 @@
 /* Novel paragraph segmentation. Original Japanese text is never rewritten.
-   Only top-level spoken 「 opens a new visual paragraph/vertical column.
+   Each spoken 「 starts a fresh column even when the OCR has unmatched 「 or 」.
    Explicit quoteMode:"inline" can protect quoted terms that are not dialogue. */
 (function(root,factory){
  'use strict';
@@ -18,20 +18,21 @@
   if(type==='heading'||block.quoteMode==='inline'||block.splitDialogue===false){
    return [{...base,type,text,sourceStart:0,sourceEnd:text.length}];
   }
+  const offsets=Array.isArray(block.inlineQuoteOffsets)?block.inlineQuoteOffsets:[];
+  const exempt=new Set(offsets);
+  if(exempt.size!==offsets.length||offsets.some(n=>!Number.isInteger(n)||n<0||text[n]!=='「'))
+   throw Error('NOVEL_INLINE_QUOTE_OFFSET_INVALID '+index);
   const output=[];
-  let start=0,depth=0,segmentType=type;
+  let start=0,segmentType=type;
   function push(end){
    if(end>start)output.push({...base,type:segmentType,
     text:text.slice(start,end),sourceStart:start,sourceEnd:end});
   }
+  // Never allow a missing OCR closer to hide later opening speech marks.
+  // Nested/non-spoken openers require a source-grounded inlineQuoteOffsets exception.
   for(let i=0;i<text.length;i++){
-   if(text[i]==='「'){
-    if(depth===0){
-     push(i);start=i;segmentType='dialogue';
-    }
-    depth++;
-   }else if(text[i]==='」'){
-    if(depth>0)depth--;
+   if(text[i]==='「'&&!exempt.has(i)){
+    push(i);start=i;segmentType='dialogue';
    }
   }
   push(text.length);
@@ -48,5 +49,5 @@
   }
   return parts;
  }
- return Object.freeze({expandOne,expandBlocks,version:'1.0'});
+ return Object.freeze({expandOne,expandBlocks,version:'2.0-unbalanced-ocr-safe'});
 });
