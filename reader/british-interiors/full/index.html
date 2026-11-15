@@ -295,6 +295,38 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
  const getReader=()=>window;
  // In the unified reader, the engine is installed as ordinary top-level DOM.
  // Native visual-viewport pinch does not work reliably inside a sandboxed iframe.
+
+ // uk-continuous-paragraph-flow-v1: public presentation-only fix.
+ // The ZIP's paragraph boundaries are retained as data, but <p> blocks force
+ // premature vertical columns. Inline runs keep the next paragraph in the
+ // same column, with a CSS-generated one-character first-line indent.
+ // No text nodes, figure captions, source OCR, original JPEG or state are edited.
+ function installUKContinuousParagraphFlow(){
+   const original=window.makePart;
+   if(typeof original!=='function')throw Error('読書本文の組版処理を確認できません');
+   if(original.__ukContinuousParagraphFlow)return;
+   const stylesheet=document.createElement('style');
+   stylesheet.id='uk-continuous-paragraph-flow-v1';
+   stylesheet.textContent=[
+     '.text-flow>.uk-inline-paragraph{display:inline!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:inherit!important;letter-spacing:0!important}',
+     '.text-flow>.uk-inline-paragraph:not(.continued)::before{content:"\\3000"}',
+     '.text-flow>.uk-inline-paragraph.index-section{font-weight:700;color:#9a513f}',
+     // Hidden pagination uses the same .text-flow class and exact same nodes.
+   ].join('\n');
+   document.head.appendChild(stylesheet);
+   const continuous=function(part){
+     const node=original(part);
+     if(node.tagName!=='P')return node;
+     const run=document.createElement('span');
+     const isSection=/^[ア-ワ]行$/.test(String(part.sourceText||part.text||'').trim());
+     run.className='uk-inline-paragraph'+(part.continued?' continued':'')+(isSection?' index-section':'');
+     run.dataset.sourceParagraph=String(part.paraIndex??0);
+     while(node.firstChild)run.appendChild(node.firstChild);
+     return run;
+   };
+   continuous.__ukContinuousParagraphFlow=true;
+   window.makePart=continuous;
+ }
  async function installTopLevelEngine(html){
    if(document.getElementById('reader-main'))return;
    if(!crypto?.subtle)throw Error('安全なHTTPSの読書画面から開いてください');
@@ -317,6 +349,7 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
      active.textContent=script.textContent;
      document.body.appendChild(active);
    }
+   installUKContinuousParagraphFlow();
  }
  // Single-document browser scale is directly visible to the engine; retain a
  // message notification for coordinated one-finger navigation at zoom > 1.
