@@ -65,6 +65,7 @@ async function verifyAll(targets,fetcher=fetch,options={}){
   }
  }));
  return {schema:'reader-public-delivery-evidence-v1',checkedAt:new Date().toISOString(),
+  sourceCommitSha:process.env.GITHUB_SHA||null,workflowRunId:process.env.GITHUB_RUN_ID||null,
   eligible:records.length===targets.length&&records.every(x=>x.status==='verified'),
   // A successful deploy/check is not a source-text review or an iPhone operation test.
   checks:records,contentCertified:false,iphoneVerified:false};
