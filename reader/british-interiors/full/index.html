@@ -327,6 +327,56 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
    continuous.__ukContinuousParagraphFlow=true;
    window.makePart=continuous;
  }
+
+ // uk-near-full-text-cut-v1:
+ // On OCR text ONLY, avoid wasting almost one whole vertical column when
+ // safeCut chooses an earlier comma/full stop. Choose the nearest safe word
+ // boundary actually measured to fit. Preserve the figure-caption paginator,
+ // original ZIP, OCR text and historical reading-position keys.
+ function installUKNearFullTextBoundary(){
+   const originalCut=window.safeCut;
+   const originalFragments=window.textFragments;
+   if(typeof originalCut!=='function'||typeof originalFragments!=='function')
+     throw Error('本文の改ページ処理を確認できません');
+   if(originalCut.__ukNearFullTextCut)return;
+   const segmenter=typeof Intl.Segmenter==='function'
+     ?new Intl.Segmenter('ja',{granularity:'word'}):null;
+   let textDepth=0;
+   function nearFullCut(text,fit){
+     const initial=originalCut(text,fit);
+     if(!textDepth||!segmenter||fit-initial<7)return initial;
+     const max=Math.max(1,Math.min(fit,text.length));
+     const blocked=new Set();
+     // Same protected terms, numerals and line-leading punctuation rules as
+     // the private engine's existing safeCut. No lexeme is forcibly grouped.
+     for(const word of PROTECTED_WORDS){
+       let i=text.indexOf(word);
+       while(i>=0){
+         for(let k=i+1;k<i+word.length;k++)blocked.add(k);
+         i=text.indexOf(word,i+1);
+       }
+     }
+     for(const m of text.matchAll(/[A-Za-z0-9]+(?:[.,．:/／–−〜～-][A-Za-z0-9]+)*(?:世紀|年代|年|月|日|枚|本|軒|階|円|センチメートル|メートル|フィート|フット|%|％)?/g)){
+       for(let k=m.index+1;k<m.index+m[0].length;k++)blocked.add(k);
+     }
+     let best=initial;
+     for(const token of segmenter.segment(text)){
+       const k=token.index+token.segment.length;
+       if(k<=best||k>max||blocked.has(k))continue;
+       if(INITIAL_FORBIDDEN.test(text[k]||'')||END_FORBIDDEN.test(text.slice(0,k)))continue;
+       if(!/\S/.test(text.slice(0,k))||/[「『（([〈《【]$/.test(text.slice(0,k)))continue;
+       best=k;
+     }
+     return best;
+   }
+   nearFullCut.__ukNearFullTextCut=true;
+   window.safeCut=nearFullCut;
+   window.textFragments=function(...args){
+     textDepth++;
+     try{return originalFragments.apply(this,args)}
+     finally{textDepth--}
+   };
+ }
  async function installTopLevelEngine(html){
    if(document.getElementById('reader-main'))return;
    if(!crypto?.subtle)throw Error('安全なHTTPSの読書画面から開いてください');
@@ -350,6 +400,7 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
      document.body.appendChild(active);
    }
    installUKContinuousParagraphFlow();
+   installUKNearFullTextBoundary();
  }
  // Single-document browser scale is directly visible to the engine; retain a
  // message notification for coordinated one-finger navigation at zoom > 1.
