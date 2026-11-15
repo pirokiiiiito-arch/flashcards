@@ -204,5 +204,17 @@
   },
   "contentCertified": false,
   "publicSource": "Only a loader that imports the user-selected HTML on the device. No private book data, images, or OCR text are uploaded to GitHub Pages.",
-  "auditStatusNotice": "60 check statuses are not_run; this is an unverified draft, not a completed or independently proofread book."
+  "auditStatusNotice": "60 check statuses are not_run; this is an unverified draft, not a completed or independently proofread book. The original reader gestures failed in the user iPhone preview due to a missing parent scale handshake; the public preview host has been revised but G7-04, G8-02, G8-04, G8-11 are not marked passed.",
+  "previewOperationRepair": {
+    "scope": "001-020 Chrome local HTML importer, no private book-file modification",
+    "userReportedFailure": "2026-11-15: iPhone Chromeの読書画面で上下スワイプができない（実機報告）",
+    "identifiedCause": "Old public import host omitted the reader-viewport-v8 parent message; the embedded private HTML gesture handler intentionally withheld page turns when host scale was unknown.",
+    "previousLoaderBlobSha": "f6cc69d871ef224889213908d8b8c4232c3e2834",
+    "revisedLoaderBlobSha": "d7fe544705a9f85affc37de3c663df74f79d9ac7",
+    "revisedLoaderSha256": "22468304d5812fdbd3fc3f76a34e719f491af0de440b984b43febc7206b5df91",
+    "privateBookSha256": "9e4ddbc152103bdf6c66363086741fb63824eb4fea98b4e6c3caa4055f42accb",
+    "fix": "Inject ephemeral session and origin into imported viewing copy; send current parent visualViewport state to child with increasing sequence number and validate ready source+session; remove blanket touch-action override; do not modify embedded image/OCR bytes.",
+    "automatedPreviewEvidence": "Local Linux headless Chromium mobile native CDP touch dispatch on actual private HTML, test-only opaque parent origin workaround: up=+1 reading page, down=-1 reading page, simulated host-scale 2 suppresses turns, host-scale 1 restores turn; no JavaScript page errors. This is not an iPhone/WebKit test and does not demonstrate real pinch/pan.",
+    "ruleStatuses": "G7-04/G8-02/G8-04/G8-11 remain not_run for revised pairing pending full source-specific native pinch/pan and actual iPhone checks. The reported defect is retained as historical evidence."
+  }
 }
