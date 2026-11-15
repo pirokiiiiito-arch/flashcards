@@ -45,3 +45,26 @@ test('source paragraphs flow as inline spans while content and headings are pres
  vm.runInNewContext(fn+'\ninstallUKContinuousParagraphFlow();',{window,document,Error,String});
  assert.equal(inserted.length,1,'must never install duplicate adapters');
 });
+
+test('near-full cutoff only changes source OCR text, not figure-caption splits',()=>{
+ const fn=html.match(/ function installUKNearFullTextBoundary\(\)\{[\s\S]*?\n \}/)?.[0];
+ assert.ok(fn,'text-only cutoff adapter not found');
+ const baseline=(text,fit)=>Math.min(fit,Math.max(1,fit-13));
+ const window={
+   safeCut:baseline,
+   textFragments:function(text,fit){return window.safeCut(text,fit)}
+ };
+ const sandbox={window,Intl,
+   PROTECTED_WORDS:['いずれも','この時代'],
+   INITIAL_FORBIDDEN:/^[、。，！？]/,
+   END_FORBIDDEN:/[ーｰ—-]$/
+ };
+ vm.createContext(sandbox);
+ vm.runInContext(fn+'\ninstallUKNearFullTextBoundary();',sandbox);
+ const example='かつて流行を作り出したのは地主階級の人びとでした。ひとつ下の階級の専門職の家もあります。';
+ const fit=32,figureCut=window.safeCut(example,fit),textCut=window.textFragments(example,fit);
+ assert.equal(figureCut,baseline(example,fit),'captions stay on the existing safeCut');
+ assert.ok(textCut>figureCut&&textCut<=fit,'OCR text uses more of the measured column');
+ assert.equal(window.safeCut(example,fit),figureCut,'text-only state is always released');
+ assert.doesNotMatch(html,/installUKColumnWordGuard|uk-atomic-word/);
+});
