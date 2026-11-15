@@ -124,7 +124,8 @@
     "reader/quality/receipts/world-symbols-021-040-preview.json",
     "reader/quality/receipts/castle-121-140-preview.json",
     "reader/quality/receipts/castle-141-160-preview.json",
-    "reader/quality/receipts/nine-stories-001-020-preview.json"
+    "reader/quality/receipts/nine-stories-001-020-preview.json",
+    "reader/quality/receipts/nine-stories-021-040-preview.json"
   ],
   "notes": [
     "Compatibility snapshot is not OCR certification.",
