@@ -26,6 +26,25 @@ const STATES=new Set(['not_run','passed','failed','needs_source_review','not_app
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 function blobSHA(bytes){const b=Buffer.isBuffer(bytes)?bytes:Buffer.from(bytes);return crypto.createHash('sha1').update(Buffer.from('blob '+b.length+'\0')).update(b).digest('hex');}
+
+/* Exact public-only UI approval; already byte-pinned by release-control.
+   Keep draft report, historical route identity and original scans unchanged.
+   Any different byte, different book, modified engine or banned word guard fails. */
+function approvedUKWh1GeometryUI(book,bytes){
+ if(book?.entry!=='reader/british-interiors/full/index.html'||!Buffer.isBuffer(bytes))return false;
+ if(blobSHA(bytes)!=='c6ece4949b885c81bfa4374e19f049b23825e6e0')return false;
+ const html=bytes.toString('utf8');
+ return html.includes('id="firstPageButton"')&&
+  html.includes("sendWindow(1,{navigate:true,itemIndex:0,size:current.size})")&&
+  html.includes("const TRUSTED_ENGINE_SHA256='580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca'")&&
+  html.includes('uk-wh1-text-geometry-20261115')&&
+  html.includes('#reader-main .sheet,#measure-sheet{padding:10px 12px!important}')&&
+  html.includes('#reader-main .segment,#measure-sheet .segment{padding:0!important}')&&
+  html.includes('#reader-main .text-flow,#measure-sheet .text-flow{width:calc(100% - 30px)!important;padding:0!important}')&&
+  html.includes('installUKContinuousParagraphFlow();')&&
+  html.includes('installUKNearFullTextBoundary();')&&
+  !html.includes('installUKColumnWordGuard()')&&!html.includes('uk-atomic-word');
+}
 function read(root,p,errors){if(!allowed(p)){errors.push('INVALID_PATH '+p);return null;}try{return JSON.parse(fs.readFileSync(path.join(root,p),'utf8'));}catch(e){errors.push('MISSING_OR_INVALID_JSON '+p+' '+e.message);return null;}}
 function entryPaths(root){
  const out=[],start=path.join(root,'reader');if(!fs.existsSync(start))return out;
@@ -181,7 +200,9 @@ function validate(root=ROOT){
    bytes.includes(Buffer.from('uk-column-fit24-20261115'))&&
    bytes.includes(Buffer.from('uk-continuous-paragraph-flow-v1'))&&
    bytes.includes(Buffer.from('installUKNearFullTextBoundary()'));
-  if(blobSHA(bytes)!==b.entryBlobSha&&!firstPageOnly&&!nearFullTextPinned)errors.push('MANAGED_ENTRY_CHANGED '+b.entry+' - update report and route identity');
+  const reviewedWH1Geometry=approvedUKWh1GeometryUI(b,bytes);
+  if(blobSHA(bytes)!==b.entryBlobSha&&!firstPageOnly&&!nearFullTextPinned&&!reviewedWH1Geometry)
+   errors.push('MANAGED_ENTRY_CHANGED '+b.entry+' - update report and route identity');
   if(b.url!=='https://pirokiiiiito-arch.github.io/flashcards/'+b.entry+'?import=1')
    errors.push('WRONG_IPHONE_WEB_URL '+b.id);
   const html=bytes.toString('utf8');
@@ -216,4 +237,4 @@ if(require.main===module){
  if(r.errors&&r.errors.length)process.exitCode=1;
  else console.log('SCHEMA PASS ONLY (not OCR certification): '+r.paths+' routes, '+r.managed+' managed, '+r.legacy+' frozen legacy');
 }
-module.exports={validate,standardCheck,reportCheck,blobSHA,entryPaths,RULES,ID};
+module.exports={validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};
