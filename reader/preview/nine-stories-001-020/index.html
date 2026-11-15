@@ -42,6 +42,7 @@ a{color:#2c666c}
   <input type="file" id="file" accept=".html,text/html">
   <button id="reopen" hidden>保存済みの読書版を開く</button>
   <p id="status" role="status" aria-live="polite">読書版HTMLを選択してください。</p>
+  <p class="note">「マイドライブ」の画面で「確認」が灰色なら、まだファイルが選ばれていません。フォルダ名をタップして中に進み、名前の末尾が「縦書き読書.html」のファイルを選択してください。Driveから選べない場合は、先にiPhoneの「ファイル」にHTMLを保存してから読み込んでください。ZIPやフォルダは選ばないでください。</p>
   <p class="note">この入口は『ナイン・ストーリーズ』001〜020専用です。読書用HTMLは端末から取り込み、本文・原本画像は公開せず端末内で表示します。原本20枚・縦書き読書・本文一次転記版で、全文字照合とiPhone実機操作検査は未完了です。</p><p class="note">原本画像とOCR本文はこのWebサイトに公開しません。この端末のChrome内へ保存します。別の本・分冊とは別に保存されます。サイトデータを削除すると再読込が必要になります。読書画面では「原本」「比較」に切り替えられます。</p>
  </main>
 </div>
@@ -79,7 +80,8 @@ async function putSaved(blob,name){
 }
 async function verify(blob){
  if(!blob || blob.size<1000 || blob.size>MAX)throw Error('ナイン・ストーリーズ001〜020の読書・校正HTMLを選択してください。');
- const head=await blob.slice(0,16000).text();
+ // The book's embedded-data tag begins after the first 16 KB of styles.
+ const head=await blob.slice(0,65536).text();
  const titleMatch=head.match(/<title[^>]*>([^<]+)<\/title>/i);
  const goodTitle=!!titleMatch && titleMatch[1].includes('ナイン・ストーリーズ') && /001[〜～-]020/.test(titleMatch[1]);
  const goodData=/<script\b[^>]*\bid=["']embedded-data["'][^>]*>/i.test(head);
