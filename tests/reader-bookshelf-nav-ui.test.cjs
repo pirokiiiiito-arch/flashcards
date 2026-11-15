@@ -61,12 +61,31 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
     .replace(/\n\/\/ non-wh-reading-parity-20261115:[\s\S]*?(?=async function openSegment\(index)/,'')
     .replace("  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;\n  const content=new Blob([decorateOtherBookReading(decorated)],{type:'text/html'});",
              "  const content=new Blob([window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text],{type:'text/html'});");
+
+  // Reverse only the public furniture start UI before checking the frozen reader bytes.
+  const stripFurnitureStart=text=>text
+    .replace("\n // Furniture's imported reader has its own toolbar; keep this control on the public bookshelf host.\n $('goToBookStart').hidden=!/洋家具の歴史と様式/.test(bookTitle);",'')
+    .replace(/\nfunction goToBookStart\(\)\{[\s\S]*?\n\}(?=\nwindow\.addEventListener\('message',e=>\{)/,'')
+    .replace(" if(d.type==='bookStart'){goToBookStart();return;}",
+      " if(d.type==='bookStart'){\n  closeMenu();\n  if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});\n  else openSegment(0,{mode:'first'}).catch(err=>console.warn('先頭への移動に失敗しました',err));\n  return;\n }")
+    .replace("\n$('goToBookStart').addEventListener('click',goToBookStart);",'');
   const originalReader=p==='reader/library/read.html'
-    ?stripOtherBooksParity(restored).replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'')
+    ?stripOtherBooksParity(stripFurnitureStart(restored)).replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'')
     :restored;
   assert.equal(blobSHA(originalReader),registry.legacyFrozenEntries[p],'OCR/reader engine remains byte-identical to baseline');
  }
 });
+test('furniture book has a visible first-page control in the full-width bookshelf navigation',()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ assert.match(html, /<nav id="bookshelfNav"[^>]*>[\s\S]*?id="goToBookStart"[^>]*>最初へ<\/button>/);
+ assert.match(html, /#bookshelfNav\{position:fixed;left:0;right:0;top:0;/);
+ assert.match(html, /#goToBookStart\{margin-left:auto\}/);
+ assert.match(html, /\$\('goToBookStart'\)\.hidden=!\/洋家具の歴史と様式\/\.test\(bookTitle\)/);
+ assert.match(html, /\$\('goToBookStart'\)\.addEventListener\('click',goToBookStart\)/);
+ assert.match(html, /if\(activeSegment===0\)issueChild\('goto',\{destination:\{mode:'first'\}\}\)/);
+ assert.match(html, /else openSegment\(0,\{mode:'first'\}\)/);
+});
+
 test('generated bookshelf and WH1 HTML retain links with exact build reproduction',()=>{
  const approved=gate.admittedBookshelfNavUI(root,policy);
  const derivatives=['reader/wh1/all/figure-repair-v9.html','reader/wh1/all/figure-repair-v8.html',
