@@ -71,3 +71,23 @@ test('cannot bypass checks by declaring a newly created book as historical legac
   assert.match(gate.validate(tmp).errors.join('|'),/LEGACY_EXCEPTION_LIST_CHANGED/);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
+
+test('current UK WH1 geometry revision is byte-pinned without upgrading draft or changing evidence',()=>{
+ const entry='reader/british-interiors/full/index.html';
+ const managed=reg.books.find(b=>b.id==='british-interiors-001-082');
+ const bytes=fs.readFileSync(path.join(root,entry));
+ const report=JSON.parse(fs.readFileSync(path.join(root,managed.report),'utf8'));
+ assert.equal(managed.entry,entry);
+ assert.equal(managed.stage,'draft');
+ assert.equal(report.stage,'draft');
+ assert.equal(report.claimsCompleted,false);
+ assert.equal(reg.legacyFrozenEntries[entry],managed.migratedFromFrozenBlobSha,
+  'frozen historical bytes remain bound to original identity');
+ assert.equal(gate.blobSHA(bytes),'c6ece4949b885c81bfa4374e19f049b23825e6e0',
+  'only exactly reviewed public geometry is admitted');
+ assert.equal(gate.approvedUKWh1GeometryUI(managed,bytes),true);
+ assert.equal(gate.approvedUKWh1GeometryUI({...managed,id:'other',entry:'reader/wh1/all/index.html'},bytes),false);
+ assert.equal(gate.approvedUKWh1GeometryUI(managed,Buffer.concat([bytes,Buffer.from('\n<!-- unreviewed mutation -->')])),false);
+ const current=gate.validate(root);
+ assert.ok(!current.errors.some(e=>e.startsWith('MANAGED_ENTRY_CHANGED '+entry)),current.errors.join('|'));
+});
