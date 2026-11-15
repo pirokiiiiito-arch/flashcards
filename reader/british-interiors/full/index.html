@@ -118,6 +118,8 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
  footer.reader-footer{padding:4px 8px 5px!important}
  footer.reader-footer .nav-btn{padding:7px 8px!important;min-width:59px!important}
 }
+/* Word-units are unbreakable only inside the word; paragraphs still reflow. */
+.uk-atomic-word{white-space:nowrap!important;word-break:keep-all!important;overflow-wrap:normal!important;display:inline!important}
 </style><style id="reader-native-page-pinch-shell-v3">
   html,body,#reader,#setup{touch-action:pan-x pan-y pinch-zoom;}
 </style></head><body>
@@ -295,6 +297,46 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
  const getReader=()=>window;
  // In the unified reader, the engine is installed as ordinary top-level DOM.
  // Native visual-viewport pinch does not work reliably inside a sandboxed iframe.
+
+ // uk-column-word-guard-20261115
+ // Short Japanese lexical units stay together in a vertical column.
+ // Only display DOM is wrapped: no ZIP, OCR, JPEG, SVG, or page state edits.
+ // Called by both visible rendering and hidden pagination measurement.
+ function installUKColumnWordGuard(){
+   const original=window.renderVerticalPartText;
+   if(typeof original!=='function')throw Error('縦書き本文の表示処理を確認できません');
+   if(original.__ukColumnWordGuard)return;
+   const segmenter=typeof Intl.Segmenter==='function'
+     ? new Intl.Segmenter('ja',{granularity:'word'}):null;
+   const fallback=/ひと息|いずれも|さかのぼる|たとえば|それでも|この時代/g;
+   function partsOf(value){
+     if(segmenter)return Array.from(segmenter.segment(value),s=>({
+       text:s.segment,index:s.index,protect:Boolean(s.isWordLike)&&s.segment.length>=2
+         &&s.segment.length<=7&&/[ぁ-んァ-ヶ一-龥々]/.test(s.segment)
+     }));
+     const parts=[];let cursor=0;
+     for(const m of value.matchAll(fallback)){
+       if(m.index>cursor)parts.push({text:value.slice(cursor,m.index),index:cursor,protect:false});
+       parts.push({text:m[0],index:m.index,protect:true});cursor=m.index+m[0].length;
+     }
+     if(cursor<value.length)parts.push({text:value.slice(cursor),index:cursor,protect:false});
+     return parts;
+   }
+   const guarded=function(node,text,sourceText=text,sourceOffset=0){
+     const value=String(text||'');
+     if(!value){original(node,value,sourceText,sourceOffset);return;}
+     const source=String(sourceText||value),fragment=document.createDocumentFragment();
+     for(const part of partsOf(value)){
+       const section=part.protect?document.createElement('span'):document.createDocumentFragment();
+       if(part.protect)section.className='uk-atomic-word';
+       original(section,part.text,source,sourceOffset+part.index);
+       fragment.append(section);
+     }
+     node.replaceChildren(fragment);
+   };
+   guarded.__ukColumnWordGuard=true;
+   window.renderVerticalPartText=guarded;
+ }
  async function installTopLevelEngine(html){
    if(document.getElementById('reader-main'))return;
    if(!crypto?.subtle)throw Error('安全なHTTPSの読書画面から開いてください');
@@ -317,6 +359,7 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
      active.textContent=script.textContent;
      document.body.appendChild(active);
    }
+   installUKColumnWordGuard();
  }
  // Single-document browser scale is directly visible to the engine; retain a
  // message notification for coordinated one-finger navigation at zoom > 1.
