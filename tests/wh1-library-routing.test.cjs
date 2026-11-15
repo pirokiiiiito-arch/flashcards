@@ -9,6 +9,7 @@ const directory = path.join(__dirname, '../reader/library');
 const app = fs.readFileSync(path.join(directory, 'app.js'), 'utf8');
 const read = fs.readFileSync(path.join(directory, 'read.html'), 'utf8');
 const index = fs.readFileSync(path.join(directory, 'index.html'), 'utf8');
+const sw = fs.readFileSync(path.join(directory, 'sw.js'), 'utf8');
 const between = (text, start, end) => {
   const from = text.indexOf(start), to = text.indexOf(end, from + start.length);
   assert.ok(from >= 0 && to > from, 'expected application function boundaries');
