@@ -2,7 +2,7 @@
 
 Scope: scan-book readers, not plants/colors/word or other applications.
 
-Read the canonical sixty-item Google Drive standard `1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2`, `reader/quality/RELEASE_PROCESS.md`, and the persisted private manifest before continuing. Keep the same sixty IDs. A new chat or 'next 20 pages' is not permission to omit proofreading.
+Read the canonical sixty-item Google Drive standard `1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2`, **`reader/quality/BOOK_CREATION_PROCESS.md`**, `reader/quality/RELEASE_PROCESS.md`, and the persisted private manifest before continuing. Keep the same sixty IDs. A new chat or 'next 20 pages' is not permission to omit proofreading.
 
 - Keep original images and raw OCR immutable. Resume canonical revisions and correction history; never fall back to raw OCR when a corrected revision exists.
 - Actually reread the source independently, inventory all text regions and edges, resolve differences/numbers/anomalies and page boundaries, then test the exact deliverable. Do not invent evidence, reviewer actions or PASS results.
@@ -17,3 +17,7 @@ Read the canonical sixty-item Google Drive standard `1CngvhZvJPQsGizwmaVKC_old4V
 - Do not claim all paths are technically intercepted: arbitrary manual Drive writes, direct chat attachments and administrator changes are outside this gate. Apply the same checked protocol rather than bypassing it.
 
 Resume by restoring the entire private workspace, inspecting manifest and correction history, and verifying input hashes. Save the checkpoint before ending a long run. Preserve unresolved status honestly; stopping a bad release alone is not completion of the source proofreading task.
+
+## Book creation / next 20 scans (automatic on every request)
+
+For each new book, each further 20-scan set and each reader update, perform the production sequence in `reader/quality/BOOK_CREATION_PROCESS.md`. Before any public commit, use `node tools/reader-book-preflight.cjs BOOK_ID` and `node tools/reader-book-preflight.cjs --all`; GitHub Actions `.github/workflows/reader-book-creation.yml` runs on newly registered/modified preview records. Do not claim a preflight is source proofreading, device verification, or successful deployment. Historical preview issuer compatibility is exact per-book/per-receipt; it never applies to a normal reader release. Always report Drive HTML URL and dedicated Chrome URL in plain text with the actual observed publication status, including 404 or unpublished.
