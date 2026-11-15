@@ -36,7 +36,7 @@ a{color:#2c666c}
   <ol>
    <li>Googleドライブに保存された<strong>ナイン・ストーリーズ001〜020の読書・校正HTML</strong>をiPhoneの「ファイル」に保存</li>
    <li>ここに戻り、下の「ファイルを選択」からHTMLを選ぶ</li>
-   <li>保存できていれば次回はChromeから自動で開きます。以前の版は再読み込みしてください</li>
+   <li>保存できていれば次回はChromeから自動で開きます。修正したHTMLは再選択してください。対応版なら読書位置も自動保存されます。</li>
   </ol>
   <label class="pick" for="file">読書版HTMLを選択して開く</label>
   <input type="file" id="file" accept=".html,text/html">
@@ -51,6 +51,9 @@ a{color:#2c666c}
 const $=id=>document.getElementById(id);
 const DB='nine-stories-reader-on-device-v1',STORE='books',KEY='scans001to020',MAX=350*1024*1024;
 let currentBlob=null,activeUrl='',readerSession='',viewportSeq=0;
+const SHELF_URL='https://pirokiiiiito-arch.github.io/flashcards/reader/library/';
+const POSITION_KEY='position-'+KEY;
+function validPosition(v){return v&&v.schema==='salinger-book-position-v1'&&v.bookId==='salinger-nine-stories-shibata'&&Array.isArray(v.range)&&v.range[0]===1&&v.range[1]===20&&typeof v.unitId==='string'&&v.unitId.length<180&&Number.isInteger(v.offset)&&v.offset>=0&&Number.isInteger(v.font)&&v.font>=16&&v.font<=30&&v.font%2===0&&Number.isInteger(v.scan)&&v.scan>=1&&v.scan<=20;}
 const frame=$('reader');
 function syncReaderViewport(){
  if(!readerSession||!frame.contentWindow)return;
@@ -63,8 +66,15 @@ function syncReaderViewport(){
 }
 window.addEventListener('message',e=>{
  const m=e.data;
- if(e.source!==frame.contentWindow||m?.type!=='reader-ready-v8'||m.session!==readerSession)return;
- syncReaderViewport();
+ if(e.source!==frame.contentWindow||!m||m.session!==readerSession)return;
+ if(m.type==='reader-ready-v8'){syncReaderViewport();return;}
+ if(m.type==='reader-position-v1'){
+  if(validPosition(m.position))putSavedPosition(m.position).catch(()=>{});
+  return;
+ }
+ if(m.type==='reader-back-to-shelf-v1'){
+  window.location.assign(SHELF_URL);
+ }
 });
 window.visualViewport?.addEventListener('resize',syncReaderViewport);
 window.visualViewport?.addEventListener('scroll',syncReaderViewport);
@@ -98,6 +108,25 @@ async function putSaved(blob,name){
   tx.onabort=()=>reject(tx.error);
  });}finally{db.close();}
 }
+async function getSavedPosition(){
+ const db=await database();
+ try{return await new Promise((resolve,reject)=>{
+  const req=db.transaction(STORE,'readonly').objectStore(STORE).get(POSITION_KEY);
+  req.onsuccess=()=>resolve(validPosition(req.result?.position)?req.result.position:null);
+  req.onerror=()=>reject(req.error);
+ });}finally{db.close();}
+}
+async function putSavedPosition(position){
+ if(!validPosition(position))return;
+ const db=await database();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).put({position,date:Date.now()},POSITION_KEY);
+  tx.oncomplete=()=>resolve();
+  tx.onerror=()=>reject(tx.error);
+  tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
 async function verify(blob){
  if(!blob || blob.size<1000 || blob.size>MAX)throw Error('ナイン・ストーリーズ001〜020の読書・校正HTMLを選択してください。');
  // The book's embedded-data tag begins after the first 16 KB of styles.
@@ -117,9 +146,11 @@ async function openBook(blob){
  if(!/<\/head>/i.test(source))throw Error('HTMLのheadが見つかりません。');
  readerSession=Array.from(crypto.getRandomValues(new Uint32Array(4)),x=>x.toString(16).padStart(8,'0')).join('');
  viewportSeq=0;
+ let initialPosition=null;
+ try{initialPosition=await getSavedPosition();}catch(_){/* storage unavailable: read anyway */}
  // Inject metadata into the in-memory viewing copy only: never change private OCR/images.
  // A split tag keeps the parent HTML's own script element intact.
- const hostScript='<scr'+'ipt data-reader-host>window.__readerHost='+JSON.stringify({session:readerSession,origin:location.origin})+';<\/scr'+'ipt>';
+ const hostScript='<scr'+'ipt data-reader-host>window.__readerHost='+JSON.stringify({session:readerSession,origin:location.origin,initialPosition})+';<\/scr'+'ipt>';
  const html=source.replace(/<\/head>/i,hostScript+'</head>');
  if(activeUrl)URL.revokeObjectURL(activeUrl);
  activeUrl=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
