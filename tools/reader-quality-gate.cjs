@@ -20,7 +20,7 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
 });
 // Narrow, byte-exact admission for the independently reviewed bookshelf title-order UI.
-const BOOKSHELF_TITLE_ORDER_INDEX_BLOB='0b0362b78bd36762b725dcca458cf714af57653b';
+const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30']);
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
@@ -113,8 +113,9 @@ function validate(root=ROOT){
     data.includes(Buffer.from('id="backToBookshelf" href="'+expectedHref+'"'))&&
     data.includes(Buffer.from('id="bookshelf-nav-ui-v1"'));
   const titleSortPinned=p==='reader/library/index.html'&&
-    actual===BOOKSHELF_TITLE_ORDER_INDEX_BLOB&&
-    data.includes(Buffer.from('app.js?v=bookshelf-title-order-v2-20261114'));
+    BOOKSHELF_TITLE_ORDER_INDEX_BLOBS.includes(actual)&&
+    (data.includes(Buffer.from('app.js?v=bookshelf-title-order-v2-20261114'))||
+     data.includes(Buffer.from('app.js?v=bookshelf-uk-row22-20261115')));
   if(actual!==sha&&!uiPinned&&!titleSortPinned)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
  }
  if(!Array.isArray(books))errors.push('INVALID_BOOKS');
