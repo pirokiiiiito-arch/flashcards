@@ -11,7 +11,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const bytes=p=>fs.readFileSync(path.join(root,p));
 const folder='reader/library/';
 const revision='wh1-library-v9-20261110';
-const shelfRevision='bookshelf-uk-wordguard-20261115';
+const shelfRevision='bookshelf-uk-near-full-text-cut-v1-20261115';
 
 test('shelf WH1 entry retains every storage/reader operation and only adds current renderer plus static marker',()=>{
  const base=read(folder+'read.html'),html=read(folder+'read-wh1-v9.html');
@@ -64,7 +64,7 @@ test('shelf worker fetches fresh app code and serves the correct reader offline 
  const c={URL,Request,Response,console,
   self:{registration:{scope},addEventListener:(name,fn)=>{handlers[name]=fn;},
    skipWaiting:async()=>{skipped++;},clients:{claim:async()=>{claimed++;}}},
-  caches:{open:async name=>{assert.equal(name,'private-bookshelf-shell-v16-uk-wordguard-20261115');return cache;},
+  caches:{open:async name=>{assert.equal(name,'private-bookshelf-shell-v19-uk-near-full-text-cut-v1-20261115');return cache;},
    match:()=>{throw Error('Must not read an older named cache');},delete:()=>{throw Error('Must preserve caches');}},
   fetch:async(req,options)=>{requests.push({url:req.url,options});throw Error('Offline fixture');}
  };
