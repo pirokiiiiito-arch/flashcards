@@ -125,6 +125,16 @@ function fitsParts(existing,additional){
  measureText.replaceChildren(fragment);return fitsInk(measureText);
 }
 function textPart(b,off,n){return {type:b.type,scan:b.scan,text:b.units.slice(off,off+n).join(''),continued:off>0}}
+function protectedPageBoundary(units,point){
+ if(point<=0||point>=units.length)return false;
+ const left=units.slice(Math.max(0,point-14),point).join('');
+ const right=units.slice(point,Math.min(units.length,point+14)).join('');
+ if(/^(?:、|。|！|？|!|\?|」|』|）|\))/.test(right))return true;
+ if(/(?:「|『|（|\()$/.test(left))return true;
+ if(/(?:いずれ|それぞれ|どちら)$/.test(left)&&/^も/.test(right))return true;
+ if(/[0-9０-９]$/.test(left)&&/^(?:年|月|日|時|分|秒|円|冊|個|頁|ページ|％|%|cm|kg|㎝|㎏)/.test(right))return true;
+ return false;
+}
 function paginateBlocks(group,start){
  const out=[];let current=[],at=start,begin=start;
  const flush=()=>{if(!current.length)return;
@@ -148,9 +158,15 @@ function paginateBlocks(group,start){
    if(lo<remaining){
     const min=Math.max(1,lo-8);
     for(let n=lo;n>=min;n--){
-     if(/[。！？!?、」』）)]/.test(b.units[n-1]||'')&&
+     if(/[。！？!?、」』）)]/.test(b.units[off+n-1]||'')&&
+        !protectedPageBoundary(b.units,off+n)&&
         fitsParts(current,textPart(b,off,n))){lo=n;break}
     }
+    // Preserve known source-side Japanese compounds and number+unit pairs
+    // by carrying the entire unit to the next page whenever it still fits.
+    while(lo>1&&protectedPageBoundary(b.units,off+lo))lo--;
+    if(protectedPageBoundary(b.units,off+lo))
+     throw Error('句読点・単位を安全に組版できません。原本と画面寸法を確認してください');
    }
    current.push(textPart(b,off,lo));off+=lo;at+=lo;flush();
   }
