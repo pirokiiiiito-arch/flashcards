@@ -31,7 +31,7 @@ a{color:#2c666c}
 <div id="setup">
  <main>
   <h1>ナイン・ストーリーズ</h1>
-  <p>iPhoneのChrome用、原本スキャン001〜020枚目の読書・校正入口です。読書HTMLは制作中（一次転記・全文字照合待ち）です。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
+  <p>iPhoneのChrome用、原本スキャン001〜020枚目のv2読書入口です。修正版v2読書HTMLは制作中（全文字照合待ち）です。<strong>上スワイプで次ページ</strong>、下スワイプで前ページへ進めます。文字サイズは A−／A＋ で変更できます。</p>
   <h2>最初の1回だけ</h2>
   <ol>
    <li>Googleドライブに保存された<strong>ナイン・ストーリーズ001〜020の読書・校正HTML</strong>をiPhoneの「ファイル」に保存</li>
@@ -49,7 +49,7 @@ a{color:#2c666c}
 'use strict';
 const $=id=>document.getElementById(id);
 const DB='nine-stories-reader-on-device-v1',STORE='books',KEY='scans001to020',MAX=350*1024*1024;
-let currentBlob=null,activeUrl='';
+let currentBlob=null,activeUrl='',session='',viewportSeq=0;
 function database(){
  return new Promise((resolve,reject)=>{
   if(!('indexedDB' in window))return reject(Error('端末保存には対応していません'));
@@ -77,6 +77,48 @@ async function putSaved(blob,name){
   tx.onabort=()=>reject(tx.error);
  });}finally{db.close();}
 }
+async function getPosition(){
+ const db=await database();
+ try{return await new Promise((resolve,reject)=>{
+  const req=db.transaction(STORE,'readonly').objectStore(STORE).get(KEY+':position');
+  req.onsuccess=()=>resolve(req.result||null);
+  req.onerror=()=>reject(req.error);
+ });}finally{db.close();}
+}
+async function putPosition(value){
+ const db=await database();
+ try{return await new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,'readwrite');
+  tx.objectStore(STORE).put(value,KEY+':position');
+  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+ });}finally{db.close();}
+}
+function sendViewport(){
+ if(!session)return;
+ const frame=$('reader');
+ const scale=Number(window.visualViewport?.scale||1);
+ frame.contentWindow?.postMessage({type:'reader-viewport-v8',session,seq:++viewportSeq,
+  scale:Number.isFinite(scale)?Math.max(.5,Math.min(10,scale)):1},'*');
+}
+window.addEventListener('message',e=>{
+ const m=e.data,frame=$('reader');
+ if(e.source!==frame.contentWindow||!m||m.session!==session)return;
+ if(m.type==='reader-ready-v8'){sendViewport();return;}
+ if(m.type==='reader-position-v1'){
+  const p=m.position;
+  if(p&&p.schema==='standard-reader-position-v2'&&
+     typeof p.bookId==='string'&&p.bookId.includes('nine-stories')&&
+     Number.isSafeInteger(p.point)&&p.point>=0&&p.point<10000000&&
+     Number.isInteger(p.font)&&p.font>=16&&p.font<=30&&p.font%2===0)
+     putPosition(p).catch(()=>{});
+ }else if(m.type==='reader-back-to-shelf-v1'){
+  location.href='../../library/';
+ }
+});
+if(window.visualViewport){
+ window.visualViewport.addEventListener('resize',sendViewport);
+ window.visualViewport.addEventListener('scroll',sendViewport);
+}
 async function verify(blob){
  if(!blob || blob.size<1000 || blob.size>MAX)throw Error('ナイン・ストーリーズ001〜020の読書・校正HTMLを選択してください。');
  const head=await blob.slice(0,16000).text();
@@ -92,12 +134,21 @@ async function openBook(blob){
  currentBlob=blob;
  $('status').textContent='読書画面を開いています…';
  if(activeUrl)URL.revokeObjectURL(activeUrl);
- const htmlBlob=new Blob([await blob.text()],{type:'text/html;charset=utf-8'});
+ const original=await blob.text();
+ session='r'+Date.now().toString(36)+Math.random().toString(36).slice(2);
+ viewportSeq=0;
+ const position=await getPosition().catch(()=>null);
+ const host={session,origin:location.origin,initialPosition:position};
+ const prelude='<script>window.__readerHost='+JSON.stringify(host)+';<'+'/script>';
+ const injected=original.replace(/<head\b[^>]*>/i,match=>match+prelude);
+ if(injected===original)throw Error('読書HTMLのheadを認識できず、v2通信設定を追加できません');
+ const htmlBlob=new Blob([injected],{type:'text/html;charset=utf-8'});
  activeUrl=URL.createObjectURL(htmlBlob);
  const frame=$('reader');
  frame.onload=()=>{
   $('setup').hidden=true;
   frame.focus();
+  sendViewport();
  };
  frame.onerror=()=>{$('status').textContent='表示できませんでした。もう一度ファイルを選択してください。';};
  frame.src=activeUrl;
