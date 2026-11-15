@@ -119,7 +119,7 @@ function syncMeasure(){
 function fit(el){return el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1}
 function partNode(p){
  const el=document.createElement(p.type==='heading'?'h2':'span');
- el.className=p.type==='heading'?'section-heading':('paragraph novel-paragraph '+(p.type==='dialogue'?'novel-dialogue':'novel-narration')+(p.continued?' continued':''));
+ el.className=p.type==='heading'?'section-heading':('paragraph novel-paragraph '+(p.type==='dialogue'?'novel-dialogue':'novel-narration')+(p.continued?' continued':'')+(p.type!=='dialogue'&&p.text.startsWith('　')?' source-indented':''));
  el.textContent=p.text;return el;
 }
 function fitsParts(existing,additional){
