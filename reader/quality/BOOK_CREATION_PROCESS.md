@@ -27,7 +27,12 @@ node tools/reader-evidence-gate.cjs PRIVATE/manifest.json deployed PRIVATE/repor
 node tools/reader-evidence-gate.cjs PRIVATE/manifest.json device PRIVATE/reports/device-evidence.json
 ```
 
-これらは**私有ファイルを読んで判定するのみ**。報告ファイルも公開GitHubには置かない。従来の `reader-private-pipeline.cjs plan / verify-plan / complete-plan` と `reader-release-control.cjs check` は引き続き必須。進行判定の新設はそれらを置き換えない。
+これらは**私有ファイルを読んで判定するのみ**。報告ファイルも公開GitHubには置かない。公開と実機の**最終完了判定**では、下記のようにGitHub Actionsで得た公開HTTP検査記録も入力し、同一書籍ID・ローダーSHA・HTTP 200・配信バイト一致と、`device` の実機証拠がそろった場合だけ `completedDelivery:true` とする。片方でも欠ければ未完了である。
+
+```sh
+node tools/reader-evidence-gate.cjs PRIVATE/manifest.json device PRIVATE/reports/final-evidence.json PRIVATE/reports/reader-public-delivery-evidence.json
+```
+従来の `reader-private-pipeline.cjs plan / verify-plan / complete-plan` と `reader-release-control.cjs check` は引き続き必須。進行判定の新設はそれらを置き換えない。
 
 **未校正プレビューだけは別経路**。利用者から当該SHAの明示的な確認依頼があり、`preview` ゲートと専用 `reader/preview/` の承認が通った場合に限り、未完成と明示して確認用として配布できる。`preview` の成功は `prepare / release / deployed / device` に昇格しない。
 
