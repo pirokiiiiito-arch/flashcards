@@ -109,3 +109,22 @@ test('Nine Stories preview passes the original private reader a trusted parent v
  assert.ok(start>=0&&end>start);
  new (require('node:vm').Script)(importer.slice(start+8,end));
 });
+
+test('Nine Stories preview persists only bounded v9 book positions and authenticates iframe messages',()=>{
+ const importer=fs.readFileSync(path.join(root,'reader/preview/nine-stories-001-020/index.html'),'utf8');
+ assert.ok(importer.includes("const POSITION_KEY='position-'+KEY"));
+ assert.ok(importer.includes("v.schema==='salinger-book-position-v1'"));
+ assert.ok(importer.includes("v.bookId==='salinger-nine-stories-shibata'"));
+ assert.ok(importer.includes("m.session!==readerSession"));
+ assert.ok(importer.includes("e.source!==frame.contentWindow"));
+ assert.ok(importer.includes("m.type==='reader-ready-v8'"));
+ assert.ok(importer.includes("m.type==='reader-position-v1'"));
+ assert.ok(importer.includes("m.type==='reader-back-to-shelf-v1'"));
+ assert.ok(importer.includes('initialPosition=await getSavedPosition()'));
+ assert.ok(importer.includes('position,date:Date.now()'));
+ assert.ok(importer.includes("sandbox=\"allow-scripts allow-downloads\""));
+ assert.ok(!importer.includes('data:image/jpeg;base64,/9j/'));
+ const open=importer.lastIndexOf('<script>'),close=importer.lastIndexOf('</script>');
+ assert.ok(open>0&&close>open);
+ new (require('node:vm').Script)(importer.slice(open+8,close));
+});
