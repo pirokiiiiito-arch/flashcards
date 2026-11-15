@@ -84,18 +84,16 @@ header.toolbar{position:relative!important;flex:0 0 auto!important;padding:7px 1
 #reader-main .sheet{border:0!important;border-radius:0!important;box-shadow:none!important;max-width:560px!important;margin:0 auto!important;background:#fffdf8!important}
 #reader-main .reading-stage,#reader-main .scan-scroll,#reader-main .segment{background:#fffdf8!important}
 #reader-main .text-flow{font-size:var(--size)!important;line-height:1.50!important;letter-spacing:0!important}
-/* uk-column-fit24-20261115:
-   WH1 reference: 20px (initial), line-height 1.50, natural right-to-left columns.
-   "22 characters" is an observed target for the reference screenshot size,
-   never an enforced per-column cutoff. Visible and offscreen measured text
-   MUST use identical geometry; bottom glyph ink must remain inside the flow.
-   The earlier 4px padding removed the original 12px safety inset and is revoked.
-   Use a font-relative safety inset (24px at the default 20px font), verified against the page-4 end-column regression.
-   Reflow/paginate rather than hide, shrink, or delete overflow text. */
-#reader-main .sheet{padding-bottom:0!important}
-#measure-sheet{padding-bottom:0!important}
-.segment{padding-bottom:0!important}
-.text-flow,.measure-flow{padding-bottom:max(16px,calc(var(--size)*1.2))!important}
+/* uk-wh1-text-geometry-20261115:
+   The user's WH1 iPhone screenshot is the reference, not a fixed 22-char line.
+   Match WH1 source: sheet padding 10px vertical / 12px horizontal; no
+   duplicate segment or text-flow bottom inset; reserve one 30px column
+   on the right. Apply the identical geometry to the offscreen measuring
+   sheet. No font reduction, forced characters-per-column, edits to
+   private text/images, or changed figure-caption pagination. */
+#reader-main .sheet,#measure-sheet{padding:10px 12px!important}
+#reader-main .segment,#measure-sheet .segment{padding:0!important}
+#reader-main .text-flow,#measure-sheet .text-flow{width:calc(100% - 30px)!important;padding:0!important}
 
 #reader-main .text-flow p{line-height:inherit!important}
 footer.reader-footer{position:relative!important;flex:0 0 auto!important;background:#f7f8f3!important;border-top:1px solid #e0e5df!important;padding:4px 10px 5px!important;box-shadow:none!important}
