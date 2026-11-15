@@ -88,7 +88,7 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
  assert.ok(script,'one self-contained public gesture bridge must exist');
  const events={},viewportEvents={},sent=[],child={postMessage:d=>sent.push(d)};
  const ctx={URLSearchParams,location:{search:'?id=g_private_drive_file'},
-  document:{getElementById:id=>id==='reader'?{contentWindow:child}:null},
+  document:{getElementById:id=>id==='reader'?{contentWindow:child}:null,querySelector:()=>null},
   window:{WH1ExactPager:{decorate:x=>x},
    visualViewport:{scale:1,addEventListener:(type,cb)=>{viewportEvents[type]=cb;}},
    addEventListener:(type,cb)=>{events[type]=cb;}}};
@@ -156,5 +156,5 @@ test('WH2 header and unified swipe remain exclusive to recognized private WH2 so
  assert.match(html, /wh2LayoutMode/,'menu switching keeps comparison and text views accessible');
  assert.match(html, /type:'original'/,'original uses the same source JPEG overlay affordance');
  assert.match(html, /wh2-wh1-font-control/,'top bar groups font controls like WH1');
- assert.match(html, /calcSegments/,'should not bake pagination numbers into host source');
+ assert.match(html, /matchedMeasure/,'reader height is derived from the current page geometry');
 });
