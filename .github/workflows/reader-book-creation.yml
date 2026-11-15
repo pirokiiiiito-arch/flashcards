@@ -8,6 +8,13 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tests/reader-book-preflight.test.cjs'
+      - 'tools/reader-evidence-gate.cjs'
+      - 'tools/reader-verify-pages.cjs'
+      - 'tests/reader-evidence-gate.test.cjs'
+      - 'tests/reader-verify-pages.test.cjs'
+      - 'reader/quality/BOOK_CREATION_PROCESS.md'
+      - 'reader/quality/RELEASE_PROCESS.md'
+      - 'AGENTS.md'
   push:
     branches: [main]
     paths:
@@ -17,6 +24,13 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tests/reader-book-preflight.test.cjs'
+      - 'tools/reader-evidence-gate.cjs'
+      - 'tools/reader-verify-pages.cjs'
+      - 'tests/reader-evidence-gate.test.cjs'
+      - 'tests/reader-verify-pages.test.cjs'
+      - 'reader/quality/BOOK_CREATION_PROCESS.md'
+      - 'reader/quality/RELEASE_PROCESS.md'
+      - 'AGENTS.md'
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,7 +49,9 @@ jobs:
       - name: Validate book creation checks and rejection fixtures
         run: |
           node --check tools/reader-book-preflight.cjs
-          node --test tests/reader-book-preflight.test.cjs
+          node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs
+          node --check tools/reader-evidence-gate.cjs
+          node --check tools/reader-verify-pages.cjs
       - name: Validate every registered preview before new-book publication
         run: node tools/reader-book-preflight.cjs --all
       - name: Record verification boundary
