@@ -6,7 +6,8 @@
     "errors": [],
     "warnings": [
       "Preview explicitly requested by user; local-only import page does not certify the unverified text.",
-      "Full source proof, independent source review and iPhone/Chrome device tests not completed."
+      "Full source proof, independent source review and iPhone/Chrome device tests not completed.",
+      "The user reported that the prior iPhone reader preview failed to respond to swipe. Viewport handshake was added and tested in Chromium only; real iPhone gestures/pinch/pan still require validation."
     ],
     "eligible": true,
     "bookId": "nine-stories-001-020-preview",
@@ -18,9 +19,9 @@
         20
       ],
       "artifactSha256": "9e4ddbc152103bdf6c66363086741fb63824eb4fea98b4e6c3caa4055f42accb",
-      "loaderSha256": "846e499e775dc7d06e4960e0e809aabe1fe12468f5c0f3a975a94af359af0203"
+      "loaderSha256": "22468304d5812fdbd3fc3f76a34e719f491af0de440b984b43febc7206b5df91"
     },
-    "subjectSha256": "547d57c7965a529d5b98f9c2430465513f5d593bbc921444fe6cdff75122c692",
+    "subjectSha256": "37a32237aae5862626938890fb1083719ceb0e9d3dc5ad63c7a1d7303a622754",
     "authorization": {
       "sha256": "69726bb2af66595452e99975028b29d653e2fb523c9812532d79547d41f4cbd5",
       "explicit": true
@@ -210,12 +211,12 @@
     },
     "channel": "preview",
     "entry": "reader/preview/nine-stories-001-020/index.html",
-    "bookRecordSha256": "864291ae5f97cf19cbf3b764a72ecbe8cda56d536430422b6e192841646d09d3",
-    "reportSha256": "8a62c7e4e9e5a2e2b0306d3d41b1f22d26b612b59d25294457d50cf111445508",
+    "bookRecordSha256": "73b436feb8e6d6387614c638b12aa6a14553c0811a82e292a9cd630af6b15179",
+    "reportSha256": "03321b1b7734950f05a79a1093c685a92194a90fb29c8cf39832b1de08af25bd",
     "publicFiles": {
-      "reader/preview/nine-stories-001-020/index.html": "846e499e775dc7d06e4960e0e809aabe1fe12468f5c0f3a975a94af359af0203"
+      "reader/preview/nine-stories-001-020/index.html": "22468304d5812fdbd3fc3f76a34e719f491af0de440b984b43febc7206b5df91"
     },
     "trustBoundary": "Local preview attestation only, not proof of book OCR completion or real iPhone testing."
   },
-  "digest": "ed9c6feddf212b2659828fddf82aba7faf5ba8e85b12c934a368e0800055f2e3"
+  "digest": "05972fabd3522774ebeb6c0e7302274a86d2bbcf3fdcc02fe3393837fb0e96d9"
 }
