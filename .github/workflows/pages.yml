@@ -199,6 +199,7 @@ jobs:
         run: |
           node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs
           node tools/reader-release-control.cjs repo "$READER_AUDIT_ROOT"
+          node --test tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -217,4 +218,15 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Checkout the exact deployed source for public URL evidence
+        uses: actions/checkout@v4
+      - name: Verify admitted reading URLs return HTTP 200 and exact SHA-256 bytes
+        run: node tools/reader-verify-pages.cjs . "$RUNNER_TEMP/reader-public-delivery-evidence.json"
+      - name: Preserve public delivery evidence even on verification failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reader-public-delivery-evidence
+          path: ${{ runner.temp }}/reader-public-delivery-evidence.json
+          if-no-files-found: warn
 
