@@ -22,22 +22,22 @@ test('reader loader remains parseable and source verification is retained',()=>{
 });
 test('UK controls match the approved WH1 screenshot with a dedicated toolbar and a separate progress footer',()=>{
  const wh1=fs.readFileSync(path.join(__dirname,'../reader/wh1/all/index.html'),'utf8');
- assert.match(wh1,/#bookshelfNav\\{[\\s\\S]*?min-height:calc\\(44px \\+ env\\(safe-area-inset-top\\)\\)/);
- assert.match(loader,/<nav id="ukBookshelfNav"[^>]*><button[^>]*id="backToShelfButton"[^>]*>◀ 本棚へ<\\/button><span id="ukShelfStatus">OCR独立校正継続中<\\/span><\\/nav>/);
- assert.match(loader,/<button type="button" id="firstPageButton" aria-label="本の先頭へ戻る" hidden>最初へ<\\/button>/);
- assert.match(loader,/#ukBookshelfNav\\{[\\s\\S]*?min-height:calc\\(44px \\+ env\\(safe-area-inset-top\\)\\)/);
- assert.match(loader,/#reader-main\\.reader-main\\{[\\s\\S]*?flex:1 1 0%!important/);
- assert.match(loader,/header\\.toolbar\\{position:relative!important/);
- assert.match(loader,/#ukFontGroup\\{margin-left:auto!important/);
- assert.match(loader,/footer\\.reader-footer \\.progress-line/);
- assert.match(loader,/#ukPageMajor\\{display:block/);
- assert.match(loader,/readerReady=true;placeFirstPageButton\\(\\);notifyBrowserZoom\\(\\)/);
- assert.match(loader,/if\\(opening\\)\\{opening=false;unbusy\\(\\);\\$\\('setup'\\)\\.hidden=true;\\}[\\s\\S]*?placeFirstPageButton\\(\\);/);
- assert.doesNotMatch(loader,/data:image\\/(?:jpeg|png);base64,[A-Za-z0-9+/]{64,}/,'no private scan is published');
+ assert.match(wh1,/#bookshelfNav\{[\s\S]*?min-height:calc\(44px \+ env\(safe-area-inset-top\)\)/);
+ assert.match(loader,/<nav id="ukBookshelfNav"[^>]*><button[^>]*id="backToShelfButton"[^>]*>◀ 本棚へ<\/button><span id="ukShelfStatus">OCR独立校正継続中<\/span><\/nav>/);
+ assert.match(loader,/<button type="button" id="firstPageButton" aria-label="本の先頭へ戻る" hidden>最初へ<\/button>/);
+ assert.match(loader,/#ukBookshelfNav\{[\s\S]*?min-height:calc\(44px \+ env\(safe-area-inset-top\)\)/);
+ assert.match(loader,/#reader-main\.reader-main\{[\s\S]*?flex:1 1 0%!important/);
+ assert.match(loader,/header\.toolbar\{position:relative!important/);
+ assert.match(loader,/#ukFontGroup\{margin-left:auto!important/);
+ assert.match(loader,/footer\.reader-footer \.progress-line/);
+ assert.match(loader,/#ukPageMajor\{display:block/);
+ assert.match(loader,/readerReady=true;placeFirstPageButton\(\);notifyBrowserZoom\(\)/);
+ assert.match(loader,/if\(opening\)\{opening=false;unbusy\(\);\$\('setup'\)\.hidden=true;\}[\s\S]*?placeFirstPageButton\(\);/);
+ assert.doesNotMatch(loader,/data:image\/(?:jpeg|png);base64,[A-Za-z0-9+/]{64,}/,'no private scan is published');
 });
 
 test('first-page navigation occupies the native action row without duplicating controls',()=>{
- const fn=extract(/ function placeFirstPageButton\\(\\)\\{[\\s\\S]*?\\n \\}/,'placement function');
+ const fn=extract(/ function placeFirstPageButton\(\)\{[\s\S]*?\n \}/,'placement function');
  const els={},mounted=[];
  const body={append(node){node.parentElement=body;mounted.push(node);}};
  const nav={parentElement:null,hidden:true};
@@ -64,7 +64,7 @@ test('first-page navigation occupies the native action row without duplicating c
  }};
  const sandbox={document,$:id=>els[id]||null,firstPageButton:first,backToShelfButton:shelf,
    readerReady:true,book:{},updateWh1Footer:()=>footerUpdates++};
- vm.createContext(sandbox);vm.runInContext(fn+'\\nplaceFirstPageButton();placeFirstPageButton();',sandbox);
+ vm.createContext(sandbox);vm.runInContext(fn+'\nplaceFirstPageButton();placeFirstPageButton();',sandbox);
  assert.equal(nav.parentElement,body);
  assert.equal(mounted.length,1,'bookshelf strip is mounted just once');
  assert.equal(menu.textContent,'全巻');
@@ -74,14 +74,14 @@ test('first-page navigation occupies the native action row without duplicating c
  assert.equal(footerUpdates,2);
  assert.equal(nav.hidden,false);assert.equal(first.hidden,false);assert.equal(shelf.hidden,false);
  const missing={document:{body},$:()=>null,firstPageButton:{hidden:true},backToShelfButton:{hidden:true},readerReady:false,book:{}};
- vm.createContext(missing);vm.runInContext(fn+'\\nplaceFirstPageButton();',missing);
+ vm.createContext(missing);vm.runInContext(fn+'\nplaceFirstPageButton();',missing);
  assert.equal(missing.firstPageButton.hidden,true);
 });
 test('missing native action row never overlays the original book or moves the first-page control',()=>{
- const fn=extract(/ function placeFirstPageButton\\(\\)\\{[\\s\\S]*?\\n \\}/,'placement function');
+ const fn=extract(/ function placeFirstPageButton\(\)\{[\s\S]*?\n \}/,'placement function');
  const body={append(){throw Error('unexpected overlay');}},nav={hidden:true},first={parentElement:null,hidden:true},shelf={hidden:true};
  const sandbox={document:{body,querySelector:()=>null},$:id=>id==='ukBookshelfNav'?nav:null,firstPageButton:first,backToShelfButton:shelf,readerReady:true,book:{}};
- vm.createContext(sandbox);vm.runInContext(fn+'\\nplaceFirstPageButton();',sandbox);
+ vm.createContext(sandbox);vm.runInContext(fn+'\nplaceFirstPageButton();',sandbox);
  assert.equal(first.parentElement,null);assert.equal(first.hidden,true);assert.equal(nav.hidden,true);
 });
 
