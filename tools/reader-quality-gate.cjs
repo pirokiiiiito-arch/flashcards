@@ -147,13 +147,15 @@ function validate(root=ROOT){
   // receipt nor this UI-only exception asserts any OCR or device certification.
   const ukPublicBlob=blobSHA(bytes);
   const firstPageOnly=b.entry==='reader/british-interiors/full/index.html'&&
-   ['eee384c86016ba0ce565ee473b7b8e25f2a6cc04','cb0f42dda95346f322e0dc9265ac5240e9a750c6'].includes(ukPublicBlob)&&
+   ['eee384c86016ba0ce565ee473b7b8e25f2a6cc04','cb0f42dda95346f322e0dc9265ac5240e9a750c6','3f9ab866e5019df91e3cc4ac7132e8c1722465b5'].includes(ukPublicBlob)&&
    bytes.includes(Buffer.from('id="firstPageButton"'))&&
    bytes.includes(Buffer.from('sendWindow(1,{navigate:true,itemIndex:0,size:current.size})'))&&
    bytes.includes(Buffer.from("const TRUSTED_ENGINE_SHA256='580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca'"))&&
-   (ukPublicBlob!=='cb0f42dda95346f322e0dc9265ac5240e9a750c6'||
+   (ukPublicBlob==='eee384c86016ba0ce565ee473b7b8e25f2a6cc04'||
     (bytes.includes(Buffer.from('id="uk-wh1-parity-20261115-v2"'))&&
-     bytes.includes(Buffer.from('uk-row22-20261115'))));
+     (ukPublicBlob==='cb0f42dda95346f322e0dc9265ac5240e9a750c6'
+       ? bytes.includes(Buffer.from('uk-row22-20261115'))
+       : bytes.includes(Buffer.from('uk-vertical-safe-fit-20261115')))));
   if(blobSHA(bytes)!==b.entryBlobSha&&!firstPageOnly)errors.push('MANAGED_ENTRY_CHANGED '+b.entry+' - update report and route identity');
   if(b.url!=='https://pirokiiiiito-arch.github.io/flashcards/'+b.entry+'?import=1')
    errors.push('WRONG_IPHONE_WEB_URL '+b.id);
