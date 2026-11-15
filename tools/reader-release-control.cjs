@@ -14,7 +14,7 @@ const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bb719e77b50d178ed19a2520cb9d774ba790
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
- 'reader/british-interiors/full/index.html':'cb0f42dda95346f322e0dc9265ac5240e9a750c6'
+ 'reader/british-interiors/full/index.html':'3f9ab866e5019df91e3cc4ac7132e8c1722465b5'
 });
 // Exact byte-pinned public navigation only. This does not certify OCR or source files.
 const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
