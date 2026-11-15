@@ -68,3 +68,18 @@ test('near-full cutoff only changes source OCR text, not figure-caption splits',
  assert.equal(window.safeCut(example,fit),figureCut,'text-only state is always released');
  assert.doesNotMatch(html,/installUKColumnWordGuard|uk-atomic-word/);
 });
+
+test('WH1 text geometry uses one equal visible/measurement box at every font size',()=>{
+ const expected=[
+  '/* uk-wh1-text-geometry-20261115:',
+  '#reader-main .sheet,#measure-sheet{padding:10px 12px!important}',
+  '#reader-main .segment,#measure-sheet .segment{padding:0!important}',
+  '#reader-main .text-flow,#measure-sheet .text-flow{width:calc(100% - 30px)!important;padding:0!important}'
+ ];
+ for(const line of expected)assert.ok(html.includes(line),'missing WH1-matched geometry: '+line);
+ assert.doesNotMatch(html,/uk-column-fit24-20261115|padding-bottom:max\(16px,calc\(var\(--size\)\*1\.2\)\)/,
+  'prior unnecessary 24px bottom inset must not silently return');
+ assert.match(html,/#reader-main \.text-flow\{font-size:var\(--size\)!important;line-height:1\.50!important;letter-spacing:0!important\}/);
+ assert.match(html,/installUKContinuousParagraphFlow\(\);\s*installUKNearFullTextBoundary\(\);/,
+  'existing paragraph and safe boundary logic must remain');
+});
