@@ -19,6 +19,12 @@ Read the canonical sixty-item Google Drive standard `1CngvhZvJPQsGizwmaVKC_old4V
 
 Resume by restoring the entire private workspace, inspecting manifest and correction history, and verifying input hashes. Save the checkpoint before ending a long run. Preserve unresolved status honestly; stopping a bad release alone is not completion of the source proofreading task.
 
+## Evidence gates before advancing or claiming completion
+
+For **every future scan-book** create/revise/rebuild task, use the execution-evidence progression in `reader/quality/BOOK_CREATION_PROCESS.md`. Run `node tools/reader-evidence-gate.cjs PRIVATE/manifest.json prepare` before private staging, `release` after actual same-ID Google Drive readback, `deployed` for production deployment evidence, and `device` only with real iPhone confirmation. The gate calls the existing canonical sixty-item validator. A failed/unknown prerequisite blocks promotion and any completion claim. The only exception is an explicitly requested, uncertified preview; its `preview` pass never counts as a full-book pass.
+
+The Pages workflow performs **after-deploy HTTP 200 + served SHA-256** checks for every evidence-admitted reader entry and retains an Actions artifact. Always check that result, not merely GitHub source presence or a green deploy step, before saying a Chrome URL is live. If a live check cannot be done, mark it unverified; never fabricate success. Report the actual evidence, unresolved statuses and scope. Immutable matching evidence may be reused only when the current artifact/SHA and rule applicability allow it. These tools cannot enforce behavior outside the official workflow (for example a manually typed chat link); apply the same evidence gate when responding.
+
 ## Book creation / next 20 scans (automatic on every request)
 
 For each new book, each further 20-scan set and each reader update, perform the production sequence in `reader/quality/BOOK_CREATION_PROCESS.md`. Before any public commit, use `node tools/reader-book-preflight.cjs BOOK_ID` and `node tools/reader-book-preflight.cjs --all`; GitHub Actions `.github/workflows/reader-book-creation.yml` runs on newly registered/modified preview records. Do not claim a preflight is source proofreading, device verification, or successful deployment. Historical preview issuer compatibility is exact per-book/per-receipt; it never applies to a normal reader release. Always report Drive HTML URL and dedicated Chrome URL in plain text with the actual observed publication status, including 404 or unpublished.
