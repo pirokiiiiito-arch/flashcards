@@ -106,6 +106,14 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
  assert.match(styled, /#notice,.original-status\{display:none!important\}/);
  assert.match(styled, /id="wh2-wh1-parity-bridge"/);
  assert.match(styled, /#wh2-wh1-progress-box/);
+ assert.match(styled, /#wh2-wh1-font-control/,'WH1 font capsule is a single toolbar group');
+ assert.match(styled, /#read-btn,#compare-btn\{display:none!important\}/,'advanced views move into the whole-book menu');
+ assert.match(styled, /\.reading\{padding:11px 12px 14px 9px!important\}/,'WH2 shares compact WH1-sized page insets');
+ const measuredSource=fullSource.replace('</body>',
+  "<script>$('measure-wrap').style.height=(Math.max(300,$('main').clientHeight-42))+'px';</script></body>");
+ const revisedMeasurement=ctx.window.WH1ExactPager.decorate(measuredSource);
+ assert.match(revisedMeasurement, /style.height=Math.max\(300,\$\('main'\).clientHeight\)/,
+  'text pagination must use actual available reading height rather than retain 42px double inset');
  assert.ok(styled.includes('本文そのもの'),'reader content must remain untouched');
  assert.ok(updated.includes('<main id="main">本文そのもの</main>'),'reading content remains byte-identical');
  assert.equal(ctx.window.WH1ExactPager.decorate(source+blocked),source+blocked,
@@ -141,4 +149,12 @@ test('existing Japanese bookshelf title order uses only three exact public UI fi
   fs.appendFileSync(path.join(temp,'reader/library/app.js'),'\\n// unauthorized app change');
   assert.throws(()=>gate.admittedBookshelfNavUI(temp,policy),/BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
+});
+
+test('WH2 header and unified swipe remain exclusive to recognized private WH2 source',()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ assert.match(html, /wh2LayoutMode/,'menu switching keeps comparison and text views accessible');
+ assert.match(html, /type:'original'/,'original uses the same source JPEG overlay affordance');
+ assert.match(html, /wh2-wh1-font-control/,'top bar groups font controls like WH1');
+ assert.match(html, /calcSegments/,'should not bake pagination numbers into host source');
 });
