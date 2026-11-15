@@ -25,7 +25,7 @@ input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events
 ol{font-size:13px;line-height:1.8;color:#536369;padding-left:23px}
 a{color:#2c666c}
 </style>
-<style id="browser-page-pinch-shell-v2">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}</style></head>
+<style id="reader-parent-native-pinch-v3">html,body,#reader{touch-action:auto}</style></head>
 <body>
 <iframe id="reader" title="ナイン・ストーリーズ 縦書き読書" sandbox="allow-scripts allow-downloads"></iframe>
 <div id="setup">
@@ -50,7 +50,27 @@ a{color:#2c666c}
 'use strict';
 const $=id=>document.getElementById(id);
 const DB='nine-stories-reader-on-device-v1',STORE='books',KEY='scans001to020',MAX=350*1024*1024;
-let currentBlob=null,activeUrl='';
+let currentBlob=null,activeUrl='',readerSession='',viewportSeq=0;
+const frame=$('reader');
+function syncReaderViewport(){
+ if(!readerSession||!frame.contentWindow)return;
+ const view=window.visualViewport;
+ const scale=Number(view?.scale)||1;
+ frame.contentWindow.postMessage({
+  type:'reader-viewport-v8',session:readerSession,seq:++viewportSeq,
+  scale,offsetLeft:Number(view?.offsetLeft)||0,offsetTop:Number(view?.offsetTop)||0
+ },'*'); // iframe sandbox creates an opaque origin; child authenticates parent and session.
+}
+window.addEventListener('message',e=>{
+ const m=e.data;
+ if(e.source!==frame.contentWindow||m?.type!=='reader-ready-v8'||m.session!==readerSession)return;
+ syncReaderViewport();
+});
+window.visualViewport?.addEventListener('resize',syncReaderViewport);
+window.visualViewport?.addEventListener('scroll',syncReaderViewport);
+window.addEventListener('resize',syncReaderViewport);
+window.addEventListener('pageshow',syncReaderViewport);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncReaderViewport();});
 function database(){
  return new Promise((resolve,reject)=>{
   if(!('indexedDB' in window))return reject(Error('端末保存には対応していません'));
@@ -93,13 +113,20 @@ async function openBook(blob){
  await verify(blob);
  currentBlob=blob;
  $('status').textContent='読書画面を開いています…';
+ const source=await blob.text();
+ if(!/<\/head>/i.test(source))throw Error('HTMLのheadが見つかりません。');
+ readerSession=Array.from(crypto.getRandomValues(new Uint32Array(4)),x=>x.toString(16).padStart(8,'0')).join('');
+ viewportSeq=0;
+ // Inject metadata into the in-memory viewing copy only: never change private OCR/images.
+ // A split tag keeps the parent HTML's own script element intact.
+ const hostScript='<scr'+'ipt data-reader-host>window.__readerHost='+JSON.stringify({session:readerSession,origin:location.origin})+';<\/scr'+'ipt>';
+ const html=source.replace(/<\/head>/i,hostScript+'</head>');
  if(activeUrl)URL.revokeObjectURL(activeUrl);
- const htmlBlob=new Blob([await blob.text()],{type:'text/html;charset=utf-8'});
- activeUrl=URL.createObjectURL(htmlBlob);
- const frame=$('reader');
+ activeUrl=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
  frame.onload=()=>{
   $('setup').hidden=true;
   frame.focus();
+  syncReaderViewport();
  };
  frame.onerror=()=>{$('status').textContent='表示できませんでした。もう一度ファイルを選択してください。';};
  frame.src=activeUrl;
