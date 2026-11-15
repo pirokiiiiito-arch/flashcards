@@ -11,7 +11,7 @@ const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c643
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
- 'reader/british-interiors/full/index.html':'eee384c86016ba0ce565ee473b7b8e25f2a6cc04'
+ 'reader/british-interiors/full/index.html':'2c259afb6be679efb594a4b9ca984f7c1f1f4172'
 });
 // Exact byte-pinned public navigation only. This does not certify OCR or source files.
 const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
@@ -25,7 +25,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
- 'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
+ 'reader/library/read.html':'4e17ae31cb85262f0fb6a6fa57a5fa935232c449'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
