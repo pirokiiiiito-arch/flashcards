@@ -82,7 +82,7 @@ function paginateFigures(){
  const out=[];let global=0;
  figures.forEach((f,i)=>{
   $('measure-caption-label').textContent=f.title;
-  if(f.units.length===0){out.push({kind:'image',figure:i,caption:'',start:global,end:global,subpage:1});return}
+  if(f.units.length===0){out.push({kind:'image',figure:i,caption:'',start:global,end:global+1,subpage:1});global++;return}
   let off=0,count=0;
   while(off<f.units.length){
    const remain=f.units.length-off;let lo=0,hi=remain;
