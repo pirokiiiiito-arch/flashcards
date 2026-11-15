@@ -135,3 +135,14 @@ test('post-deploy novel URL evidence requires HTTP 200 and identical actual byte
  assert.equal(stale.eligible,false);
  assert.equal(stale.checks.find(x=>x.entry.endsWith('/novel.js')).error,'DEPLOYED_BYTES_DIFFER');
 });
+
+test('novel chapter and section headings are truly black without recoloring history templates',()=>{
+ const common=read('standard.css');
+ assert.match(common,/\.text-flow \.section-heading\{[^\n]*color:var\(--accent\)/);
+ assert.match(css,/body\.novel-reading \.text-flow \.section-heading\s*\{\s*color:#000\s*;/);
+ const standardPosition=demo.indexOf('href="./standard.css"');
+ const novelPosition=demo.indexOf('href="./novel.css"');
+ assert.ok(standardPosition>=0&&novelPosition>standardPosition,'novel override must load after standard');
+ assert.match(demo,/<body class="novel-reading">/);
+ assert.ok(data.blocks.some(x=>x.type==='heading'),'sample must actually show a heading');
+});
