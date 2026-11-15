@@ -14,7 +14,7 @@ const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bb719e77b50d178ed19a2520cb9d774ba790
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
- 'reader/british-interiors/full/index.html':'357e144d616e1a0566028b74c6d6c19d79868c22'
+ 'reader/british-interiors/full/index.html':'04a86ee531bbcfbe13b10a3abb5263266fdafba9'
 });
 // Exact byte-pinned public navigation only. This does not certify OCR or source files.
 const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
@@ -32,9 +32,9 @@ const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'728d6c40fcdac399c532a810c321e3e822075e22',
- 'reader/library/index.html':'6f8333db3e42489f1a89bb031bebed42001d8976',
- 'reader/library/sw.js':'bf069583d7464e027ee7609d97eaa23dd1e19592'
+ 'reader/library/app.js':'eae3015edced9d02f042bd5e73463101782a5026',
+ 'reader/library/index.html':'98a1d8eba74c9c84a73dbfffa791e174c542c9ca',
+ 'reader/library/sw.js':'6c01e57ae1fe9aec2c35b2caf760473b162d1a1f'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -241,6 +241,7 @@ function admittedFirstPageUI(root,policy){
   const uk=fs.readFileSync(safe(root,'reader/british-interiors/full/index.html'),'utf8');
   const shared=fs.readFileSync(safe(root,'reader/library/wh1-exact-pagination.js'),'utf8');
   demand(uk.includes('id="firstPageButton"')&&uk.includes("sendWindow(1,{navigate:true,itemIndex:0,size:current.size})"),'UK_FIRST_PAGE_CONTROL_MISSING');
+  demand(uk.includes('uk-column-fit24-20261115')&&!uk.includes('installUKColumnWordGuard()')&&!uk.includes('uk-atomic-word'),'UK_RESTORED_COLUMN_LAYOUT_MISMATCH');
   demand(shared.includes("first.textContent='最初へ'")&&shared.includes("type:'bookStart'"),'SHARED_FIRST_PAGE_CONTROL_MISSING');
   demand(uk.includes("const TRUSTED_ENGINE_SHA256='580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca'"),'UK_PRIVATE_ENGINE_IDENTITY_CHANGED');
  }
@@ -353,13 +354,14 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('private-bookshelf-shell-v15-uk-column-fit24-20261115')&&
     sw.includes('app.js?v=bookshelf-uk-column-fit24-20261115')&&
     app.includes('&v=uk-column-fit24-20261115');
-  const wordGuardEntry=index.includes('app.js?v=bookshelf-uk-wordguard-20261115')&&
-    sw.includes('private-bookshelf-shell-v16-uk-wordguard-20261115')&&
-    sw.includes('app.js?v=bookshelf-uk-wordguard-20261115')&&
-    app.includes('&v=uk-wordguard-20261115');
+  // Exact restored uniform-column UI; do not restore the rejected word guard.
+  const restoredEntry=index.includes('app.js?v=bookshelf-uk-restored-20261115')&&
+    sw.includes('private-bookshelf-shell-v17-uk-restored-20261115')&&
+    sw.includes('app.js?v=bookshelf-uk-restored-20261115')&&
+    app.includes('&v=uk-column-fit24-restored-20261115');
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wordGuardEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||restoredEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }
