@@ -21,6 +21,9 @@ test('v2 standalone engine parses and supports text, image and mixed in one stre
  assert.match(js,/\['text','image','mixed'\]/);
  assert.match(js,/function paginateAll\(/);
  assert.match(js,/function paginateBlocks\(/);
+ assert.match(js,/function protectedPageBoundary\(/);
+ assert.match(js,/いずれ\|それぞれ\|どちら/);
+ assert.match(js,/0-9０-９/);
  assert.match(js,/function paginateOneFigure\(/);
  assert.match(js,/flow\.push\(\{kind:'text'/);
  assert.match(js,/flow\.push\(\{kind:'image'/);
