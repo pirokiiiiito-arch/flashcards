@@ -5,6 +5,7 @@ on:
       - 'templates/reader/v2/**'
       - 'tests/reader-template-v2.test.cjs'
       - 'tests/reader-novel-template.test.cjs'
+      - 'tools/verify-novel-template-pages.cjs'
       - '.github/workflows/reader-template-v2.yml'
   push:
     branches: [main]
@@ -12,6 +13,7 @@ on:
       - 'templates/reader/v2/**'
       - 'tests/reader-template-v2.test.cjs'
       - 'tests/reader-novel-template.test.cjs'
+      - 'tools/verify-novel-template-pages.cjs'
       - '.github/workflows/reader-template-v2.yml'
   workflow_dispatch:
 permissions:
@@ -30,6 +32,7 @@ jobs:
           node --check templates/reader/v2/standard.js
           node --check templates/reader/v2/novel-dialogue.js
           node --check templates/reader/v2/novel.js
+          node --check tools/verify-novel-template-pages.cjs
           node --test tests/reader-template-v2.test.cjs tests/reader-novel-template.test.cjs
       - name: Package exact public v2 template bytes for browser verification
         if: always()
