@@ -8,7 +8,7 @@
       "A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan.",
       "Private source has incomplete full-letter and independent proof; public entry is a deliberately unverified draft.",
       "Supplemental source-proof review page loads user-selected private ZIP only in-browser; first-pass text remains uncertified.",
-      "2026-11-15 loader-only iPhone opening repair: no automatic 20MB IndexedDB save before opening, one verification pass, iframe srcdoc fallback, readiness and diagnostics. Private source remains uncertified; iPhone test pending."
+      "2026-11-15 standard-reader v1 UI adaptation: uses user-selected private HTML v8.7, preserves OCR/JPEG; source second-pass proof and iPhone device testing still pending."
     ],
     "eligible": true,
     "bookId": "world-symbols-021-040",
@@ -25,9 +25,9 @@
       "originalIndexSha256": "11d4e35ddbd3fdd09d9a3ec5b2f0f2c0b14d402c3a979aa413e07a8685dfe83a",
       "templateSha256": "e5e559d6738550447f68b09574107883d523bfabda41ae130ed6bac8238b14e7",
       "profileSha256": "d16c021032971f0e222edb1e561be172d82d81f1b6c8e86b608b794468d8702b",
-      "loaderSha256": "adb1d6055b94352c4d15bfdc586a5cbb91433af8d5cd0dd8e824de69bbe9cf4e"
+      "loaderSha256": "f4204a7be1ab2fc396cd3238c0c18bf8cbe4d4777bd2564869170720576e1a0e"
     },
-    "subjectSha256": "7403fcbdbe55798b4de6ebdbd2bfec8f9f12f1ca9ea3bd3356d86b74f3ed3a31",
+    "subjectSha256": "3ec6084224b8e544ea7c23c75cea7319963611e9be0ec672e47257c086a08d22",
     "authorization": {
       "sha256": "f66f0205afde9a07f46bc70222ebfdd1047972d8feec376e2682cb9fc8df0bd5",
       "explicit": true
@@ -217,15 +217,15 @@
     },
     "channel": "preview",
     "entry": "reader/preview/world-symbols-021-040/index.html",
-    "bookRecordSha256": "8bae41897217318736caad87d17e1c1029bd3fde9f2fb70e52c3e38053875189",
+    "bookRecordSha256": "46332969883c6d88680329da2867deca1aebc8cb2059b2e21c427f7957c643c0",
     "reportSha256": "09fa70700382f3c4b76613570f4012013fdde0f1766203d652f4474ec697764e",
     "publicFiles": {
-      "reader/preview/world-symbols-021-040/index.html": "adb1d6055b94352c4d15bfdc586a5cbb91433af8d5cd0dd8e824de69bbe9cf4e",
-      "reader/preview/world-symbols-021-040/sw.js": "b46be589969fe695726f9db95be3626797390646e78119f90c5ae202f7ef1898",
+      "reader/preview/world-symbols-021-040/index.html": "f4204a7be1ab2fc396cd3238c0c18bf8cbe4d4777bd2564869170720576e1a0e",
+      "reader/preview/world-symbols-021-040/sw.js": "a90476dc957424b83d7278fbc4e354eeda01e8c96a6e085eead681574b04e79c",
       "reader/preview/world-symbols-021-040/review.html": "2a087951c7ae8b9d37bf14f863cb77d736ac1e6152dde6a94b88705dac7d34d4"
     },
-    "issuedAt": "2026-11-15T11:58:00.000Z",
+    "issuedAt": "2026-11-15T13:52:00.000Z",
     "trustBoundary": "Local evidence attestation, not independent reviewer authentication."
   },
-  "digest": "e1ec1a5dde2f807b64c1a9b1067f2359ef06bf4c4286703c3d392a8487b2c05a"
+  "digest": "131aa62fe8532d6c4661170d4eaa4cd2925fbbd65f6ab24fda08ad2e55400863"
 }

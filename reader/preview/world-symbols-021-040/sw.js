@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='world-symbols-preview-021-040-v86-20261115';
+const CACHE='world-symbols-preview-021-040-v87-20261115';
 const ENTRY=new URL('./index.html',self.location).href;
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.add(ENTRY)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('world-symbols-preview-021-040-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
