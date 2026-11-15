@@ -107,7 +107,7 @@ test('WH2 swipe-only enhancement gates one-finger page turns on authoritative pa
  assert.match(styled, /id="wh2-wh1-parity-bridge"/);
  assert.match(styled, /#wh2-wh1-progress-box/);
  assert.match(styled, /#wh2-wh1-font-control/,'WH1 font capsule is a single toolbar group');
- assert.match(styled, /#read-btn,#compare-btn\{display:none!important\}/,'advanced views move into the whole-book menu');
+ assert.ok(styled.includes('.controls #read-btn,.controls #compare-btn{display:none!important}'),'advanced views move into the whole-book menu');
  assert.match(styled, /\.reading\{padding:11px 12px 14px 9px!important\}/,'WH2 shares compact WH1-sized page insets');
  const measuredSource=fullSource.replace('</body>',
   "<script>$('measure-wrap').style.height=(Math.max(300,$('main').clientHeight-42))+'px';</script></body>");
