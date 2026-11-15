@@ -344,6 +344,14 @@
       "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/preview/nine-stories-001-020/index.html?import=1",
       "report": "reader/quality/reports/nine-stories-001-020-preview.json",
       "stage": "draft"
+    },
+    {
+      "id": "nine-stories-021-040-preview",
+      "entry": "reader/preview/nine-stories-021-040/index.html",
+      "entryBlobSha": "39069ff74b2acb46f1c256e1c964625f6c60e7cf",
+      "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/preview/nine-stories-021-040/index.html?import=1",
+      "report": "reader/quality/reports/nine-stories-021-040-preview.json",
+      "stage": "draft"
     }
   ]
 }
