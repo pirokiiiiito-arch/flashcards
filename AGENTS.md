@@ -4,6 +4,7 @@ Scope: scan-book readers, not plants/colors/word or other applications.
 
 Read the canonical sixty-item Google Drive standard `1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2`, **`reader/quality/BOOK_CREATION_PROCESS.md`**, `reader/quality/RELEASE_PROCESS.md`, and the persisted private manifest before continuing. Keep the same sixty IDs. A new chat or 'next 20 pages' is not permission to omit proofreading.
 
+- When creating or revising a scan book, use `templates/reader/v2` as the current WH1-based text/image/mixed reference. `templates/reader/v1` is legacy and must not be silently reused. Do not migrate an existing book to v2 without full template-layout/gesture/pinch/figure regression, exact private HTML readback, and version-specific evidence. The public demo is never the private book.
 - Keep original images and raw OCR immutable. Resume canonical revisions and correction history; never fall back to raw OCR when a corrected revision exists.
 - Actually reread the source independently, inventory all text regions and edges, resolve differences/numbers/anomalies and page boundaries, then test the exact deliverable. Do not invent evidence, reviewer actions or PASS results.
 - Use `reader-private-pipeline.cjs` for corrections/build/plan/export and `reader-release-control.cjs` for evidence validation. Schema PASS is not OCR certification.
