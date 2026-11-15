@@ -6,7 +6,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const v=require('./reader-release-control.cjs');
 const {RULES}=require('./reader-quality-gate.cjs');
-const ROOT=path.resolve(__dirname,'..');
+const ROOT=process.env.READER_AUDIT_ROOT?path.resolve(process.env.READER_AUDIT_ROOT):path.resolve(__dirname,'..');
 function read(rel){if(typeof rel!=='string'||!/^reader\/[a-zA-Z0-9_./-]+$/.test(rel)||rel.includes('..'))throw Error('UNSAFE_BOOK_PATH '+rel);return fs.readFileSync(path.join(ROOT,rel));}
 const reg=JSON.parse(read('reader/quality/registry.json')),policy=JSON.parse(read('reader/quality/release-policy.json'));
 const errors=[],rows=[];
