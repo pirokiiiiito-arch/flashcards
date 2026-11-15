@@ -14,7 +14,7 @@ const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bb719e77b50d178ed19a2520cb9d774ba790
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
- 'reader/british-interiors/full/index.html':'04a86ee531bbcfbe13b10a3abb5263266fdafba9'
+ 'reader/british-interiors/full/index.html':'357e144d616e1a0566028b74c6d6c19d79868c22'
 });
 // Exact byte-pinned public navigation only. This does not certify OCR or source files.
 const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
@@ -32,9 +32,9 @@ const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'86e461ec3715851a3ece2e105a6a93bf568efc7b',
- 'reader/library/index.html':'7518756ad3378fdad4aad26e02a26ede1a05a1b0',
- 'reader/library/sw.js':'3dfbc3257210c580d1aa24bce5ef4a470878d9b6'
+ 'reader/library/app.js':'728d6c40fcdac399c532a810c321e3e822075e22',
+ 'reader/library/index.html':'6f8333db3e42489f1a89bb031bebed42001d8976',
+ 'reader/library/sw.js':'bf069583d7464e027ee7609d97eaa23dd1e19592'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -353,9 +353,13 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('private-bookshelf-shell-v15-uk-column-fit24-20261115')&&
     sw.includes('app.js?v=bookshelf-uk-column-fit24-20261115')&&
     app.includes('&v=uk-column-fit24-20261115');
+  const wordGuardEntry=index.includes('app.js?v=bookshelf-uk-wordguard-20261115')&&
+    sw.includes('private-bookshelf-shell-v16-uk-wordguard-20261115')&&
+    sw.includes('app.js?v=bookshelf-uk-wordguard-20261115')&&
+    app.includes('&v=uk-wordguard-20261115');
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wordGuardEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }
