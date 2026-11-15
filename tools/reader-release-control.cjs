@@ -11,6 +11,37 @@ const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c643
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
 // It remains an uncertified preview; it is never valid for a production release.
 const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bcfa5f214bc6bb1a0f144cbb231af93cd4dc2f47e53bcdbddf2089c2f66c14d4';
+/* Immutable, exact-scope evidence from earlier preview issuances.
+   This is NOT a production compatibility bypass. A matching digest alone
+   never certifies OCR, and actual loader/report/registry bytes are checked
+   later by validateRepository. Keep existing preview evidence unchanged. */
+const HISTORIC_DRAFT_PREVIEWS=Object.freeze({
+ 'nine-stories-001-020-preview':Object.freeze({
+  entry:'reader/preview/nine-stories-001-020/index.html',
+  issuer:'bcfa5f214bc6bb1a0f144cbb231af93cd4dc2f47e53bcdbddf2089c2f66c14d4',
+  receiptDigest:'b65efebaafaa5bff6d071a24821e5f1a91edac030d6cbbc3c03883f12a33b7b1'
+ }),
+ 'nine-stories-021-040-preview':Object.freeze({
+  entry:'reader/preview/nine-stories-021-040/index.html',
+  issuer:'a55d8e82985dda58db0ca93565ac693fd6375f8c4fa02c2d38bd82912720391b',
+  receiptDigest:'4251e36621ec8fda3d3c924bfaf05261c1d3d4c58f9b2bdffd88191f04b12807'
+ })
+});
+function previewIssuerCompatible(p,envelope){
+ // Versioned preview-only protocol: existing receipt digest is immutable,
+ // all item paths, subject hashes, linked reports and actual public bytes
+ // must still match. Issuer changes cannot turn this into production.
+ return p.previewProtocol==='reader-immutable-preview-v3'&&
+  p.channel==='preview'&&p.phase==='preview'&&p.contentCertified===false&&
+  p.eligible===true&&hex(p.implementationSha256)&&
+  p.authorization?.explicit===true&&hex(p.authorization.sha256)&&
+  /^reader\/preview\/[A-Za-z0-9_./-]+\/index\.html$/.test(p.entry||'')&&
+  !p.entry.includes('..')&&p.subject?.bookId===p.bookId&&
+  hex(p.subject?.artifactSha256)&&hex(p.subject?.loaderSha256)&&
+  hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject)&&
+  hex(envelope.digest);
+}
+
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
@@ -197,10 +228,14 @@ function verifyEnvelope(envelope){
 function receipts(root,policy){
  const found=new Map(),authorizedFiles={};
  for(const rel of policy.receipts||[]){
-  const p=verifyEnvelope(JSON.parse(fs.readFileSync(safe(root,rel))));
+  const envelope=JSON.parse(fs.readFileSync(safe(root,rel))),p=verifyEnvelope(envelope);
   const preUiPreview=p.implementationSha256===PRE_UI_IMPLEMENTATION_SHA256&&p.channel==='preview'&&p.entry?.startsWith('reader/preview/');
   const priorNineStoriesPreview=p.implementationSha256===NINE_STORIES_PREVIEW_ISSUANCE_SHA256&&p.channel==='preview'&&p.entry==='reader/preview/nine-stories-001-020/index.html'&&p.subject?.bookId==='nine-stories-001-020-preview';
-  demand(p.eligible===true&&(p.implementationSha256===implementationHash()||preUiPreview||priorNineStoriesPreview)&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
+  const historical=HISTORIC_DRAFT_PREVIEWS[p.bookId];
+  const exactHistoric=!!historical&&p.channel==='preview'&&p.phase==='preview'&&p.contentCertified===false&&
+    p.entry===historical.entry&&p.implementationSha256===historical.issuer&&envelope.digest===historical.receiptDigest;
+  const scopedFuturePreview=previewIssuerCompatible(p,envelope);
+  demand(p.eligible===true&&(p.implementationSha256===implementationHash()||preUiPreview||priorNineStoriesPreview||exactHistoric||scopedFuturePreview)&&hex(p.subjectSha256)&&p.subjectSha256===objHash(p.subject),'STALE_RELEASE_RECEIPT');
   demand(p.entry&&/^reader\/[A-Za-z0-9_./-]+\/index\.html$/.test(p.entry)&&!p.entry.includes('..'),'INVALID_RECEIPT_ENTRY');
   demand(!found.has(p.subject.bookId),'DUPLICATE_RECEIPT');found.set(p.subject.bookId,p);
   demand(['preview','production'].includes(p.channel),'BAD_CHANNEL');
