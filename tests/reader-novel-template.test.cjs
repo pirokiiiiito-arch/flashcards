@@ -43,7 +43,7 @@ test('every consecutive speaker opening mark gets a separate column',()=>{
 
 test('inner quotes stay nested inside one spoken paragraph',()=>{
  const text='「彼が「まだ」と答えたのを覚えている？」';
- const parts=novel.expandBlocks([{type:'body',scan:43,text}]);
+ const parts=novel.expandBlocks([{type:'body',scan:43,text,inlineQuoteOffsets:[text.indexOf('「',1)]}]);
  assert.equal(parts.length,1);
  assert.equal(parts[0].text,text);
  assert.equal(parts[0].type,'dialogue');
@@ -145,4 +145,31 @@ test('novel chapter and section headings are truly black without recoloring hist
  assert.ok(standardPosition>=0&&novelPosition>standardPosition,'novel override must load after standard');
  assert.match(demo,/<body class="novel-reading">/);
  assert.ok(data.blocks.some(x=>x.type==='heading'),'sample must actually show a heading');
+});
+
+test('missing OCR closing quotes cannot suppress later speech-column starts',()=>{
+ const original='「最初のセリフが閉じていない「次のセリフ」「三つ目」';
+ const parsed=novel.expandBlocks([{type:'body',scan:21,text:original}]);
+ assert.deepEqual(parsed.map(x=>x.text),[
+  '「最初のセリフが閉じていない','「次のセリフ」','「三つ目」'
+ ]);
+ assert.equal(parsed.length,(original.match(/「/g)||[]).length);
+ assert.equal(parsed.map(x=>x.text).join(''),original);
+ assert.ok(parsed.every(x=>x.type==='dialogue'&&x.text.startsWith('「')));
+});
+test('a source block tagged continuation cannot erase a new spoken opening',()=>{
+ const t='「今から話すよ」';
+ const p=novel.expandBlocks([{scan:22,type:'body',text:t,joinPrevious:true}]);
+ assert.equal(p.length,1);
+ assert.equal(p[0].text[0],'「');
+ assert.equal(p[0].type,'dialogue');
+ assert.equal(p[0].sourceStart,0);
+});
+test('source-reviewed nested quote exceptions are validated by exact offsets',()=>{
+ const text='「長い話の「一節」を説明する」';
+ const nested=text.indexOf('「',1);
+ const parsed=novel.expandBlocks([{scan:1,text,inlineQuoteOffsets:[nested]}]);
+ assert.equal(parsed.length,1);assert.equal(parsed[0].text,text);
+ assert.throws(()=>novel.expandBlocks([{scan:1,text,inlineQuoteOffsets:[999]}]),/NOVEL_INLINE_QUOTE_OFFSET_INVALID/);
+ assert.throws(()=>novel.expandBlocks([{scan:1,text,inlineQuoteOffsets:[nested,nested]}]),/NOVEL_INLINE_QUOTE_OFFSET_INVALID/);
 });
