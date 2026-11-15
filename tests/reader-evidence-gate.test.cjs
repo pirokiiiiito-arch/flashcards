@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-const {inspect,PHASES}=require('../tools/reader-evidence-gate.cjs');
+const {inspect,attachPublicEvidence,PHASES}=require('../tools/reader-evidence-gate.cjs');
 const tmp=[];
 const sha='a'.repeat(64),other='b'.repeat(64);
 function fixture(){
@@ -9,7 +9,7 @@ function fixture(){
  const file=path.join(folder,'manifest.json');fs.writeFileSync(file,'{"private":"test fixture"}');
  return file;
 }
-function result(phase){return{eligible:true,errors:[],subjectSha256:sha,subject:{artifactSha256:other},evidenceIndex:{checks:sha,display:other},checks:{'G8-08':{status:phase==='prepare'?'not_run':'passed'}}};}
+function result(phase){return{eligible:true,errors:[],subjectSha256:sha,subject:{bookId:'synthetic-fixture-only',artifactSha256:other,loaderSha256:sha},evidenceIndex:{checks:sha,display:other},checks:{'G8-08':{status:phase==='prepare'?'not_run':'passed'}}};}
 test.after(()=>{for(const d of tmp)fs.rmSync(d,{recursive:true,force:true});});
 test('uses the existing four delivery phases; no extra quality ID',()=>{
  assert.deepEqual(PHASES,['prepare','release','deployed','device']);
@@ -53,4 +53,25 @@ test('status-only true with no subject evidence cannot authorize advancement',()
 });
 test('wrong requested stage cannot bypass prerequisites',()=>{
  assert.throws(()=>inspect(fixture(),'finished',()=>result('prepare')),/INVALID_REQUESTED_PHASE/);
+});
+
+test('only real HTTP 200 plus exact published loader SHA and a device stage can complete delivery',()=>{
+ const privateResult=inspect(fixture(),'device',(_,{phase})=>result(phase));
+ const publicReport={schema:'reader-public-delivery-evidence-v1',eligible:true,checkedAt:'2026-11-16T00:00:00Z',
+  sourceCommitSha:other,workflowRunId:'123',checks:[{
+   bookId:'synthetic-fixture-only',entry:'reader/preview/example/index.html',
+   url:'https://pirokiiiiito-arch.github.io/flashcards/reader/preview/example/index.html',
+   status:'verified',httpStatus:200,expectedSha256:sha,observedSha256:sha
+  }]};
+ const combined=attachPublicEvidence(privateResult,publicReport);
+ assert.equal(combined.completedDelivery,true);
+ assert.equal(combined.deliveryDecision,'completed_with_device_evidence');
+ assert.equal(combined.publicEvidence.workflowRunId,'123');
+ const fake={...publicReport,checks:[{...publicReport.checks[0],observedSha256:other}]};
+ assert.equal(attachPublicEvidence(privateResult,fake).completedDelivery,false);
+ const deployed=inspect(fixture(),'deployed',(_,{phase})=>result(phase));
+ assert.equal(attachPublicEvidence(deployed,publicReport).completedDelivery,false);
+ assert.equal(attachPublicEvidence(deployed,publicReport).deliveryDecision,'published_at_checked_time_device_pending');
+ const preview=inspect(fixture(),'preview',(_,{phase})=>result(phase));
+ assert.equal(attachPublicEvidence(preview,publicReport).publicUrlHttpVerified,false);
 });
