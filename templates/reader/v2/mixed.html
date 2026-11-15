@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5">
+<meta name="theme-color" content="#fffdf8">
+<title>標準読書テンプレートv2｜文章と画像</title>
+<link rel="stylesheet" href="./standard.css">
+</head>
+<body>
+<nav class="shelf-strip" aria-label="本棚ナビゲーション">
+  <a class="shelf-link" href="../../../reader/library/">◀ 本棚へ</a>
+  <output class="shelf-status" id="shelf-status">見本</output>
+</nav>
+<header class="toolbar">
+  <h1 class="book-title" id="book-title"></h1>
+  <div class="controls" role="toolbar" aria-label="読書操作">
+    <div class="control-left">
+      <button type="button" id="original" class="tool-btn" disabled>原本</button>
+      <button type="button" id="first" class="tool-btn">最初へ</button>
+      <button type="button" id="all" class="tool-btn">全巻</button>
+    </div>
+    <div class="font-control" aria-label="本文の文字サイズ">
+      <button type="button" id="smaller" aria-label="文字を小さく">A−</button>
+      <output id="current-size">20px</output>
+      <button type="button" id="larger" aria-label="文字を大きく">A＋</button>
+    </div>
+  </div>
+</header>
+<main class="reader-main" id="reader-main">
+  <article class="sheet" id="sheet" aria-label="読書ページ">
+    <div class="stage">
+      <div class="text-flow" id="text-flow" hidden></div>
+      <div class="figure-stage" id="figure-stage" hidden>
+        <div class="figure-frame">
+          <img id="figure-image" alt="原本画像" hidden>
+          <div id="figure-placeholder" class="figure-placeholder">
+            <strong>原本画像の読み込み待ち</strong>
+            <span>JPEG・PNG・WebPを画素変換せず表示します。</span>
+            <input id="figure-file" type="file" accept="image/jpeg,image/png,image/webp" aria-label="原本画像を選択">
+          </div>
+        </div>
+        <div class="caption-box">
+          <div id="figure-caption-label" class="figure-caption-label"></div>
+          <div class="caption-flow" id="figure-caption"></div>
+        </div>
+      </div>
+    </div>
+  </article>
+</main>
+<div class="sheet measure-sheet" id="measure-sheet" aria-hidden="true">
+  <div class="stage">
+    <div class="text-flow" id="measure-text" hidden></div>
+    <div class="figure-stage" id="measure-figure" hidden>
+      <div class="figure-frame"></div>
+      <div class="caption-box">
+        <div id="measure-caption-label" class="figure-caption-label"></div>
+        <div class="caption-flow" id="measure-caption"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<footer class="reader-footer">
+  <div class="progress-line" aria-hidden="true"><span id="progress-fill"></span></div>
+  <div class="footer-inner">
+    <button type="button" class="page-nav" id="prev">前へ</button>
+    <div class="page-location" role="status" aria-live="polite">
+      <strong id="page-major">―</strong>
+      <small id="page-minor">読み込み中</small>
+    </div>
+    <button type="button" class="page-nav" id="next">次へ</button>
+  </div>
+</footer>
+<div class="dialog-backdrop" id="menu-backdrop" hidden>
+  <section class="dialog" role="dialog" aria-modal="true" aria-label="全巻">
+    <div class="dialog-head"><strong>全巻</strong><button id="menu-close" type="button" aria-label="閉じる">×</button></div>
+    <div id="menu-items"></div>
+    <p class="help">これは制作見本です。実書籍では、原本と本文を非公開の書籍データから読み込みます。</p>
+    <label class="help">本文用の原本画像を試す
+      <input id="source-file" type="file" accept="image/jpeg,image/png,image/webp">
+    </label>
+  </section>
+</div>
+<div class="dialog-backdrop" id="original-backdrop" hidden>
+  <section class="dialog" role="dialog" aria-modal="true" aria-label="原本画像">
+    <div class="dialog-head"><strong>原本（変換なし）</strong><button id="original-close" type="button" aria-label="閉じる">×</button></div>
+    <img id="original-image" class="original-view" alt="原本画像">
+  </section>
+</div>
+<script>window.READER_BOOK={"id":"standard-reading-mixed-v2-demo","kind":"mixed","title":"標準読書テンプレートv2｜文章と画像","status":"文章・画像混在の見本（未校正・原本なし）","totalScans":4,"entries":[{"kind":"text","scan":1,"blocks":[{"type":"heading","text":"はじめに"},{"type":"body","text":"これは文章と原本画像を同じ本の中で順に表示する見本です。本文は日本語の縦書きで右から左へ流れます。二十ピクセルで表示し、画面の幅と高さに合わせて自然に改ページします。"},{"type":"body","text":"読みやすさを保ちながら、文字の終端が画面の下に隠れないよう実際の描画位置を検査します。この文章と原本画像は見本であり、私有書籍の本文や写真を公開ページに含めません。"}]},{"kind":"image","scan":2,"id":"sample-figure-1","title":"原本画像と説明文","alt":"端末で選択した画像を保持","src":null,"caption":"この原本画像はページが切り替わっても同じ要素・同じ位置のままで、説明文だけを続きに切り替えます。確認するときは画像を端末から選んでください。画像は再圧縮されず、公開サイトへ送られません。文字を大きくすると説明文だけを組版し直します。"},{"kind":"text","scan":3,"blocks":[{"type":"heading","text":"画像の後の文章"},{"type":"body","text":"図版の後にはまた文章が続きます。原本番号と読書画面番号は違うため、進捗欄には画面に実際に収まったページ数を表示します。上下スワイプと前後ボタンで同じ順序に戻れます。"}]},{"kind":"image","scan":4,"id":"sample-plain-image","title":"原本画像だけのページ","alt":"画像だけの原本見本","src":null,"caption":""}]};</script>
+<script src="./standard.js"></script>
+</body>
+</html>
