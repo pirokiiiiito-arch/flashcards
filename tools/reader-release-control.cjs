@@ -14,7 +14,7 @@ const NINE_STORIES_PREVIEW_ISSUANCE_SHA256='bcfa5f214bc6bb1a0f144cbb231af93cd4dc
 // Exact UI-only byte authorization for the user's 2026-11-14 first-page request.
 // No OCR, device, or unscoped compatibility certification is inferred.
 const FIRST_PAGE_UI_GIT_BLOBS=Object.freeze({
- 'reader/british-interiors/full/index.html':'d70ff4ee3552dacb369a39d2eb7f444aa4d09079'
+ 'reader/british-interiors/full/index.html':'c6ece4949b885c81bfa4374e19f049b23825e6e0'
 });
 // Exact byte-pinned public navigation only. This does not certify OCR or source files.
 const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
@@ -32,9 +32,9 @@ const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'5f90d9e0f82f1e5ed565e1eeec767ccc94f03603',
- 'reader/library/index.html':'ef6bedffc87bfe7038121a19e43fb496c65837b8',
- 'reader/library/sw.js':'b0be03f10b67c75eaba513a91c6db562c831578a'
+ 'reader/library/app.js':'2e2e6662a866805f90e55643dec4eb94a4d386e4',
+ 'reader/library/index.html':'206460fae3840f4aec53707ad6ef2afc9903d304',
+ 'reader/library/sw.js':'67e9e8767f5190a807605e3166ef1153b7a4a7d5'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -241,12 +241,16 @@ function admittedFirstPageUI(root,policy){
   const uk=fs.readFileSync(safe(root,'reader/british-interiors/full/index.html'),'utf8');
   const shared=fs.readFileSync(safe(root,'reader/library/wh1-exact-pagination.js'),'utf8');
   demand(uk.includes('id="firstPageButton"')&&uk.includes("sendWindow(1,{navigate:true,itemIndex:0,size:current.size})"),'UK_FIRST_PAGE_CONTROL_MISSING');
-  demand(uk.includes('uk-column-fit24-20261115')&&uk.includes('uk-continuous-paragraph-flow-v1')&&
+  demand(uk.includes('uk-wh1-text-geometry-20261115')&&
+    uk.includes('#reader-main .sheet,#measure-sheet{padding:10px 12px!important}')&&
+    uk.includes('#reader-main .segment,#measure-sheet .segment{padding:0!important}')&&
+    uk.includes('#reader-main .text-flow,#measure-sheet .text-flow{width:calc(100% - 30px)!important;padding:0!important}')&&
+    uk.includes('uk-continuous-paragraph-flow-v1')&&
     uk.includes('   installUKContinuousParagraphFlow();')&&
     uk.includes('   installUKNearFullTextBoundary();')&&uk.includes('textDepth++')&&
     uk.includes('originalFragments.apply(this,args)')&&
     !uk.includes('installUKColumnWordGuard()')&&!uk.includes('uk-atomic-word'),
-    'UK_NEAR_FULL_TEXT_BOUNDARY_MISMATCH');
+    'UK_WH1_MATCHED_TEXT_GEOMETRY_MISMATCH');
   demand(shared.includes("first.textContent='最初へ'")&&shared.includes("type:'bookStart'"),'SHARED_FIRST_PAGE_CONTROL_MISSING');
   demand(uk.includes("const TRUSTED_ENGINE_SHA256='580e233afe48319518b02c1a0c57446f68e339b4fb9c5db43c7a06c909b271ca'"),'UK_PRIVATE_ENGINE_IDENTITY_CHANGED');
  }
@@ -368,14 +372,14 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('private-bookshelf-shell-v15-uk-column-fit24-20261115')&&
     sw.includes('app.js?v=bookshelf-uk-column-fit24-20261115')&&
     app.includes('&v=uk-column-fit24-20261115');
-  // Public-only near-full text cutoff; figure captions and source ZIP remain immutable.
-  const nearFullTextEntry=index.includes('app.js?v=bookshelf-uk-near-full-text-cut-v1-20261115')&&
-    sw.includes('private-bookshelf-shell-v19-uk-near-full-text-cut-v1-20261115')&&
-    sw.includes('app.js?v=bookshelf-uk-near-full-text-cut-v1-20261115')&&
-    app.includes('&v=uk-near-full-text-cut-v1-20261115');
+  // Exact WH1 screenshot geometry, without changing source OCR or figure pager.
+  const wh1GeometryEntry=index.includes('app.js?v=bookshelf-uk-wh1-text-geometry-v1-20261115')&&
+    sw.includes('private-bookshelf-shell-v20-uk-wh1-text-geometry-v1-20261115')&&
+    sw.includes('app.js?v=bookshelf-uk-wh1-text-geometry-v1-20261115')&&
+    app.includes('&v=uk-wh1-text-geometry-v1-20261115');
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||nearFullTextEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }
