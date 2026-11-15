@@ -12,7 +12,7 @@
     ],
     "eligible": true,
     "bookId": "nine-stories-001-020-preview",
-    "implementationSha256": "dec875676b3765364da719dc2aea970a1379b2c4176b52da357fb5be8bec05d2",
+    "implementationSha256": "022e521c885b087a86ae33ec1c7c783ca723c3ec1bf7e607102adacb8b5672b0",
     "subject": {
       "bookId": "nine-stories-001-020-preview",
       "range": [
@@ -219,5 +219,5 @@
     },
     "trustBoundary": "Local preview attestation only, not proof of book OCR completion or real iPhone testing."
   },
-  "digest": "50d71d17774777ce898aab3e0ee1ddce43bf4cba1fe9e8d9c25e0fe17ce7f6b4"
+  "digest": "c9299edb2b9ea4cfd4f193e3457f8132492ca73c60238b64576ff4714f9c4e5d"
 }
