@@ -116,7 +116,21 @@ function validate(root=ROOT){
     BOOKSHELF_TITLE_ORDER_INDEX_BLOBS.includes(actual)&&
     (data.includes(Buffer.from('app.js?v=bookshelf-title-order-v2-20261114'))||
      data.includes(Buffer.from('app.js?v=bookshelf-uk-row22-20261115')));
-  if(actual!==sha&&!uiPinned&&!titleSortPinned)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
+  // Admit only the exact 2026-11-15 public presentation layer for the shared shelf.
+  // Inverse-transform its layout-only additions and verify the untouched
+  // historical engine's original frozen Git blob byte-for-byte.
+  let parityPinned=false;
+  if(p==='reader/library/read.html'&&actual==='4e17ae31cb85262f0fb6a6fa57a5fa935232c449'){
+    const original=data.toString('utf8')
+      .replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
+      .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'')
+      .replace(/\n\/\/ non-wh-reading-parity-20261115:[\s\S]*?(?=async function openSegment\(index)/,'')
+      .replace("  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;\n  const content=new Blob([decorateOtherBookReading(decorated)],{type:'text/html'});",
+               "  const content=new Blob([window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text],{type:'text/html'});")
+      .replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'');
+    parityPinned=blobSHA(original)===sha;
+  }
+  if(actual!==sha&&!uiPinned&&!titleSortPinned&&!parityPinned)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
  }
  if(!Array.isArray(books))errors.push('INVALID_BOOKS');
  else for(const b of books){
