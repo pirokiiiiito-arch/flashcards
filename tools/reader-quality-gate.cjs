@@ -20,7 +20,7 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
 });
 // Narrow, byte-exact admission for the independently reviewed bookshelf title-order UI.
-const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976']);
+const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976','ef6bedffc87bfe7038121a19e43fb496c65837b8']);
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
@@ -118,13 +118,19 @@ function validate(root=ROOT){
      data.includes(Buffer.from('app.js?v=bookshelf-uk-row22-20261115'))||
      data.includes(Buffer.from('app.js?v=bookshelf-uk-safe-bottom-v2-20261115'))||
      data.includes(Buffer.from('app.js?v=bookshelf-uk-column-fit24-20261115'))||
-     data.includes(Buffer.from('app.js?v=bookshelf-uk-wordguard-20261115')));
+     data.includes(Buffer.from('app.js?v=bookshelf-uk-wordguard-20261115'))||
+     data.includes(Buffer.from('app.js?v=bookshelf-uk-near-full-text-cut-v1-20261115')));
   // Admit only the exact 2026-11-15 public presentation layer for the shared shelf.
   // Inverse-transform its layout-only additions and verify the untouched
   // historical engine's original frozen Git blob byte-for-byte.
   let parityPinned=false;
-  if(p==='reader/library/read.html'&&actual==='4e17ae31cb85262f0fb6a6fa57a5fa935232c449'){
+  if(p==='reader/library/read.html'&&actual==='f681ad2b69a35be8854cb905c0cee212c7e6be64'){
     const original=data.toString('utf8')
+      .replace("\n // Furniture's imported reader has its own toolbar; keep this control on the public bookshelf host.\n $('goToBookStart').hidden=!/洋家具の歴史と様式/.test(bookTitle);",'')
+      .replace(/\nfunction goToBookStart\(\)\{[\s\S]*?\n\}(?=\nwindow\.addEventListener\('message',e=>\{)/,'')
+      .replace(" if(d.type==='bookStart'){goToBookStart();return;}",
+        " if(d.type==='bookStart'){\n  closeMenu();\n  if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});\n  else openSegment(0,{mode:'first'}).catch(err=>console.warn('先頭への移動に失敗しました',err));\n  return;\n }")
+      .replace("\n$('goToBookStart').addEventListener('click',goToBookStart);",'')
       .replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
       .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'')
       .replace(/\n\/\/ non-wh-reading-parity-20261115:[\s\S]*?(?=async function openSegment\(index)/,'')
@@ -132,6 +138,7 @@ function validate(root=ROOT){
                "  const content=new Blob([window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text],{type:'text/html'});")
       .replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'');
     parityPinned=blobSHA(original)===sha;
+    if(!parityPinned)errors.push('FURNITURE_START_REVERSE_CHECK_FAILED '+p);
   }
   if(actual!==sha&&!uiPinned&&!titleSortPinned&&!parityPinned)errors.push('LEGACY_CHANGED '+p+' - migrate to a checked report');
  }
