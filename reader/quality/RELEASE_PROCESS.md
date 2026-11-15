@@ -4,6 +4,14 @@
 
 正本はGoogle Driveの全書籍共通60項目（ID `1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2`）。この文書は実行手順であり、別の品質規則ではない。60のIDは増減しない。
 
+## 実行証拠に基づく段階判定（2026-11-16追加）
+
+全書籍の新規作成・20枚追加・修正版の再生成では、`BOOK_CREATION_PROCESS.md` の工程別ゲートに従う。正本の60項目は変更しない。実行時には `node tools/reader-evidence-gate.cjs PRIVATE/manifest.json prepare|release|deployed|device` を各移行の前に実行し、検査された原本・校正版・画面版・Drive読戻し・公開証拠を現行SHAに結び付ける。
+
+プレビューは明示許可を必要とする別経路（`preview`）。未校正プレビューが開けても正本60項目の合格ではない。外部へ公開する入口は `reader-publish-stage.cjs` の承認対象に限る。GitHub Pages配信後に `reader-verify-pages.cjs` が実URLのHTTP 200と公開ローダーのSHA-256一致を確認し、Actionsの証拠を保存する。**ActionsやGitHubへの保存成功だけで配信済みと判定しない。** HTTP確認なしならURLの状態は「未確認」と明記する。iPhone実機結果は別に記録する。
+
+既存版とSHAが一致しており規則上再利用可能な証拠は再利用する。異なる版・未検査・実行不能・不合格の証拠を合格へ読み替えない。処理の一部が成功しただけの場合も、完了と報告しない。
+
 ## 保存する状態
 
 原本画像・一次読取り・初期表示処理・設定はimmutableに保存する。校正版はcanonical/revision-*、訂正履歴はcorrections/*、検査証拠はreview/*に別保存する。継続作業はmanifest.jsonから再開し、再initや一次OCRへの差戻しをしない。全作業データは公開リポジトリの外へ保存する。
