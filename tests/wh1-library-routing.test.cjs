@@ -152,7 +152,10 @@ test('both actual bookshelf saved-open and completed-download paths use routing 
 
 test('versioned shelf helper/app and fresh service-worker updates leave generic reader storage contracts intact', () => {
   const helper = './wh1-reader-routing.js?v=wh1-library-v9-20261110';
-  assert.ok(index.indexOf(helper) >= 0 && index.indexOf(helper) < index.indexOf('./app.js?v=bookshelf-uk-near-full-text-cut-v1-20261115'));
+  const cacheRelease=sw.match(/'\.\/app\.js\?v=([^']+)'/)?.[1];
+  assert.ok(cacheRelease&&/^bookshelf-uk-[a-z0-9-]+-202611\d{2}$/.test(cacheRelease));
+  assert.ok(index.indexOf(helper)>=0 && index.indexOf(helper)<index.indexOf('./app.js?v='+cacheRelease));
+  assert.ok(sw.includes("./app.js?v="+cacheRelease));
   assert.ok(read.includes(helper));
   assert.ok(read.includes('<script src="./wh1-exact-pagination.js"></script>'), 'generic paginator is not replaced for other books');
   for (const code of [app, read]) assert.match(code, /register\('\.\/sw\.js',\{scope:'\.\/',updateViaCache:'none'\}\)/);
