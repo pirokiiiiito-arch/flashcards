@@ -84,6 +84,16 @@ header.toolbar{position:relative!important;flex:0 0 auto!important;padding:7px 1
 #reader-main .sheet{border:0!important;border-radius:0!important;box-shadow:none!important;max-width:560px!important;margin:0 auto!important;background:#fffdf8!important}
 #reader-main .reading-stage,#reader-main .scan-scroll,#reader-main .segment{background:#fffdf8!important}
 #reader-main .text-flow{font-size:var(--size)!important;line-height:1.50!important;letter-spacing:0!important}
+/* uk-row22-20261115:
+   Keep the 20px type and 1.50 column spacing. Recover the lower inset
+   so a typical 390px iPhone viewport fits 22 glyphs in the initial column.
+   Match the real flow and hidden measuring flow, not the source OCR text.
+   On shorter screens, natural vertical wrapping still controls row length. */
+#reader-main .sheet{padding-bottom:0!important}
+#measure-sheet{padding-bottom:0!important}
+.segment{padding-bottom:0!important}
+.text-flow{padding-bottom:4px!important}
+
 #reader-main .text-flow p{line-height:inherit!important}
 footer.reader-footer{position:relative!important;flex:0 0 auto!important;background:#f7f8f3!important;border-top:1px solid #e0e5df!important;padding:4px 10px 5px!important;box-shadow:none!important}
 footer.reader-footer .progress-line{height:2px!important;max-width:none!important;margin:0 auto 5px!important;background:#e6e7df!important}
