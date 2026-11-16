@@ -18,7 +18,10 @@ const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{gran
 const split=x=>segmenter?Array.from(segmenter.segment(String(x||'')),v=>v.segment):Array.from(String(x||''));
 const sourceBlocks=Array.isArray(book.blocks)?book.blocks:[];
 let blocks=window.NovelDialogue.expandBlocks(sourceBlocks)
- .map(b=>({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':'body',text:b.text,scan:b.scan,units:split(b.text)}));
+ .map(b=>({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':'body',
+   text:b.text,scan:b.scan,units:split(b.text),
+   // Only the first visual segment of an explicitly marked source continuation joins.
+   sourceJoined:b.sourceStart===0&&!!sourceBlocks[b.sourceBlockIndex]?.joinPrevious&&b.type!=='dialogue'}));
 let figures=(Array.isArray(book.figures)?book.figures:[]).map((f,i)=>({
  id:String(f.id||'figure-'+(i+1)),title:String(f.title||'図版 '+(i+1)),
  alt:String(f.alt||f.title||'原本画像'),scan:Number(f.scan)||1,
@@ -32,14 +35,25 @@ if(mode==='mixed'){
  for(const entry of entries){
   if(entry?.kind==='text'){
    const group=Array.isArray(entry.blocks)?entry.blocks:[entry];
-   const segments=window.NovelDialogue.expandBlocks(group.filter(b=>b&&typeof b.text==='string').map(b=>({...b,scan:Number(b.scan||entry.scan)})));
+   const segments=group.filter(b=>b&&typeof b.text==='string').flatMap(b=>{
+    const scan=Number(b.scan||entry.scan);
+    // TOC rows are atomic and must never be merged into narration.
+    if(b.type==='toc')return [{...b,type:'toc',scan,sourceJoined:false}];
+    return window.NovelDialogue.expandBlocks([{...b,scan}]).map(segment=>({
+     ...segment,sourceJoined:segment.sourceStart===0&&!!b.joinPrevious&&segment.type!=='dialogue'
+    }));
+   });
    for(const b of segments){
     if(!b.text.length)continue;
     const scan=Number(b.scan);
     if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
-    blocks.push({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':'body',text:b.text,scan,units:split(b.text)});
+    blocks.push({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':b.type==='toc'?'toc':'body',
+     text:b.text,scan,units:split(b.text),sourceJoined:!!b.sourceJoined});
     flow.push({kind:'text',block:blocks.length-1});
    }
+  }else if(entry?.kind==='break'){
+   // An explicit narrative break cannot be joined across.
+   flow.push({kind:'break'});
   }else if(entry?.kind==='image'){
    const scan=Number(entry.scan);
    if(!Number.isInteger(scan)||scan<1)throw Error('画像の原本番号が不正です');
@@ -120,7 +134,10 @@ function syncMeasure(){
 function fit(el){return el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1}
 function partNode(p){
  const el=document.createElement(p.type==='heading'?'h2':'span');
- el.className=p.type==='heading'?'section-heading':('paragraph novel-paragraph '+(p.type==='dialogue'?'novel-dialogue':'novel-narration')+(p.continued?' continued':'')+(p.type!=='dialogue'&&p.text.startsWith('　')?' source-indented':''));
+ el.className=p.type==='heading'?'section-heading':
+  p.type==='toc'?'paragraph novel-toc-entry':
+  ('paragraph novel-paragraph '+(p.type==='dialogue'?'novel-dialogue':'novel-narration')+
+   (p.continued?' continued':'')+(p.type!=='dialogue'&&p.text.startsWith('　')?' source-indented':''));
  el.textContent=p.text;return el;
 }
 function fitsParts(existing,additional){
