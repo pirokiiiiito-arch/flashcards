@@ -54,7 +54,7 @@ window.READER_BOOK={
 
 ## 新しい本を作る手順
 
-1. Google Driveの既存「全書籍共通ルール」60項目の正本を読む（ファイルID：1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2）。原本・OCR・図版は私有領域に保存し、SHAと校正履歴を記録する。
+1. [現行60項目の正本（参照先）](../../../reader/quality/README.md)を読む。原本・OCR・図版は私有領域に保存し、SHAと校正履歴を記録する。
 2. 本文ページにはtext.htmlのレイアウト、原本画像・図版ページにはimage.htmlのレイアウトを使う。**実書籍の文章・画像を公開見本のREADER_BOOKに直接貼り込んでコミットしない。** 端末または認証済みGoogle Driveから私有ZIPを読み込んだ後に、書籍ごとのデータを渡す。
 3. 本文のデータ例：{id, kind:"text", title, totalScans, blocks:[{type:"heading", scan:1, text:"..."}, {type:"body", scan:1, text:"..."}]}。文章は原本照合済みのテキストだけを使い、段落と見出しは独立して管理する。
 4. 画像のデータ例：{id, kind:"image", title, totalScans, figures:[{id:"f-1", scan:1, title:"...", alt:"...", src:PRIVATE_OBJECT_URL, caption:"..."}]}。srcは元ファイルのBlobから得たURL等を実行時に渡し、GitHubの公開ソースへJPEGやPDFの本文を埋め込まない。図版と説明文を必ず対応付ける。
