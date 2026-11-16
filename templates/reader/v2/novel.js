@@ -146,7 +146,34 @@ function fitsParts(existing,additional){
  if(additional)fragment.append(partNode(additional));
  measureText.replaceChildren(fragment);return fitsInk(measureText);
 }
-function textPart(b,off,n){return {type:b.type,scan:b.scan,text:b.units.slice(off,off+n).join(''),continued:off>0}}
+// A scan page is a source location, NOT a forced reader-page or paragraph break.
+// Merge only explicitly source-marked continuations; retain grapheme positions
+// for every source scan. Called per uninterrupted run of text.
+function joinLogicalContinuations(source){
+ const logical=[];
+ for(const b of source){
+  const preceding=logical[logical.length-1];
+  if(b.sourceJoined && preceding && preceding.type!=='heading' && preceding.type!=='toc' &&
+     b.type!=='heading' && b.type!=='toc' && b.type!=='dialogue'){
+   const start=preceding.units.length;
+   preceding.text+=b.text;
+   preceding.units.push(...b.units);
+   preceding.sourceRanges.push({start,end:preceding.units.length,scan:b.scan});
+  }else{
+   logical.push({...b,units:b.units.slice(),sourceRanges:[{start:0,end:b.units.length,scan:b.scan}]});
+  }
+ }
+ return logical;
+}
+function textPart(b,off,n){
+ const span=b.sourceRanges?.find(r=>r.end>off);
+ return {type:b.type,scan:span?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
+  continued:off>0||!!b.sourceJoined,
+  sourceSpans:b.sourceRanges?.filter(r=>r.end>off&&r.start<off+n).map(r=>({
+   scan:r.scan,sourceStart:Math.max(0,off-r.start),
+   sourceEnd:Math.min(r.end,off+n)-r.start
+  }))||[]};
+}
 // G4-04: text-only visual page boundaries. The canonical source stream is untouched.
 // Prefer end-of-sentence/clause; otherwise a safe word/phrase boundary;
 // split a grapheme only as a recorded last resort. Neither source scan edges
@@ -300,6 +327,7 @@ function g404Record(b,off,chosen){
 }
 
 function paginateBlocks(group,start){
+ group=joinLogicalContinuations(group);
  const out=[];let current=[],at=start,begin=start;
  const flush=()=>{if(!current.length)return;
   out.push({kind:'text',parts:current,start:begin,end:at,scan:current[0].scan});
@@ -370,6 +398,7 @@ function paginateAll(){
   pending=[];
  };
  for(const item of flow){
+  if(item.kind==='break'){flush();continue}
   if(item.kind==='text'){pending.push(blocks[item.block]);continue}
   flush();measureText.hidden=true;$('measure-figure').hidden=false;
   const part=paginateOneFigure(item.figure,at);out.push(...part);
@@ -553,7 +582,9 @@ window.NovelReader=Object.freeze({version:'novel-v1',kind:mode,bookId,inspect:()
  dialogueCount:blocks.filter(b=>b.type==='dialogue').length,
  dialogueStartIntegrity:blocks.filter(b=>b.type==='dialogue').every(b=>b.text.startsWith('「')||!b.text.includes('「')),
  novelSourceIntegrity:mode!=='text'||blocks.map(b=>b.text).join('')===sourceBlocks.map(b=>b.text||'').join('')
-}),boundaryAudit:()=>g404Audit.slice(),pageManifest:()=>pages.map(p=>({kind:p.kind,scan:p.scan,start:p.start,end:p.end,figure:p.figure})),
+}),boundaryAudit:()=>g404Audit.slice(),pageManifest:()=>pages.map(p=>({kind:p.kind,scan:p.scan,start:p.start,end:p.end,figure:p.figure,
+  // Reverse trace to original scan offsets even if one reading page spans scans.
+  sourceSpans:p.kind==='text'?p.parts.flatMap(part=>part.sourceSpans||[]):[]})),
  gotoPage:n=>gotoPage(n)});
 reflectZoom();requestAnimationFrame(rebuild);
 if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>postHost('reader-ready-v8'));}
