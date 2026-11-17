@@ -7,6 +7,8 @@ on:
       - 'reader/quality/reports/**'
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
+      - 'tools/reader-handoff-check.cjs'
+      - 'tests/reader-handoff-check.test.cjs'
       - 'tests/reader-book-preflight.test.cjs'
       - 'tools/reader-evidence-gate.cjs'
       - 'tools/reader-verify-pages.cjs'
@@ -23,6 +25,8 @@ on:
       - 'reader/quality/reports/**'
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
+      - 'tools/reader-handoff-check.cjs'
+      - 'tests/reader-handoff-check.test.cjs'
       - 'tests/reader-book-preflight.test.cjs'
       - 'tools/reader-evidence-gate.cjs'
       - 'tools/reader-verify-pages.cjs'
@@ -49,7 +53,8 @@ jobs:
       - name: Validate book creation checks and rejection fixtures
         run: |
           node --check tools/reader-book-preflight.cjs
-          node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs
+          node --check tools/reader-handoff-check.cjs
+          node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs
           node --check tools/reader-evidence-gate.cjs
           node --check tools/reader-verify-pages.cjs
       - name: Validate every registered preview before new-book publication
