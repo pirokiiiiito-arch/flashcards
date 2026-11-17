@@ -238,7 +238,7 @@ function paginateOneFigure(i,start){
  return out;
 }
 function paginateAll(){
- const out=[];let at=0,pending=[];
+ const out=[];let at=0,pending=[],deferredFigures=[],joinedAfterDeferred=false;
  const flush=()=>{
   if(!pending.length)return;
   measureText.hidden=false;$('measure-figure').hidden=true;
@@ -246,13 +246,41 @@ function paginateAll(){
   if(part.length)at=part[part.length-1].end;
   pending=[];
  };
- for(const item of flow){
-  if(item.kind==='text'){pending.push(blocks[item.block]);continue}
-  flush();measureText.hidden=true;$('measure-figure').hidden=false;
+ const emitFigure=item=>{
+  measureText.hidden=true;$('measure-figure').hidden=false;
   const part=paginateOneFigure(item.figure,at);out.push(...part);
   if(part.length)at=part[part.length-1].end;
+ };
+ // A source-reviewed figure that physically interrupts an unfinished
+ // sentence is retained, but displayed AFTER its next logical paragraph.
+ // Without an explicit confirmed continuation this is an error, not a
+ // silently omitted image or a broken continuation.
+ const releaseDeferred=()=>{
+  if(!deferredFigures.length)return;
+  if(!joinedAfterDeferred)throw Error('G402_DEFERRED_IMAGE_WITHOUT_CONTINUATION');
+  flush();
+  for(const item of deferredFigures)emitFigure(item);
+  deferredFigures=[];joinedAfterDeferred=false;
+ };
+ for(const item of flow){
+  if(item.kind==='text'){
+   const b=blocks[item.block];
+   if(deferredFigures.length){
+    if(b.sourceJoined&&b.semanticType==='body')joinedAfterDeferred=true;
+    else releaseDeferred();
+   }
+   pending.push(b);continue;
+  }
+  if(item.kind==='image'&&item.deferUntilContinuation){
+   if(!pending.length||pending[pending.length-1].semanticType!=='body')
+    throw Error('G402_DEFERRED_IMAGE_NO_PRECEDING_PROSE');
+   deferredFigures.push(item);continue;
+  }
+  releaseDeferred();flush();
+  if(item.kind==='break')continue;
+  emitFigure(item);
  }
- flush();return out;
+ releaseDeferred();flush();return out;
 }
 function pageAt(point){
  let result=0;
