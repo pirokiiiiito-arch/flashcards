@@ -48,7 +48,7 @@ test('public standard template still parses without private source scans',()=>{
  assert.doesNotMatch(engine,/data:image\/(?:png|jpeg);base64|バナナフィッシュ日和|ブルクハルト/);
 });
 test('explicitly joined consecutive scans preserve full text and per-scan offsets',()=>{
- const src=[source(163,'壁を厚く築くこ',false,'body',4),source(165,'ともなかった。',true,'body',5)];
+ const src=[source(163,'青い旗を揚げよう',false,'body',4),source(165,'今日は晴れている。',true,'body',5)];
  const old=JSON.stringify(src),merged=joinLogicalContinuations(src);
  assert.equal(merged.length,1);
  assert.equal(merged[0].text,src.map(x=>x.text).join(''));
@@ -61,7 +61,7 @@ test('explicitly joined consecutive scans preserve full text and per-scan offset
  ]);
 });
 test('new page beginning in the later scan uses its original scan number',()=>{
- const joined=joinLogicalContinuations([source(163,'壁を厚く',false,'body',2),source(165,'築くこともない。',true,'body',3)]);
+ const joined=joinLogicalContinuations([source(163,'町に行く',false,'body',2),source(165,'新しい道を探す。',true,'body',3)]);
  const first=textPart(joined[0],0,2),second=textPart(joined[0],6,3);
  assert.equal(first.scan,163);
  assert.equal(second.scan,165);
@@ -83,13 +83,13 @@ test('headings, footnotes, captions and TOC are hard barriers to continuation',(
 });
 test('mixed mode keeps a figure separate after a source-verified nonadjacent continuation',()=>{
  const {pages,flow,figures}=all({kind:'mixed',entries:[
-  {kind:'text',scan:163,blocks:[{type:'body',text:'石壁を厚く'}]},
+  {kind:'text',scan:163,blocks:[{type:'body',text:'青い鳥たち'}]},
   {kind:'image',scan:164,caption:'図版は独立表示',deferUntilContinuation:true},
-  {kind:'text',scan:165,blocks:[{type:'body',text:'築くこともできた。',joinPrevious:true}]},
+  {kind:'text',scan:165,blocks:[{type:'body',text:'は空を飛んでいた。',joinPrevious:true}]},
   {kind:'text',scan:165,blocks:[{type:'body',text:'次の説明。'}]},
  ]});
  assert.deepEqual(pages.map(p=>p.kind),['text','image','text']);
- assert.equal(pages[0].parts.map(p=>p.text).join(''),'石壁を厚く築くこともできた。');
+ assert.equal(pages[0].parts.map(p=>p.text).join(''),'青い鳥たちは空を飛んでいた。');
  assert.deepEqual(pages[0].parts[0].sourceSpans.map(x=>x.scan),[163,165]);
  assert.equal(pages[1].scan,164);
  assert.equal(pages[2].parts[0].text,'次の説明。');
