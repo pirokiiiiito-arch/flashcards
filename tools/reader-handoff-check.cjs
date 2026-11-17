@@ -92,7 +92,8 @@ function inspect(file, options = {}) {
     try{sourceManifest=typeof options.sourceManifest==='string'?
       JSON.parse(fs.readFileSync(options.sourceManifest,'utf8')):options.sourceManifest;}
     catch(_){errors.push('SOURCE_MANIFEST_UNREADABLE');}
-  }else warnings.push('ORIGINAL_SOURCE_INDEPENDENT_HASH_MANIFEST_NOT_PROVIDED');
+  }else warnings.push('SOURCE_HASH_MANIFEST_NOT_PROVIDED');
+  if(options.sourceManifest)warnings.push('SUPPLIED_SOURCE_MANIFEST_PROVENANCE_NOT_VERIFIED_BY_THIS_TOOL');
   const originals=sourceHashes(sourceManifest,options.bookId,start,end,fail);
   if (d) {
     fail(d.bookId===options.bookId, 'BOOK_ID_MISMATCH');
@@ -137,7 +138,8 @@ function inspect(file, options = {}) {
     artifactFile:filename, artifactBytes:bytes?.length||null, artifactSha256,
     originalImageCount:d?.pages?.length||0, originalImageBytes:sourceImageBytes,
     embeddedOriginalHashesSelfConsistent:!!d&&!errors.some(e=>e.startsWith('EMBEDDED_IMAGE_HASH_')),
-    externalSourceHashesChecked:!!originals&&!errors.some(e=>e.startsWith('SOURCE_')),
+    suppliedSourceManifestHashesMatched:!!originals&&!errors.some(e=>e.startsWith('SOURCE_')),
+    sourceManifestIndependentlyAuthenticated:false,
     expectedShaMatched:!!options.expectedSha&&artifactSha256===options.expectedSha,
     profile:options.profile||null,mode,chromeUrl,loaderEntry:options.loaderEntry||null,
     publicHTTP:'not_run',chromeImport:'not_run',independentProofreading:'not_verified',
