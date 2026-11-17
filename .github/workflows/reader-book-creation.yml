@@ -9,6 +9,8 @@ on:
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
       - 'tests/reader-handoff-check.test.cjs'
+      - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
+      - 'tests/browser-nine-stories-safe-loader-v2.cjs'
       - 'tests/reader-book-preflight.test.cjs'
       - 'tools/reader-evidence-gate.cjs'
       - 'tools/reader-verify-pages.cjs'
@@ -27,6 +29,8 @@ on:
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
       - 'tests/reader-handoff-check.test.cjs'
+      - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
+      - 'tests/browser-nine-stories-safe-loader-v2.cjs'
       - 'tests/reader-book-preflight.test.cjs'
       - 'tools/reader-evidence-gate.cjs'
       - 'tools/reader-verify-pages.cjs'
@@ -54,9 +58,13 @@ jobs:
         run: |
           node --check tools/reader-book-preflight.cjs
           node --check tools/reader-handoff-check.cjs
-          node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs
+          node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs tests/reader-nine-stories-safe-loader-v2.test.cjs
           node --check tools/reader-evidence-gate.cjs
           node --check tools/reader-verify-pages.cjs
+      - name: Exercise new pinned importer in Chromium with synthetic 20-page sample
+        run: |
+          node --check tests/browser-nine-stories-safe-loader-v2.cjs
+          node tests/browser-nine-stories-safe-loader-v2.cjs
       - name: Validate every registered preview before new-book publication
         run: node tools/reader-book-preflight.cjs --all
       - name: Record verification boundary
