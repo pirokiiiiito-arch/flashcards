@@ -107,7 +107,8 @@ test('the public sample demonstrates automatic dialogue and a deliberately inlin
 
 test('post-deploy novel URL evidence requires HTTP 200 and identical actual bytes',async()=>{
  const repo=path.resolve(root,'../../..');
- assert.equal(publicDemoFiles.length,5);
+ assert.equal(publicDemoFiles.length,6);
+ assert.ok(publicDemoFiles.includes('templates/reader/v2/standard.js'),'WH1 standard reader must be byte-pinned on public deployment');
  const okFetch=async url=>{
   const location=new URL(url);
   return new Response(fs.readFileSync(path.join(repo,location.pathname.slice('/flashcards/'.length))),{
@@ -116,7 +117,7 @@ test('post-deploy novel URL evidence requires HTTP 200 and identical actual byte
  };
  const okay=await checkPublicNovel(repo,okFetch,{attempts:1,wait:async()=>{}});
  assert.equal(okay.eligible,true);
- assert.equal(okay.checks.length,5);
+ assert.equal(okay.checks.length,6);
  assert.ok(okay.checks.every(x=>x.status==='verified'&&x.httpStatus===200&&x.expectedSha256===x.observedSha256));
  assert.equal(okay.contentCertified,false);
  assert.equal(okay.iphoneVerified,false);
@@ -134,6 +135,12 @@ test('post-deploy novel URL evidence requires HTTP 200 and identical actual byte
  const stale=await checkPublicNovel(repo,wrongBytes,{attempts:1,wait:async()=>{}});
  assert.equal(stale.eligible,false);
  assert.equal(stale.checks.find(x=>x.entry.endsWith('/novel.js')).error,'DEPLOYED_BYTES_DIFFER');
+ const brokenStandard=await checkPublicNovel(repo,async url=>{
+  if(url.includes('/standard.js'))return new Response('mismatching standard reader bytes',{status:200});
+  return okFetch(url);
+ },{attempts:1,wait:async()=>{}});
+ assert.equal(brokenStandard.eligible,false);
+ assert.equal(brokenStandard.checks.find(x=>x.entry.endsWith('/standard.js')).error,'DEPLOYED_BYTES_DIFFER');
 });
 
 test('novel chapter and section headings are truly black without recoloring history templates',()=>{
