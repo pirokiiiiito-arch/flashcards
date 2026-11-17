@@ -8,6 +8,10 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
+      - 'tools/reader-source-preflight.py'
+      - 'tools/reader-private-pipeline.cjs'
+      - 'tests/test_reader_source_preflight.py'
+      - 'tests/reader-source-pipeline-gate.test.cjs'
       - 'tests/reader-handoff-check.test.cjs'
       - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
       - 'tests/browser-nine-stories-safe-loader-v2.cjs'
@@ -28,6 +32,10 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
+      - 'tools/reader-source-preflight.py'
+      - 'tools/reader-private-pipeline.cjs'
+      - 'tests/test_reader_source_preflight.py'
+      - 'tests/reader-source-pipeline-gate.test.cjs'
       - 'tests/reader-handoff-check.test.cjs'
       - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
       - 'tests/browser-nine-stories-safe-loader-v2.cjs'
@@ -58,9 +66,14 @@ jobs:
         run: |
           node --check tools/reader-book-preflight.cjs
           node --check tools/reader-handoff-check.cjs
+          node --check tools/reader-private-pipeline.cjs
+          node --test tests/reader-source-pipeline-gate.test.cjs
           node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs tests/reader-nine-stories-safe-loader-v2.test.cjs
           node --check tools/reader-evidence-gate.cjs
           node --check tools/reader-verify-pages.cjs
+      - name: Verify source folder-vs-search and ZIP-byte synthetic regression
+        run: |
+          python3 -m unittest discover -s tests -p 'test_reader_source_preflight.py' -v
       - name: Exercise new pinned importer in Chromium with synthetic 20-page sample
         run: |
           node --check tests/browser-nine-stories-safe-loader-v2.cjs

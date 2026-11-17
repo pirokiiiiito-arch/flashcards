@@ -26,6 +26,39 @@ function init(htmlFile,root,bookId,loaderFile,sourceIndexFile){
  m.boundaries=write(root,'review/boundaries.json',{items:[]});m.display=write(root,'review/display.json',{artifactSha256:m.artifact.sha256,actualPixels:false,fields:{},conditions:[]});
  m.checks=write(root,'review/checks.json',Object.fromEntries(RULES.map(id=>[id,{status:'not_run'}])));saveManifest(root,m);return m;
 }
+// Opt-in, fail-closed source provenance entrypoint for NEW scan batches. Legacy
+// init remains compatible; it is not a substitute for this command on new books.
+function checkSourcePreflight(proofFile,bookId,pages){
+ const proof=JSON.parse(fs.readFileSync(proofFile,'utf8'));
+ fail(proof.schema==='reader-source-preflight-v1'&&
+      proof.status==='source_ready_for_ocr'&&
+      proof.bookId===bookId&&
+      proof.sourceArchiveSha256MatchesPinned===true&&
+      proof.folderListingComplete===true&&
+      proof.canonical60Certified===false&&
+      proof.releaseEligible===false&&
+      proof.requestReupload===false&&
+      Array.isArray(proof.errors)&&proof.errors.length===0,
+      'SOURCE_DISCOVERY_OR_ORIGINAL_ZIP_NOT_VERIFIED');
+ fail(Array.isArray(pages)&&pages.length>0&&
+      Array.isArray(proof.range)&&proof.range[0]===pages[0].scan&&
+      proof.range[1]===pages.at(-1).scan,'SOURCE_DISCOVERY_RANGE_MISMATCH');
+ const imageMap=new Map((proof.rangeImages||[]).map(x=>[x.scan,x.sha256]));
+ fail(imageMap.size===pages.length&&pages.every((p,i)=>p.scan===pages[0].scan+i&&
+      /^[a-f0-9]{64}$/.test(p.sha256||'')&&p.sha256===imageMap.get(p.scan)),
+      'SOURCE_DISCOVERY_IMAGE_HASH_MISMATCH');
+ return proof;
+}
+function initResolved(htmlFile,root,bookId,loaderFile,sourceIndexFile,sourcePreflightFile){
+ fail(typeof sourcePreflightFile==='string'&&sourcePreflightFile.length>0,
+      'SOURCE_PREFLIGHT_REPORT_REQUIRED');
+ const parsed=v.extract(fs.readFileSync(htmlFile));
+ const proof=checkSourcePreflight(sourcePreflightFile,bookId,parsed.pages);
+ const m=init(htmlFile,root,bookId,loaderFile,sourceIndexFile);
+ m.sourceDiscovery=write(root,'immutable/source-discovery-proof.json',proof);
+ saveManifest(root,m);
+ return m;
+}
 function correctUnsafe(file,eventFile){
  const {root,m}=load(file),raw=v.json(root,m.raw),old=v.json(root,m.canonical),events=v.json(root,m.corrections),e=JSON.parse(fs.readFileSync(eventFile));
  fail(v.objHash(v.replay(raw,events))===v.objHash(old),'PRIOR_CANONICAL_DIVERGED');
@@ -101,6 +134,6 @@ function completePlan(planFile,artifactFile,readbackFile,observedFileId){
  return {schema:'reader-delivery-completion-v1',planSha256:v.hash(fs.readFileSync(planFile)),artifactSha256:p.artifactSha256,targetFileId:observedFileId,completedAt:new Date().toISOString()};
 }
 if(require.main===module){
- const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
+ const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='init-resolved')r=initResolved(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init-resolved HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX SOURCE_PREFLIGHT_REPORT | (legacy) init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='init-resolved'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
 }
-module.exports={init,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};
+module.exports={init,initResolved,checkSourcePreflight,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};

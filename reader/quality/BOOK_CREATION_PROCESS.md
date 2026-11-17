@@ -59,6 +59,39 @@ GitHub Pages の公開処理は `tools/reader-verify-pages.cjs` により、承�
 
 **強制範囲：** 公式の private pipeline／GitHub Actions を使う工程はゲートで止められる。ChatGPTの手動URL案内、外部サービスへの直接書込み、実機操作の実施そのものをプログラムが自動的に保証するわけではない。これらも同じ証拠確認を作業者が行う。
 
+## 工程0：原本の発見・取得（ZIPを使う新規分冊の必須前処理）
+
+過去の制作記録から**書籍ID・Googleドライブの親フォルダID・原本ZIPのファイルID・元ZIP SHA-256・原本画像総数**を回収する。ファイル名・更新日時だけで正本を決めない。過去の実行記録から元ZIPの所在が分かる場合はそれを優先する。
+
+原本を探す際は（1）既知IDの実体照会、（2）`/Google Drive` が正規のGoogle Driveマウントであることの確認、（3）**対象フォルダの直接一覧と全ページ取得**、（4）必要に応じて検索語・ファイル種類を変えた検索の順に行う。検索0件を『存在しない』と読み替えない。MIME型は `application/zip`、`application/x-zip-compressed` 等を想定し、拡張子に依存せず元ファイルのZIP署名まで検査する。直接一覧に保存先候補があれば、通常検索に出なくてもそのIDで取得する。
+
+取得したZIPはPRIVATE領域に置き、記録済みSHA-256、画像数、ZIP内部の順序、依頼した20枚の範囲と各画像SHA-256を照合する。ZIP内の元JPEG/PNGのバイトは改変しない。名前が同じでIDが違う、原本SHAが違う、一覧が途中で切れた、ZIPが不正なら自動選択せず作業を止める。失敗状態は `blocked` / `unresolved` と記録し、全ドライブからの『不存在』を主張しない。
+
+前処理の証拠は `tools/reader-source-preflight.py` の入力 `reader-source-discovery-input-v1` と出力 `reader-source-preflight-v1` をPRIVATEに保持する。新規ZIP分冊の初期化には `reader-private-pipeline.cjs init-resolved` を使い、証拠と実際のHTMLに収録した原本画像のハッシュを再照合する。昔の作品の `init` や既存の正式60項目の実行／証跡／合格状態は変更しない。これは**検査61番ではない**。
+
+最小入力形（全ID、ファイル名、SHAはPRIVATEで実値に置換する。検索0件でも一覧で発見可能）：
+
+```json
+{
+  "schema": "reader-source-discovery-input-v1",
+  "bookId": "sample-novel", "range": [41, 60],
+  "expected": {"fileId": "PRIVATE_FILE_ID", "folderId": "PRIVATE_FOLDER_ID",
+               "fileName": "PRIVATE_SOURCE.zip", "sha256": "64-char-sha256", "imageCount": 286},
+  "lookups": {"searches": [{"query": "name", "resultCount": 0}],
+              "byId": {"attempted": true, "found": true, "item": {"id": "PRIVATE_FILE_ID"}}},
+  "folderListing": {"attempted": true, "complete": true, "folderId": "PRIVATE_FOLDER_ID",
+                    "files": [{"id": "PRIVATE_FILE_ID", "name": "PRIVATE_SOURCE.zip",
+                               "mimeType": "application/x-zip-compressed"}]}
+}
+```
+
+```sh
+python3 tools/reader-source-preflight.py --snapshot PRIVATE/source-lookup.json --archive PRIVATE/original.zip --report PRIVATE/source-preflight.json
+node tools/reader-private-pipeline.cjs init-resolved PRIVATE/book.html PRIVATE/book-workspace BOOK_ID PRIVATE/loader.html PRIVATE/original-index.json PRIVATE/source-preflight.json
+```
+
+`source_ready_for_ocr` は原本所在とバイト一致の**限定検査**であり、原本の独立全字照合・60項目の合格・Chrome配信・iPhone実機の成功は意味しない。再アップロードを依頼する前に既知ID、正規マウント、直接一覧のページ送り、ZIP形式の変種、他の許可された経路を確認し、発見できないときは状況を `未確認` と報告する。
+
 ## 開始トリガー
 
 利用者が「新しい本を作る」「次の20ページを作る」「既存本の読書画面を直す」と依頼するたびに、次の順番を実行する。
