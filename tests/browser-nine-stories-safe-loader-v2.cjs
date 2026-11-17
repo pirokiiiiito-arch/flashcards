@@ -20,7 +20,7 @@ async function until(fn,label){
    '<meta name="built-at" content="2026-11-17T20:18:44+09:00">'+
    '<title>ナイン・ストーリーズ｜021〜040｜合成試験のみ</title>'+
    '<script id="embedded-data" type="application/json">'+JSON.stringify(book)+'</script></head>'+
-   '<body><script>if(window.__readerHost)parent.postMessage({type:"reader-ready-v8",session:window.__readerHost.session},window.__readerHost.origin);</scr'+'ipt></body></html>';
+   '<body><script>if(window.__readerHost)parent.postMessage({type:"reader-ready-v8",session:window.__readerHost.session},window.__readerHost.origin);</scr'+'ipt></body></html>'+'<!--synthetic-fixture-padding:'+'x'.repeat(1200)+'-->';
  fs.writeFileSync(data,sample);
  const pinned=crypto.createHash('sha256').update(fs.readFileSync(data)).digest('hex');
  const released=fs.readFileSync(path.join(ROOT,ENTRY),'utf8');
