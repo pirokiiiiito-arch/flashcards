@@ -223,7 +223,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Verify admitted reading URLs return HTTP 200 and exact SHA-256 bytes
         run: node tools/reader-verify-pages.cjs . "$RUNNER_TEMP/reader-public-delivery-evidence.json"
-      - name: Verify public novel-demo URL and exact deployed CSS/JS/HTML bytes
+      - name: Verify public novel-demo and WH1 standard runtime exact deployed bytes
         run: node tools/verify-novel-template-pages.cjs "$RUNNER_TEMP/novel-demo-public-evidence.json"
       - name: Preserve novel-demo publication evidence even on verification failure
         if: always()

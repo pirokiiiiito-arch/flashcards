@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict';
-// Verify the public synthetic novel DEMO, not any copyrighted book. No private OCR is fetched.
+// Verify the public synthetic novel demo and shared WH1 standard.js bytes, never private book data.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const origin='https://pirokiiiiito-arch.github.io/flashcards/';
 const files=['templates/reader/v2/novel.html','templates/reader/v2/novel.css',
  'templates/reader/v2/novel-dialogue.js','templates/reader/v2/novel.js',
- 'templates/reader/v2/standard.css'];
+ 'templates/reader/v2/standard.css','templates/reader/v2/standard.js'];
 const sha256=x=>crypto.createHash('sha256').update(x).digest('hex');
 async function checkPublicNovel(root,fetcher=fetch,options={}){
  const attempts=options.attempts||5;
