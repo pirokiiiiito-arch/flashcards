@@ -7,6 +7,7 @@ on:
       - 'tests/reader-novel-template.test.cjs'
       - 'tests/reader-g404-pagination.test.cjs'
       - 'tests/reader-novel-continuity.test.cjs'
+      - 'tests/reader-wh1-continuity.test.cjs'
       - 'tools/verify-novel-template-pages.cjs'
       - '.github/workflows/reader-template-v2.yml'
   push:
@@ -17,6 +18,7 @@ on:
       - 'tests/reader-novel-template.test.cjs'
       - 'tests/reader-g404-pagination.test.cjs'
       - 'tests/reader-novel-continuity.test.cjs'
+      - 'tests/reader-wh1-continuity.test.cjs'
       - 'tools/verify-novel-template-pages.cjs'
       - '.github/workflows/reader-template-v2.yml'
   workflow_dispatch:
@@ -37,7 +39,7 @@ jobs:
           node --check templates/reader/v2/novel-dialogue.js
           node --check templates/reader/v2/novel.js
           node --check tools/verify-novel-template-pages.cjs
-          node --test tests/reader-template-v2.test.cjs tests/reader-novel-template.test.cjs tests/reader-g404-pagination.test.cjs tests/reader-novel-continuity.test.cjs
+          node --test tests/reader-template-v2.test.cjs tests/reader-novel-template.test.cjs tests/reader-g404-pagination.test.cjs tests/reader-novel-continuity.test.cjs tests/reader-wh1-continuity.test.cjs
       - name: Package exact public v2 template bytes for browser verification
         if: always()
         uses: actions/upload-artifact@v4
