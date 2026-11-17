@@ -13,8 +13,15 @@ for(const id of required)if(!$(id))throw Error('必要な表示要素があり�
 const mode=book.kind,bookId=String(book.id||'standard-'+mode),key='standard-reader-v2:'+bookId;
 const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
 const split=x=>segmenter?Array.from(segmenter.segment(String(x||'')),v=>v.segment):Array.from(String(x||''));
+// Source roles are distinct from the visual type: notes and TOC entries render
+// with the old body styling but are NEVER eligible to join narrative prose.
+const sourceKind=b=>b.type==='heading'?'heading':
+ b.type==='toc'?'toc':
+ (b.type==='note'||b.type==='footnote'||b.type==='caption')?'note':'body';
 let blocks=(Array.isArray(book.blocks)?book.blocks:[]).filter(b=>b&&typeof b.text==='string'&&b.text.length)
- .map(b=>({type:b.type==='heading'?'heading':'body',text:b.text,scan:Number(b.scan)||1,units:split(b.text)}));
+ .map((b,i)=>({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
+   text:b.text,scan:Number(b.scan)||1,units:split(b.text),
+   sourceBlock:i,sourceJoined:b.joinPrevious===true}));
 let figures=(Array.isArray(book.figures)?book.figures:[]).map((f,i)=>({
  id:String(f.id||'figure-'+(i+1)),title:String(f.title||'図版 '+(i+1)),
  alt:String(f.alt||f.title||'原本画像'),scan:Number(f.scan)||1,
@@ -32,7 +39,9 @@ if(mode==='mixed'){
     if(!b||typeof b.text!=='string'||!b.text.length)continue;
     const scan=Number(b.scan||entry.scan);
     if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
-    blocks.push({type:b.type==='heading'?'heading':'body',text:b.text,scan,units:split(b.text)});
+    blocks.push({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
+      text:b.text,scan,units:split(b.text),sourceBlock:blocks.length,
+      sourceJoined:b.joinPrevious===true});
     flow.push({kind:'text',block:blocks.length-1});
    }
   }else if(entry?.kind==='image'){
@@ -42,7 +51,12 @@ if(mode==='mixed'){
      title:String(entry.title||'原本 '+scan),alt:String(entry.alt||entry.title||'原本画像'),
      scan,source:entry.src||null,caption:String(entry.caption||''),
      units:split(entry.caption||''),ownedURL:null};
-   figures.push(f);flow.push({kind:'image',figure:figures.length-1});
+   figures.push(f);flow.push({kind:'image',figure:figures.length-1,
+     // Explicitly source-reviewed figure may follow a continued paragraph.
+     deferUntilContinuation:entry.deferUntilContinuation===true});
+  }else if(entry?.kind==='break'){
+   // A logical paragraph boundary with no printed content.
+   flow.push({kind:'break'});
   }else throw Error('mixedモードの項目種別が不正です');
  }
 }else if(mode==='text'){
@@ -124,7 +138,38 @@ function fitsParts(existing,additional){
  if(additional)fragment.append(partNode(additional));
  measureText.replaceChildren(fragment);return fitsInk(measureText);
 }
-function textPart(b,off,n){return {type:b.type,scan:b.scan,text:b.units.slice(off,off+n).join(''),continued:off>0}}
+// G4-02 / G4-04: source-scan pages are not forced reader-page boundaries.
+// Only source-verified joinPrevious:true on a following BODY may join with a
+// prior BODY in an uninterrupted logical text run. Never infer this from scan
+// numbers, and never silently accept a blocked explicit continuation.
+function joinLogicalContinuations(source){
+ const logical=[];
+ for(const b of source){
+  const prior=logical[logical.length-1];
+  if(b.sourceJoined){
+   if(!prior||b.semanticType!=='body'||prior.semanticType!=='body')
+    throw Error('G402_SOURCE_CONTINUATION_BARRIER scan='+b.scan);
+   const start=prior.units.length;
+   prior.text+=b.text;
+   prior.units.push(...b.units);
+   prior.sourceRanges.push({start,end:prior.units.length,scan:b.scan,sourceBlock:b.sourceBlock});
+  }else{
+   logical.push({...b,units:b.units.slice(),
+    sourceRanges:[{start:0,end:b.units.length,scan:b.scan,sourceBlock:b.sourceBlock}]});
+  }
+ }
+ return logical;
+}
+function textPart(b,off,n){
+ const first=b.sourceRanges?.find(r=>r.end>off);
+ return {type:b.type,scan:first?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
+  continued:off>0,
+  // Offsets are grapheme indices within the ORIGINAL registered source block.
+  sourceSpans:(b.sourceRanges||[]).filter(r=>r.end>off&&r.start<off+n).map(r=>({
+   scan:r.scan,sourceBlock:r.sourceBlock,
+   sourceStart:Math.max(0,off-r.start),sourceEnd:Math.min(r.end,off+n)-r.start
+  }))};
+}
 function protectedPageBoundary(units,point){
  if(point<=0||point>=units.length)return false;
  const left=units.slice(Math.max(0,point-14),point).join('');
@@ -136,6 +181,7 @@ function protectedPageBoundary(units,point){
  return false;
 }
 function paginateBlocks(group,start){
+ group=joinLogicalContinuations(group);
  const out=[];let current=[],at=start,begin=start;
  const flush=()=>{if(!current.length)return;
   out.push({kind:'text',parts:current,start:begin,end:at,scan:current[0].scan});
@@ -192,7 +238,7 @@ function paginateOneFigure(i,start){
  return out;
 }
 function paginateAll(){
- const out=[];let at=0,pending=[];
+ const out=[];let at=0,pending=[],deferredFigures=[],joinedAfterDeferred=false;
  const flush=()=>{
   if(!pending.length)return;
   measureText.hidden=false;$('measure-figure').hidden=true;
@@ -200,13 +246,41 @@ function paginateAll(){
   if(part.length)at=part[part.length-1].end;
   pending=[];
  };
- for(const item of flow){
-  if(item.kind==='text'){pending.push(blocks[item.block]);continue}
-  flush();measureText.hidden=true;$('measure-figure').hidden=false;
+ const emitFigure=item=>{
+  measureText.hidden=true;$('measure-figure').hidden=false;
   const part=paginateOneFigure(item.figure,at);out.push(...part);
   if(part.length)at=part[part.length-1].end;
+ };
+ // A source-reviewed figure that physically interrupts an unfinished
+ // sentence is retained, but displayed AFTER its next logical paragraph.
+ // Without an explicit confirmed continuation this is an error, not a
+ // silently omitted image or a broken continuation.
+ const releaseDeferred=()=>{
+  if(!deferredFigures.length)return;
+  if(!joinedAfterDeferred)throw Error('G402_DEFERRED_IMAGE_WITHOUT_CONTINUATION');
+  flush();
+  for(const item of deferredFigures)emitFigure(item);
+  deferredFigures=[];joinedAfterDeferred=false;
+ };
+ for(const item of flow){
+  if(item.kind==='text'){
+   const b=blocks[item.block];
+   if(deferredFigures.length){
+    if(b.sourceJoined&&b.semanticType==='body')joinedAfterDeferred=true;
+    else releaseDeferred();
+   }
+   pending.push(b);continue;
+  }
+  if(item.kind==='image'&&item.deferUntilContinuation){
+   if(!pending.length||pending[pending.length-1].semanticType!=='body')
+    throw Error('G402_DEFERRED_IMAGE_NO_PRECEDING_PROSE');
+   deferredFigures.push(item);continue;
+  }
+  releaseDeferred();flush();
+  if(item.kind==='break')continue;
+  emitFigure(item);
  }
- flush();return out;
+ releaseDeferred();flush();return out;
 }
 function pageAt(point){
  let result=0;
@@ -376,7 +450,8 @@ window.StandardReader=Object.freeze({version:'v2',kind:mode,bookId,inspect:()=>(
  currentKind:pages[index]?.kind,scan:pages[index]?.scan,
  textIntegrity:pages.filter(p=>p.kind==='text').flatMap(p=>p.parts.map(x=>x.text)).join('')===
   blocks.map(b=>b.text).join('')
-}),pageManifest:()=>pages.map(p=>({kind:p.kind,scan:p.scan,start:p.start,end:p.end,figure:p.figure})),
+}),pageManifest:()=>pages.map(p=>({kind:p.kind,scan:p.scan,start:p.start,end:p.end,figure:p.figure,
+  sourceSpans:p.kind==='text'?p.parts.flatMap(x=>x.sourceSpans||[]):[]})),
  gotoPage:n=>gotoPage(n)});
 reflectZoom();requestAnimationFrame(rebuild);
 if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>postHost('reader-ready-v8'));}
