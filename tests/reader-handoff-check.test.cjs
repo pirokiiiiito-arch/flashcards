@@ -38,7 +38,7 @@ test('ordinary synthetic preview checks structure without pretending to certify 
   assert.equal(r.status,'structural_pass_only');
   assert.equal(r.originalImageCount,20);
   assert.equal(r.expectedShaMatched,true);
-  assert.equal(r.externalSourceHashesChecked,false);
+  assert.equal(r.suppliedSourceManifestHashesMatched,false);
   assert.equal(r.releaseEligible,false);
   assert.equal(r.contentCertified,false);
   assert.equal(r.chromeImport,'not_run');
