@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 'use strict';
-// Private book handoff guard: NEVER prints or uploads source images/OCR.
-// A structural PASS is not a source proofreading, published-URL check, or iPhone certification.
+// Optional PRIVATE artifact integrity preflight. Never changes the 60-rule canonical gate.
+// Never includes scans/OCR in output. It cannot certify proofreading, Drive readback,
+// public HTTP availability, Chrome import or a real iPhone.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -21,6 +22,36 @@ function extract(html) {
   if (!m) throw Error('EMBEDDED_DATA_MISSING');
   try { return JSON.parse(m[1]); } catch (_) { throw Error('EMBEDDED_DATA_INVALID_JSON'); }
 }
+function getMeta(html,name){
+  const tags=html.match(/<meta\s+[^>]*>/gi)||[];
+  const tag=tags.find(t=>new RegExp('\\bname=["\\']'+name+'["\\']','i').test(t));
+  return tag?.match(/\bcontent=["']([^"']*)["']/i)?.[1]||null;
+}
+function safePublicEntry(entry){
+  return typeof entry==='string'&&/^reader\/[A-Za-z0-9_./-]+\/index\.html$/.test(entry)&&
+    !entry.split('/').includes('..')&&!entry.split('/').includes('.');
+}
+function urlMatchesEntry(raw,entry){
+  if(!safePublicEntry(entry))return false;
+  try{
+    const u=new URL(raw),full='/flashcards/'+entry,dir=full.slice(0,-'index.html'.length);
+    return u.origin==='https://pirokiiiiito-arch.github.io'&&
+      (u.pathname===full||u.pathname===dir)&&u.searchParams.get('import')==='1'&&
+      !u.username&&!u.password&&!u.hash;
+  }catch(_){return false;}
+}
+function sourceHashes(manifest,bookId,start,end,fail){
+  if(!manifest)return null;
+  fail(manifest.schema==='reader-source-hashes-v1'&&manifest.bookId===bookId&&
+    Array.isArray(manifest.range)&&manifest.range[0]===start&&manifest.range[1]===end,
+    'SOURCE_MANIFEST_IDENTITY_MISMATCH');
+  const images=manifest.images;
+  fail(images&&typeof images==='object'&&!Array.isArray(images)&&
+    Object.keys(images).length===end-start+1&&
+    Array.from({length:end-start+1},(_,i)=>isHash(images[String(start+i)])).every(Boolean),
+    'SOURCE_MANIFEST_INCOMPLETE');
+  return images||{};
+}
 function inspect(file, options = {}) {
   const errors = [], warnings = [];
   const fail = (condition, msg) => { if (!condition) errors.push(msg); };
@@ -33,22 +64,36 @@ function inspect(file, options = {}) {
     end >= start && end - start < 200, 'INVALID_EXPECTED_RANGE');
   fail(typeof options.bookId === 'string' && options.bookId.length > 2, 'EXPECTED_BOOK_ID_REQUIRED');
   fail(['preview','production'].includes(mode), 'INVALID_MODE');
+  if(options.profile)fail(['novel','world_history_1','generic'].includes(options.profile),'INVALID_PROFILE');
   let bytes, html, d;
   try { bytes=fs.readFileSync(file); html=bytes.toString('utf8'); }
   catch(e) { errors.push('FILE_UNREADABLE_'+e.code); }
   const artifactSha256 = bytes ? hash(bytes) : null;
   if (options.expectedSha) fail(isHash(options.expectedSha) &&
     artifactSha256===options.expectedSha, 'ARTIFACT_SHA256_MISMATCH');
-  else warnings.push('EXPECTED_ARTIFACT_SHA_NOT_PINNED');
+  else warnings.push('ARTIFACT_HASH_NOT_INDEPENDENTLY_PINNED');
   if (html) {
     try { d=extract(html); } catch(e) { errors.push(e.message); }
     fail(/<meta\s+name=["']viewport["']/i.test(html), 'VIEWPORT_META_MISSING');
-    fail(/<meta\s+name=["']template-profile["']\s+content=["']novel["']/i.test(html) ||
-      options.profile!=='novel', 'NOVEL_TEMPLATE_PROFILE_MISMATCH');
-    fail(/reader-ready-v8/.test(html) && /reader-position-v1/.test(html), 'CHROME_HOST_PROTOCOL_MISSING');
-    fail(/novel-reading/.test(html), 'NOVEL_READER_STYLE_MISSING');
+    if(options.profile){
+      fail(getMeta(html,'template-profile')===options.profile,'TEMPLATE_PROFILE_MISMATCH');
+      if(options.profile==='novel')fail(/\bnovel-reading\b/.test(html),'NOVEL_READER_STYLE_MISSING');
+    }
+    fail(/reader-ready-v8/.test(html)&&/reader-position-v1/.test(html),'CHROME_HOST_PROTOCOL_MISSING');
+    const builtAt=getMeta(html,'built-at');
+    if(builtAt){
+      const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(builtAt);
+      fail(!!m&&filename.startsWith(m.slice(1,4).join('')+'_'+m[4]+m[5]+'_'),
+        'FILENAME_AND_BUILT_AT_MISMATCH');
+    }else warnings.push('BUILD_TIMESTAMP_NOT_EMBEDDED');
   }
-  let sourceImageBytes=0;
+  let sourceImageBytes=0,sourceManifest=null;
+  if(options.sourceManifest){
+    try{sourceManifest=typeof options.sourceManifest==='string'?
+      JSON.parse(fs.readFileSync(options.sourceManifest,'utf8')):options.sourceManifest;}
+    catch(_){errors.push('SOURCE_MANIFEST_UNREADABLE');}
+  }else warnings.push('ORIGINAL_SOURCE_INDEPENDENT_HASH_MANIFEST_NOT_PROVIDED');
+  const originals=sourceHashes(sourceManifest,options.bookId,start,end,fail);
   if (d) {
     fail(d.bookId===options.bookId, 'BOOK_ID_MISMATCH');
     fail(d.title===options.title || !options.title, 'BOOK_TITLE_MISMATCH');
@@ -67,39 +112,37 @@ function inspect(file, options = {}) {
       const raw=Buffer.from(m[2], 'base64');sourceImageBytes+=raw.length;
       fail(raw.toString('base64')===m[2], 'ORIGINAL_IMAGE_BAD_BASE64_'+idx);
       fail(page.mimeType===m[1], 'ORIGINAL_IMAGE_MIME_MISMATCH_'+idx);
-      fail(isHash(page.sha256) && page.sha256===hash(raw), 'ORIGINAL_IMAGE_SHA_MISMATCH_'+idx);
+      const digest=hash(raw);
+      fail(isHash(page.sha256)&&page.sha256===digest,'EMBEDDED_IMAGE_HASH_MISMATCH_'+idx);
+      if(originals)fail(digest===originals[String(idx)],'SOURCE_IMAGE_HASH_MISMATCH_'+idx);
       fail(Number.isInteger(page.width)&&page.width>0&&Number.isInteger(page.height)&&page.height>0,
         'ORIGINAL_IMAGE_DIMENSIONS_MISSING_'+idx);
-      if(seen.has(page.sha256))errors.push('DUPLICATE_ORIGINAL_IMAGE_'+idx);
-      seen.add(page.sha256);
+      if(seen.has(digest))errors.push('DUPLICATE_IMAGE_NEEDS_SOURCE_REVIEW_'+idx);
+      seen.add(digest);
     });
-    const second=d.proofreading?.independentSecondPass || 'not_run';
-    const device=d.proofreading?.iphoneDevice || 'not_run';
-    if(mode==='production') fail(second==='passed', 'PRODUCTION_SECOND_PROOFREADING_NOT_PASSED');
-    if(second!=='passed') warnings.push('SECOND_PROOFREADING_NOT_PASSED');
-    if(device!=='passed') warnings.push('IPHONE_REAL_DEVICE_NOT_VERIFIED');
-    if(/完成版|全文字照合済/.test(d.state||'') && second!=='passed')errors.push('UNSUPPORTED_COMPLETION_CLAIM');
+    // A self-declared pass inside private HTML is never accepted as independent 60-rule evidence.
+    if(mode==='preview'&&/完成版|全文字照合済/.test(d.state||''))
+      errors.push('UNSUPPORTED_PREVIEW_COMPLETION_CLAIM');
   }
   const chromeUrl=options.chromeUrl||null;
-  if(chromeUrl) {
-    try {
-      const u=new URL(chromeUrl);
-      fail(u.origin==='https://pirokiiiiito-arch.github.io' &&
-        u.pathname==='/flashcards/reader/nine-stories/021-040/' &&
-        u.searchParams.get('import')==='1', 'WRONG_CHROME_IMPORT_URL');
-    } catch(_) { errors.push('BAD_CHROME_IMPORT_URL'); }
+  if(chromeUrl){
+    fail(safePublicEntry(options.loaderEntry),'EXPECTED_LOADER_ENTRY_REQUIRED');
+    if(options.loaderEntry)fail(urlMatchesEntry(chromeUrl,options.loaderEntry),'CHROME_URL_NOT_LOADER_ENTRY');
   }
+  warnings.push('CANONICAL_60_RULE_EVIDENCE_NOT_VERIFIED');
+  warnings.push('CHROME_FILE_IMPORT_NOT_RUN');
+  warnings.push('IPHONE_REAL_DEVICE_NOT_VERIFIED');
   const status=errors.length?'blocked':'structural_pass_only';
-  return {schema:'reader-handoff-check-v1', status, bookId:d?.bookId||null, range:d?.range||null,
+  return {schema:'reader-handoff-check-v2', status, bookId:d?.bookId||null, range:d?.range||null,
     artifactFile:filename, artifactBytes:bytes?.length||null, artifactSha256,
     originalImageCount:d?.pages?.length||0, originalImageBytes:sourceImageBytes,
-    expectedShaMatched:!!options.expectedSha && artifactSha256===options.expectedSha,
-    profile:options.profile||null, mode, chromeUrl,
-    chromeImport:'not_run', publicHTTP:'not_run',
-    independentProofreading:d?.proofreading?.independentSecondPass||'not_run',
-    iphoneDevice:d?.proofreading?.iphoneDevice||'not_run',
-    deliveredAndVerified:false, contentCertified:false, releaseEligible:false,
-    errors, warnings};
+    embeddedOriginalHashesSelfConsistent:!!d&&!errors.some(e=>e.startsWith('EMBEDDED_IMAGE_HASH_')),
+    externalSourceHashesChecked:!!originals&&!errors.some(e=>e.startsWith('SOURCE_')),
+    expectedShaMatched:!!options.expectedSha&&artifactSha256===options.expectedSha,
+    profile:options.profile||null,mode,chromeUrl,loaderEntry:options.loaderEntry||null,
+    publicHTTP:'not_run',chromeImport:'not_run',independentProofreading:'not_verified',
+    iphoneDevice:'not_verified',deliveredAndVerified:false,contentCertified:false,releaseEligible:false,
+    errors,warnings};
 }
 function main(args){
   const opts={};let file=null;
@@ -115,11 +158,13 @@ function main(args){
     else if(a==='--mode')opts.mode=args[++i];
     else if(a==='--profile')opts.profile=args[++i];
     else if(a==='--expected-sha')opts.expectedSha=args[++i];
+    else if(a==='--source-manifest')opts.sourceManifest=args[++i];
+    else if(a==='--loader-entry')opts.loaderEntry=args[++i];
     else if(a==='--chrome-url')opts.chromeUrl=args[++i];
     else if(a==='--report')opts.report=args[++i];
     else throw Error('UNKNOWN_OPTION '+a);
   }
-  if(!file)throw Error('Usage: reader-handoff-check.cjs --file HTML --book BOOK_ID --range START-END [--title TITLE] [--profile novel] [--mode preview|production] [--expected-sha SHA256] [--chrome-url HTTPS] [--report FILE]');
+  if(!file)throw Error('Usage: reader-handoff-check.cjs --file PRIVATE.html --book ID --range 21-40 [--profile novel|world_history_1] [--mode preview|production] [--expected-sha SHA] [--source-manifest PRIVATE.json] [--chrome-url URL --loader-entry reader/BOOK/RANGE/index.html] [--report PRIVATE.json]');
   const result=inspect(file,opts);const body=JSON.stringify(result,null,2)+'\n';
   if(opts.report) {
     fs.mkdirSync(path.dirname(path.resolve(opts.report)),{recursive:true});
@@ -131,4 +176,4 @@ if(require.main===module){
   try{main(process.argv.slice(2));}
   catch(e){console.error('HANDOFF_BLOCKED '+e.message);process.exitCode=2;}
 }
-module.exports={inspect,extract,validateDateTime};
+module.exports={inspect,extract,validateDateTime,urlMatchesEntry,safePublicEntry};
