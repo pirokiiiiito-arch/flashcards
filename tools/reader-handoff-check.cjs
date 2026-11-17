@@ -24,7 +24,7 @@ function extract(html) {
 }
 function getMeta(html,name){
   const tags=html.match(/<meta\s+[^>]*>/gi)||[];
-  const tag=tags.find(t=>new RegExp('\\bname=["\\']'+name+'["\\']','i').test(t));
+  const tag=tags.find(t=>(t.match(/\bname=["']([^"']+)["']/i)||[])[1]===name);
   return tag?.match(/\bcontent=["']([^"']*)["']/i)?.[1]||null;
 }
 function safePublicEntry(entry){
