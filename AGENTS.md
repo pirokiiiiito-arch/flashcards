@@ -35,6 +35,41 @@ The Pages workflow performs **after-deploy HTTP 200 + served SHA-256** checks fo
 
 For each new book, each further 20-scan set and each reader update, perform the production sequence in `reader/quality/BOOK_CREATION_PROCESS.md`. Before any public commit, use `node tools/reader-book-preflight.cjs BOOK_ID` and `node tools/reader-book-preflight.cjs --all`; GitHub Actions `.github/workflows/reader-book-creation.yml` runs on newly registered/modified preview records. Do not claim a preflight is source proofreading, device verification, or successful deployment. Historical preview issuer compatibility is exact per-book/per-receipt; it never applies to a normal reader release. Always report Drive HTML URL and dedicated Chrome URL in plain text with the actual observed publication status, including 404 or unpublished.
 
+## Mandatory source discovery for NEW ZIP scan batches (before OCR or asking for re-upload)
+
+Before saying a source archive is missing, check prior work records for its exact
+Google Drive file/folder ID, source name, image count and SHA-256. Query an ID if
+known, and **list the actual source folder directly with pagination**. Treat search
+results, MIME filters and plain-text indexing only as hints: an empty result is
+NOT proof of absence. With the Files mount confirm `/Google Drive` really has an
+`external-gdrive:` ID, then list the exact known folder; if listing is incomplete,
+continue its cursor or classify the source as `未確認`, not absent. ZIP MIME variants
+include `application/zip` and `application/x-zip-compressed`; actual ZIP signature,
+archive SHA, image count and requested ordered scan range must be checked from
+the downloaded **private** original. Keep Google IDs and source text OUT of GitHub.
+
+For new ZIP batches, create a private `reader-source-discovery-input-v1` snapshot
+from provider results and run:
+
+```sh
+python3 tools/reader-source-preflight.py --snapshot PRIVATE/source-lookup.json --archive PRIVATE/original.zip --report PRIVATE/source-preflight.json
+```
+
+Use `node tools/reader-private-pipeline.cjs init-resolved PRIVATE/book.html PRIVATE/BOOK_ID BOOK_ID PRIVATE/loader.html PRIVATE/original-index.json PRIVATE/source-preflight.json`
+when initializing the resulting private reader. Its gate compares the preflight
+report's range and original page digests with the actual reader file. A missing,
+mismatched or inconclusive report blocks this NEW entrypoint; the historic `init`
+command remains unchanged for legacy workspaces. No new 61st quality item.
+
+`source_ready_for_ocr` means **only** that the previous source fingerprint and
+private ZIP bytes, direct-folder metadata and range are internally consistent.
+It is NOT an authenticated Drive provenance certificate, a proofreading PASS,
+a complete reader, a publicly deployed URL, or an iPhone test. An unresolved
+result never authorizes claiming global absence or asking the user to re-upload
+on search-zero alone. When a direct folder listing is not available, report the
+unresolved dependency and try other authorized listing routes; never invent
+matches. Source discovery is read-only and must not erase old files or receipts.
+
 ## Final private reader-file handoff check (supplement, not rule 61)
 
 For each newly built **compatible v2 private reading HTML**, run the read-only
