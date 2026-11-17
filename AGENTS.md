@@ -34,3 +34,29 @@ The Pages workflow performs **after-deploy HTTP 200 + served SHA-256** checks fo
 ## Book creation / next 20 scans (automatic on every request)
 
 For each new book, each further 20-scan set and each reader update, perform the production sequence in `reader/quality/BOOK_CREATION_PROCESS.md`. Before any public commit, use `node tools/reader-book-preflight.cjs BOOK_ID` and `node tools/reader-book-preflight.cjs --all`; GitHub Actions `.github/workflows/reader-book-creation.yml` runs on newly registered/modified preview records. Do not claim a preflight is source proofreading, device verification, or successful deployment. Historical preview issuer compatibility is exact per-book/per-receipt; it never applies to a normal reader release. Always report Drive HTML URL and dedicated Chrome URL in plain text with the actual observed publication status, including 404 or unpublished.
+
+## Final private reader-file handoff check (supplement, not rule 61)
+
+For each newly built **compatible v2 private reading HTML**, run the read-only
+`tools/reader-handoff-check.cjs` against the **exact file being handed to the user**.
+Supply the explicit book ID, scan range, profile (`novel` or `world_history_1`),
+loader entry and Chrome URL. Filename must have valid `YYYYMMDD_HHMM_` prefix.
+Use the pre-existing, separately preserved source-image SHA manifest when available;
+**a hash repeated inside the same HTML is only a self-consistency check**, not
+independent source fidelity. Keep both the original manifest and the report PRIVATE.
+
+This is a *handoff guard only*; it does not replace, weaken, duplicate or certify
+the 60 IDs, `reader-evidence-gate`, independent OCR review, Drive same-ID readback,
+HTTP 200 + deployed byte check, actual Chrome import, or real iPhone testing.
+Its highest state is `structural_pass_only` and `releaseEligible:false` even
+if private HTML has self-declared `passed` fields. If the format is incompatible,
+do not certify it by bypassing the checks; use the original canonical procedure.
+Never retroactively fail or rewrite historical books solely because old filenames
+lack timestamps. Timestamp naming is mandatory for **new/recreated files**.
+
+Do not silently reuse a cached earlier HTML at the public Chrome entry. An import
+URL is an importer, not a direct book URL. In the delivery message always give
+both the copyable exact HTML location and the copyable `https://` Chrome entry
+with separate statuses: artifact integrity, independent 60-rule source checks,
+Drive readback, public served SHA, Chrome file-import test, and real iPhone test.
+Where any evidence is missing, report `未検証` rather than `完了`.
