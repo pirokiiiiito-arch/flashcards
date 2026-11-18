@@ -25,6 +25,8 @@ on:
       - 'tests/reader-evidence-gate.test.cjs'
       - 'tests/reader-verify-pages.test.cjs'
       - 'reader/quality/BOOK_CREATION_PROCESS.md'
+      - 'reader/quality/UNIFIED_DELIVERY_GATE.md'
+      - 'reader/quality/README.md'
       - 'reader/quality/RELEASE_PROCESS.md'
       - 'AGENTS.md'
   push:
@@ -53,6 +55,8 @@ on:
       - 'tests/reader-evidence-gate.test.cjs'
       - 'tests/reader-verify-pages.test.cjs'
       - 'reader/quality/BOOK_CREATION_PROCESS.md'
+      - 'reader/quality/UNIFIED_DELIVERY_GATE.md'
+      - 'reader/quality/README.md'
       - 'reader/quality/RELEASE_PROCESS.md'
       - 'AGENTS.md'
   workflow_dispatch:
