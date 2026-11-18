@@ -86,8 +86,20 @@ async function until(fn,label){
   assert.deepEqual(errors,[],'no Chrome runtime exceptions');
   console.log('PASS new Chrome importer: wrong SHA rejected, candidate readback, successful synthetic iframe handshake, no autoplay after reload, explicit reopen');
  }finally{
-  try{ws?.close();}catch(_){}try{chrome?.kill('SIGKILL');}catch(_){}
-  await new Promise(r=>server.close(r));
-  fs.rmSync(dir,{recursive:true,force:true});
+  try{ws?.close();}catch(_){}
+  if(chrome){
+   const exited=chrome.exitCode!==null||chrome.signalCode!==null;
+   if(!exited){
+    const done=new Promise(resolve=>{
+     chrome.once('exit',resolve);
+     const deadline=setTimeout(resolve,1500);
+     deadline.unref?.();
+    });
+    try{chrome.kill('SIGKILL');}catch(_){}
+    await done;
+   }
+  }
+  await new Promise(resolve=>server.close(resolve));
+  fs.rmSync(dir,{recursive:true,force:true,maxRetries:20,retryDelay:120});
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});
