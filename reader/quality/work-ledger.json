@@ -1,0 +1,65 @@
+{
+  "schema": "reader-work-ledger-v1",
+  "ruleset": "20261116_0654_60-items",
+  "purpose": "Cross-chat metadata-only work index. This is not OCR, Drive readback or iPhone evidence. Private source and OCR must never be committed.",
+  "version": 1,
+  "books": [
+    {
+      "bookId": "salinger-nine-stories-shibata-021-040",
+      "range": [
+        21,
+        40
+      ],
+      "profile": "novel",
+      "sourceArchiveSha256": "5303741567c5eda72d3c930cde33010cb77671e53e167c2cfe5c83374c4559f9",
+      "artifactSha256": "55c1f0c18a441937560b6f7eaaa3a469b7885b371bbc319d891281f20b00a609",
+      "qualityState": "unverified",
+      "releaseStatus": "blocked",
+      "knownDefects": [
+        {
+          "id": "021-040-independent-second-pass",
+          "status": "needs_source_review",
+          "category": "independent_proofreading"
+        }
+      ],
+      "expectedProfile": "novel",
+      "privateManifestStatus": "not_registered",
+      "lastKnown": "2026-11-18",
+      "publishedLoaderStatus": "preview_only"
+    },
+    {
+      "bookId": "salinger-nine-stories-shibata-041-060",
+      "range": [
+        41,
+        60
+      ],
+      "profile": "novel",
+      "sourceArchiveSha256": "5303741567c5eda72d3c930cde33010cb77671e53e167c2cfe5c83374c4559f9",
+      "artifactSha256": "3cdb0565c2ab1d227238720154e64c293e549120440aa0dccfcfa33d94a9fa6e",
+      "qualityState": "unverified",
+      "releaseStatus": "blocked",
+      "knownDefects": [
+        {
+          "id": "041-060-ocr-garbled-characters",
+          "status": "needs_source_review",
+          "category": "ocr_text_accuracy"
+        },
+        {
+          "id": "041-060-independent-second-pass",
+          "status": "open",
+          "category": "independent_proofreading"
+        }
+      ],
+      "expectedProfile": "novel",
+      "privateManifestStatus": "not_registered",
+      "lastKnown": "2026-11-18",
+      "publishedLoaderStatus": "preview_only"
+    }
+  ],
+  "history": [],
+  "safety": {
+    "oldPublicationUnchanged": true,
+    "notUsedAs60Pass": true,
+    "notes": "Changes require an audited versioned commit; progress is never proof without private verifier."
+  }
+}
