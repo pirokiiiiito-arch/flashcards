@@ -23,8 +23,13 @@ function validatePendingDraft(book){
  fail(hash(p.privateProgressReportSha256),'PENDING_DRAFT_BASE_EVIDENCE_MISSING');
  fail(p.deliveryStatus==='private_staging_blocked','PENDING_DRAFT_CANNOT_BE_DELIVERY');
  fail(p.realIPhone==='not_run','PENDING_DRAFT_DEVICE_NOT_VERIFIED');
- fail(book.releaseStatus==='blocked'&&book.qualityState==='unverified',
-   'PENDING_DRAFT_CANNOT_BE_PUBLIC_CANDIDATE');
+ // A reviewed old release may stay available while an isolated NEW revision
+ // is under construction. Only the draft is blocked; never downgrade old QA.
+ const stablePrevious=book.releaseStatus==='candidate'&&book.qualityState==='reviewed'&&
+  (book.knownDefects||[]).every(x=>x.status==='resolved');
+ const unverifiedPrevious=book.releaseStatus==='blocked'&&book.qualityState==='unverified';
+ fail(unverifiedPrevious||stablePrevious,
+   'PENDING_DRAFT_INVALID_PRIOR_RELEASE_STATE');
  fail(Number.isSafeInteger(p.sourceJPEGSHAverified)&&p.sourceJPEGSHAverified>=0,
    'PENDING_DRAFT_SOURCE_COUNT_INVALID');
  fail(Number.isSafeInteger(p.chromiumLayoutChecksPassed)&&p.chromiumLayoutChecksPassed>=0,
@@ -153,7 +158,10 @@ function startDraft(ledger,bookId,newSha,firstPassReportSha,sourceImageCount,at)
  const b=matches?.[0];
  if(b?.pendingDraft)errors.push('PENDING_DRAFT_ALREADY_EXISTS');
  if(!Number.isSafeInteger(clone.version)||clone.version<1)errors.push('INVALID_LEDGER_REVISION');
- if(b&&(b.qualityState!=='unverified'||b.releaseStatus!=='blocked'))
+ if(b&&!(
+    (b.qualityState==='unverified'&&b.releaseStatus==='blocked')||
+    (b.qualityState==='reviewed'&&b.releaseStatus==='candidate'&&
+     (b.knownDefects||[]).every(x=>x.status==='resolved'))))
   errors.push('NORMAL_RELEASE_CANNOT_START_UNVERIFIED_DRAFT');
  if(!hash(newSha)||newSha===b?.artifactSha256)errors.push('NEW_WORKING_DRAFT_SHA_REQUIRED');
  if(!hash(firstPassReportSha))errors.push('SOURCE_FIRST_PASS_REPORT_REQUIRED');
