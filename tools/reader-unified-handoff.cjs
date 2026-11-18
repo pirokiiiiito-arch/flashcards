@@ -124,6 +124,17 @@ function inspect(opts,inject={}){
  }
  let ledger;try{ledger=load(opts.ledger);}catch(_){errors.push('SHARED_LEDGER_READBACK_MISSING');}
  if(ledger){
+  // Never stop at a bare error: offer the next exact source-review task from
+  // the same work ledger. This is advice, not additional release authorization.
+  try{
+   const repair=require('./reader-repair-plan.cjs').plan(ledger,data.bookId,
+    opts.repairProgress?load(opts.repairProgress):null);
+   if(repair.status==='work_ready'&&repair.originalReaderStillBlocked){
+    report.nextRepairAction=repair.nextAction;
+    report.remainingRepairWorkItems=repair.remainingWorkItems;
+    report.repairWorkingDraftSha256=repair.workingDraftSha256;
+   }
+  }catch(_){warnings.push('REPAIR_PROGRESS_UNAVAILABLE');}
   entry=checkLedger(ledger,data,sha,errors,{allowKnownDefects:mode==='preview'});
   if(entry&&!errors.some(x=>x.startsWith('LEDGER_')||x.startsWith('SHARED_LEDGER_'))){
    report.ledgerValidated=true;
@@ -198,7 +209,7 @@ function main(argv){
   if(!a.startsWith('--'))throw Error('BAD_OPTION '+a);
   const key={'--mode':'mode','--artifact':'artifact','--manifest':'manifest','--ledger':'ledger',
    '--source-proof':'sourceProof','--ocr-review':'ocrReview','--public-evidence':'publicEvidence',
-   '--preview-consent':'previewConsent','--report':'report'}[a];
+   '--preview-consent':'previewConsent','--repair-progress':'repairProgress','--report':'report'}[a];
   if(!key)throw Error('BAD_OPTION '+a);
   opts[key]=argv[++i];if(!opts[key])throw Error('OPTION_VALUE_MISSING '+a);
  }
