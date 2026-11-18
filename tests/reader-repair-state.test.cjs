@@ -80,7 +80,7 @@ test('unreviewed image cannot advance to completed second pass',()=>{
  assert.equal(r.ok,false);
  assert.ok(r.errors.includes('NO_INDEPENDENT_CHECKS_RECORDED'));
 });
-test('text region comparison must finish before completing second pass',()=>{
+test('independent text pass finishes before source comparison; unresolved differences block source_resolved',()=>{
  const {ledger,bookId}=fixture('text'),p=progress(bookId,{kind:'body',compared:false});
  const result=plan(ledger,bookId,p);
  assert.equal(result.counts.independentTextRegionsRecorded,1);
@@ -88,8 +88,14 @@ test('text region comparison must finish before completing second pass',()=>{
  const one=advance(ledger,bookId,result,EV,'second_pass_in_progress',REVIEW_AT);
  assert.equal(one.ok,true,one.errors.join(','));
  const two=advance(one.ledger,bookId,plan(one.ledger,bookId,p),EV,'second_pass_completed',REVIEW_AT);
- assert.equal(two.ok,false);
- assert.ok(two.errors.includes('SECOND_PASS_REGIONS_INCOMPLETE'));
+ assert.equal(two.ok,true,two.errors.join(','));
+ const three=advance(two.ledger,bookId,plan(two.ledger,bookId,p),EV,'source_resolved',REVIEW_AT);
+ assert.equal(three.ok,false);
+ assert.ok(three.errors.includes('SOURCE_DIFFS_BOUNDARIES_OR_DEFECTS_UNRESOLVED'));
+ p.pages[0].regions[0].comparison={status:'resolved_against_source',
+  evidenceSha256:EV,sourceImageSha256:SH,reviewedBy:'synthetic-reviewer'};
+ const done=advance(two.ledger,bookId,plan(two.ledger,bookId,p),EV,'source_resolved',REVIEW_AT);
+ assert.equal(done.ok,true,done.errors.join(','));
 });
 test('states cannot be skipped, unproven, or regress counts',()=>{
  const {ledger,bookId}=fixture(),p=progress(bookId);
@@ -170,9 +176,17 @@ test('a different book without a pending draft can start a versioned private fir
  assert.equal(startDraft(begun.ledger,bookId,'e'.repeat(64),EV,1,REVIEW_AT).ok,false,
   'new draft cannot overwrite an existing draft in place');
 });
-test('first-pass start rejects reused published SHA and reviewed release state',()=>{
+test('first-pass start rejects reused published SHA and permits isolated revision of reviewed old edition',()=>{
  const {ledger,bookId}=fixture('image');delete ledger.books.at(-1).pendingDraft;
  assert.equal(startDraft(ledger,bookId,PUB,EV,1,REVIEW_AT).ok,false);
  ledger.books.at(-1).releaseStatus='candidate';ledger.books.at(-1).qualityState='reviewed';
- assert.equal(startDraft(ledger,bookId,NEW,EV,1,REVIEW_AT).ok,false);
+ const next=startDraft(ledger,bookId,NEW,EV,1,REVIEW_AT);
+ assert.equal(next.ok,true,next.errors.join(','));
+ assert.equal(next.ledger.books.at(-1).artifactSha256,PUB);
+ assert.equal(next.ledger.books.at(-1).releaseStatus,'candidate');
+ assert.equal(next.ledger.books.at(-1).pendingDraft.deliveryStatus,'private_staging_blocked');
+ assert.deepEqual(validate(next.ledger).errors,[]);
+ const unsafe=structuredClone(ledger);
+ unsafe.books.at(-1).knownDefects.push({id:'open-ocr-error',status:'needs_source_review'});
+ assert.equal(startDraft(unsafe,bookId,NEW,EV,1,REVIEW_AT).ok,false);
 });

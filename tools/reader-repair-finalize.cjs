@@ -16,9 +16,13 @@ function finalize(ledger,bookId,options){
  if(!draft||draft.reviewStatus!=='awaiting_canonical_60'){
   errors.push('DRAFT_NOT_READY_FOR_FINAL_CANONICAL_GATE');return blocked();
  }
- if(entry.releaseStatus!=='blocked'||entry.qualityState!=='unverified'){
-  errors.push('EXISTING_RELEASE_STATE_NOT_BLOCKED');return blocked();
+ const priorUnverified=entry.releaseStatus==='blocked'&&entry.qualityState==='unverified';
+ const priorReviewed=entry.releaseStatus==='candidate'&&entry.qualityState==='reviewed';
+ if(!priorUnverified&&!priorReviewed){
+  errors.push('EXISTING_RELEASE_STATE_NOT_ALLOWED');return blocked();
  }
+ // The published old version is NEVER changed by this function. A validated
+ // replacement remains a private candidate until the release system promotes it.
  if((entry.knownDefects||[]).some(x=>x.status!=='resolved')){
   errors.push('UNRESOLVED_SOURCE_DEFECTS');return blocked();
  }
