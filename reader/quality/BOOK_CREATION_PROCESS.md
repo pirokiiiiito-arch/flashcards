@@ -92,6 +92,38 @@ node tools/reader-private-pipeline.cjs init-resolved PRIVATE/book.html PRIVATE/b
 
 `source_ready_for_ocr` は原本所在とバイト一致の**限定検査**であり、原本の独立全字照合・60項目の合格・Chrome配信・iPhone実機の成功は意味しない。再アップロードを依頼する前に既知ID、正規マウント、直接一覧のページ送り、ZIP形式の変種、他の許可された経路を確認し、発見できないときは状況を `未確認` と報告する。
 
+## 納品停止を解決する再校正・作業キュー（既存60項目の実行支援）
+
+納品ゲートは安全を守るために停止するが、**制作まで停止させるものではない**。
+`reader-work-ledger-v1` の `pendingDraft` と実ページ別のPRIVATE証拠を
+`tools/reader-repair-plan.cjs` へ渡すと、未完了作業を有限の順序で返す。
+
+```sh
+node tools/reader-repair-plan.cjs --book BOOK_ID \
+  --ledger reader/quality/work-ledger.json \
+  --progress PRIVATE/repair-progress.json \
+  --output PRIVATE/repair-plan.json
+```
+
+初回は `--progress` を省略してよい。再転記の未実施ページ、第一稿と
+独立第二稿の差分、ページ内部の境界、区間外の前後境界、既知の欠陥を
+順に登録する。毎回最初の作業を実行し、原本照合の結果と参照SHAを
+PRIVATEの校正記録へ保存する。合格済みの画面検査は**そのHTMLのSHAが
+不変の間だけ**再利用する。文章を一文字でも修正したら新しいSHAを作り、
+OCR・文境界・文字組版・対象画面・校正差分を再検査する。旧版は保持する。
+
+このキューに記録があることは、独立転記・正式60項目の合格を意味しない。
+人間・AIの自己申告を実証済みとみなさない。独立した原本照合で確認
+できない箇所は、推測で補って完了扱いしない。**作業キューが最後まで
+進んだ時点でも**既存の `reader-release-control.cjs` と
+`reader-unified-handoff.cjs` が対象版について本当に `verified_release`
+を出す必要がある。これは第61項目ではなく、合格に到達するための実行順序。
+
+各チャットは「納品できない」と報告するだけでなく、その時点で実行
+可能な次のページの再転記・差分解消を始める。原本へのアクセスが
+ない場合のみ原因と残作業を報告し、実際に成功した作業を区別する。
+公開URLや未校正の読書版を作業キューで勝手に納品しない。
+
 ## 開始トリガー
 
 利用者が「新しい本を作る」「次の20ページを作る」「既存本の読書画面を直す」と依頼するたびに、次の順番を実行する。
