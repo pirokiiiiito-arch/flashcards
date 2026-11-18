@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes,maximum-scale=5">
+<meta name="color-scheme" content="light">
+<title>ナイン・ストーリーズ｜041〜060｜20261118_1926確認用Chrome入口 v4</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",system-ui,sans-serif;color:#273d41;background:#f5f7f5}
+*{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%}
+[hidden]{display:none!important}#reader{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fffdf7}
+#setup{position:fixed;inset:0;z-index:10;display:flex;align-items:safe center;justify-content:center;padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));overflow:auto;background:#f5f7f5}
+main{max-width:490px;width:100%;background:white;border:1px solid #dce5e0;border-radius:16px;padding:21px 20px;box-shadow:0 8px 28px #263b3911}
+h1{font-size:21px;line-height:1.4;margin:0 0 5px}.sub{margin:0 0 14px;color:#526567;font-size:14px;line-height:1.6}
+.information{border:1px solid #cfddd8;background:#f5f9f7;border-radius:10px;padding:12px;margin:10px 0}
+.information p{font-size:13px;line-height:1.7;margin:4px 0;overflow-wrap:anywhere}
+small,.note{font-size:12px;line-height:1.7;color:#637477}.code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}
+button,.pick{display:block;width:100%;min-height:47px;margin:10px 0;border:1px solid #b3c7c1;border-radius:11px;background:#fff;color:#285851;text-align:center;font-size:15px;font-weight:600;padding:11px;cursor:pointer}
+.pick{background:#315f57;color:white;border-color:#315f57}
+button:disabled{opacity:.55;cursor:wait}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#status{font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;min-height:27px;color:#32544e}
+a{color:#285e65}
+</style>
+</head>
+<body>
+<iframe id="reader" title="ナイン・ストーリーズ 縦書き読書" sandbox="allow-scripts allow-downloads"></iframe>
+<div id="setup">
+<main>
+<h1>ナイン・ストーリーズ</h1>
+<p class="sub">原本41〜60枚｜確認用・安全ローダー v4｜原本目視一次再転記済み・独立校正待ち・通常納品停止・iPhone実機未確認</p>
+<div class="information">
+<p><strong>この入口が確認する版</strong>：2026年11月18日 19:26 作成の読書HTML</p>
+<p>対象SHA-256：<span class="code" id="expectedDigest"></span></p>
+<p>保存済みの旧HTMLを<strong>自動で開くことはありません</strong>。今回の版と一致するファイルだけを保存・表示します。</p>
+</div>
+<p id="status" role="status" aria-live="polite">端末内の保存状況を調べています。</p>
+<label class="pick" for="file">今回のHTMLを選択して検証・読み込む</label>
+<input type="file" id="file" accept=".html,text/html">
+<button id="openSaved" hidden>保存済みの確認対象版を開く</button>
+<button id="saveBackup" hidden>前回の保存版をファイルに取り出す</button>
+<p class="note">新版は仮保存後にSHA-256で読み戻し検査し、成功した場合だけ使用します。失敗時に旧版や読書位置を消しません。原本画像・本文はこのサイトへ送信しません。</p>
+<p class="note"><strong>校正中の確認専用です。</strong> 原本目視一次再転記のため、独立二次校正・全60項目の完成検査・iPhone実機確認は未完了です。通常の完成版として扱わないでください。</p>
+<p class="note">21〜40ページの保存データは変更しません。必要な場合は <a href="../nine-stories-021-040-safe-v2/index.html?import=1">21〜40ページの確認入口</a> を利用できます。Chromeのサイトデータを消すと端末内の保存内容も失われるため、消去しないでください。</p>
+</main>
+</div>
+<script>
+'use strict';
+const EXPECTED=Object.freeze({
+ bookId:'salinger-nine-stories-shibata-041-060',range:[41,60],
+ sha256:'2e3786916fdd3cb3ab58065871d5f10fc1efab7617801c53d61c0af371813703',
+ builtAt:'2026-11-18T19:26:48+09:00',
+ positionBookId:'salinger-nine-stories-shibata-041-060-novel-041-060-visual-first-pass-v3'
+});
+const DATABASE='nine-stories-safe-import-041to060-v4',STORE='books',ACTIVE='active',
+ STAGED='staged',BACKUP='backup',MAX_BYTES=120*1024*1024;
+const $=id=>document.getElementById(id);
+const frame=$('reader');
+let session='',frameUrl='',viewSequence=0,pendingTimer=0,loading=false,loadedSha=null;
+$('expectedDigest').textContent=EXPECTED.sha256.slice(0,16)+'…'+EXPECTED.sha256.slice(-8);
+function say(message){$('status').textContent=message;}
+function setBusy(v){
+ loading=v;$('openSaved').disabled=v;$('file').disabled=v;$('saveBackup').disabled=v;
+}
+function hex(buffer){return Array.from(new Uint8Array(buffer),b=>b.toString(16).padStart(2,'0')).join('');}
+async function digest(blob){
+ if(!crypto?.subtle)throw Error('このChrome環境ではファイルのSHA-256を確認できません。');
+ return hex(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()));
+}
+function validPosition(p){
+ return !!p&&p.schema==='standard-reader-position-v2'&&p.bookId===EXPECTED.positionBookId&&
+ Number.isSafeInteger(p.point)&&p.point>=0&&p.point<10000000&&
+ Number.isInteger(p.font)&&p.font>=16&&p.font<=30&&p.font%2===0;
+}
+function getDb(){
+ return new Promise((resolve,reject)=>{
+  if(!('indexedDB' in window))return reject(Error('Chromeの端末保存を使用できません。'));
+  const req=indexedDB.open(DATABASE,1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE);};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error('保存領域を開けません。'));
+ });
+}
+async function getSaved(key){
+ const db=await getDb();
+ try{return await new Promise((resolve,reject)=>{
+  const req=db.transaction(STORE,'readonly').objectStore(STORE).get(key);
+  req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
+ });}finally{db.close();}
+}
+async function writeSaved(change){
+ const db=await getDb();
+ try{await new Promise((resolve,reject)=>{
+  const tx=db.transaction(STORE,'readwrite'),store=tx.objectStore(STORE);
+  try{change(store);}catch(e){tx.abort();reject(e);return;}
+  tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||Error('保存に失敗しました。'));
+  tx.onabort=()=>reject(tx.error||Error('保存が中断されました。'));
+ });}finally{db.close();}
+}
+async function validate(blob,name){
+ if(!(blob instanceof Blob)||blob.size<1000||blob.size>MAX_BYTES)
+  throw Error('指定されたHTMLは容量またはファイル形式が正しくありません。');
+ const sha=await digest(blob);
+ if(sha!==EXPECTED.sha256)throw Error(
+  '選択したファイルは今回の確認対象版ではありません。\n選択ファイル：'+name+
+  '\nSHA-256：'+sha.slice(0,20)+'…\n今回の版：'+EXPECTED.sha256.slice(0,20)+
+  '…\n古いファイルを誤表示しないため、保存も表示もしていません。');
+ const head=await blob.slice(0,20000).text();
+ const title=(head.match(/<title[^>]*>([^<]+)<\/title>/i)||[])[1]||'';
+ if(!title.includes('ナイン・ストーリーズ')||!/041[〜～-]060/.test(title)||
+    !head.includes('id="embedded-data"')||!head.includes('name="viewport"'))
+  throw Error('対象の読書HTMLの構造が一致しません。');
+ const built=(head.match(/<meta\s+name="built-at"\s+content="([^"]+)"/i)||[])[1];
+ if(built!==EXPECTED.builtAt)throw Error('内部の作成日時が一致しません。');
+ const full=await blob.text();
+ const m=full.match(/<script\b(?=[^>]*\bid=["']embedded-data["'])[^>]*>([\s\S]*?)<\/script\s*>/i);
+ if(!m)throw Error('本文データを識別できません。');
+ let data;
+ try{data=JSON.parse(m[1]);}catch(_){throw Error('本文データが正しいJSONではありません。');}
+ if(data.bookId!==EXPECTED.bookId||!Array.isArray(data.range)||
+   data.range[0]!==41||data.range[1]!==60||!Array.isArray(data.pages)||
+   data.pages.length!==20||data.pages.some((p,i)=>p.scan!==41+i))
+  throw Error('書籍ID・原本41〜60の範囲・画像枚数が一致しません。');
+ return {sha,name:name||'名称未設定のHTML',blob:new Blob([blob],{type:'text/html'}),checkedAt:Date.now()};
+}
+async function importNew(file){
+ const item=await validate(file,file.name);
+ const old=await getSaved(ACTIVE);
+ await writeSaved(store=>store.put(item,STAGED));
+ const staged=await getSaved(STAGED);
+ if(!staged?.blob||staged.sha!==EXPECTED.sha256||
+    await digest(staged.blob)!==EXPECTED.sha256)
+  throw Error('仮保存したHTMLを読み戻すと内容が一致しません。以前の保存内容は保持しました。');
+ await writeSaved(store=>{
+  if(old?.blob)store.put(old,BACKUP);
+  store.put(item,ACTIVE);store.delete(STAGED);
+ });
+ const committed=await getSaved(ACTIVE);
+ if(!committed?.blob||committed.sha!==EXPECTED.sha256||
+    await digest(committed.blob)!==EXPECTED.sha256){
+  await writeSaved(store=>{if(old?.blob)store.put(old,ACTIVE);else store.delete(ACTIVE);});
+  throw Error('最終保存の読み戻しで不一致が発生しました。以前の版へ戻しました。');
+ }
+ say('新しい版を保存・読み戻し確認しました。読書画面を起動しています。');
+ return committed;
+}
+function sendViewport(){
+ if(!session||!frame.contentWindow)return;
+ const vv=window.visualViewport,scale=Number(vv?.scale)||1;
+ frame.contentWindow.postMessage({type:'reader-viewport-v8',session,seq:++viewSequence,
+  scale:Number.isFinite(scale)?Math.max(.5,Math.min(10,scale)):1,
+  offsetLeft:Number(vv?.offsetLeft)||0,offsetTop:Number(vv?.offsetTop)||0},'*');
+}
+async function openItem(item){
+ const fresh=await validate(item.blob,item.name);
+ if(fresh.sha!==EXPECTED.sha256)throw Error('保存済みのファイルの版が一致しません。');
+ const storedPosition=await getSaved('position:'+EXPECTED.sha256).catch(()=>null);
+ const initialPosition=validPosition(storedPosition?.position)?storedPosition.position:null;
+ const raw=await item.blob.text();
+ if(!/<\/head>/i.test(raw))throw Error('HTMLのheadが見つかりません。');
+ session=Array.from(crypto.getRandomValues(new Uint32Array(4)),v=>v.toString(16).padStart(8,'0')).join('');
+ viewSequence=0;loadedSha=EXPECTED.sha256;
+ const script='<scr'+'ipt data-reader-host>window.__readerHost='+JSON.stringify({
+  session,origin:location.origin,initialPosition
+ })+';</scr'+'ipt>';
+ const injected=raw.replace(/<\/head>/i,script+'</head>');
+ if(frameUrl)URL.revokeObjectURL(frameUrl);
+ frameUrl=URL.createObjectURL(new Blob([injected],{type:'text/html;charset=utf-8'}));
+ frame.onload=()=>sendViewport();
+ frame.onerror=()=>say('読書画面の読み込みに失敗しました。');
+ frame.src=frameUrl;
+ clearTimeout(pendingTimer);
+ pendingTimer=setTimeout(()=>{
+  if(!session)return;
+  say('HTMLの保存には成功しましたが、読書画面から起動完了の応答がありません。画面は確認待ちです。');
+  $('setup').hidden=false;setBusy(false);session='';loadedSha=null;
+ },12000);
+}
+window.addEventListener('message',event=>{
+ const m=event.data;
+ if(event.source!==frame.contentWindow||!m||m.session!==session||!session)return;
+ if(m.type==='reader-ready-v8'){
+  clearTimeout(pendingTimer);pendingTimer=0;$('setup').hidden=true;setBusy(false);
+  sendViewport();return;
+ }
+ if(m.type==='reader-position-v1'){
+  if(loadedSha===EXPECTED.sha256&&validPosition(m.position)){
+   writeSaved(store=>store.put({position:m.position,sha:EXPECTED.sha256},'position:'+EXPECTED.sha256)).catch(()=>{});
+  }
+  return;
+ }
+ if(m.type==='reader-back-to-shelf-v1')location.href='../../library/';
+});
+window.visualViewport?.addEventListener('resize',sendViewport);
+window.visualViewport?.addEventListener('scroll',sendViewport);
+window.addEventListener('resize',sendViewport);
+$('file').addEventListener('change',async()=>{
+ const f=$('file').files?.[0];if(!f)return;
+ setBusy(true);say('選択したファイルの内容とSHA-256を検証しています。');
+ try{const item=await importNew(f);await openItem(item);}
+ catch(e){say('取り込みを停止しました：'+(e?.message||String(e)));setBusy(false);}
+ finally{$('file').value='';}
+});
+$('openSaved').addEventListener('click',async()=>{
+ setBusy(true);say('保存済みの対象版を再照合しています。');
+ try{const item=await getSaved(ACTIVE);if(!item)throw Error('確認対象版が保存されていません。');await openItem(item);}
+ catch(e){say('読み込みを停止しました：'+(e?.message||String(e)));setBusy(false);}
+});
+$('saveBackup').addEventListener('click',async()=>{
+ try{
+  const item=await getSaved(BACKUP);if(!item?.blob)throw Error('バックアップがありません。');
+  const u=URL.createObjectURL(item.blob),a=document.createElement('a');
+  a.href=u;a.download=item.name||'previous-reading.html';document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),60000);
+ }catch(e){say('バックアップを取り出せません：'+e.message);}
+});
+window.addEventListener('pageshow',async()=>{
+ // Deliberately never auto-open a saved book. Old importer databases are never touched.
+ try{
+  const active=await getSaved(ACTIVE),backup=await getSaved(BACKUP);
+  $('saveBackup').hidden=!backup?.blob;
+  if(!active?.blob){
+   say('この入口に保存された確認対象版はありません。20261118_1926版のHTMLを選択してください。\n21〜40版など他の保存領域には触れていません。');return;
+  }
+  if(active.sha!==EXPECTED.sha256||await digest(active.blob)!==EXPECTED.sha256){
+   say('端末内の保存版が今回の確認対象と一致しません。旧版は自動表示しません。正しいHTMLを選び直してください。');return;
+  }
+  $('openSaved').hidden=false;
+  say('保存済みの確認対象版（位置保存対応）：'+active.name+'\nSHA-256一致を確認しました。「保存済みの確認対象版を開く」から再開できます。旧版の自動表示はしません。');
+ }catch(e){say('端末の保存状態を確認できません：'+(e?.message||String(e))+'\n必要ならHTMLを選択し直してください。');}
+});
+</script>
+</body>
+</html>
