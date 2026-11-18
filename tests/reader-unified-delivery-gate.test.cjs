@@ -50,7 +50,7 @@ function fixture(t,badOCR='原本を照合してから公開する。'){
   updateLedger:()=>file(dir,ledger.path,{schema:'reader-central-quality-ledger-v1',revision:1,entries:[entry]})};
 }
 test('new source junk is flagged without silently modifying OCR or excluding legitimate spaced Latin',()=>{
- const fields={'41/body':'ペっつに|he。二十入キ+ロ。','42/body':'C. G. Jung と書かれている。'};
+ const fields={'41/body':'ペっつに|he。二十入キ+ロ。Aあ','42/body':'C. G. Jung と書かれている。'};
  const snapshot=JSON.stringify(fields),out=g.captureAlerts(fields,'novel');
  assert.ok(out.some(x=>x.kind==='vertical-pipe'));
  assert.ok(out.some(x=>x.kind==='ocr-plus-kana'));
