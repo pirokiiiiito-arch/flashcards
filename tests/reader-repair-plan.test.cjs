@@ -45,6 +45,9 @@ test('one independently documented scan reduces pending scans by exactly one',()
   secondTextSha256:'c'.repeat(64),firstRunId:'a',secondRunId:'b',secondSawFirstPass:false}];
  const r=plan(ledger,ID,e);
  assert.equal(r.counts.independentPagePassesRecorded,1);
+ assert.equal(r.counts.completedProofTasks,1);
+ assert.equal(r.counts.totalProofTasks,64);
+ assert.equal(r.counts.remainingProofTasks,63);
  assert.equal(r.counts.comparedPagesRecorded,0);
  assert.equal(r.tasks.filter(x=>x.type==='independently_retranscribe_original_scan').length,19);
  assert.equal(r.tasks.filter(x=>x.type==='compare_and_resolve_text_differences').length,1);
