@@ -18,6 +18,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Enforce shared reader ledger and unified handoff regressions
+        run: |
+          node --check tools/reader-unified-handoff.cjs
+          node --check tools/reader-work-ledger-validate.cjs
+          node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs
+          node tools/reader-work-ledger-validate.cjs
       - name: Check word recovery before publication
         run: |
           node --check drive-sync.js
