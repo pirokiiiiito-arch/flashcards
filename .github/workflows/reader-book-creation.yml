@@ -8,6 +8,8 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
+      - 'tools/reader-unified-delivery-gate.cjs'
+      - 'tests/reader-unified-delivery-gate.test.cjs'
       - 'tools/reader-source-preflight.py'
       - 'tools/reader-private-pipeline.cjs'
       - 'tests/test_reader_source_preflight.py'
@@ -34,6 +36,8 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
+      - 'tools/reader-unified-delivery-gate.cjs'
+      - 'tests/reader-unified-delivery-gate.test.cjs'
       - 'tools/reader-source-preflight.py'
       - 'tools/reader-private-pipeline.cjs'
       - 'tests/test_reader_source_preflight.py'
@@ -71,7 +75,9 @@ jobs:
           node --check tools/reader-book-preflight.cjs
           node --check tools/reader-handoff-check.cjs
           node --check tools/reader-private-pipeline.cjs
+          node --check tools/reader-unified-delivery-gate.cjs
           node --test tests/reader-source-pipeline-gate.test.cjs
+          node --test tests/reader-unified-delivery-gate.test.cjs
           node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs tests/reader-nine-stories-safe-loader-v2.test.cjs
           node --check tools/reader-evidence-gate.cjs
           node --check tools/reader-verify-pages.cjs
