@@ -49,18 +49,28 @@ function validatePendingDraft(book){
 function nextStage(stage){
  const i=STAGES.indexOf(stage);return i>=0&&i<STAGES.length-1?STAGES[i+1]:null;
 }
+// Independent second reading may finish before differences are reconciled.
+// Requiring the comparison here deadlocks the second_pass_completed state.
 function completionReady(result){
  const c=result.counts||{};
  if(result.schema==='reader-repair-plan-v2'){
   return c.inventoriesComplete===true&&c.pageInventoriesRecorded===c.scans&&
    c.independentTextRegionsRecorded===c.textRegionsDiscovered&&
-   c.comparedTextRegionsRecorded===c.textRegionsDiscovered&&
-   c.verifiedImageRegionsRecorded===c.nonTextRegionsDiscovered&&
-   c.profileChecksRecorded===c.profileChecksRequired;
+   c.verifiedImageRegionsRecorded===c.nonTextRegionsDiscovered;
  }
  if(result.schema==='reader-repair-plan-v1'){
-  return c.independentPagePassesRecorded===c.scans&&c.comparedPagesRecorded===c.scans;
+  return c.independentPagePassesRecorded===c.scans;
  }
+ return false;
+}
+function resolutionReady(result){
+ const c=result.counts||{};
+ if(!completionReady(result))return false;
+ if(result.schema==='reader-repair-plan-v2')
+  return c.comparedTextRegionsRecorded===c.textRegionsDiscovered&&
+   c.profileChecksRecorded===c.profileChecksRequired;
+ if(result.schema==='reader-repair-plan-v1')
+  return c.comparedPagesRecorded===c.scans;
  return false;
 }
 function boundaryReady(result){
@@ -107,7 +117,7 @@ function advance(ledger,bookId,result,progressSha,target,at){
  if(target==='second_pass_completed'&&!completionReady(result))
   errors.push('SECOND_PASS_REGIONS_INCOMPLETE');
  if((target==='source_resolved'||target==='awaiting_canonical_60')&&
-   !(completionReady(result)&&boundaryReady(result)))
+   !(resolutionReady(result)&&boundaryReady(result)))
   errors.push('SOURCE_DIFFS_BOUNDARIES_OR_DEFECTS_UNRESOLVED');
  if(target==='awaiting_canonical_60'&&
    !(result.tasks.length===1&&result.tasks[0].type==='run_canonical_60_and_handoff_gate'))
@@ -192,4 +202,4 @@ function reviseDraft(ledger,bookId,priorSha,newSha,firstPassReportSha,at){
  return{ok:true,errors:[],ledger:clone,stage:'visual_first_pass_only',version:clone.version};
 }
 
-module.exports={STAGES,validatePendingDraft,nextStage,advance,startDraft,reviseDraft,completionReady,boundaryReady,counterSummary};
+module.exports={STAGES,validatePendingDraft,nextStage,advance,startDraft,reviseDraft,completionReady,resolutionReady,boundaryReady,counterSummary};
