@@ -102,6 +102,13 @@ async function until(fn,label){
    }
   }
   await new Promise(resolve=>server.close(resolve));
-  fs.rmSync(dir,{recursive:true,force:true,maxRetries:20,retryDelay:120});
+  // Temporary Chrome profile is runner-only. A late Chromium subprocess may
+  // recreate files during rmdir; never turn an otherwise passing browser
+  // assertion into a release failure because of temp cleanup churn.
+  try{fs.rmSync(dir,{recursive:true,force:true,maxRetries:20,retryDelay:120});}
+  catch(e){
+   if(!['ENOTEMPTY','EBUSY','EPERM'].includes(e.code))throw e;
+   console.warn('CHROME_TEMP_PROFILE_CLEANUP_DEFERRED: '+e.code);
+  }
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});

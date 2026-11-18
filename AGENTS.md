@@ -35,12 +35,21 @@ Google Drive 保存、Chrome公開、ファイルリンクの提示、既存版�
 
 実行例（入力・レポートは**GitHub公開リポジトリ外**）：
 ```sh
-node tools/reader-unified-handoff.cjs 
-  --mode normal --artifact PRIVATE/reader.html --ledger reader/quality/work-ledger.json 
-  --manifest PRIVATE/manifest.json --source-proof PRIVATE/source-preflight.json 
-  --ocr-review PRIVATE/ocr-anomaly-review.json --public-evidence PRIVATE/pages-http.json 
+node tools/reader-unified-handoff.cjs \
+  --mode normal --artifact PRIVATE/reader.html \
+  --ledger reader/quality/work-ledger.json \
+  --manifest PRIVATE/manifest.json --source-proof PRIVATE/source-preflight.json \
+  --ocr-review PRIVATE/ocr-anomaly-review.json --public-evidence PRIVATE/pages-http.json \
   --report PRIVATE/20261118_1232_unified-result.json
 ```
+
+正式な私有制作パイプラインの最終 `attach` / `promote` 操作にも
+この共通ゲートを接続する。リクエストには `workLedgerFile`、
+`sourceProofFile`、必要なら `ocrReviewFile`、
+`publicEvidenceFile` を指定する。欠落・不一致があれば
+`UNIFIED_CROSS_CHAT_HANDOFF_BLOCKED` で停止する。
+`stage` は未配布の私有中間ファイル、`pages` は既存公開承認と
+HTTP検査の別段階であり、どちらも完成・通常納品の証拠ではない。
 
 この統一ゲートは外部のGoogle Drive操作やチャット添付を自動的に
 傍受・禁止できるものではない。ChatGPT全体のシステム設定を変えた

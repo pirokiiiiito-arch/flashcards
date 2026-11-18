@@ -67,6 +67,14 @@ test('wrong staged readback is rejected',()=>{const x=fixture(),readback=put(x.r
 test('frozen baseline cannot be expanded by editing JSON only',()=>{const r=dir();fs.cpSync(path.join(root,'reader'),path.join(r,'reader'),{recursive:true});const p=path.join(r,'reader/quality/release-policy.json'),o=JSON.parse(fs.readFileSync(p));o.baseline.files['reader/forged/index.html']=v.hash('fake');fs.writeFileSync(p,JSON.stringify(o));assert.match(v.validateRepository(r).errors.join('|'),/TRUST_ANCHOR_CHANGED/);});
 test('unreviewed runtime modification is blocked even with old ledger unchanged',()=>{const r=dir();fs.cpSync(path.join(root,'reader'),path.join(r,'reader'),{recursive:true});fs.appendFileSync(path.join(r,'reader/wh2/161-180/index.html'),'<!-- changed -->');assert.match(v.validateRepository(r).errors.join('|'),/UNAUTHORIZED_READER_CHANGE/);});
 
+test('managed final reader attach refuses to bypass shared cross-chat ledger even after canonical deployed proof',()=>{
+ const x=fixture();
+ evidence(x,'G8-08',{provider:'google-drive',fileId:'fixture',readback:x.m.artifact});
+ evidence(x,'G8-03',{deployedLoaderSha256:x.m.loaderSha256,deploymentSucceeded:true});
+ assert.equal(v.validateBundle(x.file,{phase:'deployed'}).eligible,true);
+ assert.throws(()=>pipeline.plan(x.file,{operation:'attach',channel:'production',
+  expectedArtifactSha256:x.m.artifact.sha256}),/SHARED_WORK_LEDGER_AND_SOURCE_PROOF_REQUIRED/);
+});
 test('production staging cannot overwrite an existing Drive file before readback',()=>{const x=fixture();assert.throws(()=>pipeline.plan(x.file,{operation:'stage',channel:'production',expectedArtifactSha256:x.m.artifact.sha256,targetFileId:'normal-file'}),/STAGING_MUST_BE_CREATE_ONLY/);const p=pipeline.plan(x.file,{operation:'stage',channel:'production',createOnly:true,expectedArtifactSha256:x.m.artifact.sha256});assert.equal(p.createOnly,true);assert.equal(p.targetFileId,null);});
 test('checked export uses JST date, book identity and artifact revision in its filename',()=>{const x=fixture(),p=pipeline.exportChecked(x.file,path.join(x.r,'staging'),{operation:'stage',channel:'production',createOnly:true,expectedArtifactSha256:x.m.artifact.sha256});assert.match(p.fileName,/^[0-9]{8}_[0-9]{4}_synthetic-fixture-only_/);assert.ok(p.fileName.includes(x.m.artifact.sha256.slice(0,12)));});
 

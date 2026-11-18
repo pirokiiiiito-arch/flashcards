@@ -105,7 +105,32 @@ function plan(file,request){
  fail(request.expectedArtifactSha256===result.subject.artifactSha256,'PLAN_ARTIFACT_CHANGED');
  if(channel==='preview')fail(request.operation!=='promote'&&request.createOnly===true&&!request.normalFileId,'PREVIEW_CANNOT_REPLACE_NORMAL');
  if(request.operation==='promote')fail(request.targetFileId&&/^[a-f0-9]{64}$/.test(request.expectedCurrentSha256||''),'COMPARE_AND_SWAP_REQUIRED');
- return {schema:'reader-delivery-plan-v2',operation:request.operation,channel,artifactSha256:result.subject.artifactSha256,subjectSha256:result.subjectSha256,targetFileId:request.targetFileId||null,expectedCurrentSha256:request.expectedCurrentSha256||null,createOnly:request.createOnly===true,phase,postWriteReadbackRequired:true,expiresAt:new Date(Date.now()+15*60*1000).toISOString(),note:'Plan is not upload completion. Connector adapters must check current bytes before writing, then read back the exact target.'};
+ // Managed issue, public Pages and final attachment MUST pass the one central
+ // cross-chat ledger and OCR/source gate on the exact original artifact.
+ // Only create-only PRIVATE staging is exempt: staging is NOT a delivery.
+ let unified=null;
+ if(request.operation==='attach'||request.operation==='promote'){
+  fail(request.workLedgerFile&&request.sourceProofFile,'SHARED_WORK_LEDGER_AND_SOURCE_PROOF_REQUIRED');
+  const {root,m}=load(file);
+  const artifact=path.join(root,m.artifact.path);
+  const mode=channel==='preview'?'preview':request.operation==='pages'?'prepublication':'normal';
+  unified=require('./reader-unified-handoff.cjs').inspect({
+   mode,artifact,manifest:file,ledger:request.workLedgerFile,
+   sourceProof:request.sourceProofFile,ocrReview:request.ocrReviewFile,
+   previewConsent:request.previewConsentFile,publicEvidence:request.publicEvidenceFile
+  });
+  const allowed=mode==='prepublication'?unified.prepublicationAllowed:unified.handoffAllowed;
+  fail(allowed,'UNIFIED_CROSS_CHAT_HANDOFF_BLOCKED: '+unified.errors.join('; '));
+  if(channel==='preview'){
+   fail(request.driveReadbackFile&&request.driveFileId&&
+        v.hash(fs.readFileSync(request.driveReadbackFile))===m.artifact.sha256,
+        'UNVERIFIED_PREVIEW_SAME_ID_DRIVE_READBACK_REQUIRED');
+  }
+ }
+ return {schema:'reader-delivery-plan-v2',
+  unifiedGateMode:unified?.mode||null,
+  unifiedGateArtifactSha256:unified?.artifactSha256||null,
+  unifiedWorkLedgerSha256:request.workLedgerFile?v.hash(fs.readFileSync(request.workLedgerFile)):null,operation:request.operation,channel,artifactSha256:result.subject.artifactSha256,subjectSha256:result.subjectSha256,targetFileId:request.targetFileId||null,expectedCurrentSha256:request.expectedCurrentSha256||null,createOnly:request.createOnly===true,phase,postWriteReadbackRequired:true,expiresAt:new Date(Date.now()+15*60*1000).toISOString(),note:'Plan is not upload completion. Connector adapters must check current bytes before writing, then read back the exact target.'};
 }
 function exportChecked(file,out,request){
  fail(!fs.existsSync(out),'EXPORT_DESTINATION_EXISTS');const p=plan(file,request),{root,m}=load(file),b=v.bytes(root,m.artifact);
