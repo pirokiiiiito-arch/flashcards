@@ -70,6 +70,38 @@ on search-zero alone. When a direct folder listing is not available, report the
 unresolved dependency and try other authorized listing routes; never invent
 matches. Source discovery is read-only and must not erase old files or receipts.
 
+## Cross-chat unified gate — managed book deliveries cannot skip evidence
+
+For **every** new chat on scan-books, reread
+[the shared handoff contract](reader/quality/UNIFIED_DELIVERY_GATE.md) and the
+private Google Drive central quality ledger before generating or sharing a
+reader-file download/Drive URL/Chrome loader as a normal finished edition.
+Never infer consent to an uncorrected OCR preview from `作って` or `続けて`.
+Private drafts and create-only staging are allowed but **must not be passed off
+as normal reader delivery**.
+
+All managed `reader-private-pipeline.cjs` final operations (`pages`,
+`attach`, `promote`) require a private central-ledger match and successful
+`tools/reader-unified-delivery-gate.cjs` decision for the exact artifact SHA.
+The gate reuses the existing canonical 60 IDs, independent review and source
+evidence; an OCR alert with no source-backed resolution blocks production.
+Preview requires an explicit unverified-preview request and never certifies
+a normal edition. Obtain Google Drive same-ID readback and the public HTTP
+200 + SHA report before calling a link delivered. If ledger, manifest, source
+or any evidence is unavailable, report `未検証・通常納品停止`; never silently
+bypass it or rename an old draft to `完成`.
+
+The ledger is **PRIVATE**: search Google Drive for the existing
+`全書籍共通_読書品質中央台帳_PRIVATE.json` (timestamped initial filename)
+in the user's private bookshelf workspace. Do NOT write its contents,
+Drive IDs, or any original scans/OCR to this public repo. Do not assume a
+search miss means it was deleted; check direct folder listing and pagination.
+
+**Technical limit:** GitHub gates can reject managed release processes, but
+cannot intercept arbitrary ChatGPT chat messages or direct sandbox links,
+human/administrator bypasses, or external Drive writes. This limitation must
+not be described as global platform-level enforcement.
+
 ## Final private reader-file handoff check (supplement, not rule 61)
 
 For each newly built **compatible v2 private reading HTML**, run the read-only
