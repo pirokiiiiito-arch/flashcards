@@ -204,7 +204,7 @@
   },
   "contentCertified": false,
   "publicSource": "Only a loader that imports the user-selected HTML on the device. No private book data, images, or OCR text are uploaded to GitHub Pages.",
-  "auditStatusNotice": "60 check statuses are not_run; this is an unverified draft, not a completed or independently proofread book. The original reader gestures failed in the user iPhone preview due to a missing parent scale handshake; the public preview host has been revised but G7-04, G8-02, G8-04, G8-11 are not marked passed.",
+  "auditStatusNotice": "60 check statuses are not_run; this is an unverified draft, not a completed or independently proofread book. The original reader gestures failed in the user iPhone preview due to a missing parent scale handshake; the public preview host has been revised but G7-04, G8-02, G8-04, G8-11 are not marked passed. 20261115 v9 UI draft saved to Drive; source images and all OCR draft data unchanged; reading position bridge added, iPhone/full proof pending.",
   "previewOperationRepair": {
     "scope": "001-020 Chrome local HTML importer, no private book-file modification",
     "userReportedFailure": "2026-11-15: iPhone Chromeの読書画面で上下スワイプができない（実機報告）",
@@ -216,5 +216,26 @@
     "fix": "Inject ephemeral session and origin into imported viewing copy; send current parent visualViewport state to child with increasing sequence number and validate ready source+session; remove blanket touch-action override; do not modify embedded image/OCR bytes.",
     "automatedPreviewEvidence": "Local Linux headless Chromium mobile native CDP touch dispatch on actual private HTML, test-only opaque parent origin workaround: up=+1 reading page, down=-1 reading page, simulated host-scale 2 suppresses turns, host-scale 1 restores turn; no JavaScript page errors. This is not an iPhone/WebKit test and does not demonstrate real pinch/pan.",
     "ruleStatuses": "G7-04/G8-02/G8-04/G8-11 remain not_run for revised pairing pending full source-specific native pinch/pan and actual iPhone checks. The reported defect is retained as historical evidence."
+  },
+  "v9ReaderCandidate": {
+    "status": "修正確認用・原本独立全文字照合／iPhone実機確認未完了",
+    "sourceReaderFileId": "1qpUkrgK7XIQqB7li5SB7V-sdhAgrFhVI",
+    "driveFileId": "1GIXadWL_g7pAmclUDskPdFBMX_ULpaih",
+    "driveParentId": "1GYGZkA9jSwMark9_T84o3dfsisIIpCD2",
+    "sourceReaderSha256": "9e4ddbc152103bdf6c66363086741fb63824eb4fea98b4e6c3caa4055f42accb",
+    "revisedReaderSha256": "22ae8feeb6979bb5f7f4be42d81911ded2a3399b0a12ab2054e51a6c225eb1a2",
+    "revisedReaderSizeBytes": 2595363,
+    "exactEmbeddedDataUnchanged": true,
+    "exactOriginalJPEGsVerified": 20,
+    "initialFontPx": 20,
+    "lineHeight": 1.5,
+    "uiChanges": [
+      "WH1 screenshot header/bookshelf and font-group",
+      "WH1 fixed footer/progress",
+      "book-scroll position storage+restore in private Chrome"
+    ],
+    "partialChromiumChecks": "24 width/font combinations tested at nominal viewport for representative reader screens; sampled 390x650 and selected alternate heights; full G7-01 not certified. Gesture-native test initial start lost once in synthetic CDP, subsequent up/down changed pages. Real iPhone not checked.",
+    "needsSourceReview": true,
+    "statuses": "60 checks retain not_run; do not claim completion or full device validation."
   }
 }

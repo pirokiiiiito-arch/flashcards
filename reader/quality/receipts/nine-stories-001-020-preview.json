@@ -7,11 +7,12 @@
     "warnings": [
       "Preview explicitly requested by user; local-only import page does not certify the unverified text.",
       "Full source proof, independent source review and iPhone/Chrome device tests not completed.",
-      "The user reported that the prior iPhone reader preview failed to respond to swipe. Viewport handshake was added and tested in Chromium only; real iPhone gestures/pinch/pan still require validation."
+      "The user reported that the prior iPhone reader preview failed to respond to swipe. Viewport handshake was added and tested in Chromium only; real iPhone gestures/pinch/pan still require validation.",
+      "The v9 file is a user-selected private reader draft with untouched original images/transcription. Position restore requires a current Chrome importer; iPhone operation checks and full transcription source proof remain not_run."
     ],
     "eligible": true,
     "bookId": "nine-stories-001-020-preview",
-    "implementationSha256": "bcfa5f214bc6bb1a0f144cbb231af93cd4dc2f47e53bcdbddf2089c2f66c14d4",
+    "implementationSha256": "022e521c885b087a86ae33ec1c7c783ca723c3ec1bf7e607102adacb8b5672b0",
     "subject": {
       "bookId": "nine-stories-001-020-preview",
       "range": [
@@ -19,9 +20,9 @@
         20
       ],
       "artifactSha256": "9e4ddbc152103bdf6c66363086741fb63824eb4fea98b4e6c3caa4055f42accb",
-      "loaderSha256": "22468304d5812fdbd3fc3f76a34e719f491af0de440b984b43febc7206b5df91"
+      "loaderSha256": "9abe6f2fca0b2c2cb3fe582711403e395749caf0d635a3390d5ef75773c4cf2a"
     },
-    "subjectSha256": "37a32237aae5862626938890fb1083719ceb0e9d3dc5ad63c7a1d7303a622754",
+    "subjectSha256": "553b6c772923c2d091d2225b2ddb54c5d90b4810887c8547970e447c8a4ad3fe",
     "authorization": {
       "sha256": "69726bb2af66595452e99975028b29d653e2fb523c9812532d79547d41f4cbd5",
       "explicit": true
@@ -211,12 +212,12 @@
     },
     "channel": "preview",
     "entry": "reader/preview/nine-stories-001-020/index.html",
-    "bookRecordSha256": "73b436feb8e6d6387614c638b12aa6a14553c0811a82e292a9cd630af6b15179",
-    "reportSha256": "03321b1b7734950f05a79a1093c685a92194a90fb29c8cf39832b1de08af25bd",
+    "bookRecordSha256": "af96591a397ab8bad403bda136ba7f4ff19b950f6ae40339e2ede1a59a437d05",
+    "reportSha256": "38e1ba6944d49a7b1bdaf4a6e14fcc30c42ecae0b7523392b24d5b074162ea69",
     "publicFiles": {
-      "reader/preview/nine-stories-001-020/index.html": "22468304d5812fdbd3fc3f76a34e719f491af0de440b984b43febc7206b5df91"
+      "reader/preview/nine-stories-001-020/index.html": "9abe6f2fca0b2c2cb3fe582711403e395749caf0d635a3390d5ef75773c4cf2a"
     },
     "trustBoundary": "Local preview attestation only, not proof of book OCR completion or real iPhone testing."
   },
-  "digest": "b65efebaafaa5bff6d071a24821e5f1a91edac030d6cbbc3c03883f12a33b7b1"
+  "digest": "c9299edb2b9ea4cfd4f193e3457f8132492ca73c60238b64576ff4714f9c4e5d"
 }
