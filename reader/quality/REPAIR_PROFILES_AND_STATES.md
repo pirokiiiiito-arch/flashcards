@@ -30,6 +30,8 @@
 
 状態の移動には、同一書籍ID・原本範囲・作業HTML SHA・PRIVATE進捗SHA・現行台帳version・対応する根拠が必要。`second_pass_completed` は全適用領域の独立照合完了、`source_resolved` は差分・画像・関連・境界と既知欠陥の解決を意味する。文字がないと原本で確認された画像本では、文章転記を必須にしないが画像の独立照合は必須。
 
+書籍IDを中央台帳へ初めて登録した後、まだ `pendingDraft` がない場合は、別のSHAで作った作業稿を `reader-repair-transition.cjs --action start --new-sha NEW --first-pass-report-sha REPORT --source-image-count N` からPRIVATE初期化する。すでにある作業稿は上書きせず、レビュー済み通常版へ直接変換しない。
+
 校正文を変更して新しいHTML SHAになった場合は、旧稿と履歴を保持し、初期状態へ戻して影響する校正・組版・文字列の証拠を再作成する。旧版のSHAや過去の画面検査だけで新稿を合格にしない。
 
 実行例（PRIVATE側の入力と結果のみを使う）：
