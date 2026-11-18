@@ -105,7 +105,24 @@ function plan(file,request){
  fail(request.expectedArtifactSha256===result.subject.artifactSha256,'PLAN_ARTIFACT_CHANGED');
  if(channel==='preview')fail(request.operation!=='promote'&&request.createOnly===true&&!request.normalFileId,'PREVIEW_CANNOT_REPLACE_NORMAL');
  if(request.operation==='promote')fail(request.targetFileId&&/^[a-f0-9]{64}$/.test(request.expectedCurrentSha256||''),'COMPARE_AND_SWAP_REQUIRED');
- return {schema:'reader-delivery-plan-v2',operation:request.operation,channel,artifactSha256:result.subject.artifactSha256,subjectSha256:result.subjectSha256,targetFileId:request.targetFileId||null,expectedCurrentSha256:request.expectedCurrentSha256||null,createOnly:request.createOnly===true,phase,postWriteReadbackRequired:true,expiresAt:new Date(Date.now()+15*60*1000).toISOString(),note:'Plan is not upload completion. Connector adapters must check current bytes before writing, then read back the exact target.'};
+ // Managed stage remains a PRIVATE, visibly unverified intermediate. Every
+ // handoff/Pages/promotion route is required to run the shared central verdict.
+ // This check is intentionally after the canonical 60 rule verifier.
+ let qualityGate=null;
+ if(request.operation!=='stage'){
+  fail(request.qualityLedgerFile,'PRIVATE_CENTRAL_LEDGER_REQUIRED');
+  const manifest=path.resolve(file),artifact=path.join(path.dirname(manifest),JSON.parse(fs.readFileSync(manifest)).artifact.path);
+  const options={manifest,artifact,ledger:request.qualityLedgerFile,
+   channel,step:request.operation==='pages'?'stage':'delivery',
+   consentFile:request.previewConsentFile,driveReadback:request.driveReadbackFile,
+   driveFileId:request.driveFileId,driveReceiptFile:request.driveReceiptFile,
+   chromeUrl:request.chromeUrl,publicEvidenceFile:request.publicEvidenceFile,
+   publicBookId:request.publicBookId,publicEntry:request.publicEntry};
+  qualityGate=require('./reader-unified-delivery-gate.cjs').inspect(options);
+  fail(qualityGate.eligible,'CENTRAL_DELIVERY_GATE_BLOCKED: '+qualityGate.errors.join('; '));
+ }
+ return {schema:'reader-delivery-plan-v2',qualityGateSha256:qualityGate?v.objHash(qualityGate):null,
+  qualityLedgerSha256:qualityGate?.ledgerSha256||null,operation:request.operation,channel,artifactSha256:result.subject.artifactSha256,subjectSha256:result.subjectSha256,targetFileId:request.targetFileId||null,expectedCurrentSha256:request.expectedCurrentSha256||null,createOnly:request.createOnly===true,phase,postWriteReadbackRequired:true,expiresAt:new Date(Date.now()+15*60*1000).toISOString(),note:'Plan is not upload completion. Connector adapters must check current bytes before writing, then read back the exact target.'};
 }
 function exportChecked(file,out,request){
  fail(!fs.existsSync(out),'EXPORT_DESTINATION_EXISTS');const p=plan(file,request),{root,m}=load(file),b=v.bytes(root,m.artifact);
