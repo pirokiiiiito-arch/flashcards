@@ -35,6 +35,21 @@ function validate(ledger) {
     defects.add(x.id);
    }
   }
+  // Optional private working draft metadata: never confuse it with the public
+  // artifact, a completed OCR review or a 60-rule verified release.
+  if(b.pendingDraft){
+   const p=b.pendingDraft;
+   if(!HEX.test(p.artifactSha256||'')||p.artifactSha256===b.artifactSha256||
+      !HEX.test(p.privateProgressReportSha256||'')||
+      p.reviewStatus!=='visual_first_pass_only'||
+      p.deliveryStatus!=='private_staging_blocked'||
+      p.independentSecondPass!=='not_run'||p.realIPhone!=='not_run'||
+      !Number.isSafeInteger(p.sourceJPEGSHAverified)||p.sourceJPEGSHAverified<1||
+      !Number.isSafeInteger(p.chromiumLayoutChecksPassed)||p.chromiumLayoutChecksPassed<1||
+      b.releaseStatus!=='blocked'||b.qualityState!=='unverified'){
+    errors.push('PENDING_DRAFT_NOT_QUALIFIED_OR_MISTAKEN_FOR_RELEASE '+id);
+   }
+  }
   if(b.releaseStatus==='candidate'&&b.qualityState!=='reviewed')
    errors.push('UNREVIEWED_RELEASE_CANDIDATE '+id);
   if((b.knownDefects||[]).some(x=>x.status!=='resolved')&&b.releaseStatus==='candidate')
