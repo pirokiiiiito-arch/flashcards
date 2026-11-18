@@ -131,4 +131,39 @@ function advance(ledger,bookId,result,progressSha,target,at){
   updatedLedgerVersion:clone.version,at,official60Passed:false,deliveryAllowed:false});
  return{ok:true,errors:[],ledger:clone,stage:target,version:clone.version,summary};
 }
-module.exports={STAGES,validatePendingDraft,nextStage,advance,completionReady,boundaryReady,counterSummary};
+/*
+ * A corrected canonical text creates new HTML bytes. Do not carry former
+ * "completed" evidence to a new SHA. Preserve old draft in history and
+ * require fresh per-region evidence, while never changing original scan ZIP.
+ */
+function reviseDraft(ledger,bookId,priorSha,newSha,firstPassReportSha,at){
+ const errors=[],clone=structuredClone(ledger);
+ const book=clone.books?.filter(x=>x.bookId===bookId);
+ if(!Array.isArray(book)||book.length!==1)errors.push('BOOK_NOT_UNIQUELY_REGISTERED');
+ const b=book?.[0],old=b?.pendingDraft;
+ if(!old)errors.push('NO_PRIVATE_DRAFT_TO_REVISE');
+ if(!Number.isSafeInteger(clone.version)||clone.version<1)errors.push('INVALID_LEDGER_REVISION');
+ if(!hash(priorSha)||!old||priorSha!==old.artifactSha256)
+  errors.push('STALE_DRAFT_REVISION');
+ if(!hash(newSha)||newSha===priorSha||newSha===b?.artifactSha256)
+  errors.push('REVISED_DRAFT_NOT_NEW_BYTES');
+ if(!hash(firstPassReportSha))errors.push('NEW_SOURCE_REVIEW_REPORT_REQUIRED');
+ if(!Number.isFinite(Date.parse(at||'')))errors.push('INVALID_REVISION_TIME');
+ if(errors.length)return {ok:false,errors,ledger:null};
+ const copy=structuredClone(old);
+ clone.history=Array.isArray(clone.history)?clone.history:[];
+ clone.history.push({bookId,action:'private_draft_revised',
+   priorDraftArtifactSha256:priorSha,priorStage:old.reviewStatus,
+   nextDraftArtifactSha256:newSha,reviewReportSha256:firstPassReportSha,
+   at,official60Passed:false,deliveryAllowed:false});
+ b.pendingDraft={artifactSha256:newSha,reviewStatus:'visual_first_pass_only',
+  deliveryStatus:'private_staging_blocked',independentSecondPass:'not_run',
+  realIPhone:'not_run',privateProgressReportSha256:firstPassReportSha,
+  sourceJPEGSHAverified:copy.sourceJPEGSHAverified||0,
+  chromiumLayoutChecksPassed:0,priorPrivateDraftArtifactSha256:priorSha,
+  note:'The source-image bytes can be reused only if separately verified. OCR, presentation and independent proof are invalidated for this new artifact SHA.'};
+ clone.version++;
+ return{ok:true,errors:[],ledger:clone,stage:'visual_first_pass_only',version:clone.version};
+}
+
+module.exports={STAGES,validatePendingDraft,nextStage,advance,reviseDraft,completionReady,boundaryReady,counterSummary};
