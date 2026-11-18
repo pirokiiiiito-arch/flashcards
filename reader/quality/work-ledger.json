@@ -53,10 +53,34 @@
       "expectedProfile": "novel",
       "privateManifestStatus": "not_registered",
       "lastKnown": "2026-11-18",
-      "publishedLoaderStatus": "preview_only"
+      "publishedLoaderStatus": "preview_only",
+      "pendingDraft": {
+        "artifactSha256": "2e3786916fdd3cb3ab58065871d5f10fc1efab7617801c53d61c0af371813703",
+        "reviewStatus": "visual_first_pass_only",
+        "deliveryStatus": "private_staging_blocked",
+        "independentSecondPass": "not_run",
+        "realIPhone": "not_run",
+        "sourceJPEGSHAverified": 20,
+        "chromiumLayoutChecksPassed": 29,
+        "privateProgressReportSha256": "a5261d8b13181dd1d0fbf8f0ac282557fe66f5dc84808c87db52aca4a8d23b00",
+        "targetPrivateFolder": "校正作業中_通常納品禁止",
+        "note": "This is a PRIVATE first-pass reconstruction, not the public 41–60 HTML or a released reading edition. Old pinned preview remains unchanged."
+      }
     }
   ],
-  "history": [],
+  "history": [
+    {
+      "bookId": "salinger-nine-stories-shibata-041-060",
+      "action": "private_visual_first_pass_staged",
+      "oldPublishedArtifactSha256": "3cdb0565c2ab1d227238720154e64c293e549120440aa0dccfcfa33d94a9fa6e",
+      "pendingArtifactSha256": "2e3786916fdd3cb3ab58065871d5f10fc1efab7617801c53d61c0af371813703",
+      "sourceImageCount": 20,
+      "layoutChecks": 29,
+      "independentSecondPass": "not_run",
+      "normalDeliveryAllowed": false,
+      "at": "2026-11-18T19:36:00+09:00"
+    }
+  ],
   "safety": {
     "oldPublicationUnchanged": true,
     "notUsedAs60Pass": true,
