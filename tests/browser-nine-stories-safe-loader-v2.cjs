@@ -5,7 +5,7 @@ const assert=require('node:assert/strict'),crypto=require('node:crypto');
 const ROOT=path.resolve(__dirname,'..'),ENTRY='reader/preview/nine-stories-021-040-safe-v2/index.html';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn,label){
- for(let i=0;i<120;i++){if(await fn())return;await sleep(100);}
+ for(let i=0;i<300;i++){if(await fn())return;await sleep(100);}
  throw Error('TIMEOUT '+label);
 }
 (async()=>{
@@ -40,8 +40,15 @@ async function until(fn,label){
   chrome=cp.spawn(process.env.CHROME_PATH||'google-chrome',[
    '--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking',
    '--no-first-run','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'
-  ],{stdio:'ignore'});
-  await until(()=>fs.existsSync(path.join(profile,'DevToolsActivePort')),'chrome start');
+  ],{stdio:['ignore','ignore','pipe']});
+  let chromeSpawnError=null,chromeStderr='';
+  chrome.on('error',e=>{chromeSpawnError=e;});
+  chrome.stderr.on('data',chunk=>{chromeStderr=(chromeStderr+String(chunk)).slice(-2400);});
+  await until(()=>{
+   if(chromeSpawnError)throw Error('CHROME_START_FAILED: '+chromeSpawnError.message);
+   if(chrome.exitCode!==null)throw Error('CHROME_EXITED: '+chrome.exitCode+' '+chromeStderr);
+   return fs.existsSync(path.join(profile,'DevToolsActivePort'));
+  },'chrome start');
   const port=Number(fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0]);
   const targets=await(await fetch('http://127.0.0.1:'+port+'/json/list')).json();
   const target=targets.find(x=>x.type==='page');assert.ok(target);

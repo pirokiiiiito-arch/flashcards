@@ -58,6 +58,31 @@ HTTP検査の別段階であり、どちらも完成・通常納品の証拠で�
 認証された納品APIと送信権限の集約が別途必要。
 
 
+## 納品停止後も作業を止めない：修復キューを必ず実行
+
+読書HTMLの通常納品ゲートが不合格になったら、そこで毎回「できない」
+だけを返して終了しない。共有台帳の最新書籍ID・対象SHAを検証して
+`node tools/reader-repair-plan.cjs --book BOOK_ID` を実行し、必要なら
+`--progress PRIVATE/repair-progress.json` によりページ別二次転記・差分
+・前後境界の証拠を引き継ぐ。この一覧から優先度が一番高い未完了作業を
+**同じ作業で実際に着手**し、原本を再読して修正・記録・再検査する。
+完成まで工程を積み重ね、チャットが変わっても実証済み部分を再利用する。
+
+読書本文の不自然な英字、縦棒などの疑義は自動修正しない。
+原本に存在する文字は根拠付きで残し、誤読は校正履歴付きで修正する。
+第二稿は第一稿を流用せず原本を独立に読み、ページの各領域・内部境界・
+分冊外の境界を実証する。作業キューの「記録済み」は正式60項目の
+「passed」ではない。校正後に文字・原本・画像・組版・操作の影響範囲を
+再検査し、同一SHAの納品ゲートを通してから正式納品する。
+
+ユーザーが「作って」と頼んだときは、未校正プレビューの配布許可と
+解釈しないが、作業用の**PRIVATE**草稿は作り続けてよい。
+停止は「正式納品」に対してだけであり、校正の進行は止めない。
+アクセス不能な原本や未解決の曖昧さがある場合はそのページを明示し、
+別のページでできる作業を進める。完了を偽らない・背景で勝手に
+作業を継続すると約束しない。キューを全件消しただけで完成とも
+認定しない。最後は既存60項目の正式証拠が必要。
+
 Scope: scan-book readers, not plants/colors/word or other applications.
 
 Read the [current canonical sixty-item standard](reader/quality/README.md), **`reader/quality/BOOK_CREATION_PROCESS.md`**, `reader/quality/RELEASE_PROCESS.md`, and the persisted private manifest before continuing. Keep the same sixty IDs. A new chat or 'next 20 pages' is not permission to omit proofreading.
