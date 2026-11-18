@@ -127,6 +127,28 @@ test('a sealed mock of all prerequisites can permit normal, showing no arbitrary
  assert.equal(r.deviceVerified,true);
  assert.equal(r.publicHttpVerified,true);
 });
+test('prepublication gate allows only source-reviewed staging, never a final delivery label',t=>{
+ const f=fixture(t);
+ const r=inspect({...f.opts,mode:'prepublication'},{validate:f.fakeValidate});
+ assert.equal(r.prepublicationAllowed,true,JSON.stringify(r.errors));
+ assert.equal(r.handoffAllowed,false);
+ assert.equal(r.contentCertified,false);
+ assert.equal(r.status,'verified_prepublication_only');
+ assert.equal(r.publicHttpVerified,false);
+ assert.equal(r.deviceVerified,false);
+});
+test('explicit unverified preview keeps known OCR defect visible without marking it corrected',t=>{
+ const f=fixture(t,'未校正OCR|he');
+ const l=JSON.parse(fs.readFileSync(f.ledger));
+ l.books[0].qualityState='unverified';l.books[0].releaseStatus='blocked';
+ l.books[0].knownDefects=[{id:'source-ocr-unresolved',status:'needs_source_review'}];
+ f.write('ledger.json',l);
+ const r=inspect({...f.opts,mode:'preview'},{validate:f.fakeValidate});
+ assert.equal(r.handoffAllowed,true,JSON.stringify(r.errors));
+ assert.equal(r.contentCertified,false);
+ assert.equal(r.previewOnly,true);
+ assert.equal(r.ocrSourceConfirmed,0);
+});
 test('source-reviewed anomaly waivers must bind exact span, artifact, scan and source image',t=>{
  const f=fixture(t,'これは English|Example です。');
  const ann=findAnomalies(f.book);assert.ok(ann.length>=3);
