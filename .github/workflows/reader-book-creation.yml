@@ -13,6 +13,8 @@ on:
       - 'tools/reader-repair-profiles.cjs'
       - 'tools/reader-repair-state.cjs'
       - 'tools/reader-repair-transition.cjs'
+      - 'tools/reader-repair-finalize.cjs'
+      - 'tests/reader-repair-finalize.test.cjs'
       - 'tests/reader-repair-multibook.test.cjs'
       - 'tests/reader-repair-state.test.cjs'
       - 'reader/quality/REPAIR_PROFILES_AND_STATES.md'
@@ -52,6 +54,8 @@ on:
       - 'tools/reader-repair-profiles.cjs'
       - 'tools/reader-repair-state.cjs'
       - 'tools/reader-repair-transition.cjs'
+      - 'tools/reader-repair-finalize.cjs'
+      - 'tests/reader-repair-finalize.test.cjs'
       - 'tests/reader-repair-multibook.test.cjs'
       - 'tests/reader-repair-state.test.cjs'
       - 'reader/quality/REPAIR_PROFILES_AND_STATES.md'
@@ -101,7 +105,8 @@ jobs:
           node --check tools/reader-repair-profiles.cjs
           node --check tools/reader-repair-state.cjs
           node --check tools/reader-repair-transition.cjs
-          node --test tests/reader-repair-plan.test.cjs tests/reader-repair-multibook.test.cjs tests/reader-repair-state.test.cjs
+          node --check tools/reader-repair-finalize.cjs
+          node --test tests/reader-repair-plan.test.cjs tests/reader-repair-multibook.test.cjs tests/reader-repair-state.test.cjs tests/reader-repair-finalize.test.cjs
           node --check tools/reader-work-ledger-validate.cjs
           node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs
           node tools/reader-work-ledger-validate.cjs
