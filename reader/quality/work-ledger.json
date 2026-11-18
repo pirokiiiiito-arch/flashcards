@@ -52,7 +52,7 @@
       ],
       "expectedProfile": "novel",
       "privateManifestStatus": "not_registered",
-      "lastKnown": "2026-11-18",
+      "lastKnown": "2026-11-19",
       "publishedLoaderStatus": "preview_only",
       "pendingDraft": {
         "artifactSha256": "2e3786916fdd3cb3ab58065871d5f10fc1efab7617801c53d61c0af371813703",
@@ -64,7 +64,11 @@
         "chromiumLayoutChecksPassed": 29,
         "privateProgressReportSha256": "a5261d8b13181dd1d0fbf8f0ac282557fe66f5dc84808c87db52aca4a8d23b00",
         "targetPrivateFolder": "校正作業中_通常納品禁止",
-        "note": "This is a PRIVATE first-pass reconstruction, not the public 41–60 HTML or a released reading edition. Old pinned preview remains unchanged."
+        "note": "This is a PRIVATE first-pass reconstruction, not the public 41–60 HTML or a released reading edition. Old pinned preview remains unchanged. Scan 41 re-read blindly on 2026-11-19; differences remain unverified. No full independent second pass yet.",
+        "latestPrivateRepairProgressSha256": "ea46aed73f33ef08e07c536225cbf44ed53b2bb2f884000d3e7374f9efca5821",
+        "independentSecondTranscriptionPagesRecorded": 1,
+        "independentSecondTranscriptionPageCompareResolved": 0,
+        "latestTranscribedScan": 41
       }
     }
   ],
@@ -79,6 +83,18 @@
       "independentSecondPass": "not_run",
       "normalDeliveryAllowed": false,
       "at": "2026-11-18T19:36:00+09:00"
+    },
+    {
+      "bookId": "salinger-nine-stories-shibata-041-060",
+      "action": "independent_source_read_progress",
+      "pendingArtifactSha256": "2e3786916fdd3cb3ab58065871d5f10fc1efab7617801c53d61c0af371813703",
+      "privateProgressSha256": "ea46aed73f33ef08e07c536225cbf44ed53b2bb2f884000d3e7374f9efca5821",
+      "sourceScan": 41,
+      "independentPagePassRecords": 1,
+      "sourceVerifiedDiffs": 0,
+      "official60Pass": false,
+      "releaseAllowed": false,
+      "at": "2026-11-19T03:30:00+09:00"
     }
   ],
   "safety": {
