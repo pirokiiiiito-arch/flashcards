@@ -26,7 +26,8 @@ jobs:
           node --check tools/reader-repair-profiles.cjs
           node --check tools/reader-repair-state.cjs
           node --check tools/reader-repair-transition.cjs
-          node --test tests/reader-repair-plan.test.cjs tests/reader-repair-multibook.test.cjs tests/reader-repair-state.test.cjs
+          node --check tools/reader-repair-finalize.cjs
+          node --test tests/reader-repair-plan.test.cjs tests/reader-repair-multibook.test.cjs tests/reader-repair-state.test.cjs tests/reader-repair-finalize.test.cjs
           node tools/reader-work-ledger-validate.cjs
       - name: Check word recovery before publication
         run: |
