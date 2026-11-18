@@ -83,3 +83,16 @@ test('no evidence file can produce a private candidate',t=>{
  const r=finalize(x.ledger,x.bookId,{...x.opts,manifest:'/nonexistent'});
  assert.equal(r.ok,false);assert.ok(r.errors.includes('MISSING_FINAL_EVIDENCE_MANIFEST'));
 });
+
+test('existing reviewed edition can start replacement verification without replacing published bytes',t=>{
+ const x=fixture(t);
+ x.b.releaseStatus='candidate';x.b.qualityState='reviewed';
+ const oldSha=x.b.artifactSha256;
+ const r=finalize(x.ledger,x.bookId,x.opts);
+ assert.equal(r.ok,false,'synthetic evidence cannot certify independent sixty and real iPhone');
+ assert.ok(r.errors.includes('FORMAL_SIXTY_DEVICE_AND_OCR_GATE_NOT_PASSED')||
+  r.errors.includes('FINAL_CANONICAL_VERIFIER_UNAVAILABLE'),r.errors.join(','));
+ assert.equal(x.b.artifactSha256,oldSha);
+ assert.equal(x.b.releaseStatus,'candidate');
+ assert.ok(x.b.pendingDraft);
+});
