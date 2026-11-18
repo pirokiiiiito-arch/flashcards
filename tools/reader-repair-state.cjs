@@ -136,6 +136,32 @@ function advance(ledger,bookId,result,progressSha,target,at){
  * "completed" evidence to a new SHA. Preserve old draft in history and
  * require fresh per-region evidence, while never changing original scan ZIP.
  */
+function startDraft(ledger,bookId,newSha,firstPassReportSha,sourceImageCount,at){
+ const errors=[],clone=structuredClone(ledger);
+ const matches=clone.books?.filter(x=>x.bookId===bookId);
+ if(!Array.isArray(matches)||matches.length!==1)errors.push('BOOK_NOT_UNIQUELY_REGISTERED');
+ const b=matches?.[0];
+ if(b?.pendingDraft)errors.push('PENDING_DRAFT_ALREADY_EXISTS');
+ if(!Number.isSafeInteger(clone.version)||clone.version<1)errors.push('INVALID_LEDGER_REVISION');
+ if(b&&(b.qualityState!=='unverified'||b.releaseStatus!=='blocked'))
+  errors.push('NORMAL_RELEASE_CANNOT_START_UNVERIFIED_DRAFT');
+ if(!hash(newSha)||newSha===b?.artifactSha256)errors.push('NEW_WORKING_DRAFT_SHA_REQUIRED');
+ if(!hash(firstPassReportSha))errors.push('SOURCE_FIRST_PASS_REPORT_REQUIRED');
+ if(!Number.isSafeInteger(sourceImageCount)||sourceImageCount<0)errors.push('INVALID_SOURCE_IMAGE_COUNT');
+ if(!Number.isFinite(Date.parse(at||'')))errors.push('INVALID_TRANSITION_TIME');
+ if(errors.length)return{ok:false,errors,ledger:null};
+ b.pendingDraft={artifactSha256:newSha,reviewStatus:'visual_first_pass_only',
+   deliveryStatus:'private_staging_blocked',independentSecondPass:'not_run',
+   realIPhone:'not_run',privateProgressReportSha256:firstPassReportSha,
+   sourceJPEGSHAverified:sourceImageCount,chromiumLayoutChecksPassed:0};
+ clone.version++;
+ clone.history=Array.isArray(clone.history)?clone.history:[];
+ clone.history.push({bookId,action:'private_draft_started',
+  publishedArtifactSha256:b.artifactSha256,pendingArtifactSha256:newSha,
+  privateFirstPassReportSha256:firstPassReportSha,at,
+  official60Passed:false,deliveryAllowed:false});
+ return{ok:true,errors:[],ledger:clone,stage:'visual_first_pass_only',version:clone.version};
+}
 function reviseDraft(ledger,bookId,priorSha,newSha,firstPassReportSha,at){
  const errors=[],clone=structuredClone(ledger);
  const book=clone.books?.filter(x=>x.bookId===bookId);
@@ -166,4 +192,4 @@ function reviseDraft(ledger,bookId,priorSha,newSha,firstPassReportSha,at){
  return{ok:true,errors:[],ledger:clone,stage:'visual_first_pass_only',version:clone.version};
 }
 
-module.exports={STAGES,validatePendingDraft,nextStage,advance,reviseDraft,completionReady,boundaryReady,counterSummary};
+module.exports={STAGES,validatePendingDraft,nextStage,advance,startDraft,reviseDraft,completionReady,boundaryReady,counterSummary};
