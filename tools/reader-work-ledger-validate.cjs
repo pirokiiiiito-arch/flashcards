@@ -39,7 +39,11 @@ function validate(ledger) {
   // Generic metadata-only repair states: all profiles share safe transitions,
   // but page/region checks depend on the book profile. This never awards a
   // canonical sixty-rule pass or changes a published artifact.
-  errors.push(...validatePendingDraft(b));
+  const pendingIssues=validatePendingDraft(b);
+  errors.push(...pendingIssues);
+  // Keep the historical fail-closed error code for older clients/tests while
+  // reporting new precise state-transition causes as additional diagnostics.
+  if(pendingIssues.length)errors.push('PENDING_DRAFT_NOT_QUALIFIED_OR_MISTAKEN_FOR_RELEASE '+id);
   if(b.releaseStatus==='candidate'&&b.qualityState!=='reviewed')
    errors.push('UNREVIEWED_RELEASE_CANDIDATE '+id);
   if((b.knownDefects||[]).some(x=>x.status!=='resolved')&&b.releaseStatus==='candidate')
