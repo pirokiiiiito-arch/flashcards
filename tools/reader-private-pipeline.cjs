@@ -109,7 +109,7 @@ function plan(file,request){
  // cross-chat ledger and OCR/source gate on the exact original artifact.
  // Only create-only PRIVATE staging is exempt: staging is NOT a delivery.
  let unified=null;
- if(request.operation!=='stage'){
+ if(request.operation==='attach'||request.operation==='promote'){
   fail(request.workLedgerFile&&request.sourceProofFile,'SHARED_WORK_LEDGER_AND_SOURCE_PROOF_REQUIRED');
   const {root,m}=load(file);
   const artifact=path.join(root,m.artifact.path);
