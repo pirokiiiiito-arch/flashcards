@@ -1,0 +1,223 @@
+{
+  "schema": "reader-local-attestation-v1",
+  "payload": {
+    "schema": "reader-release-v2",
+    "phase": "preview",
+    "errors": [],
+    "warnings": [
+      "19:26 manual visually-retyped source remains unverified by independent proofread and full 60-check formal completion.",
+      "iPhone Chrome not tested; only public empty loader is authorized; private book remains on Google Drive."
+    ],
+    "eligible": true,
+    "bookId": "nine-stories-041-060-safe-v4-preview",
+    "implementationSha256": "5fa72d7704afcbbd1d8fadd1f84d8ce8e97a7e938afe84080068f469b47b2fd3",
+    "subject": {
+      "bookId": "nine-stories-041-060-safe-v4-preview",
+      "range": [
+        41,
+        60
+      ],
+      "artifactSha256": "2e3786916fdd3cb3ab58065871d5f10fc1efab7617801c53d61c0af371813703",
+      "loaderSha256": "cfb101a3cef09d541f06d378ff1cc8aa546245237a19a7e9a5f7f1b319c1e411"
+    },
+    "subjectSha256": "cc92d0708fede742582bf7e459934b955f2e62111fe92147dc837ae2de2dfad9",
+    "authorization": {
+      "sha256": "6b5073fc7accaf13acbda3837d2516819f4f8f71ff11f8dfbf3628f70ca4e07b",
+      "explicit": true
+    },
+    "contentCertified": false,
+    "checks": {
+      "G1-01": {
+        "status": "not_run"
+      },
+      "G1-02": {
+        "status": "not_run"
+      },
+      "G1-03": {
+        "status": "not_run"
+      },
+      "G1-04": {
+        "status": "not_run"
+      },
+      "G1-05": {
+        "status": "not_run"
+      },
+      "G1-07": {
+        "status": "not_run"
+      },
+      "G1-08": {
+        "status": "not_run"
+      },
+      "G1-10": {
+        "status": "not_run"
+      },
+      "G1-12": {
+        "status": "not_run"
+      },
+      "G2-01": {
+        "status": "not_run"
+      },
+      "G2-02": {
+        "status": "not_run"
+      },
+      "G2-03": {
+        "status": "not_run"
+      },
+      "G2-04": {
+        "status": "not_run"
+      },
+      "G2-05": {
+        "status": "not_run"
+      },
+      "G2-07": {
+        "status": "not_run"
+      },
+      "G2-11": {
+        "status": "not_run"
+      },
+      "G3-01": {
+        "status": "not_run"
+      },
+      "G3-02": {
+        "status": "not_run"
+      },
+      "G3-03": {
+        "status": "not_run"
+      },
+      "G3-04": {
+        "status": "not_run"
+      },
+      "G3-05": {
+        "status": "not_run"
+      },
+      "G3-06": {
+        "status": "not_run"
+      },
+      "G3-07": {
+        "status": "not_run"
+      },
+      "G4-01": {
+        "status": "not_run"
+      },
+      "G4-02": {
+        "status": "not_run"
+      },
+      "G4-03": {
+        "status": "not_run"
+      },
+      "G4-04": {
+        "status": "not_run"
+      },
+      "G4-05": {
+        "status": "not_run"
+      },
+      "G4-09": {
+        "status": "not_run"
+      },
+      "G5-01": {
+        "status": "not_run"
+      },
+      "G5-02": {
+        "status": "not_run"
+      },
+      "G5-03": {
+        "status": "not_run"
+      },
+      "G5-04": {
+        "status": "not_run"
+      },
+      "G5-05": {
+        "status": "not_run"
+      },
+      "G5-10": {
+        "status": "not_run"
+      },
+      "P20": {
+        "status": "not_run"
+      },
+      "G6-01": {
+        "status": "not_run"
+      },
+      "G6-02": {
+        "status": "not_run"
+      },
+      "G6-03": {
+        "status": "not_run"
+      },
+      "G6-05": {
+        "status": "not_run"
+      },
+      "G6-09": {
+        "status": "not_run"
+      },
+      "G6-11": {
+        "status": "not_run"
+      },
+      "G6-12": {
+        "status": "not_run"
+      },
+      "P22": {
+        "status": "not_run"
+      },
+      "P23": {
+        "status": "not_run"
+      },
+      "G7-01": {
+        "status": "not_run"
+      },
+      "G7-02": {
+        "status": "not_run"
+      },
+      "G7-03": {
+        "status": "not_run"
+      },
+      "G7-04": {
+        "status": "not_run"
+      },
+      "G7-05": {
+        "status": "not_run"
+      },
+      "G7-10": {
+        "status": "not_run"
+      },
+      "G7-12": {
+        "status": "not_run"
+      },
+      "G8-01": {
+        "status": "not_run"
+      },
+      "G8-02": {
+        "status": "not_run"
+      },
+      "G8-03": {
+        "status": "not_run"
+      },
+      "G8-04": {
+        "status": "not_run"
+      },
+      "G8-05": {
+        "status": "not_run"
+      },
+      "G8-07": {
+        "status": "not_run"
+      },
+      "G8-08": {
+        "status": "not_run"
+      },
+      "G8-11": {
+        "status": "not_run"
+      }
+    },
+    "channel": "preview",
+    "entry": "reader/preview/nine-stories-041-060-safe-v4/index.html",
+    "bookRecordSha256": "052c2dc12cf5eada23e3b20d3a1f22db8a8cdf6d449575701a34e3b045bdd40b",
+    "reportSha256": "ac81e4f34f08dba4bb000000303bf84eabd08788ccf673fc6f88ff418c9f70ed",
+    "publicFiles": {
+      "reader/preview/nine-stories-041-060-safe-v4/index.html": "cfb101a3cef09d541f06d378ff1cc8aa546245237a19a7e9a5f7f1b319c1e411"
+    },
+    "previewProtocol": "reader-immutable-preview-v3",
+    "issuedAt": "2026-11-19",
+    "trustBoundary": "Private 19:26 manual first-pass file not published; preview loader only; no OCR/60-check/iPhone certification."
+  },
+  "digest": "c2696709d8d12f8a674cebb30f9c4f10d59d2c6358fe91914b905c5f706032de"
+}
