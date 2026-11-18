@@ -11,7 +11,7 @@ const TEXT=new Set(['body','dialogue','heading','toc','caption','note','boxed','
 const IMAGE=new Set(['figure','photo','image','diagram','map','chart','illustration']);
 const allKinds=new Set([...TEXT,...IMAGE]);
 const isObj=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
-const validName=s=>typeof s==='string'&&/^[a-z0-9][a-z0-9-]{0,99}$/.test(s);
+const validName=s=>typeof s==='string'&&/^[a-z0-9][a-z0-9_-]{0,99}$/.test(s);
 function validBox(box,width,height){
  return Array.isArray(box)&&box.length===4&&box.every(Number.isFinite)&&
  box[0]>=0&&box[1]>=0&&box[2]>box[0]&&box[3]>box[1]&&
@@ -164,7 +164,10 @@ function planRegions(book,progress){
  }
  for(let left=start-1;left<=end;left++){
   const key=left+'>'+(left+1),e=boundarySet.get(key);
-  if(!passEvidence(e)||e.left!==left||e.right!==left+1){
+  if(!passEvidence(e)||e.left!==left||e.right!==left+1||
+   !hash(e.leftSourceSha256)||!hash(e.rightSourceSha256)||
+   (pages.has(left)&&e.leftSourceSha256!==pages.get(left).sourceImageSha256)||
+   (pages.has(left+1)&&e.rightSourceSha256!==pages.get(left+1).sourceImageSha256)){
    tasks.push(task('verify_original_page_boundary',key,40,
     'Verify prose continuity, captions, notes, or documented no-text boundary; do not invent text for image-only pages.'));
   }else counts.boundariesRecorded++;
@@ -180,7 +183,10 @@ function planRegions(book,progress){
  counts.bridgesRequired=needSet.size;
  for(const key of needSet){
   const b=bridgeSet.get(key);
-  if(!passEvidence(b)||b.left+'>'+b.right!==key)
+  if(!passEvidence(b)||b.left+'>'+b.right!==key||
+    !hash(b.leftSourceSha256)||!hash(b.rightSourceSha256)||
+    b.leftSourceSha256!==pages.get(b.left)?.sourceImageSha256||
+    b.rightSourceSha256!==pages.get(b.right)?.sourceImageSha256)
    tasks.push(task('verify_nonadjacent_prose_continuity',key,45,
     'Check prose continuity across intervening figure/note scans and keep source associations.'));
   else counts.bridgesRecorded++;
