@@ -121,3 +121,42 @@ node tools/reader-private-pipeline.cjs init-resolved PRIVATE/book.html PRIVATE/b
 ## 検査と納品の表現
 
 `book-create-preflight`、GitHub Pages成功、HTML保存済み、24条件の代表表示、OCR全字独立照合、現行60項目の合否、iPhone Chrome実機操作は独立の事実。ユーザーへの報告に **「対象範囲、Google DriveのHTML URL、Chrome確認URLと公開／未公開状態、実施済み検査、残る未検証項目」** を必ず含める。
+
+
+## 工程9：チャットをまたぐ統一納品ゲート（既存60項目のまま）
+
+**異なるチャット、別モデル、別のWorkから再開する場合も、判断基準は会話内の
+自己申告ではなく固定台帳と同じ検査コマンドにする。**
+公開GitHubの `reader/quality/work-ledger.json` は書籍ID・原本範囲・
+原本ZIP SHA・納品候補HTML SHA・未解決不具合だけを持つ共有管理台帳。
+**原本画像・OCR本文・校正根拠はプライベート保存のみ**。台帳の
+`reviewed`、`candidate` を自己申告しても、その状態だけでは納品可能にならない。
+
+通常納品は `tools/reader-unified-handoff.cjs --mode normal` が
+`verified_release` を返した**同じHTMLのSHA**だけ許可する。
+このコマンドは既存 `reader-release-control.cjs` と
+`reader-evidence-gate.cjs` をその場で呼び直し、
+現行60項目の合格と独立照合、実機、Drive同一ID読戻し、公開HTTP/SHA、
+原本ZIPのSHA・各画像SHA、OCRの疑義を厳格に照合する。
+前提不足・記録紛失・不一致は**default deny**。
+
+`--mode audit` は不審なOCRを読取専用で検出するが**絶対に納品許可を返さない**。
+`--mode preview` は別の未校正版であり、ユーザーからその版の
+「未校正OCRを確認用として受け取る」という明示的な依頼を受けて記録し、
+私有 preview manifest が一致する場合のみ
+`unverified_preview_only` として扱う。
+通常の「作って」「次の20ページ」は preview の許可ではない。
+preview の検査成功も 60項目やiPhone実機の合格ではない。
+
+台帳の既知不具合を `not_run` に戻したり、過去のSHAの証拠を新しいSHAに
+転用したりしない。更新時はGitHubのファイルblob SHAを使って競合検出し、
+過去の版と公開済みURLを保持する。原本OCRの訂正や追加検査では必ず
+別版のHTMLと検査報告を作る。新しい60項目IDは作らない。
+
+**重要な限界:** GitHub ActionsはGitHubの管理対象となる公開経路を停止できるが、
+別チャットで直接ChatGPTファイルリンクを出す操作やGoogle Driveへの直接書込みを
+プラットフォーム全体で阻止することはできない。全経路を技術的に強制するには、
+納品先の書込み権限を認証付きの単一APIへ集約し、ChatGPTからの直接納品を
+禁止する外部権限制御が必要。現状は「公式制作経路は自動ゲート、
+チャット直納品は共通手順でゲート実行」という区別を保持する。
+

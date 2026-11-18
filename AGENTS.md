@@ -1,5 +1,54 @@
 # Scan-book production: persisted execution contract
 
+## 全チャット共通：納品前に統一ゲートを必ず使う（既存60項目は不変）
+
+対象：スキャン本の新規作成、次の20枚、OCR再校正、読書HTML再作成、
+Google Drive 保存、Chrome公開、ファイルリンクの提示、既存版の修正。
+チャットが変わっても「作って」は未校正プレビューの依頼ではない。
+
+1. 常にこのリポジトリの現行 AGENTS.md と
+   `reader/quality/work-ledger.json`（書籍ID・ページ範囲・SHA・未解決不具合）
+   および該当する**非公開**の原本台帳・校正履歴・証拠を取得してから着手。
+   台帳にない書籍・SHAが異なる書籍は `blocked`。過去の回答を証拠にしない。
+2. 原本ZIP、各原本画像、OCR、全文字独立校正、見出しと本文の関係、
+   ページ境界、既存60項目、実配布HTML、Drive同一ID読戻し、
+   公開HTMLの HTTP 200 とSHA、実際のiPhone実機確認を独立に検証。
+   途中の成功を後段の成功に読み替えない。
+3. 直接 sandbox リンク、Google Drive リンク、公開URLを通常の
+   「完成版／読書用通常版」として渡す前に、ユーザーに渡す**そのHTML本体**で
+   `tools/reader-unified-handoff.cjs` を `--mode normal`（省略時もnormal）で
+   実行し、`handoffAllowed:true` かつ `status:verified_release` の
+   専用検査報告がない限り通常版の納品を停止。原本照合、全60項目の
+   対象版の証拠、iPhone実機、Drive、公開配信の検証が揃わなければ停止。
+4. 例外的に未校正の確認用ファイルを渡す場合は、ユーザーが**明示的に**
+   当該書籍・版の「未校正OCR一次稿を確認用として受け取る」と認めた
+   記録を検査し、`--mode preview` の `unverified_preview_only` だけを
+   許可。単なる「41-60を作って」「URLをくれ」を同意に読み替えない。
+   対応する private manifest / original-source preflight / work ledger /
+   preview-consent は同じartifact SHAに紐付ける。
+5. OCR中の英字断片、縦棒 `|`、代替文字などは**推測で書き換えず**、
+   原本で確認した例外以外を未解決として止める。reviewer の自己申告
+   だけで独立照合済みとせず、既存60項目の証拠を再検証する。
+6. 作業報告には `原本画像` `OCR独立校正` `60項目`
+   `Drive読戻し` `Chrome公開HTTP` `実機` の各状態を別々に表示。
+   進められないときは未完の理由と現在のSHAを示し、完成を主張しない。
+
+実行例（入力・レポートは**GitHub公開リポジトリ外**）：
+```sh
+node tools/reader-unified-handoff.cjs 
+  --mode normal --artifact PRIVATE/reader.html --ledger reader/quality/work-ledger.json 
+  --manifest PRIVATE/manifest.json --source-proof PRIVATE/source-preflight.json 
+  --ocr-review PRIVATE/ocr-anomaly-review.json --public-evidence PRIVATE/pages-http.json 
+  --report PRIVATE/20261118_1232_unified-result.json
+```
+
+この統一ゲートは外部のGoogle Drive操作やチャット添付を自動的に
+傍受・禁止できるものではない。ChatGPT全体のシステム設定を変えた
+とは絶対に主張しない。公式制作手順とGitHub公開は自動テストで制御し、
+その他の手作業ではこのゲートを義務化する。より強い組織横断強制には
+認証された納品APIと送信権限の集約が別途必要。
+
+
 Scope: scan-book readers, not plants/colors/word or other applications.
 
 Read the [current canonical sixty-item standard](reader/quality/README.md), **`reader/quality/BOOK_CREATION_PROCESS.md`**, `reader/quality/RELEASE_PROCESS.md`, and the persisted private manifest before continuing. Keep the same sixty IDs. A new chat or 'next 20 pages' is not permission to omit proofreading.

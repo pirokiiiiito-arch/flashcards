@@ -8,6 +8,11 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
+      - 'tools/reader-unified-handoff.cjs'
+      - 'tools/reader-work-ledger-validate.cjs'
+      - 'reader/quality/work-ledger.json'
+      - 'tests/reader-unified-handoff.test.cjs'
+      - 'tests/reader-work-ledger-validate.test.cjs'
       - 'tools/reader-source-preflight.py'
       - 'tools/reader-private-pipeline.cjs'
       - 'tests/test_reader_source_preflight.py'
@@ -34,6 +39,11 @@ on:
       - 'reader/quality/receipts/**'
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
+      - 'tools/reader-unified-handoff.cjs'
+      - 'tools/reader-work-ledger-validate.cjs'
+      - 'reader/quality/work-ledger.json'
+      - 'tests/reader-unified-handoff.test.cjs'
+      - 'tests/reader-work-ledger-validate.test.cjs'
       - 'tools/reader-source-preflight.py'
       - 'tools/reader-private-pipeline.cjs'
       - 'tests/test_reader_source_preflight.py'
@@ -70,6 +80,10 @@ jobs:
         run: |
           node --check tools/reader-book-preflight.cjs
           node --check tools/reader-handoff-check.cjs
+          node --check tools/reader-unified-handoff.cjs
+          node --check tools/reader-work-ledger-validate.cjs
+          node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs
+          node tools/reader-work-ledger-validate.cjs
           node --check tools/reader-private-pipeline.cjs
           node --test tests/reader-source-pipeline-gate.test.cjs
           node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs tests/reader-nine-stories-safe-loader-v2.test.cjs
