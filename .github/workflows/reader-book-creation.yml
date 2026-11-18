@@ -16,6 +16,7 @@ on:
       - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
       - 'tests/browser-nine-stories-safe-loader-v2.cjs'
       - 'tests/browser-nine-stories-041-060-safe-loader-v2.cjs'
+      - 'tests/browser-nine-stories-041-060-safe-loader-v3.cjs'
       - 'tests/reader-book-preflight.test.cjs'
       - 'tools/reader-evidence-gate.cjs'
       - 'tools/reader-verify-pages.cjs'
@@ -41,6 +42,7 @@ on:
       - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
       - 'tests/browser-nine-stories-safe-loader-v2.cjs'
       - 'tests/browser-nine-stories-041-060-safe-loader-v2.cjs'
+      - 'tests/browser-nine-stories-041-060-safe-loader-v3.cjs'
       - 'tests/reader-book-preflight.test.cjs'
       - 'tools/reader-evidence-gate.cjs'
       - 'tools/reader-verify-pages.cjs'
@@ -82,6 +84,8 @@ jobs:
           node tests/browser-nine-stories-safe-loader-v2.cjs
           node --check tests/browser-nine-stories-041-060-safe-loader-v2.cjs
           node tests/browser-nine-stories-041-060-safe-loader-v2.cjs
+          node --check tests/browser-nine-stories-041-060-safe-loader-v3.cjs
+          node tests/browser-nine-stories-041-060-safe-loader-v3.cjs
       - name: Validate every registered preview before new-book publication
         run: node tools/reader-book-preflight.cjs --all
       - name: Record verification boundary
