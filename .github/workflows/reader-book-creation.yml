@@ -10,6 +10,14 @@ on:
       - 'tools/reader-handoff-check.cjs'
       - 'tools/reader-unified-handoff.cjs'
       - 'tools/reader-repair-plan.cjs'
+      - 'tools/reader-repair-profiles.cjs'
+      - 'tools/reader-repair-state.cjs'
+      - 'tools/reader-repair-transition.cjs'
+      - 'tools/reader-repair-finalize.cjs'
+      - 'tests/reader-repair-finalize.test.cjs'
+      - 'tests/reader-repair-multibook.test.cjs'
+      - 'tests/reader-repair-state.test.cjs'
+      - 'reader/quality/REPAIR_PROFILES_AND_STATES.md'
       - 'tests/reader-repair-plan.test.cjs'
       - 'tools/reader-work-ledger-validate.cjs'
       - 'reader/quality/work-ledger.json'
@@ -43,6 +51,14 @@ on:
       - 'tools/reader-handoff-check.cjs'
       - 'tools/reader-unified-handoff.cjs'
       - 'tools/reader-repair-plan.cjs'
+      - 'tools/reader-repair-profiles.cjs'
+      - 'tools/reader-repair-state.cjs'
+      - 'tools/reader-repair-transition.cjs'
+      - 'tools/reader-repair-finalize.cjs'
+      - 'tests/reader-repair-finalize.test.cjs'
+      - 'tests/reader-repair-multibook.test.cjs'
+      - 'tests/reader-repair-state.test.cjs'
+      - 'reader/quality/REPAIR_PROFILES_AND_STATES.md'
       - 'tests/reader-repair-plan.test.cjs'
       - 'tools/reader-work-ledger-validate.cjs'
       - 'reader/quality/work-ledger.json'
@@ -86,7 +102,11 @@ jobs:
           node --check tools/reader-handoff-check.cjs
           node --check tools/reader-unified-handoff.cjs
           node --check tools/reader-repair-plan.cjs
-          node --test tests/reader-repair-plan.test.cjs
+          node --check tools/reader-repair-profiles.cjs
+          node --check tools/reader-repair-state.cjs
+          node --check tools/reader-repair-transition.cjs
+          node --check tools/reader-repair-finalize.cjs
+          node --test tests/reader-repair-plan.test.cjs tests/reader-repair-multibook.test.cjs tests/reader-repair-state.test.cjs tests/reader-repair-finalize.test.cjs
           node --check tools/reader-work-ledger-validate.cjs
           node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs
           node tools/reader-work-ledger-validate.cjs

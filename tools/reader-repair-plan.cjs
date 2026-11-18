@@ -8,6 +8,7 @@
  */
 const fs=require('node:fs'),path=require('node:path');
 const {validate}=require('./reader-work-ledger-validate.cjs');
+const {planRegions,PROFILES}=require('./reader-repair-profiles.cjs');
 const HEX=/^[a-f0-9]{64}$/;
 const hashOK=x=>typeof x==='string'&&HEX.test(x);
 const isObject=x=>x&&typeof x==='object'&&!Array.isArray(x);
@@ -25,6 +26,53 @@ function plan(ledger,bookId,progress=null){
  const draft=book.pendingDraft||null,draftSha=draft?.artifactSha256||book.artifactSha256;
  const pendingIsSeparate=!!draft&&hashOK(draftSha)&&draftSha!==book.artifactSha256;
  if(draft&&!pendingIsSeparate)errors.push('INVALID_PENDING_DRAFT_IDENTITY');
+
+ // The original v1 page-level transcription queue is preserved for existing
+ // novels. New history/image/mixed/text books use explicit source-region v2
+ // inventory; an unclassified photo may never be called missing OCR.
+ if(!PROFILES.has(book.profile))errors.push('UNKNOWN_REPAIR_PROFILE');
+ const v2=pendingIsSeparate&&
+  (progress?.schema==='reader-repair-progress-v2'||
+   !['novel'].includes(book.profile));
+ if(v2){
+  const sub=planRegions(book,progress);
+  errors.push(...sub.errors);warnings.push(...sub.warnings);
+  const tasks=errors.length?[]:sub.tasks.slice();
+  const defects=book.knownDefects||[];
+  if(!errors.length)for(const issue of defects){
+   if(issue.status==='resolved')continue;
+   tasks.push({id:'resolve_known_source_defect:'+issue.id,
+    type:'resolve_known_source_defect',edge:issue.id,priority:50,
+    reason:'Resolve source-backed known defect against the exact current artifact and preserve old history.',recorded:false});
+  }
+  if(!errors.length&&tasks.length===0)tasks.push({
+   id:'run_canonical_60_and_handoff_gate:'+first+'-'+last,
+   type:'run_canonical_60_and_handoff_gate',
+   edge:first+'-'+last,priority:60,
+   reason:'Run all existing canonical sixty checks and real delivery evidence. Repair counts are NEVER an approval.',recorded:false});
+  tasks.sort((a,b)=>a.priority-b.priority||a.id.localeCompare(b.id));
+  const c=sub.counts||{},resolved=defects.filter(x=>x.status==='resolved').length;
+  const discovered=c.inventoriesComplete===true;
+  const totalProofTasks=discovered?
+   c.scans+c.textRegionsDiscovered*2+c.nonTextRegionsDiscovered+
+   c.profileChecksRequired+(c.scans+1)+c.bridgesRequired+defects.length+1:null;
+  const completedProofTasks=(c.pageInventoriesRecorded||0)+(c.independentTextRegionsRecorded||0)+
+   (c.comparedTextRegionsRecorded||0)+(c.verifiedImageRegionsRecorded||0)+
+   (c.profileChecksRecorded||0)+(c.boundariesRecorded||0)+
+   (c.bridgesRecorded||0)+resolved;
+  const counts={...c,sourceImagesPreviouslyReported:draft?.sourceJPEGSHAverified||0,
+    layoutConditionsPreviouslyReported:draft?.chromiumLayoutChecksPassed||0,
+    unresolvedLedgerDefects:defects.length-resolved,totalProofTasks,completedProofTasks,
+    remainingProofTasks:totalProofTasks===null?null:totalProofTasks-completedProofTasks};
+  return{schema:'reader-repair-plan-v2',status:errors.length?'blocked':'work_ready',
+   bookId,range,profile:book.profile,originalPublishedArtifactSha256:book.artifactSha256,
+   workingDraftSha256:draftSha,workingDraftIsDistinctFromPublished:true,
+   originalReaderStillBlocked:book.releaseStatus==='blocked',
+   releaseEligible:false,counts,tasks,remainingWorkItems:tasks.length,nextAction:tasks[0]||null,
+   errors,warnings,
+   note:'Per-region repair queue for novel/history/text/photo/mixed. The sixty canonical checks and independent source evidence still determine delivery.'};
+ }
+
  const notReleased=book.releaseStatus==='blocked'&&book.qualityState==='unverified';
  if(!notReleased)warnings.push('VERSION_IS_NOT_RECORDED_AS_BLOCKED_UNVERIFIED');
  let progressOK=false;
