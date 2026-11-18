@@ -10,6 +10,16 @@
 
 既存の60項目IDを維持する。実行手順は [RELEASE_PROCESS.md](RELEASE_PROCESS.md)、継続作業の入口はリポジトリ直下のAGENTS.md。
 
+## チャットをまたぐ単一の納品判定
+
+最新の [統一納品ゲート](UNIFIED_DELIVERY_GATE.md) と、Google Drive の非公開
+「全書籍共通_読書品質中央台帳_PRIVATE.json」を参照する。通常納品は
+`tools/reader-unified-delivery-gate.cjs` の対象SHA別の判定が `normal_delivery_verified`
+の場合だけ。合格していないOCRのプレビューは、明示された版と
+限定用途についてユーザーの事前了承がある場合だけ `explicit_unverified_preview_only`。
+`OCR一次稿` を通常読書版のように納品しない。60項目ID・状態・独立照合は
+そのまま維持し、GitHub Actionsの緑表示だけで文字正確性を主張しない。
+
 ## 検査の区別
 
 - `reader-quality-gate.cjs`：台帳・60ID・状態・公開入口の構造検査。成功は **SCHEMA PASS ONLY** であり、OCR本文の正確さや配布許可ではない。
