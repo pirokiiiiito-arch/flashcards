@@ -30,3 +30,25 @@ test('a non-canonical ruleset cannot replace the sixty-rule identity',()=>{
  const l=structuredClone(ledger);l.ruleset='custom-61';
  assert.ok(validate(l).errors.includes('INVALID_CENTRAL_LEDGER_SCHEMA'));
 });
+
+test('new first-pass checkpoint is recorded but does not supersede old published preview',()=>{
+ const b=ledger.books.find(x=>x.range[0]===41);
+ assert.ok(b?.pendingDraft);
+ assert.notEqual(b.artifactSha256,b.pendingDraft.artifactSha256);
+ assert.equal(b.qualityState,'unverified');
+ assert.equal(b.releaseStatus,'blocked');
+ assert.equal(b.pendingDraft.deliveryStatus,'private_staging_blocked');
+ assert.equal(b.pendingDraft.independentSecondPass,'not_run');
+ assert.equal(validate(ledger).errors.length,0);
+});
+test('a first-pass checkpoint cannot be promoted by changing its status alone',()=>{
+ const l=structuredClone(ledger),b=l.books.find(x=>x.range[0]===41);
+ b.releaseStatus='candidate';b.qualityState='reviewed';
+ const r=validate(l);
+ assert.ok(r.errors.some(e=>e.startsWith('PENDING_DRAFT_NOT_QUALIFIED_OR_MISTAKEN_FOR_RELEASE')));
+});
+test('staged draft cannot reuse the existing published SHA',()=>{
+ const l=structuredClone(ledger),b=l.books.find(x=>x.range[0]===41);
+ b.pendingDraft.artifactSha256=b.artifactSha256;
+ assert.ok(validate(l).errors.some(e=>e.startsWith('PENDING_DRAFT_NOT_QUALIFIED_OR_MISTAKEN_FOR_RELEASE')));
+});
