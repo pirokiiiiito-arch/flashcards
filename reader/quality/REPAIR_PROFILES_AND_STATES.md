@@ -50,6 +50,24 @@ node tools/reader-repair-transition.cjs --action advance \
 
 `transition` は新しいPRIVATE台帳候補を生成するだけで、GitHubの共有台帳を直接上書きしない。確認したメタデータだけを正式なPR等で反映する。修正されたHTMLの新規SHAへ移る場合は、`--action revise --prior-sha OLD --new-sha NEW --first-pass-report-sha REPORT` を使い、旧進捗ファイルをそのまま新稿へ流用しない。
 
+## 校正完了後に通常版候補へ進む正式な出口
+
+`awaiting_canonical_60` で作業を終わらせない。現行60項目の対象版の全文字・図版・注記・表示・独立原本照合を実際に検査し、同一Drive IDの読戻し、Productionの**非プレビューURL**でHTTP 200と配信SHAが一致し、iPhone実機証拠が揃った場合だけ次の操作を使う。
+
+```sh
+node tools/reader-repair-finalize.cjs \
+  --book BOOK_ID --ledger PRIVATE/current-ledger.json \
+  --expected-revision N --artifact PRIVATE/corrected.html \
+  --manifest PRIVATE/manifest.json \
+  --source-proof PRIVATE/source-preflight.json \
+  --ocr-review PRIVATE/ocr-review.json \
+  --public-evidence PRIVATE/production-pages-http-evidence.json \
+  --output PRIVATE/verified-candidate-ledger.json
+```
+
+この処理は既存の `reader-unified-handoff.cjs --mode normal` と元の60項目ゲートを**実際に再実行**する。全検査を通ったときだけ `pendingDraft` を台帳候補から退避し、`qualityState: reviewed` と `releaseStatus: candidate` を持つPRIVATE台帳を作る。旧版のSHA・校正履歴は消さない。なお、この操作でGitHubやDriveの実ファイルを更新・公開したり、古い読書URLを転送したりはしない。ログを確認し、正式な公開操作は別に行う。
+
+独立全文字校正・60項目の合格・実機証拠・非プレビュー公開HTTPが欠ければ失敗する。ユーザーの同意や検査者名を書いただけで証拠とは扱わない。GitHubとチャット外で誰かが直接書き込む行為を完全に封鎖する機能ではない。
 ## 納品と検査の区別
 
 修復キューがすべて処理済みでも正式合格ではない。**現行60項目の独立原本照合・文章連続性・図版と注記・実配布HTML表示検査・Drive同一ID読戻し・公開HTTP/SHA・iPhone実機**の正規ゲートを通す。修復プログラムは常に `releaseEligible:false` を返す。
