@@ -102,6 +102,17 @@ function plan(ledger,bookId,progress=null){
  }
  tasks.sort((a,b)=>a.priority-b.priority||String(a.id).localeCompare(String(b.id)));
  const primary=tasks[0]||null;
+ // Two independent tasks for each scan (blind pass + source-backed comparison),
+ // one for each internal and external boundary, known-defect resolutions, and
+ // the unchanged canonical release gate. Counts are progress indicators only.
+ const allDefects=book.knownDefects||[];
+ const totalProofTasks=(last-first+1)*2+(last-first+2)+allDefects.length+1;
+ const completedProofTasks=counts.independentPagePassesRecorded+
+  counts.comparedPagesRecorded+counts.boundariesRecorded+
+  allDefects.filter(d=>d.status==='resolved').length;
+ counts.totalProofTasks=totalProofTasks;
+ counts.completedProofTasks=completedProofTasks;
+ counts.remainingProofTasks=totalProofTasks-completedProofTasks;
  return{
   schema:'reader-repair-plan-v1',status:errors.length?'blocked':'work_ready',
   bookId,range,profile:book.profile,originalPublishedArtifactSha256:book.artifactSha256,
