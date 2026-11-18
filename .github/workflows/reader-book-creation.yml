@@ -10,6 +10,9 @@ on:
       - 'tools/reader-handoff-check.cjs'
       - 'tools/reader-unified-handoff.cjs'
       - 'tools/reader-repair-plan.cjs'
+      - 'tools/reader-fast-layout.py'
+      - 'tests/test_reader_fast_layout.py'
+      - 'reader/quality/FAST_LAYOUT_QA.md'
       - 'tools/reader-repair-profiles.cjs'
       - 'tools/reader-repair-state.cjs'
       - 'tools/reader-repair-transition.cjs'
@@ -51,6 +54,9 @@ on:
       - 'tools/reader-handoff-check.cjs'
       - 'tools/reader-unified-handoff.cjs'
       - 'tools/reader-repair-plan.cjs'
+      - 'tools/reader-fast-layout.py'
+      - 'tests/test_reader_fast_layout.py'
+      - 'reader/quality/FAST_LAYOUT_QA.md'
       - 'tools/reader-repair-profiles.cjs'
       - 'tools/reader-repair-state.cjs'
       - 'tools/reader-repair-transition.cjs'
@@ -115,6 +121,10 @@ jobs:
           node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs tests/reader-nine-stories-safe-loader-v2.test.cjs
           node --check tools/reader-evidence-gate.cjs
           node --check tools/reader-verify-pages.cjs
+      - name: Verify fast SHA-pinned layout QA matrix and cache invalidation
+        run: |
+          python3 -m py_compile tools/reader-fast-layout.py
+          python3 -m unittest discover -s tests -p 'test_reader_fast_layout.py' -v
       - name: Verify source folder-vs-search and ZIP-byte synthetic regression
         run: |
           python3 -m unittest discover -s tests -p 'test_reader_source_preflight.py' -v
