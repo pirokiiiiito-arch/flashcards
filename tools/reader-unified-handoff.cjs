@@ -12,11 +12,16 @@ function load(file){return JSON.parse(fs.readFileSync(file,'utf8'));}
 function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
 function bytes(file){return fs.readFileSync(file);}
 function validRange(r){return Array.isArray(r)&&r.length===2&&Number.isSafeInteger(r[0])&&Number.isSafeInteger(r[1])&&r[0]>0&&r[0]<=r[1];}
-function extractBook(input){
+function extractBook(input,privateManifest=null){
  const s=input.toString('utf8');
- const m=s.match(/<script\b(?=[^>]*\bid=["']embedded-data["'])[^>]*>([\s\S]*?)<\/script\s*>/i);
+ const m=s.match(/<script\b(?=[^>]*\bid=["'](?:embedded-data|bookdata)["'])[^>]*>([\s\S]*?)<\/script\s*>/i);
  if(!m)throw Error('EMBEDDED_BOOK_DATA_MISSING');
- const data=JSON.parse(m[1]),pages=data.pages;
+ let data=JSON.parse(m[1]);
+ if(Array.isArray(data)){
+  if(!privateManifest?.bookId||!validRange(privateManifest.range))throw Error('LEGACY_PRIVATE_BUNDLE_IDENTITY_REQUIRED');
+  data={bookId:privateManifest.bookId,range:privateManifest.range,pages:data};
+ }
+ const pages=data.pages;
  if(!data||typeof data.bookId!=='string'||!validRange(data.range)||!Array.isArray(pages)||pages.length!==data.range[1]-data.range[0]+1||pages.some((p,i)=>p.scan!==data.range[0]+i))
   throw Error('EMBEDDED_BOOK_ID_RANGE_SEQUENCE_INVALID');
  return data;
@@ -104,7 +109,9 @@ function inspect(opts,inject={}){
  if(!['normal','preview','prepublication','audit'].includes(mode)){errors.push('MODE_NOT_SUPPORTED');return report;}
  try{
   if(!opts.artifact)throw Error('ARTIFACT_REQUIRED');
-  file=bytes(opts.artifact);sha=v.hash(file);data=extractBook(file);
+  file=bytes(opts.artifact);sha=v.hash(file);
+  let identity=null;try{if(opts.manifest)identity=load(opts.manifest);}catch(_){}
+  data=extractBook(file,identity);
   report.bookId=data.bookId;report.range=data.range;report.artifactSha256=sha;
   anomalies=findAnomalies(data);report.ocrAnomalyCount=anomalies.length;
   for(const a of anomalies)report.ocrAnomalyKinds[a.kind]=(report.ocrAnomalyKinds[a.kind]||0)+1;
