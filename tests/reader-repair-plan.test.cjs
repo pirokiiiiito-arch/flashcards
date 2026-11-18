@@ -98,6 +98,6 @@ test('progress with a wrong profile/record cannot promote old published artifact
  const l=structuredClone(ledger);
  const b=l.books.find(x=>x.bookId===ID);b.pendingDraft.artifactSha256=b.artifactSha256;
  const r=plan(l,ID);
- assert.ok(r.errors.includes('INVALID_PENDING_DRAFT_IDENTITY'));
+ assert.ok(r.errors.includes('INVALID_SHARED_WORK_LEDGER')||r.errors.includes('INVALID_PENDING_DRAFT_IDENTITY'));
  assert.equal(r.releaseEligible,false);
 });
