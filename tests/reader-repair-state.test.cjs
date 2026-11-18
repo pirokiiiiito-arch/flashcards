@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const source=require('../reader/quality/work-ledger.json');
 const {plan}=require('../tools/reader-repair-plan.cjs');
-const {STAGES,validatePendingDraft,advance,reviseDraft}=require('../tools/reader-repair-state.cjs');
+const {STAGES,validatePendingDraft,advance,startDraft,reviseDraft}=require('../tools/reader-repair-state.cjs');
 const {transition}=require('../tools/reader-repair-transition.cjs');
 const {validate}=require('../tools/reader-work-ledger-validate.cjs');
 const SH='a'.repeat(64),PUB='b'.repeat(64),NEW='c'.repeat(64),EV='d'.repeat(64);
@@ -152,4 +152,27 @@ test('private CLI requires exact version and never silently modifies ledger',t=>
   expectedRevision:ledger.version,progress:progressPath,to:'second_pass_in_progress',at:REVIEW_AT});
  assert.equal(out.ok,true,out.errors.join(','));
  assert.deepEqual(fs.readFileSync(ledgerPath),snapshot);
+});
+
+
+test('a different book without a pending draft can start a versioned private first pass',()=>{
+ const {ledger,bookId}=fixture('image');
+ const book=ledger.books.find(x=>x.bookId===bookId);
+ delete book.pendingDraft;
+ const begun=startDraft(ledger,bookId,NEW,EV,1,REVIEW_AT);
+ assert.equal(begun.ok,true,begun.errors.join(','));
+ const now=begun.ledger.books.find(x=>x.bookId===bookId);
+ assert.equal(now.artifactSha256,PUB,'published bytes remain pinned');
+ assert.equal(now.pendingDraft.reviewStatus,'visual_first_pass_only');
+ assert.equal(now.pendingDraft.realIPhone,'not_run');
+ assert.equal(now.releaseStatus,'blocked');
+ assert.deepEqual(validate(begun.ledger).errors,[]);
+ assert.equal(startDraft(begun.ledger,bookId,'e'.repeat(64),EV,1,REVIEW_AT).ok,false,
+  'new draft cannot overwrite an existing draft in place');
+});
+test('first-pass start rejects reused published SHA and reviewed release state',()=>{
+ const {ledger,bookId}=fixture('image');delete ledger.books.at(-1).pendingDraft;
+ assert.equal(startDraft(ledger,bookId,PUB,EV,1,REVIEW_AT).ok,false);
+ ledger.books.at(-1).releaseStatus='candidate';ledger.books.at(-1).qualityState='reviewed';
+ assert.equal(startDraft(ledger,bookId,NEW,EV,1,REVIEW_AT).ok,false);
 });
