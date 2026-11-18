@@ -88,8 +88,20 @@ async function until(fn,label){
   assert.deepEqual(errors,[],'no Chrome runtime exceptions');
   console.log('PASS v3 Chrome importer: wrong SHA rejected, original byte readback, position persisted with correct private reader ID, reload no autoplay, explicit reopen');
  }finally{
-  try{ws?.close();}catch(_){}try{chrome?.kill('SIGKILL');}catch(_){}
-  await new Promise(r=>server.close(r));
-  fs.rmSync(dir,{recursive:true,force:true});
+  try{ws?.close();}catch(_){}
+  if(chrome){
+   const exited=chrome.exitCode!==null||chrome.signalCode!==null;
+   if(!exited){
+    const done=new Promise(resolve=>{
+     chrome.once('exit',resolve);
+     const deadline=setTimeout(resolve,1500);
+     deadline.unref?.();
+    });
+    try{chrome.kill('SIGKILL');}catch(_){}
+    await done;
+   }
+  }
+  await new Promise(resolve=>server.close(resolve));
+  fs.rmSync(dir,{recursive:true,force:true,maxRetries:20,retryDelay:120});
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});
