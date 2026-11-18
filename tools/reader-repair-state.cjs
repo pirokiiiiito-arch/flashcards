@@ -23,8 +23,13 @@ function validatePendingDraft(book){
  fail(hash(p.privateProgressReportSha256),'PENDING_DRAFT_BASE_EVIDENCE_MISSING');
  fail(p.deliveryStatus==='private_staging_blocked','PENDING_DRAFT_CANNOT_BE_DELIVERY');
  fail(p.realIPhone==='not_run','PENDING_DRAFT_DEVICE_NOT_VERIFIED');
- fail(book.releaseStatus==='blocked'&&book.qualityState==='unverified',
-   'PENDING_DRAFT_CANNOT_BE_PUBLIC_CANDIDATE');
+ // A reviewed old release may stay available while an isolated NEW revision
+ // is under construction. Only the draft is blocked; never downgrade old QA.
+ const stablePrevious=book.releaseStatus==='candidate'&&book.qualityState==='reviewed'&&
+  (book.knownDefects||[]).every(x=>x.status==='resolved');
+ const unverifiedPrevious=book.releaseStatus==='blocked'&&book.qualityState==='unverified';
+ fail(unverifiedPrevious||stablePrevious,
+   'PENDING_DRAFT_INVALID_PRIOR_RELEASE_STATE');
  fail(Number.isSafeInteger(p.sourceJPEGSHAverified)&&p.sourceJPEGSHAverified>=0,
    'PENDING_DRAFT_SOURCE_COUNT_INVALID');
  fail(Number.isSafeInteger(p.chromiumLayoutChecksPassed)&&p.chromiumLayoutChecksPassed>=0,
@@ -49,18 +54,28 @@ function validatePendingDraft(book){
 function nextStage(stage){
  const i=STAGES.indexOf(stage);return i>=0&&i<STAGES.length-1?STAGES[i+1]:null;
 }
+// Independent second reading may finish before differences are reconciled.
+// Requiring the comparison here deadlocks the second_pass_completed state.
 function completionReady(result){
  const c=result.counts||{};
  if(result.schema==='reader-repair-plan-v2'){
   return c.inventoriesComplete===true&&c.pageInventoriesRecorded===c.scans&&
    c.independentTextRegionsRecorded===c.textRegionsDiscovered&&
-   c.comparedTextRegionsRecorded===c.textRegionsDiscovered&&
-   c.verifiedImageRegionsRecorded===c.nonTextRegionsDiscovered&&
-   c.profileChecksRecorded===c.profileChecksRequired;
+   c.verifiedImageRegionsRecorded===c.nonTextRegionsDiscovered;
  }
  if(result.schema==='reader-repair-plan-v1'){
-  return c.independentPagePassesRecorded===c.scans&&c.comparedPagesRecorded===c.scans;
+  return c.independentPagePassesRecorded===c.scans;
  }
+ return false;
+}
+function resolutionReady(result){
+ const c=result.counts||{};
+ if(!completionReady(result))return false;
+ if(result.schema==='reader-repair-plan-v2')
+  return c.comparedTextRegionsRecorded===c.textRegionsDiscovered&&
+   c.profileChecksRecorded===c.profileChecksRequired;
+ if(result.schema==='reader-repair-plan-v1')
+  return c.comparedPagesRecorded===c.scans;
  return false;
 }
 function boundaryReady(result){
@@ -107,7 +122,7 @@ function advance(ledger,bookId,result,progressSha,target,at){
  if(target==='second_pass_completed'&&!completionReady(result))
   errors.push('SECOND_PASS_REGIONS_INCOMPLETE');
  if((target==='source_resolved'||target==='awaiting_canonical_60')&&
-   !(completionReady(result)&&boundaryReady(result)))
+   !(resolutionReady(result)&&boundaryReady(result)))
   errors.push('SOURCE_DIFFS_BOUNDARIES_OR_DEFECTS_UNRESOLVED');
  if(target==='awaiting_canonical_60'&&
    !(result.tasks.length===1&&result.tasks[0].type==='run_canonical_60_and_handoff_gate'))
@@ -143,7 +158,10 @@ function startDraft(ledger,bookId,newSha,firstPassReportSha,sourceImageCount,at)
  const b=matches?.[0];
  if(b?.pendingDraft)errors.push('PENDING_DRAFT_ALREADY_EXISTS');
  if(!Number.isSafeInteger(clone.version)||clone.version<1)errors.push('INVALID_LEDGER_REVISION');
- if(b&&(b.qualityState!=='unverified'||b.releaseStatus!=='blocked'))
+ if(b&&!(
+    (b.qualityState==='unverified'&&b.releaseStatus==='blocked')||
+    (b.qualityState==='reviewed'&&b.releaseStatus==='candidate'&&
+     (b.knownDefects||[]).every(x=>x.status==='resolved'))))
   errors.push('NORMAL_RELEASE_CANNOT_START_UNVERIFIED_DRAFT');
  if(!hash(newSha)||newSha===b?.artifactSha256)errors.push('NEW_WORKING_DRAFT_SHA_REQUIRED');
  if(!hash(firstPassReportSha))errors.push('SOURCE_FIRST_PASS_REPORT_REQUIRED');
@@ -192,4 +210,4 @@ function reviseDraft(ledger,bookId,priorSha,newSha,firstPassReportSha,at){
  return{ok:true,errors:[],ledger:clone,stage:'visual_first_pass_only',version:clone.version};
 }
 
-module.exports={STAGES,validatePendingDraft,nextStage,advance,startDraft,reviseDraft,completionReady,boundaryReady,counterSummary};
+module.exports={STAGES,validatePendingDraft,nextStage,advance,startDraft,reviseDraft,completionReady,resolutionReady,boundaryReady,counterSummary};
