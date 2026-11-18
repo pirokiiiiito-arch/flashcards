@@ -127,7 +127,8 @@
     "reader/quality/receipts/nine-stories-001-020-preview.json",
     "reader/quality/receipts/nine-stories-021-040-preview.json",
     "reader/quality/receipts/castle-161-180-preview.json",
-    "reader/quality/receipts/nine-stories-021-040-safe-v2-preview.json"
+    "reader/quality/receipts/nine-stories-021-040-safe-v2-preview.json",
+    "reader/quality/receipts/nine-stories-041-060-safe-v2-preview.json"
   ],
   "notes": [
     "Compatibility snapshot is not OCR certification.",
