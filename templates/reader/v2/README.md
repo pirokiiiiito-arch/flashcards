@@ -1,5 +1,14 @@
 # 本棚・標準読書テンプレート v2（文章／画像）
 
+## 図版説明の横書き正式ルール（2026-11-19）
+
+- 独立図版の**図題・説明ラベル・外部説明文**は横書き（`writing-mode:horizontal-tb`）。本文・本文の小見出しは従来の縦書き `vertical-rl` を維持。原本画像内の文字は画素を変えない。
+- `standard.css` の `.figure-stage` / `.caption-box` / `.figure-caption-label` / `.caption-flow` に横書きを直接指定。旧 `.caption-flow{writing-mode:vertical-rl}` は撤去済み。旧設定を残して後段の `!important` で見かけ上だけ上書きする構成を禁止する。
+- 可視 `#figure-caption` とオフスクリーン計測 `#measure-caption` は、同じ `.caption-flow` のCSS、横書き方向、文字サイズ・行間・幅・paddingを使う。説明の続きは同一画像DOM・同一位置のまま説明文のみ切り替える。
+- `node --test tests/reader-figure-caption-horizontal.test.cjs` で公開テンプレートの旧CSS混入を検出する。実書籍では追加で現行共通運用基盤の `figure_caption_gate.py`、全図版の画像端・本文関連・説明送り、24条件表示、iPhone実機の独立検査を実施し、合成テストだけで完成扱いしない。
+- 小説の単なる挿絵には図説UIを新設しない。書籍固有の出典照合済みの例外はプロファイル・採用版・実機の根拠を明示して別途判定する。過去の版や原本・OCRを公開リポジトリから勝手に削除しない。
+
+
 **基準**：2026-11-15の『世界の歴史1』iPhone実画面と、同日確認された『図説 英国のインテリア史』の表示寸法。
 
 このフォルダは**公開可能な画面・組版プログラムの見本だけ**を格納する。書籍の原本画像・OCR本文・私有JSON・認証トークンを置かない。
