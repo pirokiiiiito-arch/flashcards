@@ -11,7 +11,8 @@ const base={bookId:'novel-test',entry:'reader/preview/test/index.html',
  url:'https://pirokiiiiito-arch.github.io/flashcards/reader/preview/test/index.html?import=1',expectedSha256:sha(data)};
 const good=()=>({schema:'reader-public-delivery-evidence-v1',eligible:true,contentCertified:false,iphoneVerified:false,
  sourceCommitSha:commit,workflowRunId:runId,checkedAt:new Date(now-500).toISOString(),
- checks:[{...base,status:'verified',httpStatus:200,observedSha256:base.expectedSha256,attemptsUsed:1}]});
+ checks:[{...base,status:'verified',httpStatus:200,observedSha256:base.expectedSha256,attemptsUsed:1,
+  requestMethod:'GET',requestedUrl:base.url,finalUrl:base.url,redirectPolicy:'manual',redirected:false}]});
 const check=(e,t=[base],opts={})=>validate(e,t,{now,commit,runId,...opts});
 test('good same-run GET issues only public URL, not iPhone certification',()=>{
  const r=check(good());assert.equal(r.verifiedPublicLinks[0].url,base.url);
@@ -29,6 +30,13 @@ bad(e=>e.checks[0].status='blocked','blocked GET blocked');
 bad(e=>e.checks[0].httpStatus=404,'HTTP 404 blocked');
 bad(e=>e.checks[0].observedSha256='0'.repeat(64),'200 wrong content blocked');
 bad(e=>e.checks[0].url=base.url+'?alter','wrong URL blocked');
+bad(e=>e.checks[0].requestedUrl=base.url+'&_delivery_sha=abc','cache-busted request cannot issue the clean URL');
+bad(e=>e.checks[0].finalUrl=base.url+'&other=1','different final response URL blocked');
+bad(e=>e.checks[0].redirected=true,'followed redirect blocked even with matching bytes');
+bad(e=>e.checks[0].redirectPolicy='follow','redirect-following request policy blocked');
+bad(e=>e.checks[0].requestMethod='HEAD','HEAD cannot substitute for GET');
+for(const field of ['requestedUrl','finalUrl','requestMethod','redirectPolicy','redirected'])
+ bad(e=>delete e.checks[0][field],'old evidence without '+field+' blocked');
 bad(e=>e.checks[0].bookId='other','wrong book ID blocked');
 bad(e=>e.checks[0].expectedSha256='0'.repeat(64),'wrong expected hash blocked');
 bad(e=>e.iphoneVerified=true,'false device-certification claim blocked');
