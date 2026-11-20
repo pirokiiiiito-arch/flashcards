@@ -285,3 +285,23 @@ preview の検査成功も 60項目やiPhone実機の合格ではない。
 ### 範囲付き校正稿の確認版 v3
 
 本文を原本と比較した校正稿があり、独立全文二稿が未完了の場合は、旧v1の未校正文言やv2の二稿済み条件へ変換しない。`PREVIEW_V3_PROCESS.md`のscoped evidence・実24条件の動的状態・正規60assessment・実同意を使用する。既存pendingDraftで別SHAの新候補を保持し、明示した対象SHAだけを選択する。原本・台帳・同一ID読戻し・公開前検査を省略せず、通常版へ格上げしない。
+
+## Workでの統合
+
+依頼から書籍ID・原本全範囲を決めて先に記録した `request.json` を使用する。制作工程台帳の `book_id` と `scan_range` に同じ対象を明示し、統合が依頼範囲に含まれるときに `scope.include_merge` を有効にする。現行の配布ZIPを展開し、次の2工程を実行する。以下の PRIVATE と runtime は採用した実パスに置き換える。
+
+1. 承認済みの統合台帳を制作工程台帳のcontent入力としてパス・実SHA付きで登録し、分冊を選定する。
+
+```sh
+python3 tools/reader-merge-work.py --runtime runtime stage --request PRIVATE/request.json --workflow-root PRIVATE --workflow-state PRIVATE/workflow_state.json --book-dir PRIVATE/book --manifest PRIVATE/book/merge_manifest.json --out-dir PRIVATE/approved
+```
+
+2. 新しく生成された `PRIVATE/approved/approved_files.json` を同じ制作工程台帳のcontent入力に登録し、そのSHAを固定する。次に同じ依頼記録を指定して統合する。
+
+```sh
+python3 tools/reader-merge-work.py --runtime runtime merge --request PRIVATE/request.json --workflow-root PRIVATE --workflow-state PRIVATE/workflow_state.json --staged-dir PRIVATE/approved --out-dir PRIVATE/merged
+```
+
+`source_page_start/end` には図版専用ページ・白紙を含む分冊の連続した物理範囲を登録できる。`nontext_pages` は本文のないページと理由、`source_scan_ids` と分冊の `scans` は収録する原本全件を指定する。旧形式の本文範囲も、収録原本・非本文分類を照合して受け付ける。旧選定一覧に依頼の記録がない場合は、校正済み入力を保持して選定から再実行する。
+
+統合報告の `requested_scope` に依頼の書籍ID・原本範囲・SHAが残る。4工程の合格後に必要な表示・配布検査は従来どおり実施する。Workの再開時は、採用した実行版・工程台帳・引継記録を一組で復元する。

@@ -14,6 +14,8 @@ Google Drive 保存、Chrome公開、ファイルリンクの提示、既存版�
 
 制作担当は、再開資料を選ぶ前に依頼から書籍ID・原本の開始／終了番号を確定し、私有の `request.json` に記録する。共通の再開入口と旧形式用の作業計画には毎回 `--request PRIVATE/request.json` を渡す。別の本・別範囲・依頼記録欠落で停止したときは依頼に合う資料を探す。
 
+統合を依頼された場合は、同じ私有 `request.json` を使い、`tools/reader-merge-work.py` の `stage`（確定入力の選定）と `merge`（4工程の統合出力）を順に実行する。配布済み実行版の照合方法とコマンドは [統合手順](reader/quality/BOOK_CREATION_PROCESS.md#workでの統合) に従う。
+
 1. 常にこのリポジトリの現行 AGENTS.md と
    `reader/quality/work-ledger.json`（書籍ID・ページ範囲・SHA・未解決不具合）
    および該当する**非公開**の原本台帳・校正履歴・証拠を取得してから着手。

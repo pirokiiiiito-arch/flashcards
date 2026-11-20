@@ -45,6 +45,8 @@ node tools/reader-work-resume.cjs \
 
 統合entryのない既存稿は `reader-repair-plan.cjs --request PRIVATE/request.json --book BOOK_ID` に採用した台帳・私有manifestを渡す。古い検査結果の次作業を実行しない。`connect_existing_canonical_context` の場合は校正済み稿と根拠の接続から進める。旧commitのコマンド単独で現在の依頼照合を代用しない。
 
+統合を依頼された場合は、同じ私有 `request.json` を使い、`tools/reader-merge-work.py` の `stage`（確定入力の選定）と `merge`（4工程の統合出力）を順に実行する。配布済み実行版の照合方法とコマンドは [統合手順](BOOK_CREATION_PROCESS.md#workでの統合) に従う。
+
 ## 私有 entry の形式
 
 schema は `reader-work-resume-v1`、`purpose` は `private_work_resume` です。entry は私有領域に置き、公開リポジトリ内に置くと停止します。

@@ -17,6 +17,8 @@ on:
       - 'tools/reader-repair-context.cjs'
       - 'tools/reader-work-resume.cjs'
       - 'tools/reader-request-scope.cjs'
+      - 'tools/reader-merge-work.py'
+      - 'tests/test_reader_merge_work.py'
       - 'tools/reader-fast-layout.py'
       - 'tests/test_reader_fast_layout.py'
       - 'reader/quality/FAST_LAYOUT_QA.md'
@@ -71,6 +73,8 @@ on:
       - 'tools/reader-repair-context.cjs'
       - 'tools/reader-work-resume.cjs'
       - 'tools/reader-request-scope.cjs'
+      - 'tools/reader-merge-work.py'
+      - 'tests/test_reader_merge_work.py'
       - 'tools/reader-fast-layout.py'
       - 'tests/test_reader_fast_layout.py'
       - 'reader/quality/FAST_LAYOUT_QA.md'
@@ -129,6 +133,7 @@ jobs:
           node --check tools/reader-unified-handoff.cjs
           node --check tools/reader-preview-consent.cjs
           node --check tools/reader-scoped-review.cjs
+          python3 tests/test_reader_merge_work.py
           node --check tools/reader-repair-plan.cjs
           node --check tools/reader-repair-profiles.cjs
           node --check tools/reader-repair-state.cjs
