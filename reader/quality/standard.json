@@ -3,7 +3,7 @@
   "canonicalGoogleDriveFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
   "canonicalTitle": "20261111_【現行60項目・画面全体ピンチ】全書籍共通ルール.md",
   "snapshot": "2026-11-12",
-  "description": "Exact 60-item ID index only. The Drive document is the normative text.",
+  "description": "Exact 60-item compatibility ID index only. The Drive ID and title identify a historical snapshot, not the current normative text. Resolve the current rule through README.md and the selected workflow active_release.json; preserve its file and SHA.",
   "checkIds": [
     "G1-01",
     "G1-02",

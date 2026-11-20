@@ -1,0 +1,762 @@
+{
+  "schema": "reader-quality-work-catalog-v1",
+  "catalogVersion": 1,
+  "canonicalIndexRef": "reader/quality/standard.json#/checkIds",
+  "purpose": "現行の正式60項目を実行可能な作業へ案内する共通索引。合格基準・適用判定・配布許可の代替ではない。",
+  "authority": "条文は現在の正本選択と実行版で固定する。旧Drive IDは互換識別子であり、本文の規範参照先を意味しない。",
+  "dependencyMeaning": "実作業に必要な正式checkの依存のみ。未公開や実機待ちを全制作の停止条件にしない。",
+  "evidenceReuse": "対象入力SHA・コードと契約・適用範囲が一致する実証拠を再利用する。記録だけで未実施をpassedに変えない。",
+  "checks": [
+    {
+      "id": "G1-01",
+      "lane": "source",
+      "taskType": "source_identity",
+      "action": "対象原本を自然順で列挙し、スキャンID・登録順・枚数・欠番・重複・SHA・画素寸法を照合する。",
+      "completionEvidence": [
+        "実原本bytesと登録データを対応付けた全件一覧",
+        "欠番・重複・順序違い・SHA不整合の検査記録"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G1-02",
+      "lane": "source",
+      "taskType": "source_identity",
+      "action": "処理前後の原本画像bytesを再読取してSHAを比較する。",
+      "completionEvidence": [
+        "処理前後の原本画像SHAと取得対象ID",
+        "全対象画像の一致結果"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G1-03",
+      "lane": "source",
+      "taskType": "image_geometry",
+      "action": "実画像の向き・native寸法を保存値と照合し、意図しない回転・縮小の有無を確認する。",
+      "completionEvidence": [
+        "実bytesから取得した向き・画素寸法",
+        "原本・保存値・処理後の寸法比較"
+      ],
+      "dependencies": [
+        "G1-02"
+      ]
+    },
+    {
+      "id": "G1-04",
+      "lane": "source",
+      "taskType": "full_region_inventory",
+      "action": "対象原本全体の文字・画像・周辺領域を棚卸しし、種類と座標を記録する。",
+      "completionEvidence": [
+        "四辺・余白・見開き中央と本文・見出し・注記・図説・図中文字・柱・ノンブルを含む全領域台帳と種別件数",
+        "原本全ページの独立見出し台帳の二回照合、0件理由と未解決候補",
+        "原本を見た確認者・時刻・位置根拠"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G1-05",
+      "lane": "source",
+      "taskType": "page_classification",
+      "action": "本文あり・画像のみ・白紙・扉等の分類を原本全体と独立した二回目の確認で点検する。",
+      "completionEvidence": [
+        "全ページの文字有無とページ種別",
+        "OCR空欄だけに依存しない分類根拠と独立確認"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G1-07",
+      "lane": "source",
+      "taskType": "full_region_inventory",
+      "action": "全領域台帳と読書登録を突合し、原本に存在する抜け領域を確認する。",
+      "completionEvidence": [
+        "原本領域から出力への全件対応",
+        "未登録候補の原本確認と解消記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G1-08",
+      "lane": "source",
+      "taskType": "printed_scan_map",
+      "action": "スキャン番号と印刷ノンブルを別欄で管理し、前後順序とノンブルなしの理由を確認する。",
+      "completionEvidence": [
+        "スキャン・印刷ノンブル対応表",
+        "原本での確認と順序検査"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G1-10",
+      "lane": "structure",
+      "taskType": "image_geometry",
+      "action": "登録領域の座標が画像内に収まり、空領域や不正な交差がないか検査する。",
+      "completionEvidence": [
+        "全領域座標と対応画像寸法",
+        "範囲外・空領域・不正交差の検査と解消記録"
+      ],
+      "dependencies": [
+        "G1-02"
+      ]
+    },
+    {
+      "id": "G1-12",
+      "lane": "text",
+      "taskType": "fine_glyph_review",
+      "action": "薄い印刷、小さな注記、図中小文字、ページ隅の文字を原本拡大で確認する。",
+      "completionEvidence": [
+        "要確認箇所の位置一覧",
+        "拡大原本での確認結果・未確定箇所"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G2-01",
+      "lane": "structure",
+      "taskType": "source_reading_order",
+      "action": "原本の縦書き列順と登録された本文読順を突合する。",
+      "completionEvidence": [
+        "原本各列の一意ID・座標・右から左への読順と本文ブロック順",
+        "列ID欠番・逆転・飛び・混線の確認記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G2-02",
+      "lane": "structure",
+      "taskType": "source_reading_order",
+      "action": "段組、見開き、図の回り込みを含め領域間の読順を原本で確認する。",
+      "completionEvidence": [
+        "複雑な組版の領域読順",
+        "段間の飛び・入替・混線の確認と解消"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G2-03",
+      "lane": "structure",
+      "taskType": "stream_source_mapping",
+      "action": "本文、見出し、注記、図説、図中文字、囲み、柱等を独立した種類へ分け、混入・消失を検査する。",
+      "completionEvidence": [
+        "原本領域の種別と読書ブロック対応",
+        "別ストリームの未登録・混入がない根拠",
+        "原本の段落・会話境界とOCR物理改行を区別した記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G2-04",
+      "lane": "structure",
+      "taskType": "stream_source_mapping",
+      "action": "原本領域と本文・見出し・注記・図説の双方向対応、図版分類と参照導線を確認する。",
+      "completionEvidence": [
+        "領域から読書要素・読書要素から領域への双方向対応",
+        "見出し台帳と直前配置アンカーの対応",
+        "図版分類別の根拠・参照または正当なnull"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G2-05",
+      "lane": "text",
+      "taskType": "stream_source_mapping",
+      "action": "原本文字領域、raw OCR、校正版、実表示登録を対応付け、本文・独立図説の無言の欠落を確認する。",
+      "completionEvidence": [
+        "各段階の文字領域・ブロック対応",
+        "空欄・画像へのフォールバック・正当な画像内ラベル例外の根拠"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G2-07",
+      "lane": "structure",
+      "taskType": "source_reading_order",
+      "action": "原本列末と次列冒頭、および全隣接本文ブロックの接続種類を原本で確定する。",
+      "completionEvidence": [
+        "前後文字・原本位置・担当・日時を持つ境界台帳",
+        "連続・新段落・見出し・会話・指定改行の判定と未解決件数"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G2-11",
+      "lane": "structure",
+      "taskType": "heading_hierarchy",
+      "action": "独立した原本見出し台帳の文字列・座標・階層・親子・読順を正規見出しと配置イベントへ照合する。",
+      "completionEvidence": [
+        "独立台帳と承認SHA",
+        "全見出しと直後本文の位置・親子・読順の照合",
+        "未確認の誤段落・誤見出しの解消記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G3-01",
+      "lane": "text",
+      "taskType": "source_text_comparison",
+      "action": "原本と校正後テキストを全字照合し、未読文字の位置・状態を明示する。",
+      "completionEvidence": [
+        "全対象文字の原本比較の対象範囲と確認記録",
+        "未読・不一致箇所の位置と処理結果"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G3-02",
+      "lane": "text",
+      "taskType": "fine_glyph_review",
+      "action": "類似字、旧字、小書き文字、濁点、句読点、括弧、引用符、ルビを原本拡大で再確認する。",
+      "completionEvidence": [
+        "字形・記号の要確認箇所と原本位置",
+        "未解決差異と解消証拠"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G3-03",
+      "lane": "text",
+      "taskType": "numbers_and_names",
+      "action": "数字・年号・単位の出現箇所を列挙し、原本と照合する。",
+      "completionEvidence": [
+        "年号・漢数字・範囲・桁・単位の対象一覧",
+        "独立した原本確認表による字形・数量の照合と差異解消"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G3-04",
+      "lane": "text",
+      "taskType": "numbers_and_names",
+      "action": "固有名詞の出現箇所と候補を逆引きし、原本画像で表記を確定する。",
+      "completionEvidence": [
+        "人名・地名・民族名・用語の対象一覧",
+        "原本根拠と無根拠な置換がない記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G3-05",
+      "lane": "text",
+      "taskType": "correction_trace",
+      "action": "校正の文字差分と原本位置・確認者・日時・理由を関連付け、無記録修正や補筆を確認する。",
+      "completionEvidence": [
+        "修正前後の文字差分",
+        "各差分の原本位置・確認者・日時・理由と逆照合"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G3-06",
+      "lane": "text",
+      "taskType": "independent_second_transcription",
+      "action": "初稿を見ず原本から独立した第二転記を行い、第一稿と別の実体・確認経路を残す。",
+      "completionEvidence": [
+        "異なる読み方で各文字領域を再読取し、初稿を参照しなかった独立作業の記録",
+        "全対象の第二転記実体と原本・作業者・時刻の対応",
+        "G3-07と共有する原本差異解消記録。同じAI結果の繰返しを独立稿に数えない"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G3-07",
+      "lane": "text",
+      "taskType": "two_draft_difference_resolution",
+      "action": "独立第二稿の実体が成立した後に二稿を全文比較し、すべての差分を原本で判定する。",
+      "completionEvidence": [
+        "独立二稿のSHAと位置付き全文差分",
+        "原本に基づく各差分の解消と未解決件数"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G4-01",
+      "lane": "structure",
+      "taskType": "source_reading_order",
+      "action": "内部・外側・非隣接本文の原本境界を列挙し、介在する注記・図版を含め連続性を確認する。",
+      "completionEvidence": [
+        "対象内と両端外側・同頁内OCRブロック間の全境界一覧",
+        "非隣接接続・介在要素・前後約20文字と原本位置の確認"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G4-02",
+      "lane": "structure",
+      "taskType": "source_reading_order",
+      "action": "語、助詞、数値等の跨ぎ候補を検出し、原本に基づく論理接続を確認する。",
+      "completionEvidence": [
+        "跨ぎ候補と接続前後文字",
+        "原本確認済みの連続・非連続判定と修正記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G4-03",
+      "lane": "structure",
+      "taskType": "stream_source_mapping",
+      "action": "本文と注記・独立図説等を別ストリームで原本へ往復突合し、構造台帳と表示順も確認する。",
+      "completionEvidence": [
+        "論理読順による各独立全文の往復比較",
+        "欠落・重複・誤混入と構造境界の検査結果"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G4-04",
+      "lane": "layout",
+      "taskType": "reader_page_boundary",
+      "action": "読書画面の容量内で文・節、語句、安全な文字境界の順に候補を評価し、語句・数値単位・句読点の分断を確認する。",
+      "completionEvidence": [
+        "実測容量と改ページ前後文字・候補・選択理由",
+        "例外理由・欠落重複・はみ出し・無限ループの検査",
+        "原本境界と画面内列折返しを区別した記録"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G4-05",
+      "lane": "structure",
+      "taskType": "boundary_regression",
+      "action": "変更した境界の前後・非隣接接続・注記・図説を再検査し、適用コード版の既知境界回帰証拠を接続する。",
+      "completionEvidence": [
+        "変更範囲と関連原本・独立要素の再確認",
+        "指定既知ケースのコード版対応回帰証拠",
+        "未確認のOCR誤段落・誤見出しの解消"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G4-09",
+      "lane": "structure",
+      "taskType": "source_reading_order",
+      "action": "ページをまたぐ引用・括弧・数式・列挙の開閉順序を原本と照合する。",
+      "completionEvidence": [
+        "跨ぎ対象と前後順序",
+        "原本確認および不一致の解消記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G5-01",
+      "lane": "figures",
+      "taskType": "figure_inventory_relation",
+      "action": "原本の図版を全件数え、固有IDと出典を記録し登録件数と照合する。",
+      "completionEvidence": [
+        "原本全図版台帳と読書登録ID",
+        "件数・欠番・重複・出典の照合"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G5-02",
+      "lane": "figures",
+      "taskType": "figure_pixels_labels",
+      "action": "原本同座標の画素と保存図を比較し、図版全辺・ラベル・枠・凡例の切れを原本拡大で確認する。",
+      "completionEvidence": [
+        "原本SHA・切出し座標・保存図の画素比較",
+        "全辺・小文字の原本目視記録と表示切断の確認"
+      ],
+      "dependencies": [
+        "G1-02"
+      ]
+    },
+    {
+      "id": "G5-03",
+      "lane": "figures",
+      "taskType": "figure_pixels_labels",
+      "action": "原本図中の地名・縮尺・方位・凡例等を確認し、読める状態と本文への非混入を保つ。",
+      "completionEvidence": [
+        "図中文字・凡例の対象と原本拡大確認",
+        "画素保持・読み取り状態・本文非混入の根拠"
+      ],
+      "dependencies": [
+        "G1-02"
+      ]
+    },
+    {
+      "id": "G5-04",
+      "lane": "figures",
+      "taskType": "figure_inventory_relation",
+      "action": "全図版を原本根拠で分類し、図説対応・配置理由・安全な参照アンカーまたは正当なnull・導線を確認する。",
+      "completionEvidence": [
+        "全図版の原本領域・分類・図説対応表",
+        "多対多対応と図説なしの原本根拠",
+        "分類別参照先・独立位置・確認者と日時"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G5-05",
+      "lane": "interaction",
+      "taskType": "fixed_figure_caption_paging",
+      "action": "同一図説の続きでは図版DOM・位置・寸法を固定し、説明文だけが前後操作や再組版で切り替わることを確認する。",
+      "completionEvidence": [
+        "同一DOM・位置・寸法・縦横比の前後比較と再生成・複製なし",
+        "横書き図説のcomputed CSS・独立逆連結・自然なページ境界",
+        "スワイプ・前後ボタン・文字サイズ・画面変更と最終図説から次要素への全規定ケース"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G5-10",
+      "lane": "figures",
+      "taskType": "contents_inventory",
+      "action": "原本目次の文字項目・番号と挿絵を分離して登録し、対応を確認する。",
+      "completionEvidence": [
+        "目次内文字・番号・挿絵の原本対応",
+        "独立登録または根拠付き対象外の記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "P20",
+      "lane": "structure",
+      "taskType": "contents_inventory",
+      "action": "その書籍の目次を全件数え、項目・番号・階層・字形と最後までの表示を確認する。",
+      "completionEvidence": [
+        "当該原本の目次全件一覧",
+        "項目・番号・階層の照合と最終表示の記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G6-01",
+      "lane": "layout",
+      "taskType": "short_page_analysis",
+      "action": "原本列と読書ページ長・列数を比較し、短ページを抽出して原本根拠付き例外と原因不明を分ける。",
+      "completionEvidence": [
+        "全ページ長・列数と抽出条件",
+        "短ページごとの原本根拠・原因・解消"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G6-02",
+      "lane": "text",
+      "taskType": "anomaly_resolution",
+      "action": "意味不明な文字列の候補を検出し、原本で判定する。",
+      "completionEvidence": [
+        "異常候補の一覧と抽出方法",
+        "原本判定・正当例外・未解決の記録"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G6-03",
+      "lane": "structure",
+      "taskType": "source_reading_order",
+      "action": "列飛び、不自然な中断・強制改行、別要素の混入を検出し、原本へ戻って確認する。",
+      "completionEvidence": [
+        "接続異常候補と原本位置",
+        "原本判断・修正・再検査"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G6-05",
+      "lane": "text",
+      "taskType": "anomaly_resolution",
+      "action": "異常候補の全件を追跡し、未解決・正当例外・修正済みを根拠付きで分類する。",
+      "completionEvidence": [
+        "全異常台帳と未解決一覧",
+        "各候補の原本根拠または再検査による解消"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G6-09",
+      "lane": "text",
+      "taskType": "anomaly_resolution",
+      "action": "不自然な同一文字・語・行の連続反復やコピーを検出し、原本と確認する。",
+      "completionEvidence": [
+        "反復候補の一覧",
+        "原本での正当反復・誤反復の分類と修正"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "G6-11",
+      "lane": "reporting",
+      "taskType": "regression_evidence",
+      "action": "指定された既知故障ケースの検出結果を検査コード版へ結び付ける。必要な故障注入はテスト用コピーだけで行う。",
+      "completionEvidence": [
+        "指定既知ケースの検出・誤警報記録",
+        "適用検査コードSHAとケース・契約の対応"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G6-12",
+      "lane": "source",
+      "taskType": "anomaly_resolution",
+      "action": "検出不能・検査抜けの領域を列挙し、規定の独立監査を原本で実施する。",
+      "completionEvidence": [
+        "検出不能領域と理由の一覧",
+        "機械の異常ゼロでも別順で原本を先に見る独立再調査の記録",
+        "未調査を0件にしない未解決候補と差異解消"
+      ],
+      "dependencies": [
+        "G1-01"
+      ]
+    },
+    {
+      "id": "P22",
+      "lane": "reporting",
+      "taskType": "regression_evidence",
+      "action": "一字欠落・重複・列順交換・図説リンク交換の有効な回帰証拠を適用コードSHAへ照合する。",
+      "completionEvidence": [
+        "四種の故障検出結果と検査コードSHA",
+        "不変コードの既存結果再利用または必要範囲の再実行記録"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "P23",
+      "lane": "reporting",
+      "taskType": "anomaly_resolution",
+      "action": "誤警報と検査抜けを追跡し、修正・判定・再検査の状態を明確にする。",
+      "completionEvidence": [
+        "真の誤り・原本どおり・未判定の分類と追跡台帳",
+        "正常画像ページ・短い章扉を含む対照データ",
+        "検出率・誤警報率・未解消件数と再検査"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G7-01",
+      "lane": "layout",
+      "taskType": "viewport_and_overflow",
+      "action": "規定24条件と高さ・safe-area・動的バー・回転を測定し、拡大時のパン範囲を別状態で確認する。",
+      "completionEvidence": [
+        "対象HTML SHAに一致する全24条件・全ページのDOM実測",
+        "高さ変化・safe-area・動的バー・回転の記録",
+        "拡大時の可視範囲と上下左右パン到達の実測"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G7-02",
+      "lane": "layout",
+      "taskType": "template_fidelity",
+      "action": "選択テンプレート版の本文・見出し・図説・目次・数字・段落書式をcomputed CSSと実画面で対照する。",
+      "completionEvidence": [
+        "template_profile・template_version・基準実画面の同定",
+        "見える枠と計測枠・子文字CSS・独立列・A±の比較",
+        "適用テンプレート固有要件と数字処理の実測"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G7-03",
+      "lane": "layout",
+      "taskType": "rendered_stream_reconstruction",
+      "action": "校正版・HTML・全表示ページの文字を各独立ストリームで逆連結し、原本の構造境界と見出し範囲を突合する。",
+      "completionEvidence": [
+        "校正版・HTML・DOMの各全文一致",
+        "全24条件の全見出し文字範囲・順序・階層",
+        "境界・段落イベント台帳との一致と語句分断の解消"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G7-04",
+      "lane": "interaction",
+      "taskType": "reader_gestures",
+      "action": "通常スワイプ、ボタン、画面全体ピンチ、拡大中の縦横パン、等倍復帰と状態解除を実操作する。",
+      "completionEvidence": [
+        "全必須タッチケースの入力方式と前後位置・倍率・offset",
+        "親子フレーム通知・CSS・モード・取消し・複数指の記録",
+        "合成入力・native入力・iPhone実機を区別した結果"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G7-05",
+      "lane": "layout",
+      "taskType": "source_screen_comparison",
+      "action": "代表本文・目次・図説・見出し・疑わしい接続画面を原本と採用基準実画面へ対照する。",
+      "completionEvidence": [
+        "比較した原本位置と出力画面・基準版",
+        "相違・解消・未確認の記録"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G7-10",
+      "lane": "layout",
+      "taskType": "contents_inventory",
+      "action": "原本の目次項目とページ番号が、長い項目を含め分離されないか実寸で確認する。",
+      "completionEvidence": [
+        "原本目次項目と番号の対応",
+        "長項目を含む実寸・改ページ観測と解消"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G7-12",
+      "lane": "interaction",
+      "taskType": "runtime_data_integrity",
+      "action": "表示操作の前後で原本・図版・bookdataのSHAと各文字ストリームの一致を比較する。",
+      "completionEvidence": [
+        "A±・モード・gesture・フレーム通知等の操作前後SHA",
+        "本文・注記・図説の逆連結一致と無意図変更の検査"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-01",
+      "lane": "reporting",
+      "taskType": "version_trace",
+      "action": "JST日時・版・未完了状態・旧端末版の再取込要否と、案内するファイル実体を確認する。",
+      "completionEvidence": [
+        "JST日時先頭の実在ファイル名と版状態",
+        "未完了・旧版・再取込条件を含む案内"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-02",
+      "lane": "interaction",
+      "taskType": "loader_compatibility",
+      "action": "互換新旧版の受理、別書籍・破損版の拒否、親子倍率通知と再読込・キャッシュ等の遷移を検査する。",
+      "completionEvidence": [
+        "入口と本文HTMLの版・互換試験対象・受理拒否結果",
+        "親子の倍率・source・session等の通知検証",
+        "再取込・キャッシュ・オフライン・拡大時の誤送り確認"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-03",
+      "lane": "delivery",
+      "taskType": "delivery_readback",
+      "action": "実同意と必要な保存読戻しゲートの成立後に許可された読書入口を公開し、処理成功と公開実体の版を確認する。",
+      "completionEvidence": [
+        "実際の公開処理結果と書籍本文・原本画像を公開していない確認",
+        "正確なHTTPS URLのGET、HTTP 200、取得bytes SHA、エラーページでないこと"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-04",
+      "lane": "device",
+      "taskType": "iphone_confirmation",
+      "action": "実機iPhoneで表示・操作を独立確認し、未実施やエミュレーションと区別する。",
+      "completionEvidence": [
+        "実機・ブラウザ・対象SHA・確認日時",
+        "等倍上下往復・全画面ピンチ・拡大縦横パンと誤送り抑止・等倍復帰",
+        "適用UI・図説・原本比較・キャッシュ再起動・オフラインの個別結果"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-05",
+      "lane": "reporting",
+      "taskType": "quality_evidence_aggregation",
+      "action": "現行60項目・適用基準・証拠・対象外・実測種別・不足を一致させて集計する。",
+      "completionEvidence": [
+        "正規60IDと各対象範囲・証拠・結果・不足の一覧",
+        "構造台帳の内部整合と原本実確認の区別",
+        "実体・リンク・権限・端末・実機を混同しない集計"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-07",
+      "lane": "reporting",
+      "taskType": "version_trace",
+      "action": "原本・OCR・校正版・構造台帳・HTML・検査・配布をID・版・SHA・日時で追跡可能にする。",
+      "completionEvidence": [
+        "原本から成果物までの版・SHA対応",
+        "生成パスと配布パス・URL・期待取得SHAの区別"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-08",
+      "lane": "delivery",
+      "taskType": "delivery_readback",
+      "action": "許可された保存後に同じ観測対象IDから実ファイルを再取得し、期待bytesを照合する。",
+      "completionEvidence": [
+        "現行セッションの保存操作で観測した対象ID",
+        "同一ID読戻しbytes・SHAと期待値の比較",
+        "保存前plan検証と保存後completionの実記録",
+        "操作変更時の実配布HTMLと公開入口の組合せ再取得、利用者側到達性の別判定"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "G8-11",
+      "lane": "reporting",
+      "taskType": "change_impact_revalidation",
+      "action": "変更入力・依存範囲を記録し、不変証拠を保持して失効した範囲だけ必要検査へ戻す。",
+      "completionEvidence": [
+        "変更範囲・再使用証拠・失効証拠の対応",
+        "内容変更時の関連原本・構造・図版確認",
+        "HTML変更時の新SHAの全24条件と、操作変更時の回帰結果"
+      ],
+      "dependencies": []
+    }
+  ]
+}

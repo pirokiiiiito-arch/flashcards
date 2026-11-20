@@ -31,6 +31,13 @@ function resolvedComparison(x,sha){
  return isObj(x)&&x.status==='resolved_against_source'&&hash(x.evidenceSha256)&&
  x.sourceImageSha256===sha&&typeof x.reviewedBy==='string'&&x.reviewedBy.trim().length>=2;
 }
+function verifiedBlank(page){
+ const inventory=page?.inventory,review=page?.blankReview;
+ return Array.isArray(page?.regions)&&page.regions.length===0&&inventory?.blankPage===true&&
+  inventory.hasReadableText===false&&passEvidence(review,page.sourceImageSha256)&&
+  review.originalBytesSha256===page.sourceImageSha256&&review.observedBlank===true&&
+  review.hasReadableText===false&&review.hasNonTextContent===false;
+}
 function task(type,scan,priority,detail){
  return {id:type+':'+String(scan),type,scan,priority,reason:detail,recorded:false};
 }
@@ -54,7 +61,7 @@ function profilesFor(bookProfile,kinds){
 }
 function planRegions(book,progress){
  const errors=[],warnings=[],tasks=[],counts={
-   scans:book.range[1]-book.range[0]+1,pageInventoriesRecorded:0,
+   scans:book.range[1]-book.range[0]+1,pageInventoriesRecorded:0,blankPagesRecorded:0,
    textRegionsDiscovered:0,nonTextRegionsDiscovered:0,
    independentTextRegionsRecorded:0,comparedTextRegionsRecorded:0,
    verifiedImageRegionsRecorded:0,profileChecksRequired:0,profileChecksRecorded:0,
@@ -86,13 +93,14 @@ function planRegions(book,progress){
    Number.isSafeInteger(inventory.width)&&inventory.width>0&&
    Number.isSafeInteger(inventory.height)&&inventory.height>0&&
    typeof inventory.hasReadableText==='boolean'&&inventory.allRegionsInventoried===true&&
-   Array.isArray(page.regions)&&page.regions.length>0;
+   Array.isArray(page.regions)&&(page.regions.length>0||verifiedBlank(page));
   if(!complete){
    tasks.push(task('inventory_source_page_regions',scan,10,
     'Identify ALL text, figures, photos, labels, notes, headings, captions and page ornaments in the original image; record boxes and whether text is readable.'));
    continue;
   }
   const kinds=new Set(),seen=new Set();let valid=true;let textCount=0;
+  if(inventory.blankPage===true&&!verifiedBlank(page))valid=false;
   for(const reg of page.regions){
    if(!isObj(reg)||!validName(reg.id)||seen.has(reg.id)||!allKinds.has(reg.kind)||
     reg.sourceImageSha256!==page.sourceImageSha256||
@@ -110,6 +118,7 @@ function planRegions(book,progress){
   }
   inventories.set(scan,{page,inventory,kinds});
   counts.pageInventoriesRecorded++;
+  if(verifiedBlank(page))counts.blankPagesRecorded++;
   if(book.profile==='image'&&textCount)warnings.push('IMAGE_PROFILE_CONTAINS_TEXT_REQUIRE_TRANSCRIPTION_'+scan);
   for(const reg of page.regions){
    const ref=scan+'/'+reg.id;
@@ -196,4 +205,4 @@ function planRegions(book,progress){
  counts.profile=book.profile;
  return{errors,warnings,tasks,counts};
 }
-module.exports={planRegions,profilesFor,TEXT,IMAGE,PROFILES};
+module.exports={planRegions,profilesFor,verifiedBlank,TEXT,IMAGE,PROFILES};

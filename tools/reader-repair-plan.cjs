@@ -9,11 +9,12 @@
 const fs=require('node:fs'),path=require('node:path');
 const {validate}=require('./reader-work-ledger-validate.cjs');
 const {planRegions,PROFILES}=require('./reader-repair-profiles.cjs');
+const workContext=require('./reader-repair-context.cjs');
 const HEX=/^[a-f0-9]{64}$/;
 const hashOK=x=>typeof x==='string'&&HEX.test(x);
 const isObject=x=>x&&typeof x==='object'&&!Array.isArray(x);
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-function plan(ledger,bookId,progress=null){
+function plan(ledger,bookId,progress=null,options={}){
  const errors=[],warnings=[];
  const validated=validate(ledger);
  if(validated.errors.length)errors.push('INVALID_SHARED_WORK_LEDGER');
@@ -23,6 +24,18 @@ function plan(ledger,bookId,progress=null){
  if(errors.length)return{schema:'reader-repair-plan-v1',status:'blocked',bookId,
     releaseEligible:false,errors,warnings,tasks:[],nextAction:null};
  const book=matches[0],range=book.range,first=range[0],last=range[1];
+ // A retained corrected canonical is already work in progress. Its private
+ // manifest, not the presence/absence of pendingDraft, determines the next work.
+ try{
+  const context=workContext.loadContext(book,options.manifestFile);
+  if(context)return workContext.buildPlan(book,progress,context,planRegions);
+ }catch(e){
+  return {schema:'reader-repair-plan-v3',status:'blocked',bookId,range,profile:book.profile,
+   releaseEligible:false,workingDraftSha256:book.pendingDraft?.artifactSha256||book.artifactSha256,
+   errors:[e.message],warnings,tasks:[],readyTasks:[],deferredTasks:[],waitingTasks:[],nextAction:null,
+   contextRequired:['SCOPED_REPAIR_MANIFEST_REQUIRED','EXISTING_CANONICAL_MANIFEST_REQUIRED','SCOPED_REPAIR_EVIDENCE_MISSING'].includes(e.message),
+   note:'Supply the exact private manifest to resume retained scoped work; do not regenerate a first pass.'};
+ }
  const draft=book.pendingDraft||null,draftSha=draft?.artifactSha256||book.artifactSha256;
  const pendingIsSeparate=!!draft&&hashOK(draftSha)&&draftSha!==book.artifactSha256;
  if(draft&&!pendingIsSeparate)errors.push('INVALID_PENDING_DRAFT_IDENTITY');
@@ -39,12 +52,8 @@ function plan(ledger,bookId,progress=null){
   errors.push(...sub.errors);warnings.push(...sub.warnings);
   const tasks=errors.length?[]:sub.tasks.slice();
   const defects=book.knownDefects||[];
-  if(!errors.length)for(const issue of defects){
-   if(issue.status==='resolved')continue;
-   tasks.push({id:'resolve_known_source_defect:'+issue.id,
-    type:'resolve_known_source_defect',edge:issue.id,priority:50,
-    reason:'Resolve source-backed known defect against the exact current artifact and preserve old history.',recorded:false});
-  }
+  const classified=workContext.classifyDefects(defects);
+  if(!errors.length)tasks.push(...classified.work);
   if(!errors.length&&tasks.length===0)tasks.push({
    id:'run_canonical_60_and_handoff_gate:'+first+'-'+last,
    type:'run_canonical_60_and_handoff_gate',
@@ -62,13 +71,14 @@ function plan(ledger,bookId,progress=null){
    (c.bridgesRecorded||0)+resolved;
   const counts={...c,sourceImagesPreviouslyReported:draft?.sourceJPEGSHAverified||0,
     layoutConditionsPreviouslyReported:draft?.chromiumLayoutChecksPassed||0,
-    unresolvedLedgerDefects:defects.length-resolved,totalProofTasks,completedProofTasks,
+    unresolvedLedgerDefects:defects.length-resolved,unresolvedSourceDefects:classified.source.length,
+    externalWaitingDefects:classified.waiting.length,totalProofTasks,completedProofTasks,
     remainingProofTasks:totalProofTasks===null?null:totalProofTasks-completedProofTasks};
   return{schema:'reader-repair-plan-v2',status:errors.length?'blocked':'work_ready',
    bookId,range,profile:book.profile,originalPublishedArtifactSha256:book.artifactSha256,
    workingDraftSha256:draftSha,workingDraftIsDistinctFromPublished:true,
    originalReaderStillBlocked:book.releaseStatus==='blocked',
-   releaseEligible:false,counts,tasks,remainingWorkItems:tasks.length,nextAction:tasks[0]||null,
+   releaseEligible:false,counts,tasks,waitingTasks:classified.waiting,remainingWorkItems:tasks.length,nextAction:tasks[0]||null,
    errors,warnings,
    note:'Per-region repair queue for novel/history/text/photo/mixed. The sixty canonical checks and independent source evidence still determine delivery.'};
  }
@@ -105,6 +115,9 @@ function plan(ledger,bookId,progress=null){
   independentPagePassesRecorded:0,comparedPagesRecorded:0,boundariesRecorded:0,
   unresolvedLedgerDefects:(book.knownDefects||[]).filter(d=>d.status!=='resolved').length
  };
+ const classified=workContext.classifyDefects(book.knownDefects||[]);
+ counts.unresolvedSourceDefects=classified.source.length;
+ counts.externalWaitingDefects=classified.waiting.length;
  const make=(type,scan,reason,priority)=>({id:type+':'+String(scan),type,
    ...(typeof scan==='number'?{scan}:{edge:scan}),priority,reason,recorded:false});
  if(!pendingIsSeparate){
@@ -138,11 +151,7 @@ function plan(ledger,bookId,progress=null){
      'Check continuity of prose, notes, dialogue and figures across the two original scans; do not insert forced breaks.',30));
    else counts.boundariesRecorded++;
   }
-  for(const issue of book.knownDefects||[]){
-   if(issue.status==='resolved')continue;
-   tasks.push(make('resolve_known_source_defect',issue.id,
-     'Open source-backed findings and mark resolved only after corrected exact-artifact evidence; never silently downgrade to not_run.',40));
-  }
+  tasks.push(...classified.work.map(t=>({...t,priority:40})));
   if(tasks.length===0){
    tasks.push(make('run_canonical_60_and_handoff_gate',String(first)+'-'+String(last),
     'With the exact revised HTML, run all existing sixty checks, original byte identity, rendering, Drive same-ID readback and real device verification; only a genuine positive verdict permits delivery.',50));
@@ -167,23 +176,24 @@ function plan(ledger,bookId,progress=null){
   workingDraftSha256:draftSha,workingDraftIsDistinctFromPublished:pendingIsSeparate,
   originalReaderStillBlocked:notReleased,releaseEligible:false,
   // These numbers are checkpoint claims, not independent proof.
-  counts,tasks,remainingWorkItems:tasks.length,nextAction:primary,
+  counts,tasks,waitingTasks:classified.waiting,remainingWorkItems:tasks.length,nextAction:primary,
   errors,warnings,
   note:'A repair plan is an actionable queue, not proof of independent source review. Never promote/release until the existing sixty-item and verified delivery gates pass.'};
 }
 function main(args){
- let bookId='',ledgerFile='reader/quality/work-ledger.json',progressFile=null,outFile=null;
+ let bookId='',ledgerFile='reader/quality/work-ledger.json',progressFile=null,outFile=null,manifestFile=null;
  for(let i=0;i<args.length;i++){
   if(args[i]==='--book'){bookId=args[++i];}
   else if(args[i]==='--ledger'){ledgerFile=args[++i];}
   else if(args[i]==='--progress'){progressFile=args[++i];}
+  else if(args[i]==='--manifest'){manifestFile=args[++i];}
   else if(args[i]==='--output'){outFile=args[++i];}
   else throw Error('UNKNOWN_ARGUMENT '+args[i]);
  }
- if(!bookId)throw Error('Usage: node tools/reader-repair-plan.cjs --book BOOK_ID [--ledger CENTRAL.json] [--progress PRIVATE/progress.json] [--output PRIVATE/plan.json]');
+ if(!bookId)throw Error('Usage: node tools/reader-repair-plan.cjs --book BOOK_ID [--ledger CENTRAL.json] [--progress PRIVATE/progress.json] [--manifest PRIVATE/manifest.json] [--output PRIVATE/plan.json]');
  const ledger=JSON.parse(fs.readFileSync(ledgerFile,'utf8'));
  const progress=progressFile?JSON.parse(fs.readFileSync(progressFile,'utf8')):null;
- const report=plan(ledger,bookId,progress),data=JSON.stringify(report,null,2)+'\n';
+ const report=plan(ledger,bookId,progress,{manifestFile}),data=JSON.stringify(report,null,2)+'\n';
  if(outFile){
   const f=path.resolve(outFile),repo=path.resolve(__dirname,'..');
   if(f===repo||f.startsWith(repo+path.sep))throw Error('PRIVATE_REPAIR_REPORT_MUST_BE_OUTSIDE_PUBLIC_REPO');

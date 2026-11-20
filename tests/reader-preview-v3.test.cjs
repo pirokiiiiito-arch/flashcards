@@ -108,6 +108,21 @@ function fixture(t,{blank=false}={}){
  }
  return {root,bundle,m,manifest,book,model,body,scope,put,ref,save,assess,authorize,conversation,ledger,options,setObserved};
 }
+test('unaccepted scoped work still resumes its existing canonical instead of recreating a first pass',t=>{
+ const f=fixture(t);
+ const opts={mode:'preview',artifact:path.join(f.bundle,f.m.artifact.path),manifest:f.manifest,
+  ledger:f.ledger(false),sourceProof:path.join(f.bundle,f.m.sourceDiscovery.path)};
+ const before=fs.readFileSync(f.manifest),artifactBefore=fs.readFileSync(opts.artifact);
+ const r=handoff.inspect(opts);
+ assert.equal(r.handoffAllowed,false);
+ assert.equal(r.repairPlanStatus,'work_ready',JSON.stringify(r.repairPlanErrors));
+ assert.ok(r.nextRepairAction);
+ assert.notEqual(r.nextRepairAction.type,'produce_new_private_first_pass');
+ assert.equal(r.repairWorkingDraftSha256,f.m.artifact.sha256);
+ assert.deepEqual(fs.readFileSync(f.manifest),before);
+ assert.deepEqual(fs.readFileSync(opts.artifact),artifactBefore);
+ assert.equal(f.m.previewAuthorization,undefined);
+});
 test('v3 preserves scoped canonical, accepts only exact synthetic consent, and explicitly selects a distinct draft',t=>{
  const f=fixture(t);f.authorize();const before=fs.readFileSync(f.ledger());const r=handoff.inspect(f.options());
  assert.equal(r.handoffAllowed,true);assert.equal(r.selectedLedgerArtifact,'pendingDraft');assert.equal(r.contentCertified,false);assert.equal(r.deviceVerified,false);

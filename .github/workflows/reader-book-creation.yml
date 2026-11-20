@@ -14,6 +14,8 @@ on:
       - 'tests/reader-preview-consent.test.cjs'
       - 'tests/reader-preview-v3.test.cjs'
       - 'tools/reader-repair-plan.cjs'
+      - 'tools/reader-repair-context.cjs'
+      - 'tools/reader-work-resume.cjs'
       - 'tools/reader-fast-layout.py'
       - 'tests/test_reader_fast_layout.py'
       - 'reader/quality/FAST_LAYOUT_QA.md'
@@ -26,6 +28,8 @@ on:
       - 'tests/reader-repair-state.test.cjs'
       - 'reader/quality/REPAIR_PROFILES_AND_STATES.md'
       - 'tests/reader-repair-plan.test.cjs'
+      - 'tests/reader-repair-context.test.cjs'
+      - 'tests/reader-work-resume.test.cjs'
       - 'tools/reader-work-ledger-validate.cjs'
       - 'reader/quality/work-ledger.json'
       - 'tests/reader-unified-handoff.test.cjs'
@@ -63,6 +67,8 @@ on:
       - 'tests/reader-preview-consent.test.cjs'
       - 'tests/reader-preview-v3.test.cjs'
       - 'tools/reader-repair-plan.cjs'
+      - 'tools/reader-repair-context.cjs'
+      - 'tools/reader-work-resume.cjs'
       - 'tools/reader-fast-layout.py'
       - 'tests/test_reader_fast_layout.py'
       - 'reader/quality/FAST_LAYOUT_QA.md'
@@ -75,6 +81,8 @@ on:
       - 'tests/reader-repair-state.test.cjs'
       - 'reader/quality/REPAIR_PROFILES_AND_STATES.md'
       - 'tests/reader-repair-plan.test.cjs'
+      - 'tests/reader-repair-context.test.cjs'
+      - 'tests/reader-work-resume.test.cjs'
       - 'tools/reader-work-ledger-validate.cjs'
       - 'reader/quality/work-ledger.json'
       - 'tests/reader-unified-handoff.test.cjs'
@@ -126,7 +134,7 @@ jobs:
           node --check tools/reader-repair-finalize.cjs
           node --test tests/reader-repair-plan.test.cjs tests/reader-repair-multibook.test.cjs tests/reader-repair-state.test.cjs tests/reader-repair-finalize.test.cjs
           node --check tools/reader-work-ledger-validate.cjs
-          node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs
+          node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
           node tools/reader-work-ledger-validate.cjs
           node --check tools/reader-private-pipeline.cjs
           node --test tests/reader-source-pipeline-gate.test.cjs

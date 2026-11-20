@@ -170,7 +170,11 @@ function inspect(opts,inject={}){
   // the same work ledger. This is advice, not additional release authorization.
   try{
    const repair=require('./reader-repair-plan.cjs').plan(ledger,data.bookId,
-    opts.repairProgress?load(opts.repairProgress):null);
+    opts.repairProgress?load(opts.repairProgress):null,{manifestFile:opts.manifest});
+   report.repairPlanStatus=repair.status;
+   if(repair.errors?.length)report.repairPlanErrors=repair.errors;
+   if(repair.waitingTasks)report.repairWaitingTasks=repair.waitingTasks;
+   if(repair.retainedEvidence)report.repairRetainedEvidence=repair.retainedEvidence;
    if(repair.status==='work_ready'&&repair.originalReaderStillBlocked){
     report.nextRepairAction=repair.nextAction;
     report.remainingRepairWorkItems=repair.remainingWorkItems;

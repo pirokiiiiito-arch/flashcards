@@ -12,9 +12,12 @@ function finalize(ledger,bookId,options){
  if(validate(ledger).errors.length){errors.push('INVALID_SHARED_LEDGER');return blocked();}
  const matches=ledger.books.filter(x=>x.bookId===bookId);
  if(matches.length!==1){errors.push('UNKNOWN_OR_AMBIGUOUS_BOOK_ID');return blocked();}
- const entry=matches[0],draft=entry.pendingDraft;
+ const entry=matches[0],draft=entry.pendingDraft||entry.currentWork;
  if(!draft||draft.reviewStatus!=='awaiting_canonical_60'){
   errors.push('DRAFT_NOT_READY_FOR_FINAL_CANONICAL_GATE');return blocked();
+ }
+ if(entry.currentWork&&entry.currentWork.evidenceMode!=='formal_canonical'){
+  errors.push('CURRENT_WORK_FORMAL_EVIDENCE_BINDING_REQUIRED');return blocked();
  }
  const priorUnverified=entry.releaseStatus==='blocked'&&entry.qualityState==='unverified';
  const priorReviewed=entry.releaseStatus==='candidate'&&entry.qualityState==='reviewed';
@@ -44,6 +47,8 @@ function finalize(ledger,bookId,options){
    !hex.test(manifest.loaderSha256||'')){
   errors.push('FINAL_MANIFEST_OR_LOADER_MISMATCH');return blocked();
  }
+ if(entry.currentWork)try{require('./reader-repair-context.cjs').inspectFormalContext(entry,options.manifest);}
+ catch(e){errors.push('CURRENT_WORK_FINAL_EVIDENCE_INVALID: '+e.message);return blocked();}
  const publicEvidence=JSON.parse(fs.readFileSync(options.publicEvidence,'utf8'));
  const checks=Array.isArray(publicEvidence.checks)?publicEvidence.checks:[];
  const served=checks.filter(c=>c.bookId===bookId&&
@@ -61,6 +66,7 @@ function finalize(ledger,bookId,options){
  const next=structuredClone(ledger),candidate=next.books.find(x=>x.bookId===bookId);
  const oldArtifactSha=candidate.artifactSha256;
  delete candidate.pendingDraft;
+ delete candidate.currentWork;
  candidate.artifactSha256=actualSha;
  candidate.qualityState='reviewed';
  candidate.releaseStatus='candidate';
@@ -83,6 +89,7 @@ function finalize(ledger,bookId,options){
  next.version++;
  next.history=Array.isArray(next.history)?next.history:[];
  next.history.push({bookId,action:'private_production_candidate_certified',
+  ...(entry.currentWork?{priorArtifactRole:'retained_reviewed_canonical',priorPublicationAsserted:false}:{}),
   oldArtifactSha256:oldArtifactSha,candidateArtifactSha256:actualSha,
   publicLoaderSha256:manifest.loaderSha256,publicEntry:served[0].entry,
   publicUrl:served[0].url,finalVerdictSha256:sha(Buffer.from(JSON.stringify(verdict))),

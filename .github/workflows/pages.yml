@@ -24,7 +24,7 @@ jobs:
           node --check tools/reader-preview-consent.cjs
           node --check tools/reader-scoped-review.cjs
           node --check tools/reader-work-ledger-validate.cjs
-          node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs
+          node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
           node --check tools/reader-repair-profiles.cjs
           node --check tools/reader-repair-state.cjs
           node --check tools/reader-repair-transition.cjs

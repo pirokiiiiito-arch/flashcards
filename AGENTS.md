@@ -6,6 +6,12 @@
 Google Drive 保存、Chrome公開、ファイルリンクの提示、既存版の修正。
 チャットが変わっても「作って」は未校正プレビューの依頼ではない。
 
+制作の再開は [Work/Chat 共通の再開入口](reader/quality/WORK_RESUME_PROCESS.md)
+を使う。PRIVATE の現行 entry が、制作工程の選定台帳・現行ルール・実行版と、
+原本/校正/60項目の評価・現在の作業HTMLを結び付ける。公開URLや公開版の
+台帳だけを現行制作原稿の根拠にしない。Chromeで一冊が表示できることは
+全体の運用点検や通常完成の代用にならない。
+
 1. 常にこのリポジトリの現行 AGENTS.md と
    `reader/quality/work-ledger.json`（書籍ID・ページ範囲・SHA・未解決不具合）
    および該当する**非公開**の原本台帳・校正履歴・証拠を取得してから着手。
@@ -104,11 +110,21 @@ HTMLまたは検査コードが1バイトでも変更された場合は旧キャ
 
 読書HTMLの通常納品ゲートが不合格になったら、そこで毎回「できない」
 だけを返して終了しない。共有台帳の最新書籍ID・対象SHAを検証して
-`node tools/reader-repair-plan.cjs --book BOOK_ID` を実行し、必要なら
+現行entryがある場合は `reader-work-resume.cjs` から両台帳の一致を確認し、
+まだ統合entryがない既存作業は `node tools/reader-repair-plan.cjs --book BOOK_ID` を実行する。scoped reviewを採用した作業には必ず
+`--manifest PRIVATE/manifest.json --ledger PRIVATE/current-ledger.json` を指定し、必要なら
 `--progress PRIVATE/repair-progress.json` によりページ別二次転記・差分
 ・前後境界の証拠を引き継ぐ。この一覧から優先度が一番高い未完了作業を
 **同じ作業で実際に着手**し、原本を再読して修正・記録・再検査する。
 完成まで工程を積み重ね、チャットが変わっても実証済み部分を再利用する。
+
+既存の校正済みcanonicalを、pendingDraft欄がないという理由で初稿作成へ
+戻さない。60項目の未完了行は、必要な作業・残要件・完了根拠へ展開する。
+`reader/quality/work-catalog.json` は既存60IDの作業案であり、品質合格を
+追加・免除するルールではない。現在の評価にある部分合格と確認範囲を保ち、
+記録済みというだけで全条文をpassedにしない。原本・構造・表示・配布・実機を
+別の依存先として扱い、配布同意や実機待ちだけで原本作業を止めない。
+白紙は原本確認の根拠と領域0件を記録し、架空の本文や図を作らない。
 
 読書本文の不自然な英字、縦棒などの疑義は自動修正しない。
 原本に存在する文字は根拠付きで残し、誤読は校正履歴付きで修正する。

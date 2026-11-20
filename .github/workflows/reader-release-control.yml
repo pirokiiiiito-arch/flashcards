@@ -38,7 +38,7 @@ jobs:
           node --check tools/reader-preview-consent.cjs
           node --check tools/reader-scoped-review.cjs
           node --check tools/reader-private-pipeline.cjs
-          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/reader-first-page-ui-release.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs | tee /tmp/reader-admission-audit/tests.tap
+          node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/reader-first-page-ui-release.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs | tee /tmp/reader-admission-audit/tests.tap
       - name: Verify unchanged legacy bytes and evidence-bound releases
         run: node tools/reader-release-control.cjs repo "$RUNNER_TEMP/reader-pages"
       - name: Record certification boundary
