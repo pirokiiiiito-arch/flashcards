@@ -1,0 +1,262 @@
+{
+  "schema": "reader-local-attestation-v1",
+  "payload": {
+    "schema": "reader-release-v2",
+    "phase": "preview",
+    "errors": [],
+    "warnings": [
+      "A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan."
+    ],
+    "eligible": true,
+    "bookId": "salinger-nine-stories-shibata-061-080",
+    "implementationSha256": "f7ac22cc0ff45e18e619fbd4963ca0b89344aecf2633bfc24531572442c4c4b2",
+    "subject": {
+      "bookId": "salinger-nine-stories-shibata-061-080",
+      "range": [
+        61,
+        80
+      ],
+      "artifactSha256": "39554a36f92f045051392b0489c5a2490e84e1d4c46b9eed53c2d43fa72c9025",
+      "canonicalSha256": "fe1d36496d856d62922286531d66ff78e4ec7a8a496d8345477579151c5dfae7",
+      "rawSha256": "fe1d36496d856d62922286531d66ff78e4ec7a8a496d8345477579151c5dfae7",
+      "originalIndexSha256": "e6200fa218bc1b92404257dfc178002adcbaf3741dba82f62ca2d460fd6bbc25",
+      "templateSha256": "798492082d03ed7487e1ab94db2f9527de757af1970601bb5734b67ec9ca7e60",
+      "profileSha256": "78bee2e5650afa25c5fb0c93004315a5f046559fad912b09b575d150b9fb5aad",
+      "loaderSha256": "7011b78c19c6d7c93985a2521bf461e4acd6d26bc5f0e283512bc1eed7d6bd95"
+    },
+    "subjectSha256": "2d099ccdf35b845b3f0dbebc52d6ac776a33f672c1d8b3d630a655c2e9f3c836",
+    "checks": {
+      "G1-01": {
+        "status": "not_run"
+      },
+      "G1-02": {
+        "status": "not_run"
+      },
+      "G1-03": {
+        "status": "not_run"
+      },
+      "G1-04": {
+        "status": "not_run"
+      },
+      "G1-05": {
+        "status": "not_run"
+      },
+      "G1-07": {
+        "status": "not_run"
+      },
+      "G1-08": {
+        "status": "not_run"
+      },
+      "G1-10": {
+        "status": "not_run"
+      },
+      "G1-12": {
+        "status": "not_run"
+      },
+      "G2-01": {
+        "status": "not_run"
+      },
+      "G2-02": {
+        "status": "not_run"
+      },
+      "G2-03": {
+        "status": "not_run"
+      },
+      "G2-04": {
+        "status": "not_run"
+      },
+      "G2-05": {
+        "status": "not_run"
+      },
+      "G2-07": {
+        "status": "not_run"
+      },
+      "G2-11": {
+        "status": "not_run"
+      },
+      "G3-01": {
+        "status": "not_run"
+      },
+      "G3-02": {
+        "status": "not_run"
+      },
+      "G3-03": {
+        "status": "not_run"
+      },
+      "G3-04": {
+        "status": "not_run"
+      },
+      "G3-05": {
+        "status": "not_run"
+      },
+      "G3-06": {
+        "status": "not_run"
+      },
+      "G3-07": {
+        "status": "not_run"
+      },
+      "G4-01": {
+        "status": "not_run"
+      },
+      "G4-02": {
+        "status": "not_run"
+      },
+      "G4-03": {
+        "status": "not_run"
+      },
+      "G4-04": {
+        "status": "not_run"
+      },
+      "G4-05": {
+        "status": "not_run"
+      },
+      "G4-09": {
+        "status": "not_run"
+      },
+      "G5-01": {
+        "status": "not_run"
+      },
+      "G5-02": {
+        "status": "not_run"
+      },
+      "G5-03": {
+        "status": "not_run"
+      },
+      "G5-04": {
+        "status": "not_run"
+      },
+      "G5-05": {
+        "status": "not_run"
+      },
+      "G5-10": {
+        "status": "not_run"
+      },
+      "P20": {
+        "status": "not_run"
+      },
+      "G6-01": {
+        "status": "not_run"
+      },
+      "G6-02": {
+        "status": "not_run"
+      },
+      "G6-03": {
+        "status": "not_run"
+      },
+      "G6-05": {
+        "status": "not_run"
+      },
+      "G6-09": {
+        "status": "not_run"
+      },
+      "G6-11": {
+        "status": "not_run"
+      },
+      "G6-12": {
+        "status": "not_run"
+      },
+      "P22": {
+        "status": "not_run"
+      },
+      "P23": {
+        "status": "not_run"
+      },
+      "G7-01": {
+        "status": "not_run"
+      },
+      "G7-02": {
+        "status": "not_run"
+      },
+      "G7-03": {
+        "status": "not_run"
+      },
+      "G7-04": {
+        "status": "not_run"
+      },
+      "G7-05": {
+        "status": "not_run"
+      },
+      "G7-10": {
+        "status": "not_run"
+      },
+      "G7-12": {
+        "status": "not_run"
+      },
+      "G8-01": {
+        "status": "not_run"
+      },
+      "G8-02": {
+        "status": "not_run"
+      },
+      "G8-03": {
+        "status": "not_run"
+      },
+      "G8-04": {
+        "status": "not_run"
+      },
+      "G8-05": {
+        "status": "not_run"
+      },
+      "G8-07": {
+        "status": "not_run"
+      },
+      "G8-08": {
+        "status": "not_run"
+      },
+      "G8-11": {
+        "status": "not_run"
+      }
+    },
+    "previewAssessment": {
+      "sha256": "3d840a6059597b15f9dc2104b27ae9bca0b31f710196dfcb089cde6da00a209d",
+      "statusCounts": {
+        "passed": 19,
+        "not_run": 31,
+        "needs_source_review": 1,
+        "not_applicable": 9
+      },
+      "unresolvedIds": [
+        "G1-12"
+      ],
+      "canonicalGateCertified": false
+    },
+    "reviewState": {
+      "sourceTranscription": "two_independent_transcriptions_reconciled",
+      "fullSourceQA": "pending",
+      "canonical60": "incomplete",
+      "display24Conditions": "not_run",
+      "iphone": "not_run"
+    },
+    "sourceEvidenceIndex": {
+      "raw": "fe1d36496d856d62922286531d66ff78e4ec7a8a496d8345477579151c5dfae7",
+      "canonical": "fe1d36496d856d62922286531d66ff78e4ec7a8a496d8345477579151c5dfae7",
+      "originalIndex": "e6200fa218bc1b92404257dfc178002adcbaf3741dba82f62ca2d460fd6bbc25",
+      "inventory": "d4f33efd1ebe2970acde039acfdbc4abe8bfb0d1bb8e9073883090efed4c8844",
+      "second": "bc6cdc02fa83498db97ba7d5bfaaad4f79cbc1bba4bcae9b88d00f697f2f4f16",
+      "resolutions": "8105fdaad6246d75107c13aa1d2ba71fc91556ea524b343314707c2d0ef265e0",
+      "boundaries": "5aea90b929d4feba79d35669a1c9312c3ba1890afed49bf1353a5f243529e2c3",
+      "corrections": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "lock": "bcb2f691ae1640441d5dc74a71f4375a9d771203537f99bcc14d6e653f64df86"
+    },
+    "canonicalFields": 180,
+    "authorization": {
+      "sha256": "a6214d7453621e0e9a1f5c3ebbf1b6ae0266a92c21d7e590554a16d315a71e02",
+      "explicit": true,
+      "schema": "reader-preview-consent-v2",
+      "conversationEvidenceSha256": "b3085534bcdb258bbb4d1fd831b0f310608102438decad2cca25bffeda28978e",
+      "assessmentSha256": "3d840a6059597b15f9dc2104b27ae9bca0b31f710196dfcb089cde6da00a209d"
+    },
+    "contentCertified": false,
+    "previewProtocol": "reader-immutable-preview-v3",
+    "channel": "preview",
+    "entry": "reader/preview/nine-stories-061-080-safe-v1/index.html",
+    "bookRecordSha256": "e7012406d53d8a49bfa94c72da4146476f5558937d8fcef6d3eae06ed9cc742d",
+    "reportSha256": "93386449aa1c80337796ac85293fbac5f6d7b756e4f629ecf4fdca1402f74959",
+    "publicFiles": {
+      "reader/preview/nine-stories-061-080-safe-v1/index.html": "7011b78c19c6d7c93985a2521bf461e4acd6d26bc5f0e283512bc1eed7d6bd95"
+    },
+    "issuedAt": "2026-11-20T03:38:43.032Z",
+    "trustBoundary": "Local evidence attestation, not independent reviewer authentication."
+  },
+  "digest": "f052ea563675aa387b08a1b65eaa441d9c19af227039d7ccc149e081d25be932"
+}

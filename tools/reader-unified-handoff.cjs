@@ -86,7 +86,18 @@ function checkProofreading(anomalies,reviewFile,book,sha,errors){
  if(ok!==anomalies.length)errors.push('UNRESOLVED_OCR_ANOMALIES');
  return ok;
 }
-function checkExplicitPreview(consent,book,sha,errors){
+function checkExplicitPreview(consent,book,sha,errors,context={}){
+ if(consent?.schema==='reader-preview-consent-v2'||context.manifestAuthorizationSchema==='reader-preview-consent-v2'){
+  try{
+   const m=context.manifest,root=context.root;
+   if(!m||consent?.schema!=='reader-preview-consent-v2'||context.consentSha256!==m.previewAuthorization?.sha256)
+    throw Error('PREVIEW_CONSENT_V2_MANIFEST_REFERENCE_MISMATCH');
+   require('./reader-preview-consent.cjs').validateV2(consent,{subject:{bookId:book.bookId,range:book.range,
+    artifactSha256:sha,loaderSha256:m.loaderSha256},manifest:m,
+    conversation:v.json(root,consent.conversationEvidence),assessment:v.json(root,consent.assessmentEvidence),rules:RULES});
+   return true;
+  }catch(e){errors.push(e.message);return false;}
+ }
  if(!consent||consent.schema!=='reader-preview-consent-v1'||consent.bookId!==book.bookId||
   !same(consent.range,book.range)||consent.artifactSha256!==sha||
   consent.confirmedByUser!==true||consent.acknowledgesUncorrectedOCR!==true||
@@ -164,7 +175,8 @@ function inspect(opts,inject={}){
     if(!result.eligible)errors.push('CANONICAL_STAGE_NOT_PASSED_'+(result.stages.find(s=>s.decision==='blocked')?.phase||'unknown'));
     else if(mode==='preview'){
       report.previewOnly=true;
-      warnings.push('PREVIEW_IS_UNCORRECTED_AND_NOT_COMPLETE');
+      const auth=privateManifest.previewAuthorization?v.json(path.dirname(path.resolve(opts.manifest)),privateManifest.previewAuthorization):{};
+      warnings.push(auth.schema==='reader-preview-consent-v2'?'PREVIEW_QA_INCOMPLETE_NOT_COMPLETE':'PREVIEW_IS_UNCORRECTED_AND_NOT_COMPLETE');
     }else{
       const production=validate(opts.manifest,{phase});
       const all=production.checks||{};
@@ -187,8 +199,15 @@ function inspect(opts,inject={}){
   }
  }
  if(mode==='preview'){
-  let consent;try{consent=load(opts.previewConsent);}catch(_){}
-  checkExplicitPreview(consent,data,sha,errors);
+  let consent,consentSha256,manifestAuthorizationSchema;
+  try{const raw=bytes(opts.previewConsent);consent=JSON.parse(raw);consentSha256=v.hash(raw);}catch(_){}
+  const root=opts.manifest?path.dirname(path.resolve(opts.manifest)):null;
+  try{manifestAuthorizationSchema=v.json(root,privateManifest.previewAuthorization).schema;}catch(_){}
+  const accepted=checkExplicitPreview(consent,data,sha,errors,{manifest:privateManifest,root,consentSha256,manifestAuthorizationSchema});
+  if(accepted&&consent?.schema==='reader-preview-consent-v2'){
+   report.previewConsentSchema=consent.schema;report.previewConsentSha256=consentSha256;
+   report.reviewState=consent.reviewState;report.sourceQAComplete=false;
+  }
  }
  if((mode==='normal'||mode==='prepublication')&&(entry.qualityState!=='reviewed'||entry.releaseStatus!=='candidate')){
   errors.push('LEDGER_NOT_APPROVED_FOR_FINAL_READER');

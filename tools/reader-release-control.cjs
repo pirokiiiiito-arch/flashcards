@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const legacy=require('./reader-quality-gate.cjs');
 const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
 const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
-const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs'];
+const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
@@ -146,31 +146,8 @@ function anomalies(fields){
   for(const [kind,re]of patterns)for(const m of text.matchAll(re))found.push({id:objHash([field,kind,m.index,m[0]]),field,kind,offset:m.index,text:m[0]});
  }return found;
 }
-function validateBundle(file,{phase='prepare'}={}){
- const errors=[],warnings=['A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan.'],result={schema:SCHEMA,phase,errors,warnings,eligible:false};
- try{
-  demand(['preview','prepare','release','deployed','device'].includes(phase),'INVALID_PHASE');
-  const root=path.dirname(path.resolve(file)),m=JSON.parse(fs.readFileSync(file,'utf8'));result.bookId=m.bookId;result.implementationSha256=implementationHash();
-  demand(m.schema==='reader-private-bundle-v2'&&/^[a-z0-9-]{3,100}$/.test(m.bookId||''),'BUNDLE_IDENTITY');
-  demand(m.standardFileId===legacy.ID&&Array.isArray(m.range)&&m.range.length===2&&m.range.every(Number.isInteger)&&m.range[0]>0&&m.range[1]>=m.range[0],'RANGE_OR_STANDARD');
-  const raw=json(root,m.raw),canonical=json(root,m.canonical),index=json(root,m.originalIndex),events=json(root,m.corrections),profile=json(root,m.profile),lock=json(root,m.lock);
-  const artifact=bytes(root,m.artifact),template=bytes(root,m.template).toString('utf8'),parsed=extract(artifact),pages=Array.isArray(canonical)?canonical:canonical.pages;
-  demand(Array.isArray(pages)&&pages.length===m.range[1]-m.range[0]+1&&pages.every((p,i)=>p.scan===m.range[0]+i),'SCAN_COVERAGE');
-  demand(lock.schema==='reader-input-lock-v2'&&['raw','originalIndex','template','profile'].every(k=>lock[k]===m[k].sha256),'IMMUTABLE_INPUT_CHANGED');
-  demand(objHash(replay(raw,events))===objHash(canonical),'CANONICAL_NOT_FROM_CORRECTIONS');
-  demand(objHash(parsed.data)===objHash(canonical),'ARTIFACT_NOT_CANONICAL');
-  demand(parsed.shell===template,'RENDERER_CHANGED');
-  demand(profile.templateSha256===m.template.sha256&&profile.defaultFontPx===20&&profile.lineHeight===1.5&&profile.digitOrientation==='preserve-approved'&&profile.gesture==='up-next-down-prev-one-step-native-zoom','PROFILE_DRIFT');
-  demand(objHash(originals(pages))===objHash(index),'SOURCE_INDEX_MISMATCH');
-  for(const p of pages)demand(hex(index[p.scan]),'SOURCE_PAGE_MISSING');
-  result.subject={bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,canonicalSha256:m.canonical.sha256,rawSha256:m.raw.sha256,originalIndexSha256:m.originalIndex.sha256,templateSha256:m.template.sha256,profileSha256:m.profile.sha256,loaderSha256:m.loaderSha256};
-  demand(hex(m.loaderSha256),'LOADER_IDENTITY_REQUIRED');result.subjectSha256=objHash(result.subject);
-  if(phase==='preview'){
-   const a=json(root,m.previewAuthorization);demand(a.explicit===true&&a.requestedBy&&a.requestText?.length>=8&&Number.isFinite(Date.parse(a.at))&&a.artifactSha256===m.artifact.sha256,'EXPLICIT_PREVIEW_REQUEST_REQUIRED');
-   result.authorization={sha256:m.previewAuthorization.sha256,explicit:true};result.eligible=true;result.contentCertified=false;
-   result.checks=Object.fromEntries(legacy.RULES.map(id=>[id,{status:'not_run'}]));return result;
-  }
-  const fields=textFields(pages),inventory=json(root,m.inventory),second=json(root,m.second),resolutions=json(root,m.resolutions),boundaries=json(root,m.boundaries),display=json(root,m.display);
+function validateSourceEvidence(root,m,pages,events,index){
+  const fields=textFields(pages),inventory=json(root,m.inventory),second=json(root,m.second),resolutions=json(root,m.resolutions),boundaries=json(root,m.boundaries);
   demand(Array.isArray(inventory.pages)&&inventory.pages.length===pages.length,'INVENTORY_PAGE_COUNT');
   const covered=new Set(),regionIDs=new Set();
   for(let i=0;i<pages.length;i++){
@@ -196,6 +173,57 @@ function validateBundle(file,{phase='prepare'}={}){
   const expected=[];for(let s=m.range[0]-1;s<=m.range[1];s++)expected.push(s+'>'+String(s+1));
   demand(Array.isArray(boundaries.items)&&objHash(boundaries.items.map(x=>x.id).sort())===objHash(expected.sort()),'BOUNDARY_COVERAGE');
   for(const b of boundaries.items){const [left,right]=b.id.split('>').map(Number);if(index[left])demand(b.leftSourceSha256===index[left],'BOUNDARY_SOURCE_MISMATCH');if(index[right])demand(b.rightSourceSha256===index[right],'BOUNDARY_SOURCE_MISMATCH');demand(b.reviewedBy&&b.reason&&b.resolved===true&&typeof b.leftTail==='string'&&typeof b.rightHead==='string'&&(b.kind==='book_start'?b.leftSourceSha256===null:hex(b.leftSourceSha256))&&(b.kind==='book_end'?b.rightSourceSha256===null:hex(b.rightSourceSha256)),'UNVERIFIED_BOUNDARY');}
+  return {fields,inventory,second,resolutions,boundaries};
+}
+function validateBundle(file,{phase='prepare'}={}){
+ const errors=[],warnings=['A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan.'],result={schema:SCHEMA,phase,errors,warnings,eligible:false};
+ try{
+  demand(['preview','prepare','release','deployed','device'].includes(phase),'INVALID_PHASE');
+  const root=path.dirname(path.resolve(file)),m=JSON.parse(fs.readFileSync(file,'utf8'));result.bookId=m.bookId;result.implementationSha256=implementationHash();
+  demand(m.schema==='reader-private-bundle-v2'&&/^[a-z0-9-]{3,100}$/.test(m.bookId||''),'BUNDLE_IDENTITY');
+  demand(m.standardFileId===legacy.ID&&Array.isArray(m.range)&&m.range.length===2&&m.range.every(Number.isInteger)&&m.range[0]>0&&m.range[1]>=m.range[0],'RANGE_OR_STANDARD');
+  const raw=json(root,m.raw),canonical=json(root,m.canonical),index=json(root,m.originalIndex),events=json(root,m.corrections),profile=json(root,m.profile),lock=json(root,m.lock);
+  const artifact=bytes(root,m.artifact),template=bytes(root,m.template).toString('utf8'),parsed=extract(artifact),pages=Array.isArray(canonical)?canonical:canonical.pages;
+  demand(Array.isArray(pages)&&pages.length===m.range[1]-m.range[0]+1&&pages.every((p,i)=>p.scan===m.range[0]+i),'SCAN_COVERAGE');
+  demand(lock.schema==='reader-input-lock-v2'&&['raw','originalIndex','template','profile'].every(k=>lock[k]===m[k].sha256),'IMMUTABLE_INPUT_CHANGED');
+  demand(objHash(replay(raw,events))===objHash(canonical),'CANONICAL_NOT_FROM_CORRECTIONS');
+  demand(objHash(parsed.data)===objHash(canonical),'ARTIFACT_NOT_CANONICAL');
+  demand(parsed.shell===template,'RENDERER_CHANGED');
+  demand(profile.templateSha256===m.template.sha256&&profile.defaultFontPx===20&&profile.lineHeight===1.5&&profile.digitOrientation==='preserve-approved'&&profile.gesture==='up-next-down-prev-one-step-native-zoom','PROFILE_DRIFT');
+  demand(objHash(originals(pages))===objHash(index),'SOURCE_INDEX_MISMATCH');
+  for(const p of pages)demand(hex(index[p.scan]),'SOURCE_PAGE_MISSING');
+  result.subject={bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,canonicalSha256:m.canonical.sha256,rawSha256:m.raw.sha256,originalIndexSha256:m.originalIndex.sha256,templateSha256:m.template.sha256,profileSha256:m.profile.sha256,loaderSha256:m.loaderSha256};
+  demand(hex(m.loaderSha256),'LOADER_IDENTITY_REQUIRED');result.subjectSha256=objHash(result.subject);
+  if(phase==='preview'){
+   const a=json(root,m.previewAuthorization);
+   if(a.schema==='reader-preview-consent-v2'){
+    // Reuse the real source checks, stopping before display and final sixty gates.
+    // This certifies their consistency, not completion of every source QA item.
+    const {fields}=validateSourceEvidence(root,m,pages,events,index);
+    const accepted=require('./reader-preview-consent.cjs').validateV2(a,{subject:result.subject,manifest:m,
+     conversation:json(root,a.conversationEvidence),assessment:json(root,a.assessmentEvidence),rules:legacy.RULES});
+    const checks=json(root,m.checks);
+    demand(objHash(Object.keys(checks).sort())===objHash(legacy.RULES.slice().sort())&&
+     Object.values(checks).every(c=>['not_run','passed','failed','needs_source_review','not_applicable'].includes(c?.status)),
+     'PREVIEW_EXACT_60_STATES_REQUIRED');
+    // Preserve the formal check states; the limited source assessment is separate.
+    result.checks=Object.fromEntries(legacy.RULES.map(id=>[id,{status:checks[id].status}]));
+    result.previewAssessment={sha256:accepted.assessmentSha256,statusCounts:accepted.assessmentStatusCounts,
+     unresolvedIds:accepted.unresolvedAssessmentIds,canonicalGateCertified:false};
+    result.reviewState=accepted.reviewState;
+    result.sourceEvidenceIndex=Object.fromEntries(require('./reader-preview-consent.cjs').SOURCE_KEYS.map(k=>[k,m[k].sha256]));
+    result.canonicalFields=Object.keys(fields).length;
+    result.authorization={sha256:m.previewAuthorization.sha256,explicit:true,schema:a.schema,
+     conversationEvidenceSha256:accepted.conversationEvidenceSha256,assessmentSha256:accepted.assessmentSha256};
+   }else{
+    // Historical v1 authorization conditions are unchanged.
+    demand(a.explicit===true&&a.requestedBy&&a.requestText?.length>=8&&Number.isFinite(Date.parse(a.at))&&a.artifactSha256===m.artifact.sha256,'EXPLICIT_PREVIEW_REQUEST_REQUIRED');
+    result.authorization={sha256:m.previewAuthorization.sha256,explicit:true};
+    result.checks=Object.fromEntries(legacy.RULES.map(id=>[id,{status:'not_run'}]));
+   }
+   result.eligible=true;result.contentCertified=false;return result;
+  }
+  const {fields}=validateSourceEvidence(root,m,pages,events,index),display=json(root,m.display);
   demand(display.artifactSha256===m.artifact.sha256&&display.actualPixels===true&&objHash(display.fields)===objHash(fields),'DISPLAY_NOT_CANONICAL');
   const conditions=new Set();for(const c of display.conditions||[]){demand(c.passed===true&&c.artifactSha256===m.artifact.sha256&&c.actualPixels===true&&objHash(c.scans)===objHash(pages.map(p=>p.scan))&&c.overflowCount===0&&c.roundTripSha256===objHash(fields),'INCOMPLETE_DISPLAY_CONDITION');conditions.add(c.width+'/'+c.fontPx);}
   for(const w of[320,390,430])for(const f of[16,18,20,22,24,26,28,30])demand(conditions.has(w+'/'+f),'MISSING_24_CONDITION '+w+'/'+f);

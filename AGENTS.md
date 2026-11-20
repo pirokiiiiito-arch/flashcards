@@ -20,12 +20,18 @@ Google Drive 保存、Chrome公開、ファイルリンクの提示、既存版�
    実行し、`handoffAllowed:true` かつ `status:verified_release` の
    専用検査報告がない限り通常版の納品を停止。原本照合、全60項目の
    対象版の証拠、iPhone実機、Drive、公開配信の検証が揃わなければ停止。
-4. 例外的に未校正の確認用ファイルを渡す場合は、ユーザーが**明示的に**
-   当該書籍・版の「未校正OCR一次稿を確認用として受け取る」と認めた
-   記録を検査し、`--mode preview` の `unverified_preview_only` だけを
-   許可。単なる「41-60を作って」「URLをくれ」を同意に読み替えない。
-   対応する private manifest / original-source preflight / work ledger /
-   preview-consent は同じartifact SHAに紐付ける。
+4. 確認用ファイルは、ユーザーが**明示的に**その書籍・版の未完成状態を
+   理解して受領を求めた場合だけ、`--mode preview` の
+   `unverified_preview_only` として許可する。未校正OCRの既存v1は従来の
+   明示文言を維持する。独立二稿の照合済みでも全原本QA・表示等が未完了なら、
+   v2はその実態を記録し、虚偽の「未校正OCR」表明を要求しない。
+   正確な対象SHA・範囲と残る検査を明示した直前の受領確認質問に対する
+   実際の肯定短答・確認用URL依頼は、質問原文・対象表示・返信原文を
+   同じハッシュ付き記録に結び付けて検査する。返信を水増ししない。
+   開示を伴わない単なる「41-60を作って」「URLをくれ」、否定、別版への
+   同意は許可にならない。private manifest / original-source preflight /
+   work ledger / preview-consent は同じartifact SHAに紐付け、両validatorは
+   同一consentファイルを照合する。全60項目・通常版・実機の合格条件は不変。
 5. OCR中の英字断片、縦棒 `|`、代替文字などは**推測で書き換えず**、
    原本で確認した例外以外を未解決として止める。reviewer の自己申告
    だけで独立照合済みとせず、既存60項目の証拠を再検証する。
@@ -124,7 +130,7 @@ Read the [current canonical sixty-item standard](reader/quality/README.md), **`r
 - Preserve normal swipe/pinch, 20px default, 1.50 line-height and approved number orientation. Do not rebuild the UI during a text correction. Engine changes require distinct versioned evidence.
 - Current v2 heading standard is shared by world-history text and novels: 1.12em (22.4px at a 20px body), font-weight 700, letter-spacing 0, margin-bottom .82em; color is the only heading-style difference (`#925341` history / `#000` novel). Always use the v2 CSS and correct `template_profile`. Older 1.08em proofreading drafts must never be used as template references; real-device and published-book checks are separate.
 - Use create-only private staging. Read back before loader publication. Record deployment separately. Promote only after validating the current target; read back the exact written ID and bytes afterward. Execute verify-plan before a connector write and complete-plan afterward. A plan is not delivery.
-- Preview requires a specific explicit unverified-preview request, a dedicated preview route and create-only storage. Do not overwrite normal reading files with drafts.
+- Preview requires a specific explicit acceptance of the exact disclosed unfinished edition, a dedicated preview route and create-only storage. A short affirmative reply can be bound to the immediately preceding artifact-specific disclosure; a bare URL request cannot. v2 keeps two-draft reconciliation separate from pending full source QA. Do not overwrite normal reading files with drafts.
 - Export public evidence receipts only after local validation. Receipts bind hashes and states but are NOT authenticated human-review signatures. No ephemeral private signing key is required or uploaded.
 - Publish only the isolated tree created by reader-publish-stage.cjs after all generators. Unreviewed new assets stay in source, outside that tree. Do not expand the compatibility baseline to hide a failed review.
 - Existing drafts remain unverified. Known defects must not be relabeled as not_run. iPhone-not-run is distinct from actual iPhone failure; Chromium does not certify an iPhone.

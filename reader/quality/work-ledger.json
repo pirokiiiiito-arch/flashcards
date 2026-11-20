@@ -2,7 +2,7 @@
   "schema": "reader-work-ledger-v1",
   "ruleset": "20261116_0654_60-items",
   "purpose": "Cross-chat metadata-only work index. This is not OCR, Drive readback or iPhone evidence. Private source and OCR must never be committed.",
-  "version": 1,
+  "version": 2,
   "books": [
     {
       "bookId": "salinger-nine-stories-shibata-021-040",
@@ -70,6 +70,71 @@
         "independentSecondTranscriptionPageCompareResolved": 0,
         "latestTranscribedScan": 41
       }
+    },
+    {
+      "bookId": "salinger-nine-stories-shibata-061-080",
+      "range": [
+        61,
+        80
+      ],
+      "profile": "novel",
+      "expectedProfile": "novel",
+      "sourceArchiveSha256": "5303741567c5eda72d3c930cde33010cb77671e53e167c2cfe5c83374c4559f9",
+      "artifactSha256": "39554a36f92f045051392b0489c5a2490e84e1d4c46b9eed53c2d43fa72c9025",
+      "loaderSha256": "7011b78c19c6d7c93985a2521bf461e4acd6d26bc5f0e283512bc1eed7d6bd95",
+      "qualityState": "unverified",
+      "releaseStatus": "blocked",
+      "sourceReviewStatus": "two_independent_transcriptions_reconciled_against_source",
+      "sourceQAComplete": false,
+      "canonical60Certified": false,
+      "privateAssessmentSha256": "3d840a6059597b15f9dc2104b27ae9bca0b31f710196dfcb089cde6da00a209d",
+      "privateAssessmentCounts": {
+        "passed": 19,
+        "not_run": 31,
+        "needs_source_review": 1,
+        "not_applicable": 9
+      },
+      "privateManifestStatus": "source_evidence_registered_preview_authorized_display_not_run",
+      "publishedLoaderStatus": "preview_publication_pending",
+      "lastKnown": "2026-11-20T03:38:41.450762+00:00",
+      "knownDefects": [
+        {
+          "id": "061-080-small-faint-text-enlargement",
+          "status": "needs_source_review",
+          "category": "source_review_coverage",
+          "checkId": "G1-12"
+        },
+        {
+          "id": "061-080-display-evidence-not-run",
+          "status": "open",
+          "category": "verification_gap",
+          "note": "Unperformed display verification, not an observed rendering defect."
+        },
+        {
+          "id": "061-080-name-dictionary-review-not-run",
+          "status": "open",
+          "category": "verification_gap",
+          "checkId": "G3-04"
+        },
+        {
+          "id": "061-080-s073-ruby-correction",
+          "status": "resolved",
+          "category": "source_ruby",
+          "evidenceSha256": "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        }
+      ],
+      "verificationStatus": {
+        "browserMatrix": "not_run",
+        "renderedPageRoundtrip": "not_run",
+        "touchPinchPan": "not_run",
+        "iphoneChrome": "not_run",
+        "driveReadback": "passed",
+        "publishedExactGetAtRegistration": "not_run"
+      },
+      "previewRequested": true,
+      "normalDeliveryAllowed": false,
+      "note": "Metadata-only registration for an explicitly requested, SHA-pinned unfinished confirmation edition. Its eventual preview receipt does not certify normal release or an actual iPhone.",
+      "driveReadbackEvidenceSha256": "8de4279d59b280684182e696e49bf9a59ad1f481e6c0d34b35fbb6fd3976d35f"
     }
   ],
   "history": [
@@ -95,6 +160,16 @@
       "official60Pass": false,
       "releaseAllowed": false,
       "at": "2026-11-19T03:30:00+09:00"
+    },
+    {
+      "bookId": "salinger-nine-stories-shibata-061-080",
+      "action": "source_reconciled_unfinished_preview_requested",
+      "artifactSha256": "39554a36f92f045051392b0489c5a2490e84e1d4c46b9eed53c2d43fa72c9025",
+      "loaderSha256": "7011b78c19c6d7c93985a2521bf461e4acd6d26bc5f0e283512bc1eed7d6bd95",
+      "privateAssessmentSha256": "3d840a6059597b15f9dc2104b27ae9bca0b31f710196dfcb089cde6da00a209d",
+      "official60Pass": false,
+      "normalDeliveryAllowed": false,
+      "at": "2026-11-20T03:27:01.361251+00:00"
     }
   ],
   "safety": {
