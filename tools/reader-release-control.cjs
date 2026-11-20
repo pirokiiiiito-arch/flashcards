@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const legacy=require('./reader-quality-gate.cjs');
 const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
 const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
-const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs'];
+const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-scoped-review.cjs'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
@@ -196,7 +196,20 @@ function validateBundle(file,{phase='prepare'}={}){
   demand(hex(m.loaderSha256),'LOADER_IDENTITY_REQUIRED');result.subjectSha256=objHash(result.subject);
   if(phase==='preview'){
    const a=json(root,m.previewAuthorization);
-   if(a.schema==='reader-preview-consent-v2'){
+   if(a.schema==='reader-preview-consent-v3'){
+    const scoped=require('./reader-scoped-review.cjs').validate(root,m,pages,index,legacy.RULES);
+    const accepted=require('./reader-preview-consent.cjs').validateV3(a,{subject:result.subject,manifest:m,
+     conversation:json(root,a.conversationEvidence),assessment:json(root,a.assessmentEvidence),rules:legacy.RULES,scoped});
+    const checks=json(root,m.checks);
+    result.checks=Object.fromEntries(legacy.RULES.map(id=>[id,{status:checks[id].status}]));
+    result.previewAssessment={sha256:accepted.assessmentSha256,statusCounts:accepted.assessmentStatusCounts,
+     unresolvedIds:accepted.unresolvedAssessmentIds,canonicalGateCertified:false};
+    result.reviewState=accepted.reviewState;result.reviewScope=accepted.reviewScope;result.previewDisplay=accepted.displayState;
+    result.sourceEvidenceIndex=scoped.sourceEvidenceIndex;
+    result.canonicalFields=Object.keys(textFields(pages)).length;
+    result.authorization={sha256:m.previewAuthorization.sha256,explicit:true,schema:a.schema,
+     conversationEvidenceSha256:accepted.conversationEvidenceSha256,assessmentSha256:accepted.assessmentSha256};
+   }else if(a.schema==='reader-preview-consent-v2'){
     // Reuse the real source checks, stopping before display and final sixty gates.
     // This certifies their consistency, not completion of every source QA item.
     const {fields}=validateSourceEvidence(root,m,pages,events,index);
@@ -216,6 +229,11 @@ function validateBundle(file,{phase='prepare'}={}){
     result.authorization={sha256:m.previewAuthorization.sha256,explicit:true,schema:a.schema,
      conversationEvidenceSha256:accepted.conversationEvidenceSha256,assessmentSha256:accepted.assessmentSha256};
    }else{
+    // Only a named v1 request, or the exact historical five-field v1 shape,
+    // is recognized. Unknown schema values must never fall through to v1.
+    const legacyKeys=['explicit','requestedBy','requestText','at','artifactSha256'];
+    const historicalV1=a.schema===undefined&&Object.keys(a).length===legacyKeys.length&&legacyKeys.every(k=>Object.hasOwn(a,k));
+    demand(a.schema==='reader-preview-authorization-v1'||historicalV1,'UNKNOWN_PREVIEW_AUTHORIZATION_SCHEMA');
     // Historical v1 authorization conditions are unchanged.
     demand(a.explicit===true&&a.requestedBy&&a.requestText?.length>=8&&Number.isFinite(Date.parse(a.at))&&a.artifactSha256===m.artifact.sha256,'EXPLICIT_PREVIEW_REQUEST_REQUIRED');
     result.authorization={sha256:m.previewAuthorization.sha256,explicit:true};

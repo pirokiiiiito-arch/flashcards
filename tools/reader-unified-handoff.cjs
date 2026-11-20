@@ -56,13 +56,28 @@ function checkSource(proof,artifact,ledgerRecord,errors){
  }
  return true;
 }
-function checkLedger(ledger,book,sha,errors,{allowKnownDefects=false}={}){
+function checkLedger(ledger,book,sha,errors,{allowKnownDefects=false,pendingDraftTarget=null,pendingDraftEvidenceSha256=null}={}){
  if(ledger?.schema!=='reader-work-ledger-v1'||ledger.ruleset!=='20261116_0654_60-items'||!Array.isArray(ledger.books)){
   errors.push('SHARED_LEDGER_INVALID_OR_MISSING');return null;
  }
  const entries=ledger.books.filter(x=>x?.bookId===book.bookId&&same(x.range,book.range));
  if(entries.length!==1){errors.push('SHARED_LEDGER_IDENTITY_MISSING_OR_AMBIGUOUS');return null;}
- const entry=entries[0];
+ let entry=entries[0];
+ // Opt-in preview-v3 selection only. Never mutate the original ledger or
+ // silently choose a draft for normal/prepublication delivery.
+ if(pendingDraftTarget!==null){
+  if(!allowKnownDefects||pendingDraftTarget!==sha||!SHA.test(pendingDraftTarget)){
+   errors.push('LEDGER_PREVIEW_V3_EXPLICIT_TARGET_MISMATCH');return null;
+  }
+  if(entry.artifactSha256!==sha){
+   const p=entry.pendingDraft;
+   if(!p||p.artifactSha256!==sha||p.privateProgressReportSha256!==pendingDraftEvidenceSha256||
+    require('./reader-repair-state.cjs').validatePendingDraft(entry).length){
+    errors.push('LEDGER_PREVIEW_V3_DRAFT_NOT_BOUND');return null;
+   }
+   entry={...entry,artifactSha256:sha,selectedArtifactOrigin:'pendingDraft',baselineArtifactSha256:entry.artifactSha256};
+  }else entry={...entry,selectedArtifactOrigin:'current'};
+ }
  if(entry.artifactSha256!==sha||entry.bookId!==book.bookId||!validRange(entry.range)||
    !SHA.test(entry.sourceArchiveSha256||''))errors.push('LEDGER_ARTIFACT_OR_SOURCE_VERSION_MISMATCH');
  if(!allowKnownDefects&&(entry.knownDefects||[]).some(x=>['open','failed','needs_source_review'].includes(x.status)))errors.push('UNRESOLVED_KNOWN_DEFECT_IN_LEDGER');
@@ -87,6 +102,19 @@ function checkProofreading(anomalies,reviewFile,book,sha,errors){
  return ok;
 }
 function checkExplicitPreview(consent,book,sha,errors,context={}){
+ if(consent?.schema==='reader-preview-consent-v3'||context.manifestAuthorizationSchema==='reader-preview-consent-v3'){
+  try{
+   const m=context.manifest,root=context.root;
+   if(!m||consent?.schema!=='reader-preview-consent-v3'||context.consentSha256!==m.previewAuthorization?.sha256)
+    throw Error('PREVIEW_CONSENT_V3_MANIFEST_REFERENCE_MISMATCH');
+   if(context.previewTargetArtifactSha256!==sha)throw Error('PREVIEW_V3_EXPLICIT_TARGET_REQUIRED');
+   const scoped=context.scoped||require('./reader-scoped-review.cjs').validate(root,m,book.pages,v.json(root,m.originalIndex),RULES);
+   require('./reader-preview-consent.cjs').validateV3(consent,{subject:{bookId:book.bookId,range:book.range,
+    artifactSha256:sha,loaderSha256:m.loaderSha256},manifest:m,
+    conversation:v.json(root,consent.conversationEvidence),assessment:v.json(root,consent.assessmentEvidence),rules:RULES,scoped});
+   return true;
+  }catch(e){errors.push(e.message);return false;}
+ }
  if(consent?.schema==='reader-preview-consent-v2'||context.manifestAuthorizationSchema==='reader-preview-consent-v2'){
   try{
    const m=context.manifest,root=context.root;
@@ -111,6 +139,7 @@ function checkExplicitPreview(consent,book,sha,errors,context={}){
 function inspect(opts,inject={}){
  const errors=[],warnings=[];
  let file=null,sha=null,data=null,anomalies=[],resolvedAnomalies=0,entry=null;
+ let earlyManifest=null,earlyAuthorization=null,validatedPreview=null;
  const mode=opts.mode||'normal';
  const report={schema:'reader-unified-handoff-v1',mode,status:'blocked',handoffAllowed:false,prepublicationAllowed:false,
   contentCertified:false,deviceVerified:false,publicHttpVerified:false,
@@ -122,6 +151,8 @@ function inspect(opts,inject={}){
   if(!opts.artifact)throw Error('ARTIFACT_REQUIRED');
   file=bytes(opts.artifact);sha=v.hash(file);
   let identity=null;try{if(opts.manifest)identity=load(opts.manifest);}catch(_){}
+  earlyManifest=identity;
+  if(mode==='preview'&&identity?.previewAuthorization)try{earlyAuthorization=v.json(path.dirname(path.resolve(opts.manifest)),identity.previewAuthorization);}catch(_){}
   data=extractBook(file,identity);
   report.bookId=data.bookId;report.range=data.range;report.artifactSha256=sha;
   anomalies=findAnomalies(data);report.ocrAnomalyCount=anomalies.length;
@@ -146,7 +177,11 @@ function inspect(opts,inject={}){
     report.repairWorkingDraftSha256=repair.workingDraftSha256;
    }
   }catch(_){warnings.push('REPAIR_PROGRESS_UNAVAILABLE');}
-  entry=checkLedger(ledger,data,sha,errors,{allowKnownDefects:mode==='preview'});
+  const v3=mode==='preview'&&earlyAuthorization?.schema==='reader-preview-consent-v3';
+  if(v3&&opts.previewTargetArtifactSha256!==sha)errors.push('LEDGER_PREVIEW_V3_EXPLICIT_TARGET_REQUIRED');
+  entry=checkLedger(ledger,data,sha,errors,{allowKnownDefects:mode==='preview',
+   pendingDraftTarget:v3?opts.previewTargetArtifactSha256||null:null,
+   pendingDraftEvidenceSha256:v3?earlyManifest.scopedReview?.sha256:null});
   if(entry&&!errors.some(x=>x.startsWith('LEDGER_')||x.startsWith('SHARED_LEDGER_'))){
    report.ledgerValidated=true;
   }
@@ -171,12 +206,15 @@ function inspect(opts,inject={}){
    try{
     const validate=inject.validate||v.validateBundle;
     const phase=mode==='preview'?'preview':mode==='prepublication'?'release':'device';
-    const result=phases.inspect(opts.manifest,phase,(file,{phase})=>validate(file,{phase}));
+    const result=phases.inspect(opts.manifest,phase,(file,{phase})=>{
+     const checked=validate(file,{phase});if(phase==='preview'&&checked.eligible)validatedPreview=checked;return checked;
+    });
     if(!result.eligible)errors.push('CANONICAL_STAGE_NOT_PASSED_'+(result.stages.find(s=>s.decision==='blocked')?.phase||'unknown'));
     else if(mode==='preview'){
       report.previewOnly=true;
       const auth=privateManifest.previewAuthorization?v.json(path.dirname(path.resolve(opts.manifest)),privateManifest.previewAuthorization):{};
-      warnings.push(auth.schema==='reader-preview-consent-v2'?'PREVIEW_QA_INCOMPLETE_NOT_COMPLETE':'PREVIEW_IS_UNCORRECTED_AND_NOT_COMPLETE');
+      warnings.push(auth.schema==='reader-preview-consent-v3'?'PREVIEW_SCOPED_REVIEW_INCOMPLETE_NOT_COMPLETE':
+       auth.schema==='reader-preview-consent-v2'?'PREVIEW_QA_INCOMPLETE_NOT_COMPLETE':'PREVIEW_IS_UNCORRECTED_AND_NOT_COMPLETE');
     }else{
       const production=validate(opts.manifest,{phase});
       const all=production.checks||{};
@@ -203,10 +241,20 @@ function inspect(opts,inject={}){
   try{const raw=bytes(opts.previewConsent);consent=JSON.parse(raw);consentSha256=v.hash(raw);}catch(_){}
   const root=opts.manifest?path.dirname(path.resolve(opts.manifest)):null;
   try{manifestAuthorizationSchema=v.json(root,privateManifest.previewAuthorization).schema;}catch(_){}
-  const accepted=checkExplicitPreview(consent,data,sha,errors,{manifest:privateManifest,root,consentSha256,manifestAuthorizationSchema});
-  if(accepted&&consent?.schema==='reader-preview-consent-v2'){
+  const scoped=validatedPreview?.authorization?.schema==='reader-preview-consent-v3'?{
+   source:validatedPreview.reviewScope,display:validatedPreview.previewDisplay,reviewState:validatedPreview.reviewState,
+   assessment:{statusCounts:validatedPreview.previewAssessment.statusCounts,unresolvedIds:validatedPreview.previewAssessment.unresolvedIds}
+  }:null;
+  const accepted=checkExplicitPreview(consent,data,sha,errors,{manifest:privateManifest,root,consentSha256,manifestAuthorizationSchema,
+   previewTargetArtifactSha256:opts.previewTargetArtifactSha256,scoped});
+  if(accepted&&['reader-preview-consent-v2','reader-preview-consent-v3'].includes(consent?.schema)){
    report.previewConsentSchema=consent.schema;report.previewConsentSha256=consentSha256;
    report.reviewState=consent.reviewState;report.sourceQAComplete=false;
+   if(consent.schema==='reader-preview-consent-v3'){
+    report.reviewScope=scoped?.source||null;report.displayState=scoped?.display||null;
+    report.selectedLedgerArtifact=entry.selectedArtifactOrigin||'current';
+    report.baselineArtifactSha256=entry.baselineArtifactSha256||null;
+   }
   }
  }
  if((mode==='normal'||mode==='prepublication')&&(entry.qualityState!=='reviewed'||entry.releaseStatus!=='candidate')){
@@ -228,11 +276,12 @@ function main(argv){
   if(!a.startsWith('--'))throw Error('BAD_OPTION '+a);
   const key={'--mode':'mode','--artifact':'artifact','--manifest':'manifest','--ledger':'ledger',
    '--source-proof':'sourceProof','--ocr-review':'ocrReview','--public-evidence':'publicEvidence',
-   '--preview-consent':'previewConsent','--repair-progress':'repairProgress','--report':'report'}[a];
+   '--preview-consent':'previewConsent','--preview-target-sha256':'previewTargetArtifactSha256',
+   '--repair-progress':'repairProgress','--report':'report'}[a];
   if(!key)throw Error('BAD_OPTION '+a);
   opts[key]=argv[++i];if(!opts[key])throw Error('OPTION_VALUE_MISSING '+a);
  }
- if(!opts.artifact)throw Error('Usage: node tools/reader-unified-handoff.cjs --artifact PRIVATE.html --mode normal|prepublication|preview|audit --ledger PRIVATE/ledger.json --manifest PRIVATE/manifest.json --source-proof PRIVATE/source-preflight.json [--ocr-review PRIVATE/review.json] [--public-evidence PRIVATE/http.json] [--preview-consent PRIVATE/consent.json] [--report PRIVATE/report.json]');
+ if(!opts.artifact)throw Error('Usage: node tools/reader-unified-handoff.cjs --artifact PRIVATE.html --mode normal|prepublication|preview|audit --ledger PRIVATE/ledger.json --manifest PRIVATE/manifest.json --source-proof PRIVATE/source-preflight.json [--ocr-review PRIVATE/review.json] [--public-evidence PRIVATE/http.json] [--preview-consent PRIVATE/consent.json] [--preview-target-sha256 EXACT_PRIVATE_ARTIFACT_SHA] [--report PRIVATE/report.json]');
  const out=inspect(opts),data=JSON.stringify(out,null,2)+'\n';
  if(opts.report){
   const dst=path.resolve(opts.report),repo=path.resolve(__dirname,'..');

@@ -133,3 +133,9 @@ node tools/reader-private-pipeline.cjs authorize-preview PRIVATE/manifest.json P
 公開前の `pages` と最終 `attach` は同じ `previewConsentFile`、`workLedgerFile`、`sourceProofFile` を統一ゲートへ渡す。v2には実際の `driveReadbackFile`・`driveFileId` と正規`complete-plan`の `driveCompletionFile` も必要。`issue` はこのpages計画を再検査し、専用draft routeのreceiptへ `previewProtocol:reader-immutable-preview-v3` を設定してダイジェストに含める。stage用計画を公開receiptの代わりに使わない。
 
 preview成功は `contentCertified:false` のままで、通常版・全60合格・公開GET・実機を付与しない。公開後GETと正式リンク発行は既存の独立工程を実行する。承認原文・PRIVATEパス・Drive ID・書籍本文・原画像は公開receiptへ出さない。
+
+## 範囲付き校正稿の確認受領同意 v3
+
+`reader-preview-consent-v3`は、保持された本文原本比較と独立全文二稿を区別し、実24条件を未実施へ巻き戻さず正確に記録する確認版専用分岐である。原本・canonical・実レビューの部分一致、状態と60項目の整合、exact artifact/loaderの実開示と実返信を要求する。v1/v2および通常版の条件は変更しない。
+
+正式な入力契約と手順は `PREVIEW_V3_PROCESS.md`。コマンドは`authorize-preview-v3`、handoffの明示選択は`--preview-target-sha256`。v3の`pages/attach`にも実同一IDの`driveCompletionFile`を必須とする。既存receiptを書き換えて新しい版を許可しない。

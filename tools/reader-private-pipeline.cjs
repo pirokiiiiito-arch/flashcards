@@ -127,6 +127,40 @@ function authorizePreview(file,conversationFile,assessmentFile){
    contentCertified:false,normalReleaseAuthorized:false};
  });
 }
+function authorizePreviewV3(file,conversationFile,assessmentFile){
+ return withLock(file,()=>{
+  const {root,m}=load(file),before=fs.readFileSync(file),beforeSha=v.hash(before);
+  const conversationBytes=fs.readFileSync(conversationFile),assessmentBytes=fs.readFileSync(assessmentFile);
+  const conversation=JSON.parse(conversationBytes),assessment=JSON.parse(assessmentBytes);
+  fail(v.hash(assessmentBytes)===m.assessment?.sha256,'PREVIEW_V3_ASSESSMENT_MUST_BE_FINALIZED_BEFORE_CONSENT');
+  const pages=v.extract(v.bytes(root,m.artifact)).pages;
+  const scoped=require('./reader-scoped-review.cjs').validate(root,m,pages,v.json(root,m.originalIndex),RULES);
+  const prefix='review/preview-consent-v3/';
+  const conversationEvidence=write(root,prefix+'conversation-'+v.hash(conversationBytes)+'.json',conversationBytes);
+  const assessmentEvidence=write(root,prefix+'assessment-'+v.hash(assessmentBytes)+'.json',assessmentBytes);
+  const c=require('./reader-preview-consent.cjs');
+  const consent={schema:'reader-preview-consent-v3',bookId:m.bookId,range:m.range,
+   artifactSha256:m.artifact.sha256,loaderSha256:m.loaderSha256,explicit:true,confirmedByUser:true,
+   requestedBy:'user',acceptanceKind:'direct_reply_to_artifact_disclosure',previewOnly:true,normalReleaseAuthorized:false,
+   acknowledgesScopedIncompleteReview:true,requestText:conversation.userReplyExact,
+   recordedAt:conversation.recordedAtUTC,timestampMeaning:conversation.timestampMeaning,
+   conversationEvidence,disclosureSha256:c.digest(conversation.assistantDisclosure),assessmentEvidence,
+   reviewState:scoped.reviewState,sourceEvidenceDigests:scoped.sourceEvidenceIndex};
+  c.validateV3(consent,{subject:{bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,loaderSha256:m.loaderSha256},
+   manifest:m,conversation,assessment,rules:RULES,scoped});
+  const authorization=write(root,prefix+'authorization-'+v.objHash(consent)+'.json',consent);
+  const candidate={...m,previewAuthorization:authorization};
+  const candidateRef=write(root,'manifest-preview-v3-'+v.objHash(candidate)+'.json',candidate);
+  const checked=v.validateBundle(path.join(root,candidateRef.path),{phase:'preview'});
+  fail(checked.eligible,'PREVIEW_V3_AUTHORIZATION_BLOCKED: '+checked.errors.join('; '));
+  fail(v.hash(fs.readFileSync(file))===beforeSha,'MANIFEST_CHANGED_DURING_AUTHORIZATION');
+  const priorManifest=write(root,'history/manifest-before-preview-v3-'+beforeSha+'.json',before);
+  saveManifest(root,candidate);
+  return {bookId:m.bookId,artifactSha256:m.artifact.sha256,previewAuthorization:authorization,priorManifest,
+   candidateManifest:candidateRef,sourceEvidenceUnchanged:true,formalChecksUnchanged:true,
+   contentCertified:false,normalReleaseAuthorized:false,reviewState:scoped.reviewState};
+ });
+}
 function plan(file,request){
  fail(['stage','promote','attach','pages'].includes(request?.operation),'UNKNOWN_DELIVERY_OPERATION');
  const channel=request.channel;fail(['preview','production'].includes(channel),'EXPLICIT_CHANNEL_REQUIRED');
@@ -148,7 +182,8 @@ function plan(file,request){
   unified=require('./reader-unified-handoff.cjs').inspect({
    mode,artifact,manifest:file,ledger:request.workLedgerFile,
    sourceProof:request.sourceProofFile,ocrReview:request.ocrReviewFile,
-   previewConsent:request.previewConsentFile,publicEvidence:request.publicEvidenceFile
+   previewConsent:request.previewConsentFile,publicEvidence:request.publicEvidenceFile,
+   previewTargetArtifactSha256:request.previewTargetArtifactSha256
   });
   const allowed=mode==='prepublication'?unified.prepublicationAllowed:unified.handoffAllowed;
   fail(allowed,'UNIFIED_CROSS_CHAT_HANDOFF_BLOCKED: '+unified.errors.join('; '));
@@ -156,12 +191,13 @@ function plan(file,request){
    fail(request.driveReadbackFile&&request.driveFileId&&
         v.hash(fs.readFileSync(request.driveReadbackFile))===m.artifact.sha256,
         'UNVERIFIED_PREVIEW_SAME_ID_DRIVE_READBACK_REQUIRED');
-   if(result.authorization?.schema==='reader-preview-consent-v2'){
-    fail(request.driveCompletionFile,'PREVIEW_V2_DRIVE_COMPLETION_REQUIRED');
+   if(['reader-preview-consent-v2','reader-preview-consent-v3'].includes(result.authorization?.schema)){
+    const version=result.authorization.schema==='reader-preview-consent-v3'?'V3':'V2';
+    fail(request.driveCompletionFile,'PREVIEW_'+version+'_DRIVE_COMPLETION_REQUIRED');
     const completion=JSON.parse(fs.readFileSync(request.driveCompletionFile));
     fail(completion.schema==='reader-delivery-completion-v1'&&completion.artifactSha256===m.artifact.sha256&&
      completion.targetFileId===request.driveFileId&&/^[a-f0-9]{64}$/.test(completion.planSha256||''),
-     'PREVIEW_V2_SAME_ID_COMPLETION_MISMATCH');
+     'PREVIEW_'+version+'_SAME_ID_COMPLETION_MISMATCH');
    }
   }
  }
@@ -200,6 +236,6 @@ function completePlan(planFile,artifactFile,readbackFile,observedFileId){
  return {schema:'reader-delivery-completion-v1',planSha256:v.hash(fs.readFileSync(planFile)),artifactSha256:p.artifactSha256,targetFileId:observedFileId,completedAt:new Date().toISOString()};
 }
 if(require.main===module){
- const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='init-resolved')r=initResolved(...a);else if(c==='authorize-preview')r=authorizePreview(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init-resolved HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX SOURCE_PREFLIGHT_REPORT | (legacy) init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | authorize-preview MANIFEST CONVERSATION_EVIDENCE ASSESSMENT | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='init-resolved'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
+ const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='init-resolved')r=initResolved(...a);else if(c==='authorize-preview')r=authorizePreview(...a);else if(c==='authorize-preview-v3')r=authorizePreviewV3(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init-resolved HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX SOURCE_PREFLIGHT_REPORT | (legacy) init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | authorize-preview MANIFEST CONVERSATION_EVIDENCE ASSESSMENT | authorize-preview-v3 MANIFEST ACTUAL_CONVERSATION_EVIDENCE FINAL_ASSESSMENT | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='init-resolved'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
 }
-module.exports={init,initResolved,checkSourcePreflight,authorizePreview,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};
+module.exports={init,initResolved,checkSourcePreflight,authorizePreview,authorizePreviewV3,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};
