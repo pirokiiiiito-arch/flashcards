@@ -24,6 +24,11 @@ function plan(ledger,bookId,progress=null,options={}){
  if(errors.length)return{schema:'reader-repair-plan-v1',status:'blocked',bookId,
     releaseEligible:false,errors,warnings,tasks:[],nextAction:null};
  const book=matches[0],range=book.range,first=range[0],last=range[1];
+ if(options.requestedScope){
+  try{require('./reader-request-scope.cjs').matchRequestedScope(options.requestedScope,book.bookId,range);}
+  catch(error){return {schema:'reader-repair-plan-v3',status:'blocked',bookId,range,errors:[error.code],
+   releaseEligible:false,tasks:[],readyTasks:[],deferredTasks:[],waitingTasks:[],nextAction:null};}
+ }
  // A retained corrected canonical is already work in progress. Its private
  // manifest, not the presence/absence of pendingDraft, determines the next work.
  try{
@@ -181,19 +186,23 @@ function plan(ledger,bookId,progress=null,options={}){
   note:'A repair plan is an actionable queue, not proof of independent source review. Never promote/release until the existing sixty-item and verified delivery gates pass.'};
 }
 function main(args){
- let bookId='',ledgerFile='reader/quality/work-ledger.json',progressFile=null,outFile=null,manifestFile=null;
+ let bookId='',ledgerFile='reader/quality/work-ledger.json',progressFile=null,outFile=null,manifestFile=null,requestFile=null;
  for(let i=0;i<args.length;i++){
   if(args[i]==='--book'){bookId=args[++i];}
   else if(args[i]==='--ledger'){ledgerFile=args[++i];}
   else if(args[i]==='--progress'){progressFile=args[++i];}
+  else if(args[i]==='--request'){if(requestFile)throw Error('DUPLICATE_WORK_REQUEST');requestFile=args[++i];}
   else if(args[i]==='--manifest'){manifestFile=args[++i];}
   else if(args[i]==='--output'){outFile=args[++i];}
   else throw Error('UNKNOWN_ARGUMENT '+args[i]);
  }
- if(!bookId)throw Error('Usage: node tools/reader-repair-plan.cjs --book BOOK_ID [--ledger CENTRAL.json] [--progress PRIVATE/progress.json] [--manifest PRIVATE/manifest.json] [--output PRIVATE/plan.json]');
+ if(!bookId)throw Error('Usage: node tools/reader-repair-plan.cjs --book BOOK_ID --request PRIVATE/request.json [--ledger CENTRAL.json] [--progress PRIVATE/progress.json] [--manifest PRIVATE/manifest.json] [--output PRIVATE/plan.json]');
+ const requestedScope=require('./reader-request-scope.cjs').readRequestedScope(requestFile);
  const ledger=JSON.parse(fs.readFileSync(ledgerFile,'utf8'));
  const progress=progressFile?JSON.parse(fs.readFileSync(progressFile,'utf8')):null;
- const report=plan(ledger,bookId,progress,{manifestFile}),data=JSON.stringify(report,null,2)+'\n';
+ const report=plan(ledger,bookId,progress,{manifestFile,requestedScope});
+ report.requestedScope=requestedScope;
+ const data=JSON.stringify(report,null,2)+'\n';
  if(outFile){
   const f=path.resolve(outFile),repo=path.resolve(__dirname,'..');
   if(f===repo||f.startsWith(repo+path.sep))throw Error('PRIVATE_REPAIR_REPORT_MUST_BE_OUTSIDE_PUBLIC_REPO');

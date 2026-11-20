@@ -12,6 +12,8 @@ Google Drive 保存、Chrome公開、ファイルリンクの提示、既存版�
 台帳だけを現行制作原稿の根拠にしない。Chromeで一冊が表示できることは
 全体の運用点検や通常完成の代用にならない。
 
+制作担当は、再開資料を選ぶ前に依頼から書籍ID・原本の開始／終了番号を確定し、私有の `request.json` に記録する。共通の再開入口と旧形式用の作業計画には毎回 `--request PRIVATE/request.json` を渡す。別の本・別範囲・依頼記録欠落で停止したときは依頼に合う資料を探す。
+
 1. 常にこのリポジトリの現行 AGENTS.md と
    `reader/quality/work-ledger.json`（書籍ID・ページ範囲・SHA・未解決不具合）
    および該当する**非公開**の原本台帳・校正履歴・証拠を取得してから着手。
@@ -111,7 +113,7 @@ HTMLまたは検査コードが1バイトでも変更された場合は旧キャ
 読書HTMLの通常納品ゲートが不合格になったら、そこで毎回「できない」
 だけを返して終了しない。共有台帳の最新書籍ID・対象SHAを検証して
 現行entryがある場合は `reader-work-resume.cjs` から両台帳の一致を確認し、
-まだ統合entryがない既存作業は `node tools/reader-repair-plan.cjs --book BOOK_ID` を実行する。scoped reviewを採用した作業には必ず
+まだ統合entryがない既存作業は `node tools/reader-repair-plan.cjs --request PRIVATE/request.json --book BOOK_ID` を実行する。scoped reviewを採用した作業には必ず
 `--manifest PRIVATE/manifest.json --ledger PRIVATE/current-ledger.json` を指定し、必要なら
 `--progress PRIVATE/repair-progress.json` によりページ別二次転記・差分
 ・前後境界の証拠を引き継ぐ。この一覧から優先度が一番高い未完了作業を

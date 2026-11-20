@@ -66,7 +66,11 @@ function loadContext(book,manifestFile){
  if(book.currentWork?.evidenceMode==='formal_canonical')return inspectFormalContext(book,manifestPath);
  if(!m.scopedReview){
   demand(!hasScopedState(book),'SCOPED_REPAIR_EVIDENCE_MISSING');
-  if(book.pendingDraft)return null;
+  if(book.pendingDraft){
+   demand(m.schema==='reader-private-bundle-v2'&&m.bookId===book.bookId&&same(m.range,book.range)&&
+    m.artifact?.sha256===book.pendingDraft.artifactSha256,'PENDING_DRAFT_MANIFEST_IDENTITY_MISMATCH');
+   return null;
+  }
   const v=api();
   demand(m.schema==='reader-private-bundle-v2'&&m.bookId===book.bookId&&same(m.range,book.range)&&
    m.artifact?.sha256===book.artifactSha256,'EXISTING_CANONICAL_MANIFEST_IDENTITY_MISMATCH');

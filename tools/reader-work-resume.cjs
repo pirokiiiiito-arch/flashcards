@@ -132,12 +132,14 @@ function queueSummary(plan){
   legacyLaneClassification:'not_recorded'};
 }
 
-function inspect(entryFile,{expectedEntrySha256,surface='work'}={}){
+function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
  const base={schema:'reader-work-resume-result-v1',status:'blocked',readOnly:true,
   stateChanged:false,artifactChanged:false,workStarted:false,
   productionAdmitted:false,qualityCertified:false,deliveryAuthorized:false,
   consentCreated:false,errors:[],warnings:[]};
  try{
+  const {readRequestedScope,matchRequestedScope}=require('./reader-request-scope.cjs');
+  const requestedScope=readRequestedScope(requestFile);
   need(['work','chat','other'].includes(surface),'INVALID_SURFACE');
   need(HEX.test(expectedEntrySha256||''),'EXPECTED_ENTRY_SHA_REQUIRED',
    'Supply the adopted entry SHA from the handoff/index, not by selecting the newest local file.');
@@ -152,6 +154,7 @@ function inspect(entryFile,{expectedEntrySha256,surface='work'}={}){
   need(/^[a-z0-9-]{3,150}$/.test(entry.bookId||''),'INVALID_BOOK_ID');
   need(Array.isArray(entry.scanRange)&&entry.scanRange.length===2&&entry.scanRange.every(Number.isSafeInteger)&&
    entry.scanRange[0]>0&&entry.scanRange[0]<=entry.scanRange[1],'INVALID_SCAN_RANGE');
+  matchRequestedScope(requestedScope,entry.bookId,entry.scanRange);
   const chain=verifyToolchain(root,entry.toolchain,tracked);
   need(outside(chain.root,entryPath),'PRIVATE_ENTRY_INSIDE_PUBLIC_REPOSITORY');
   if(process.env.READER_AUDIT_ROOT)need(path.resolve(process.env.READER_AUDIT_ROOT)===chain.root,'AUDIT_ROOT_OVERRIDE_MISMATCH');
@@ -266,7 +269,7 @@ function inspect(entryFile,{expectedEntrySha256,surface='work'}={}){
   for(const [file,sha256]of tracked)need(hash(fs.readFileSync(file))===sha256,'INPUT_CHANGED_DURING_RESUME',path.relative(root,file));
   const queues=queueSummary(repair);
   return {...base,status:'resume_consistent',entrySha256:expectedEntrySha256,bookId:entry.bookId,
-   scanRange:entry.scanRange,profile:entry.profile,surface,
+   scanRange:entry.scanRange,profile:entry.profile,surface,requestedScope,
    adoptedArtifact:{path:entry.adoptedArtifact.path,sha256:artifact.sha256,bytes:artifact.bytes.length},
    workflow:{phase:handoffResult.phase,blocked:handoffResult.blocked||null,
     stateSha256:wf.state.sha256,activeReleaseId:wf.runtime.releaseId,ruleSha256:wf.runtime.ruleSha256,
@@ -294,6 +297,7 @@ function main(args){
   const key=args[i],value=args[++i];need(value&&!value.startsWith('--'),'MISSING_ARGUMENT_VALUE',key);
   if(key==='--entry')entryFile=value;
   else if(key==='--expected-entry-sha256')options.expectedEntrySha256=value;
+  else if(key==='--request'){need(!options.requestFile,'DUPLICATE_WORK_REQUEST');options.requestFile=value;}
   else if(key==='--surface')options.surface=value;
   else throw new ResumeError('UNKNOWN_ARGUMENT',key);
  }

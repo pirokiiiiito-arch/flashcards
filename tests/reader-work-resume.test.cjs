@@ -86,11 +86,13 @@ function fixture(t){
  for(const f of [...files(path.join(root,'repo/tools')),...files(path.join(root,'repo/reader/quality'))])
   if(f.endsWith('.cjs')||f.endsWith('.json'))entry.toolchain.files.push(pin(path.join(root,'repo'),path.relative(path.join(root,'repo'),f).split(path.sep).join('/')));
  const entryFile=path.join(root,'private/current-work.json');write(entryFile,entry);
- return {root,runtime,workflow,quality,entry,entryFile,
+ const requestFile=path.join(root,'private/request.json');
+ write(requestFile,{schema:'reader-work-request-v1',bookId:'synthetic-book',scanRange:[1,2]});
+ return {root,runtime,workflow,quality,entry,entryFile,requestFile,
   save(){write(entryFile,entry);return digest(fs.readFileSync(entryFile));},
-  run(expected=digest(fs.readFileSync(entryFile)),runRoot=root){
+  run(expected=digest(fs.readFileSync(entryFile)),runRoot=root,requestArgs=['--request',path.join(runRoot,'private/request.json')]){
    const out=spawnSync(process.execPath,[path.join(runRoot,'repo/tools/reader-work-resume.cjs'),'--entry',path.join(runRoot,'private/current-work.json'),
-    '--expected-entry-sha256',expected,'--surface','work'],{encoding:'utf8',env:{...process.env,READER_AUDIT_ROOT:''}});
+    '--expected-entry-sha256',expected,'--surface','work',...requestArgs],{encoding:'utf8',env:{...process.env,READER_AUDIT_ROOT:''}});
    assert.ok(out.stdout,'stdout missing: '+out.stderr);return {code:out.status,report:JSON.parse(out.stdout)};
   }};
 }
@@ -168,4 +170,23 @@ test('old progress is explicitly blocked instead of being silently ignored',t=>{
  const f=fixture(t);write(path.join(f.quality,'progress.json'),{schema:'reader-repair-progress-v1',bookId:'synthetic-book',range:[1,2],
   artifactSha256:'c'.repeat(64),pages:[],boundaries:[]});f.entry.quality.progress=pin(f.quality,'progress.json');f.save();
  assert.ok(hasCode(f.run(),'STALE_REPAIR_PROGRESS'));
+});
+
+test('only an independently matching request can return a next action', t => {
+ const f=fixture(t);
+ const missing=f.run(undefined,f.root,[]);
+ assert.ok(hasCode(missing,'WORK_REQUEST_REQUIRED'));
+ assert.equal(missing.report.nextAction,null);
+ for(const [bookId,scanRange,code] of [
+  ['other-book',[1,2],'REQUESTED_BOOK_MISMATCH'],
+  ['synthetic-book',[3,4],'REQUESTED_SCAN_RANGE_MISMATCH'],
+  ['synthetic-book',[2,1],'INVALID_REQUESTED_SCAN_RANGE']
+ ]){
+  write(f.requestFile,{schema:'reader-work-request-v1',bookId,scanRange});
+  const stopped=f.run();
+  assert.ok(hasCode(stopped,code));assert.equal(stopped.report.nextAction,null);
+  assert.equal(stopped.report.workStarted,false);
+ }
+ write(f.requestFile,f.entry);
+ assert.ok(hasCode(f.run(),'INVALID_WORK_REQUEST'));
 });

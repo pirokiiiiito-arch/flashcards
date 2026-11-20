@@ -104,3 +104,11 @@ test('progress with a wrong profile/record cannot promote old published artifact
  assert.ok(r.errors.includes('INVALID_SHARED_WORK_LEDGER')||r.errors.includes('INVALID_PENDING_DRAFT_IDENTITY'));
  assert.equal(r.releaseEligible,false);
 });
+
+test('legacy planner rejects request scope mismatch before work on the selected draft',()=>{
+ for(const [bookId,scanRange,error] of [[ID,[61,80],'REQUESTED_SCAN_RANGE_MISMATCH'],['another-book',[41,60],'REQUESTED_BOOK_MISMATCH']]){
+  const r=plan(ledger,ID,null,{requestedScope:{bookId,scanRange}});
+  assert.equal(r.status,'blocked');assert.deepEqual(r.errors,[error]);
+  assert.equal(r.nextAction,null);assert.deepEqual(r.tasks,[]);
+ }
+});

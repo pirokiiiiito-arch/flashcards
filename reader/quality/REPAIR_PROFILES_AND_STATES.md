@@ -56,7 +56,7 @@ PRIVATE manifestにscoped reviewがある場合、plannerへ`--manifest`を渡�
 実行例（PRIVATE側の入力と結果のみを使う）：
 
 ```sh
-node tools/reader-repair-plan.cjs --book BOOK_ID \
+node tools/reader-repair-plan.cjs --request PRIVATE/request.json --book BOOK_ID \
   --ledger reader/quality/work-ledger.json \
   --progress PRIVATE/repair-progress-v2.json \
   --output PRIVATE/repair-queue.json

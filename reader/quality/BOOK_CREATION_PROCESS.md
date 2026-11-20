@@ -10,6 +10,8 @@ PRIVATE entryから照合する。過去の公開入口や歴史保管用の台�
 作り直してはいけない。新規書籍で現行作業がまだない場合だけ工程0から初期化し、
 既存の原稿・訂正履歴がある場合はそれを再開する。
 
+制作担当は、再開資料を選ぶ前に依頼から書籍ID・原本の開始／終了番号を確定し、私有の `request.json` に記録する。共通の再開入口と旧形式用の作業計画には毎回 `--request PRIVATE/request.json` を渡す。別の本・別範囲・依頼記録欠落で停止したときは依頼に合う資料を探す。
+
 制作の順序は、原本保全と範囲確定、領域と読順の棚卸し、転記と独立原本照合、
 本文/見出し/図版/注記の構造確定、承認済み入力の統合4工程、HTML凍結、必要検査、
 完成判定と配布、実機確認を保つ。正式な10工程の名称と条件は採用する共通正本と
@@ -169,7 +171,7 @@ ZIP を新しく組み替えたり、ダミー画像で元の ordinal を埋め�
 `tools/reader-repair-plan.cjs` へ渡すと、未完了作業を有限の順序で返す。
 
 ```sh
-node tools/reader-repair-plan.cjs --book BOOK_ID \
+node tools/reader-repair-plan.cjs --request PRIVATE/request.json --book BOOK_ID \
   --ledger reader/quality/work-ledger.json \
   --progress PRIVATE/repair-progress.json \
   --output PRIVATE/repair-plan.json

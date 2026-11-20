@@ -17,6 +17,14 @@
 
 ## 毎回の開始手順
 
+先に依頼文（「続き」の場合はその本の確定済み進捗も参照）から、依頼の書籍ID・原本の開始番号・終了番号を決め、私有の作業場所に依頼ごとの `request.json` を記録する。書名は既存の対応表でIDに解決する。書名や範囲が一つに定まらないときだけ確認する。次の例の値は対象依頼の値に置き換える。
+
+```json
+{"schema":"reader-work-request-v1","bookId":"example-book","scanRange":[41,60]}
+```
+
+その後に候補の再開資料を選ぶ。候補から依頼値をコピーしない。照合値の不一致を解消する目的で依頼記録を書き換えず、正しい範囲の資料に戻る。新規制作でも依頼を先に記録し、選定原本の本・範囲を確認してから初期化する。
+
 1. 指定された私有 workspace と現行 entry を復元する。公開台帳・公開 URL・古い回答だけを制作原稿の選択根拠にしない。
 2. 引継ぎの採用記録または配布索引にある **entry 自体の SHA** を取得する。ローカルで一番新しいファイルを選んで、その SHA を採用根拠にする操作は禁止する。
 3. v9.2 runtime と、復元目録に固定されたリポジトリの commit / 各ファイル SHA を復元する。既存の `retained` / `history` は歴史資料として保存し、現行 selection に指定しない。
@@ -24,15 +32,18 @@
 
 ```sh
 node tools/reader-work-resume.cjs \
+  --request PRIVATE/request.json \
   --entry PRIVATE/current-work.json \
   --expected-entry-sha256 ADOPTED_ENTRY_SHA256 \
   --surface work
 ```
 
-5. `status: resume_consistent` を確認し、`nextAction` を既存の制作手順へ渡す。`adoptionRequired: true` の場合は、表示された現行原稿の採用手続きが先である。再開入口自身は採用・進捗更新を実行しない。
+5. 結果の `requestedScope` には依頼のID・範囲・記録SHAが残る。依頼欠落・別の本・別範囲では次作業を出さず停止する。`status: resume_consistent` を確認し、`nextAction` を既存の制作手順へ渡す。`adoptionRequired: true` の場合は、表示された現行原稿の採用手続きが先である。再開入口自身は採用・進捗更新を実行しない。
 6. `productionPending` / `readyTasks` / `deferredTasks` と `externalWaiting` を区別する。配布同意や iPhone 実機の待ちだけを理由に、実行可能な原本照合・構造修正などを止めない。未確認の実機は合格にせず、従来どおり内容統合の停止条件とも混同しない。
 
 `--surface chat` は同じ検査を実行します。表示面を切り替えても品質基準、原稿、既存証拠、未完了状態を変更しません。
+
+統合entryのない既存稿は `reader-repair-plan.cjs --request PRIVATE/request.json --book BOOK_ID` に採用した台帳・私有manifestを渡す。古い検査結果の次作業を実行しない。`connect_existing_canonical_context` の場合は校正済み稿と根拠の接続から進める。旧commitのコマンド単独で現在の依頼照合を代用しない。
 
 ## 私有 entry の形式
 
