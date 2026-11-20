@@ -209,8 +209,16 @@ jobs:
         run: |
           node --check tools/reader-issue-verified-links.cjs
           node --test tests/reader-issue-verified-links.test.cjs
+      - name: Check existing book registrations before staging common QA code
+        run: node tools/reader-book-preflight.cjs --all
       - name: Prepare evidence-admitted reader deployment without touching source
         run: node tools/reader-publish-stage.cjs . "$RUNNER_TEMP/reader-pages"
+      - name: Validate generic layout QA in the exact staged tree
+        env:
+          READER_AUDIT_ROOT: ${{ runner.temp }}/reader-pages
+        run: |
+          node --check tools/verify-layout-qa-pages.cjs
+          node --test tests/reader-layout-qa.test.cjs tests/reader-layout-qa-pages.test.cjs
       - name: Validate the exact final deployment tree
         env:
           READER_AUDIT_ROOT: ${{ runner.temp }}/reader-pages
@@ -238,6 +246,15 @@ jobs:
         uses: actions/deploy-pages@v4
       - name: Checkout the exact deployed source for public URL evidence
         uses: actions/checkout@v4
+      - name: Verify the public generic layout QA program exact deployed bytes
+        run: node tools/verify-layout-qa-pages.cjs "$RUNNER_TEMP/reader-layout-qa-public-evidence.json"
+      - name: Preserve generic layout QA publication evidence even on verification failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reader-layout-qa-public-evidence
+          path: ${{ runner.temp }}/reader-layout-qa-public-evidence.json
+          if-no-files-found: warn
       - name: Verify admitted reading URLs return HTTP 200 and exact SHA-256 bytes
         run: node tools/reader-verify-pages.cjs . "$RUNNER_TEMP/reader-public-delivery-evidence.json"
       - name: Issue verified reader links only from fresh same-run public GET evidence

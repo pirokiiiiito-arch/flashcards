@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>読書HTML｜実表示検査</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef1ef;color:#253331;font:14px/1.55 system-ui,sans-serif}
+header{padding:18px 24px;background:#173f3b;color:white}h1{font-size:20px;margin:0 0 4px}header p{margin:0;opacity:.85;font-size:12px}
+main{display:grid;grid-template-columns:minmax(320px,430px) minmax(450px,1fr);gap:20px;max-width:1200px;margin:auto;padding:20px;align-items:start}
+.panel{background:white;border:1px solid #d7e0db;border-radius:12px;padding:18px}.panel h2{font-size:16px;margin:0 0 14px}
+label{display:block;font-weight:650;margin:12px 0 5px}input[type=file],input[type=text]{display:block;width:100%;font:inherit;font-size:12px;padding:8px;border:1px solid #ced8d2;border-radius:6px;background:#f7f9f7}
+button{border:1px solid #b8c9bf;background:#fff;color:#173f3b;padding:9px 12px;border-radius:7px;font:inherit;cursor:pointer}button:disabled{opacity:.4;cursor:default}
+button.primary{background:#245d50;color:white;border-color:#245d50}.buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.metadata{font:11px/1.6 ui-monospace,monospace;overflow-wrap:anywhere;background:#f5f7f5;border-radius:6px;padding:10px;white-space:pre-wrap;margin-top:14px}
+#status{font-weight:650;margin:14px 0 6px;min-height:24px}#progressText{font-size:12px;min-height:36px;color:#4d6259}progress{width:100%;height:14px;accent-color:#245d50}
+#log{white-space:pre-wrap;overflow:auto;max-height:220px;font:11px/1.5 ui-monospace,monospace;border-top:1px solid #e0e7e2;padding-top:10px}
+.preview{overflow:auto;padding:0 0 18px}.viewport-label{font-size:12px;font-weight:650;color:#355749;margin:0 0 8px}.frame-shell{display:inline-block;background:#fff;box-shadow:0 4px 22px #102e2520;border-radius:4px;border:1px solid #bacdc2;line-height:0}
+iframe{display:block;box-sizing:content-box;width:390px;height:844px;border:0;background:white}.note{font-size:12px;color:#61736a;margin:12px 0 0}
+.error{color:#a53525}details{margin-top:14px;font-size:12px}details ul{padding-left:20px;margin-bottom:0}
+@media(max-width:900px){main{display:block;padding:12px}.panel{margin-bottom:14px}.preview{min-width:450px}}
+</style>
+</head>
+<body>
+<header><h1>読書HTMLの実表示検査</h1><p>3画面幅 × 8文字サイズを実際に表示し、全読書ページの見出し・本文・図版を記録します。</p></header>
+<main>
+<section class="panel">
+<h2>1. 検査する2ファイル</h2>
+<label for="htmlFile">検査する読書HTML</label><input id="htmlFile" type="file" accept=".html,.htm,text/html">
+<label for="modelFile">同じ版の reader_logical_stream.json</label><input id="modelFile" type="file" accept=".json,application/json">
+<div class="buttons"><button id="loadButton" class="primary">2ファイルを読み込む</button></div>
+<label for="headingQuery">表示する見出し（任意）</label><input id="headingQuery" type="text" placeholder="見出しの文字を入力" autocomplete="off">
+<div class="buttons"><button id="previewHeadingButton" disabled>見出しを表示</button></div>
+<div id="fileInfo" class="metadata">ファイル未読込</div>
+<h2 style="margin-top:22px">2. 全24条件を観測</h2>
+<div class="buttons"><button id="runButton" class="primary" disabled>24条件の全ページを検査</button><button id="stopButton" disabled>中止</button></div>
+<p id="status" role="status" aria-live="polite">ファイルを選んでください。</p>
+<progress id="progress" max="24" value="0"></progress><p id="progressText"></p>
+<div class="buttons"><button id="downloadObservationsButton" disabled>見出し観測JSONを保存</button><button id="downloadReportButton" disabled>全体検査JSONを保存</button><button id="downloadPlanButton">24条件の計画を保存</button></div>
+<p class="note">選択した2ファイルをこの画面内で検査します。この検査コードはファイルをサーバーへ送信しません。ReaderV11の検査APIに対応します。原本校正の真偽、実際のiPhone、配布URLの到達性は合格にしません。</p>
+<details><summary>観測内容</summary><ul><li>HTMLとモデルの実ファイルからSHA-256を計算し、モデルがHTML内のものと一致することを確認。</li><li>320×740、390×844、430×930で、それぞれ16・18・20・22・24・26・28・30px。</li><li>実際のDOMから見出し文字・階層・位置・computed CSSを採取。本文をモデル全文と照合。</li><li>文字の欠け、図版の全体表示、横書き説明、説明送り中の画像DOMと座標の固定を検査。</li></ul></details>
+<pre id="log"></pre>
+</section>
+<section class="preview"><p id="viewportLabel" class="viewport-label">読書画面 390 × 844</p><div class="frame-shell"><iframe id="readerFrame" title="検査対象の読書HTML"></iframe></div></section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const $=id=>document.getElementById(id),frame=$('readerFrame');
+  const viewports=[[320,740],[390,844],[430,930]],fonts=[16,18,20,22,24,26,28,30];
+  const plan=viewports.flatMap(([w,h])=>fonts.map(font=>({id:`${w}x${h}-font${font}`,viewport_width:w,viewport_height:h,body_font_px:font})));
+  let loaded=null,running=false,stopRequested=false,report=null,observations=null,loadSerial=0;
+  const live={phase:'awaiting_files',condition:null,page_index:null,page_count:null,completed_conditions:0,issue_count:0,last_error:null};
+  const logs=[];
+  const log=message=>{logs.push(new Date().toISOString().slice(11,19)+' '+message);$('log').textContent=logs.slice(-100).join('\n');};
+  const setStatus=(message,error=false)=>{$('status').textContent=message;$('status').classList.toggle('error',error);};
+  const require=(condition,message)=>{if(!condition)throw Error(message);};
+  const cp=text=>Array.from(text);
+  function canonical(value){
+    if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';
+    if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+canonical(value[key])).join(',')+'}';
+    return JSON.stringify(value);
+  }
+  async function sha256(bytes){
+    require(!!crypto.subtle,'このブラウザーではSHA-256を計算できません。検査を開始しません。');
+    const hash=await crypto.subtle.digest('SHA-256',bytes);
+    return Array.from(new Uint8Array(hash),value=>value.toString(16).padStart(2,'0')).join('');
+  }
+  function readBytes(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error||Error('ファイル読込失敗'));reader.readAsArrayBuffer(file);});}
+  function withTimeout(promise,ms,label){return new Promise((resolve,reject)=>{const id=setTimeout(()=>reject(Error(label+'の待機が時間切れになりました')),ms);Promise.resolve(promise).then(value=>{clearTimeout(id);resolve(value);},error=>{clearTimeout(id);reject(error);});});}
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const animationFrame=win=>new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;resolve();};win.requestAnimationFrame(finish);setTimeout(finish,80);});
+  const reader=()=>frame.contentWindow.ReaderV11||frame.contentWindow.ReaderV8;
+  function controls(){
+    $('loadButton').disabled=running;$('htmlFile').disabled=running;$('modelFile').disabled=running;$('headingQuery').disabled=running;
+    $('runButton').disabled=running||!loaded;$('previewHeadingButton').disabled=running||!loaded;$('stopButton').disabled=!running;
+    $('downloadObservationsButton').disabled=!observations;$('downloadReportButton').disabled=!report;
+    frame.style.pointerEvents=running?'none':'auto';
+  }
+  function download(value,name){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+  function viewport(w,h){frame.style.width=w+'px';frame.style.height=h+'px';$('viewportLabel').textContent=`読書画面 ${w} × ${h}`;}
+  async function configure(condition){
+    viewport(condition.viewport_width,condition.viewport_height);
+    // Allow the reader's existing resize debounce to complete, then measure the
+    // actual iframe viewport. A CSS declaration alone is never the observation.
+    await sleep(180);const win=frame.contentWindow,R=reader();
+    require(win.innerWidth===condition.viewport_width&&win.innerHeight===condition.viewport_height,'指定したiframeビューポートの実寸と一致しません');
+    R.setMode('read');R.setFont(condition.body_font_px);await Promise.resolve(win.document.fonts?.ready);R.goto(0);await animationFrame(win);
+    require(!win.readerLayoutError,'読書エンジンが組版エラーを報告しています: '+win.readerLayoutError);
+    require(R.position().font===condition.body_font_px,'文字サイズ操作が反映されません');
+    return R;
+  }
+  async function loadFiles(){
+    const htmlFile=$('htmlFile').files[0],modelFile=$('modelFile').files[0];require(htmlFile&&modelFile,'HTMLとモデルの両方を選んでください。');
+    const serial=++loadSerial;loaded=null;report=null;observations=null;controls();live.phase='loading';setStatus('ファイルの実バイトを読み込み、SHA-256を計算しています。');
+    const [htmlBytes,modelBytes]=await Promise.all([readBytes(htmlFile),readBytes(modelFile)]);
+    const [htmlSha,modelFileSha]=await Promise.all([sha256(htmlBytes),sha256(modelBytes)]);
+    const decoder=new TextDecoder('utf-8',{fatal:true}),htmlText=decoder.decode(htmlBytes),model=JSON.parse(decoder.decode(modelBytes));
+    require(model.model_schema==='reader-logical-stream-v1'&&Array.isArray(model.layout_events)&&Array.isArray(model.segments),'選択したJSONは読書論理モデルではありません。');
+    // The heading gate binds the canonical model, while the file receipt binds
+    // the exact selected JSON bytes. Keep both meanings separate.
+    const modelSha=await sha256(new TextEncoder().encode(canonical(model)));
+    const inventorySha=model.heading_inventory_binding?.inventory_sha256,approvalSha=model.heading_inventory_binding?.approval_sha256;
+    require([inventorySha,approvalSha].every(value=>/^[0-9a-f]{64}$/.test(value||'')),'モデルに原本見出し台帳・独立承認のSHAがありません。');
+    const ready=new Promise((resolve,reject)=>{frame.onload=()=>resolve();frame.onerror=()=>reject(Error('iframeの読込に失敗しました'));});
+    viewport(390,844);frame.srcdoc=htmlText;await withTimeout(ready,120000,'読書HTML');
+    const win=frame.contentWindow;await withTimeout(win.readerReady,120000,'読書ページの初期組版');
+    require(serial===loadSerial,'読み込むファイルが切り替わりました');
+    const R=reader();require(R&&typeof R.pageState==='function'&&typeof R.probeRoot==='function'&&win.HeadingDOMProbe,'v11読書APIと実DOM観測器がありません。');
+    require(!win.readerLayoutError,'初期組版が失敗しました: '+win.readerLayoutError);
+    require(canonical(win.readerVerifiedStructure.model)===canonical(model),'HTML内のモデルが選択したモデルJSONと一致しません。');
+    require(R.pageState().pageCount>0,'実際の読書ページが作られていません。');
+    loaded={model,binding:{html_sha256:htmlSha,model_sha256:modelSha,inventory_sha256:inventorySha,approval_sha256:approvalSha},html_name:htmlFile.name,model_name:modelFile.name,html_bytes:htmlBytes.byteLength,model_bytes:modelBytes.byteLength,model_file_sha256:modelFileSha};
+    $('fileInfo').textContent=`HTML: ${htmlFile.name}\nファイルSHA-256: ${htmlSha}\n\nMODEL: ${modelFile.name}\nファイルSHA-256: ${modelFileSha}\n正規化モデルSHA-256: ${modelSha}\n\n原本見出し台帳: ${inventorySha}\n独立承認: ${approvalSha}`;
+    live.phase='ready';live.last_error=null;setStatus('同じ版のHTMLとモデルを読み込みました。');log('読込完了・モデル全文一致・実読書ページ '+R.pageState().pageCount);controls();
+  }
+  const rect=element=>{const r=element.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+  const positive=r=>r&&r.width>0&&r.height>0;
+  const inside=(a,b,tolerance=1.5)=>a.left>=b.left-tolerance&&a.top>=b.top-tolerance&&a.right<=b.right+tolerance&&a.bottom<=b.bottom+tolerance;
+  const intersect=(a,b)=>({left:Math.max(a.left,b.left),top:Math.max(a.top,b.top),right:Math.min(a.right,b.right),bottom:Math.min(a.bottom,b.bottom)});
+  function baseText(element){const clone=element.cloneNode(true);clone.querySelectorAll('rt,rp').forEach(node=>node.remove());return clone.textContent;}
+  function textVisibilityIssues(root,win){
+    const issues=[],rootRect=rect(root),walker=win.document.createTreeWalker(root,win.NodeFilter.SHOW_TEXT);
+    for(let node=walker.nextNode();node;node=walker.nextNode()){
+      if(!node.nodeValue.trim()||node.parentElement.closest('rt,rp,script,style'))continue;
+      let clip={...rootRect},hidden=false;
+      for(let element=node.parentElement;element&&element.nodeType===1;element=element.parentElement){
+        const css=win.getComputedStyle(element);
+        if(css.display==='none'||css.visibility!=='visible'||Number(css.opacity)<=0||element.hidden)hidden=true;
+        const box=rect(element);
+        if(css.overflowX!=='visible'){clip.left=Math.max(clip.left,box.left);clip.right=Math.min(clip.right,box.right);}
+        if(css.overflowY!=='visible'){clip.top=Math.max(clip.top,box.top);clip.bottom=Math.min(clip.bottom,box.bottom);}
+        if(element===root)break;
+      }
+      clip=intersect(clip,{left:0,top:0,right:win.innerWidth,bottom:win.innerHeight});
+      const range=win.document.createRange();range.selectNodeContents(node);const rects=Array.from(range.getClientRects()).filter(r=>r.width>0&&r.height>0);
+      if(hidden||!rects.length||rects.some(r=>!inside(r,clip)))issues.push('文字が非表示または表示領域から欠けています: '+node.nodeValue.slice(0,36));
+    }
+    return issues;
+  }
+  async function waitForImages(win){
+    for(const image of win.document.querySelectorAll('#readingStage img')){
+      if(image.decode)await withTimeout(image.decode(),30000,'原本画像のデコード');
+      require(image.complete&&image.naturalWidth>0&&image.naturalHeight>0,'原本画像が実際に読み込まれていません');
+    }
+  }
+  function newBodyCheck(model){return {expected:new Map(model.segments.map(row=>[row.id,row])),coverage:new Map(),order:[],observed_char_count:0,fragments:[]};}
+  function inspectBodies(root,check,pageIndex,issues){
+    for(const node of root.querySelectorAll('[data-body-id]')){
+      const id=node.dataset.bodyId,from=Number(node.dataset.bodyFrom),to=Number(node.dataset.bodyTo),text=baseText(node),source=check.expected.get(id),points=cp(text);
+      if(!source||!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<=from){issues.push('本文DOMのID・コードポイント位置が不正: '+id);continue;}
+      if(from!==(check.coverage.get(id)||0)||to-from!==points.length||cp(source.text).slice(from,to).join('')!==text)issues.push('実表示本文の欠落・重複・文字変更: '+id+' '+from+'–'+to);
+      if(Number(node.dataset.logicalFrom)!==source.logical_start_offset+from||Number(node.dataset.logicalTo)!==source.logical_start_offset+to)issues.push('実表示本文の全体位置がモデルと不一致: '+id);
+      check.coverage.set(id,to);check.observed_char_count+=points.length;if(check.order.at(-1)!==id)check.order.push(id);
+      check.fragments.push({page_index:pageIndex,body_id:id,start:from,end:to,text});
+    }
+  }
+  function finishBodies(check,model,issues){
+    for(const[id,source]of check.expected)if(check.coverage.get(id)!==cp(source.text).length)issues.push('全ページ観測後に本文末尾が不足: '+id);
+    if(JSON.stringify(check.order)!==JSON.stringify(model.segments.map(row=>row.id)))issues.push('実表示された本文ブロックの読順がモデルと不一致');
+    if(check.observed_char_count!==model.body_char_count)issues.push('実表示された本文総字数がモデルと不一致');
+  }
+  function inspectFigure(win,R,page,previous,nodeIds,nodeCounter){
+    const stage=win.document.getElementById('readingStage'),root=R.probeRoot(),image=stage.querySelector('img'),issues=[];
+    if(!image)return {record:null,previous:null};
+    if(!nodeIds.has(image))nodeIds.set(image,++nodeCounter.value);
+    if(page.kind==='original'){
+      const imageRect=rect(image),rootRect=rect(root);
+      if(!positive(imageRect)||!inside(imageRect,rootRect))issues.push('原本ページ画像が読書枠から欠けています');
+      return {record:{page_index:R.pageState().pageIndex,kind:'original',scan:page.scan,image_node:nodeIds.get(image),natural_width:image.naturalWidth,natural_height:image.naturalHeight,image_rect:imageRect,issues},previous:null};
+    }
+    const inner=stage.querySelector('.figure-inner'),frameNode=stage.querySelector('.figure-frame'),caption=stage.querySelector('.figure-caption');
+    require(inner&&frameNode&&caption,'図版の実表示DOMが不足しています');
+    const innerRect=rect(inner),frameRect=rect(frameNode),rootRect=rect(root),imageRect=rect(image),key=stage.dataset.figureKey;
+    let crop;try{crop=JSON.parse(inner.dataset.crop);}catch(_){crop=null;}
+    if(!Array.isArray(crop)||crop.length!==4||!crop.every(Number.isFinite)||crop[0]<0||crop[1]<0||crop[2]<=0||crop[3]<=0||crop[0]+crop[2]>image.naturalWidth||crop[1]+crop[3]>image.naturalHeight)issues.push('図版の原本切出し座標が画像外または不正です');
+    if(!positive(innerRect)||!inside(innerRect,frameRect)||!inside(innerRect,rootRect))issues.push('図版の表示枠全体が画面内に収まっていません');
+    if(crop){
+      const scale=innerRect.width/crop[2];
+      if(Math.abs(innerRect.height-crop[3]*scale)>1.5||Math.abs(imageRect.width-image.naturalWidth*scale)>1.5||Math.abs(imageRect.height-image.naturalHeight*scale)>1.5||Math.abs(imageRect.left-(innerRect.left-crop[0]*scale))>1.5||Math.abs(imageRect.top-(innerRect.top-crop[1]*scale))>1.5)issues.push('図版全域の縮尺・原点と実画像位置が一致しません');
+    }
+    const mode=win.getComputedStyle(caption).writingMode;
+    if(mode!=='horizontal-tb')issues.push('図版説明が横書きではありません');
+    for(const node of stage.querySelectorAll('.ws-figure-title,.ws-figure-caption-label'))if(win.getComputedStyle(node).writingMode!=='horizontal-tb')issues.push('図題または説明ラベルが横書きではありません');
+    let fixedCheck='first_caption_page';
+    if(previous&&previous.key===key){
+      fixedCheck='same_dom_and_rectangles';
+      if(previous.image!==image||['left','top','right','bottom'].some(k=>Math.abs(previous.inner[k]-innerRect[k])>.5)||previous.src!==image.src){fixedCheck='failed';issues.push('説明ページ送りで画像DOM・位置・サイズ・原画像が変わりました');}
+    }
+    const record={page_index:R.pageState().pageIndex,kind:'figure',figure_id:page.figureId,unit_id:page.unitId,image_node:nodeIds.get(image),crop,source_sha256:inner.dataset.sourceSha256,natural_width:image.naturalWidth,natural_height:image.naturalHeight,frame_rect:frameRect,inner_rect:innerRect,image_rect:imageRect,caption_writing_mode:mode,caption_font_px:parseFloat(win.getComputedStyle(caption).fontSize),fixed_caption_image_check:fixedCheck,issues};
+    return {record,previous:{key,image,src:image.src,inner:innerRect}};
+  }
+  async function runAll(){
+    require(loaded&&!running,'検査対象を読み込んでください');running=true;stopRequested=false;report=null;observations=null;controls();live.phase='running';live.completed_conditions=0;live.issue_count=0;live.last_error=null;$('progress').value=0;setStatus('全ページの実表示を観測しています。');
+    const win=frame.contentWindow,R=reader(),session=win.HeadingDOMProbe.createSession(loaded.binding,plan),started=new Date().toISOString(),conditions=[];
+    const nodeIds=new WeakMap(),nodeCounter={value:0};let openCondition=false,failure=null;
+    const saved={font:R.position().font,anchor:R.position().anchor,width:win.innerWidth,height:win.innerHeight};
+    try{
+      require(canonical(win.readerVerifiedStructure.model)===canonical(loaded.model),'検査開始前にHTML内モデルが変わりました');
+      for(let ci=0;ci<plan.length;ci++){
+        if(stopRequested)break;
+        const target=plan[ci];await configure(target);const state=R.pageState(),pageCatalog=R.pages(),bodyCheck=newBodyCheck(loaded.model),condition={...target,page_count:state.pageCount,visited_pages:[],body_expected_char_count:loaded.model.body_char_count,body_observed_char_count:0,issues:[],image_pages:[],completed:false};
+        conditions.push(condition);live.condition=target.id;live.page_count=state.pageCount;session.beginCondition(target.id,R.probeRoot(),()=>R.pageState());openCondition=true;let previousFigure=null;
+        for(let pageIndex=0;pageIndex<state.pageCount;pageIndex++){
+          if(stopRequested)break;
+          R.goto(pageIndex);await waitForImages(win);await animationFrame(win);
+          require(R.pageState().pageIndex===pageIndex&&R.pageState().pageCount===state.pageCount,'ページ移動またはページ総数が観測途中で変わりました');
+          session.capturePage();const page=pageCatalog[pageIndex],pageIssues=[],measurement=R.measure();
+          if(measurement.overflow)pageIssues.push('本文または図説の実文字が読書領域からはみ出しています');
+          if(R.visibleText()!==page.text)pageIssues.push('画面の実文字と当該読書ページの文字列が一致しません');
+          pageIssues.push(...textVisibilityIssues(R.probeRoot(),win));inspectBodies(R.probeRoot(),bodyCheck,pageIndex,pageIssues);
+          const figure=inspectFigure(win,R,page,previousFigure,nodeIds,nodeCounter);previousFigure=figure.previous;
+          if(figure.record){condition.image_pages.push(figure.record);pageIssues.push(...figure.record.issues);}
+          condition.visited_pages.push(pageIndex);condition.issues.push(...pageIssues.map(message=>({page_index:pageIndex,message})));
+          live.page_index=pageIndex;live.issue_count+=pageIssues.length;$('progress').value=ci+(pageIndex+1)/state.pageCount;
+          $('progressText').textContent=`${ci+1}/24条件 ${target.id}｜${pageIndex+1}/${state.pageCount}読書ページ｜検出 ${live.issue_count}件`;
+        }
+        session.finishCondition();openCondition=false;condition.completed=condition.visited_pages.length===state.pageCount;
+        if(condition.completed){const bodyIssues=[];finishBodies(bodyCheck,loaded.model,bodyIssues);condition.issues.push(...bodyIssues.map(message=>({page_index:null,message})));live.issue_count+=bodyIssues.length;live.completed_conditions++;}
+        condition.body_observed_char_count=bodyCheck.observed_char_count;condition.body_fragments=bodyCheck.fragments;
+        condition.status=!condition.completed?'incomplete':condition.issues.length?'issues_detected':'runtime_checks_consistent';
+        log(target.id+': '+condition.visited_pages.length+'/'+state.pageCount+' pages, '+condition.issues.length+' issues');
+      }
+    }catch(error){failure=error?.message||String(error);live.last_error=failure;log('STOP: '+failure);}
+    finally{
+      if(openCondition){try{session.finishCondition();}catch(error){failure=failure||String(error);}}
+      observations=session.exportObservations();
+      report={schema:'reader-browser-qa-v1',status:failure?'stopped_on_error':stopRequested?'interrupted':live.completed_conditions===24?'observations_collected':'incomplete',started_at:started,finished_at:new Date().toISOString(),engine_version:R.version,user_agent:win.navigator.userAgent,device_pixel_ratio:win.devicePixelRatio,files:{html:{name:loaded.html_name,bytes:loaded.html_bytes,sha256:loaded.binding.html_sha256},model:{name:loaded.model_name,bytes:loaded.model_bytes,sha256:loaded.model_file_sha256,canonical_sha256:loaded.binding.model_sha256}},binding:loaded.binding,condition_plan:plan,completed_conditions:live.completed_conditions,issue_count:live.issue_count,fatal_error:failure,conditions,heading_observations:observations,heading_audit_python:'not_run',source_review_truth_authenticated:false,iphone_real_device_test:'not_run',public_url_access_test:'not_run'};
+      live.phase=report.status;running=false;controls();
+      setStatus(failure?'検査を停止しました：'+failure:stopRequested?'検査を中止しました。未観測部分が残っています。':`${live.completed_conditions}/24条件の観測が完了しました。検出 ${live.issue_count}件。`,!!failure||live.issue_count>0);
+      try{viewport(saved.width,saved.height);await sleep(180);R.setFont(saved.font);if(saved.anchor)R.restoreAnchor(saved.anchor);}catch(error){log('読書位置の復帰: '+String(error));}
+    }
+  }
+  async function previewHeading(){
+    require(loaded&&!running,'ファイル読込後に表示してください');
+    const query=$('headingQuery').value.trim();require(query,'表示する見出しを入力してください');
+    await configure({viewport_width:390,viewport_height:844,body_font_px:20});const R=reader();
+    const headings=loaded.model.layout_events.filter(event=>event.type==='heading');
+    const exact=headings.filter(event=>event.text===query),matches=exact.length?exact:headings.filter(event=>event.text.includes(query));
+    require(matches.length>0,'一致する見出しがありません');require(matches.length===1,'複数の見出しが一致します。見出しの文字を詳しく入力してください');
+    const heading=matches[0],unit=R.units().find(entry=>entry.segments.some(segment=>segment.headingId===heading.heading_id));require(unit,'見出しに対応する実表示単位がありません');
+    const start=unit.segments.find(segment=>segment.headingId===heading.heading_id).start,index=R.pages().findIndex(page=>page.unitId===unit.id&&page.start<=start&&page.end>start);require(index>=0,'見出しを含む実読書ページがありません');
+    R.goto(index);await animationFrame(frame.contentWindow);setStatus('「'+heading.text+'」を表示しています。読書 '+(index+1)+' / '+R.pageState().pageCount);log('Heading preview: actual page '+(index+1));
+  }
+  const clicked=handler=>async()=>{try{await handler();}catch(error){live.last_error=error?.message||String(error);live.phase='error';setStatus(live.last_error,true);log('ERROR: '+live.last_error);controls();}};
+  $('loadButton').addEventListener('click',clicked(loadFiles));$('runButton').addEventListener('click',clicked(runAll));$('previewHeadingButton').addEventListener('click',clicked(previewHeading));
+  $('stopButton').addEventListener('click',()=>{stopRequested=true;setStatus('現在のページの観測後に停止します。');});
+  $('downloadObservationsButton').addEventListener('click',()=>download(observations,'reader_heading_dom_observations.json'));
+  $('downloadReportButton').addEventListener('click',()=>download(report,'reader_browser_qa.json'));
+  $('downloadPlanButton').addEventListener('click',()=>download(plan,'reader_condition_plan.json'));
+  // Read-only access for the operator's browser inspector. Test actions remain
+  // user-initiated UI buttons; observations are collected from the real iframe.
+  window.ReaderQAHarness=Object.freeze({get state(){return JSON.parse(JSON.stringify(live));},get report(){return report;},get observations(){return observations;},get plan(){return JSON.parse(JSON.stringify(plan));}});
+  controls();
+})();
+</script>
+</body>
+</html>
