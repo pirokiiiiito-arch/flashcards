@@ -92,6 +92,42 @@ node tools/reader-private-pipeline.cjs init-resolved PRIVATE/book.html PRIVATE/b
 
 `source_ready_for_ocr` は原本所在とバイト一致の**限定検査**であり、原本の独立全字照合・60項目の合格・Chrome配信・iPhone実機の成功は意味しない。再アップロードを依頼する前に既知ID、正規マウント、直接一覧のページ送り、ZIP形式の変種、他の許可された経路を確認し、発見できないときは状況を `未確認` と報告する。
 
+### 保存済みの範囲原本ZIPを使う場合
+
+原本全体 ZIP の実 bytes が未取得でも、以前に無加工で保存した対象範囲 ZIP を
+既知の別 ID から取得できる場合は、その ZIP を独立した対象原本として検査できる。
+全体 ZIP の ID、サイズ、画像数を範囲 ZIP の値へ混ぜず、親原本の metadata と
+取得・読取の状態を別の PRIVATE 来歴に残す。親が未取得なら ZIP 全体 SHA は未検証のまま。
+ZIP を新しく組み替えたり、ダミー画像で元の ordinal を埋めたりして検査を通さない。
+
+この経路は `scanMapping` を明示したときだけ有効で、未指定の既存 ordinal 方式は変えない。
+たとえば実際の archiveScanRange が 20〜41、対象が 21〜40 なら `expected.imageCount` は
+**実在する22枚**とし、`entries` に 20〜41 の22件を ZIP 内順序どおり省略せず指定する。
+各 `entryName` は階層を含む実 ZIP 名と完全一致させる。
+
+```json
+{
+  "schema": "reader-source-scan-map-v1",
+  "archiveScanRange": [20, 22],
+  "entries": [
+    {"scan": 20, "entryName": "scan_020.jpg"},
+    {"scan": 21, "entryName": "scan_021.jpg"},
+    {"scan": 22, "entryName": "scan_022.jpg"}
+  ]
+}
+```
+
+上は3枚の構文例であり、`snapshot.scanMapping` に置く。実作業には省略のない全件の対応を使う。
+`expected.imageSha256` には**対象範囲だけの全 SHA**を、既存の独立原本台帳から与える。
+新 HTML 自身のハッシュ欄を独立台帳に読み替えない。重複、欠落、余剰、非連番、
+範囲外、実 ZIP と名前・順序が異なる対応、SHA 不足・不一致はすべて停止する。
+無効な `scanMapping` を指定しても既存 ordinal 方式へ自動的に戻さない。
+
+検査成功は取得した ZIP の SHA・実画像数・対象画像 SHA の限定検査である。
+`sourceScope=downloaded_archive_only`、`upstreamArchiveBytesVerified=false` を維持し、
+全体原本の検証、校正、既存60項目、Drive の現行 HTML 読戻し、公開、実機確認へ昇格させない。
+後段の `init-resolved`、配布・公開ゲートは従来どおり実行する。
+
 ## 他の書籍でも同じ校正ループを完了できる条件（追加の61項目ではない）
 
 書籍の本文と画像の構成に応じ、[再校正プロファイル・状態遷移](REPAIR_PROFILES_AND_STATES.md) を使用する。

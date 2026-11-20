@@ -19,6 +19,64 @@ SCHEMA = 'reader-source-discovery-input-v1'
 REPORT_SCHEMA = 'reader-source-preflight-v1'
 ZIP_MIME = {'application/zip','application/x-zip-compressed','application/x-zip','application/octet-stream'}
 IMAGE_EXT = {'.jpg','.jpeg','.png'}
+MAPPING_SCHEMA = 'reader-source-scan-map-v1'
+
+def explicit_range_infos(mapping: Any, infos: list, total: Any,
+                         book_range: list, expected_images: Any, error) -> list | None:
+    """Verify a complete, ordered mapping for a stored range archive.
+
+    No filename guessing, implicit offset, renumbering or ordinal fallback is
+    allowed. Every image member (including boundary scans) must be accounted for.
+    Target-page hashes must come from a separately preserved source-image index.
+    """
+    valid=True
+    def reject(reason):
+        nonlocal valid
+        valid=False;error(reason)
+    if not isinstance(mapping,dict) or mapping.get('schema')!=MAPPING_SCHEMA:
+        reject('SCAN_MAPPING_SCHEMA_INVALID');return None
+    archive_range=mapping.get('archiveScanRange')
+    if (not isinstance(archive_range,list) or len(archive_range)!=2 or
+            not all(isinstance(n,int) and not isinstance(n,bool) for n in archive_range) or
+            archive_range[0]<1 or archive_range[1]<archive_range[0]):
+        reject('SCAN_MAPPING_ARCHIVE_RANGE_INVALID');return None
+    first,last=archive_range
+    if last-first+1!=len(infos) or total!=len(infos):
+        reject('SCAN_MAPPING_ARCHIVE_COUNT_MISMATCH')
+    start,end=book_range
+    if start<first or end>last:
+        reject('SCAN_MAPPING_TARGET_RANGE_OUTSIDE_ARCHIVE')
+    entries=mapping.get('entries')
+    if not isinstance(entries,list):
+        reject('SCAN_MAPPING_ENTRIES_REQUIRED');return None
+    if len(entries)!=len(infos):reject('SCAN_MAPPING_ENTRY_COUNT_MISMATCH')
+    scans=[];names=[]
+    for entry in entries:
+        if not isinstance(entry,dict):
+            reject('SCAN_MAPPING_ENTRY_INVALID');continue
+        scan=entry.get('scan');name=entry.get('entryName')
+        if not isinstance(scan,int) or isinstance(scan,bool):
+            reject('SCAN_MAPPING_SCAN_INVALID');continue
+        if not isinstance(name,str) or not name:
+            reject('SCAN_MAPPING_ENTRY_NAME_INVALID');continue
+        scans.append(scan);names.append(name)
+        if scan<first or scan>last:reject('SCAN_MAPPING_SCAN_OUTSIDE_ARCHIVE')
+    if len(set(scans))!=len(scans):reject('SCAN_MAPPING_DUPLICATE_SCAN')
+    if len(set(names))!=len(names):reject('SCAN_MAPPING_DUPLICATE_ENTRY')
+    if len(scans)!=last-first+1 or any(scan!=first+i for i,scan in enumerate(scans)):
+        reject('SCAN_MAPPING_SCAN_SEQUENCE_MISMATCH')
+    actual_names=[i.filename for i in infos]
+    if set(names)!=set(actual_names):reject('SCAN_MAPPING_MEMBER_SET_MISMATCH')
+    elif names!=actual_names:reject('SCAN_MAPPING_MEMBER_ORDER_MISMATCH')
+    keys={str(n) for n in range(start,end+1)}
+    if not isinstance(expected_images,dict) or set(expected_images)!=keys:
+        reject('MAPPED_SOURCE_EXACT_PINNED_PAGE_HASHES_REQUIRED')
+    elif any(not isinstance(h,str) or len(h)!=64 or
+             any(c not in '0123456789abcdef' for c in h)
+             for h in expected_images.values()):
+        reject('MAPPED_SOURCE_PINNED_PAGE_HASH_INVALID')
+    if not valid:return None
+    return [(scan,info) for scan,info in zip(scans,infos) if start<=scan<=end]
 
 def sha256_file(path: pathlib.Path) -> str:
     h=hashlib.sha256()
@@ -60,6 +118,9 @@ def process(snapshot: dict, archive_path: pathlib.Path | None) -> dict:
     listing=snapshot.get('folderListing') or {}
     lookups=snapshot.get('lookups') or {}
     searches=lookups.get('searches') or []
+    # Presence opts in. Invalid/null mappings fail closed, never fall back.
+    mapped='scanMapping' in snapshot
+    mapping=snapshot.get('scanMapping')
     if not isinstance(book_id,str) or len(book_id)<3:error('BOOK_ID_REQUIRED')
     if (not isinstance(book_range,list) or len(book_range)!=2 or
             not all(isinstance(i,int) and not isinstance(i,bool) for i in book_range) or
@@ -75,7 +136,8 @@ def process(snapshot: dict, archive_path: pathlib.Path | None) -> dict:
     total=exp.get('imageCount')
     if not file_id and not source_name:error('FILE_ID_OR_EXACT_SOURCE_NAME_REQUIRED')
     if not folder_id:error('EXPECTED_FOLDER_ID_REQUIRED')
-    if not isinstance(total,int) or isinstance(total,bool) or total < book_range[1]:error('IMAGE_COUNT_EXPECTATION_REQUIRED')
+    if (not isinstance(total,int) or isinstance(total,bool) or
+            total < (1 if mapped else book_range[1])):error('IMAGE_COUNT_EXPECTATION_REQUIRED')
     if not isinstance(source_hash,str) or len(source_hash)!=64 or any(c not in '0123456789abcdef' for c in source_hash):
         error('INDEPENDENTLY_RECORDED_SOURCE_HASH_REQUIRED')
     # A failed search is not an absence finding.
@@ -116,6 +178,7 @@ def process(snapshot: dict, archive_path: pathlib.Path | None) -> dict:
     archive_sha=None
     count=None
     image_manifest=[]
+    mapping_verified=False
     if archive_path is None or not archive_path.is_file():
         error('PRIVATE_SOURCE_BYTES_NOT_ACQUIRED')
     else:
@@ -141,8 +204,16 @@ def process(snapshot: dict, archive_path: pathlib.Path | None) -> dict:
                     count=len(infos)
                     if count!=total:error('SOURCE_IMAGE_COUNT_MISMATCH')
                     start,end=book_range
-                    if start>0 and end <= len(infos):
-                        for number,info in enumerate(infos[start-1:end],start):
+                    selected_infos=None
+                    if mapped:
+                        selected_infos=explicit_range_infos(mapping,infos,total,book_range,
+                                                            exp.get('imageSha256'),error)
+                        mapping_verified=selected_infos is not None
+                    elif start>0 and end <= len(infos):
+                        selected_infos=list(enumerate(infos[start-1:end],start))
+                    else:error('REQUIRED_SCAN_RANGE_MISSING')
+                    if selected_infos is not None:
+                        for number,info in selected_infos:
                             h=hashlib.sha256()
                             with z.open(info,'r') as f:
                                 while b:=f.read(1024*1024):h.update(b)
@@ -150,7 +221,7 @@ def process(snapshot: dict, archive_path: pathlib.Path | None) -> dict:
                                 'bytes':info.file_size,
                                 'entryNameSha256':hashlib.sha256(info.filename.encode('utf-8')).hexdigest()})
                         step('ORDERED_SOURCE_RANGE_HASHED')
-                    else:error('REQUIRED_SCAN_RANGE_MISSING')
+                        if mapped:step('EXPLICIT_SCAN_MAPPING_AND_ALL_IMAGE_MEMBERS_CHECKED')
                     expected_images=exp.get('imageSha256')
                     if expected_images is not None:
                         if not isinstance(expected_images,dict):error('EXPECTED_IMAGE_HASHES_INVALID')
@@ -162,12 +233,12 @@ def process(snapshot: dict, archive_path: pathlib.Path | None) -> dict:
                 error('SOURCE_ZIP_READ_FAILURE_'+type(exc).__name__)
     # A direct-listing miss is still 'unresolved', never proof the file does not exist.
     status=('source_ready_for_ocr' if not errors else
-            'blocked' if any(x in errors for x in (
+            'blocked' if any(x.startswith(('SCAN_MAPPING_','MAPPED_SOURCE_')) for x in errors) or any(x in errors for x in (
                 'SOURCE_ARCHIVE_SHA256_MISMATCH','SOURCE_IMAGE_COUNT_MISMATCH',
                 'PINNED_PAGE_SHA256_MISMATCH','INVALID_SOURCE_ZIP_SIGNATURE',
                 'UNSAFE_ZIP_ENTRY_PATH','DUPLICATE_ZIP_ENTRY','ZIP_MEMBER_CRC_INVALID'))
             else 'unresolved')
-    return {'schema':REPORT_SCHEMA,'status':status,'bookId':book_id,'range':book_range,
+    result={'schema':REPORT_SCHEMA,'status':status,'bookId':book_id,'range':book_range,
         'sourceArchiveSha256':archive_sha,
         'sourceArchiveSha256MatchesPinned':archive_sha==source_hash,
         'originalImageCount':count,'rangeImages':image_manifest,
@@ -177,6 +248,19 @@ def process(snapshot: dict, archive_path: pathlib.Path | None) -> dict:
         'canonical60Certified':False,'independentOCRProofreading':'not_run',
         'iphoneDevice':'not_run','requestReupload':False,
         'releaseEligible':False,'checks':steps,'errors':errors,'warnings':warnings}
+    if mapped:
+        result.update({
+            'sourceSelectionMode':'explicit_scan_mapping',
+            'sourceScope':'downloaded_archive_only',
+            'archiveScanRange':mapping.get('archiveScanRange') if isinstance(mapping,dict) else None,
+            'sourceMappingSha256':hashlib.sha256(json.dumps(mapping,sort_keys=True,
+                ensure_ascii=False,separators=(',',':')).encode('utf-8')).hexdigest(),
+            'sourceMappingVerified':mapping_verified and not errors,
+            'targetPageHashesMatchedIndependentIndex':mapping_verified and not errors,
+            # An ancestor ZIP described in the snapshot is metadata provenance,
+            # not an additional archive read or an inherited whole-book PASS.
+            'upstreamArchiveBytesVerified':False})
+    return result
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)

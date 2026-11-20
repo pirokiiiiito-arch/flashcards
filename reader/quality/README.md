@@ -26,6 +26,29 @@
 
 公開前に公開成功を要求せず、実機未実施を実機成功にも読み替えない。旧版を互換目的で維持することは校正合格ではない。未校正版の確認は明示的な依頼と専用preview入口・新規保存が必要で、通常版を置換しない。
 
+## 保存済みの範囲原本 ZIP と全体原本を区別する
+
+全体原本の ZIP 内の順番をスキャン番号として扱う既存方式は維持する。
+保存済みの範囲原本 ZIP を使う場合だけ、PRIVATE の source snapshot に
+`scanMapping.schema: reader-source-scan-map-v1`、`archiveScanRange`、
+全画像の実スキャン番号と正確な ZIP entry 名の対応を明示する。
+ファイル名から番号を推測したり、対象 HTML の番号を付け直して通したりしない。
+
+新方式は ZIP の全 JPEG/PNG を、境界画像を含めて一対一・連番・ZIP 内順序で
+照合する。重複、欠落、余剰、範囲外、名前や順序の不一致、不明な mapping は停止する。
+対象範囲の各画像には、HTML から作り直していない既存の独立原本 SHA 台帳を必須とし、
+実画像 bytes の全件一致を検査する。ZIP 自体の SHA、実画像数、既知 ID と
+実フォルダ一覧の照合も引き続き必要。`init-resolved` は得た対象画像 SHA を
+その HTML の埋込画像と再照合する。
+
+報告の `originalImageCount` と ZIP SHA は、今回実際に取得した範囲 ZIP の値である。
+その親にある全体 ZIP は別の来歴として記録し、metadata のみ確認できた場合は
+`metadata_only`、bytes と SHA は未検証とする。範囲 ZIP が合格しても、
+全体 ZIP を取得・読取済みにしたり、全書籍の原本照合に格上げしたりしない。
+新方式の報告は `sourceScope: downloaded_archive_only` と
+`upstreamArchiveBytesVerified: false` を保持する。
+具体的な PRIVATE 入力は [制作工程0](BOOK_CREATION_PROCESS.md#保存済みの範囲原本zipを使う場合) を参照。
+
 ## 限界
 
 公開CIは私有の原本を直接読めない。公開記録は私有検査が出したハッシュと判定を結び付けるもので、署名認証や目視実施の証明ではない。原本を本当に確認し、正直な証拠を残す責任は作業者にある。
