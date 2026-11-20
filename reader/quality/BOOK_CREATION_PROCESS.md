@@ -51,7 +51,7 @@ node tools/reader-evidence-gate.cjs PRIVATE/manifest.json device PRIVATE/reports
 ```
 従来の `reader-private-pipeline.cjs plan / verify-plan / complete-plan` と `reader-release-control.cjs check` は引き続き必須。進行判定の新設はそれらを置き換えない。
 
-**未校正プレビューだけは別経路**。利用者から当該SHAの明示的な確認依頼があり、`preview` ゲートと専用 `reader/preview/` の承認が通った場合に限り、未完成と明示して確認用として配布できる。`preview` の成功は `prepare / release / deployed / device` に昇格しない。
+**明示的に受領を依頼された未完成の確認版だけは別経路**。利用者から当該SHAの明示的な確認依頼があり、`preview` ゲートと専用 `reader/preview/` の承認が通った場合に限り、未完成と明示して確認用として配布できる。`preview` の成功は `prepare / release / deployed / device` に昇格しない。
 
 GitHub Pages の公開処理は `tools/reader-verify-pages.cjs` により、承認記録のある読書入口について公開された**実バイト**を確認し、その結果を Actions の `reader-public-delivery-evidence` として残す。検査が失敗・未実施・実行不能なら、URLを「公開確認済み」と報告しない。GitHubソース内にファイルが存在するだけでは配信済みとは限らない。
 
@@ -158,7 +158,7 @@ OCR・文境界・文字組版・対象画面・校正差分を再検査する�
 2. **私有制作**: 原本画像をバイト不変のまま、OCR一次稿→独立原本照合→校正版→原本画像つき読書HTMLを別の私有版に書き出す。未確定箇所は `not_run` / `needs_source_review` / `failed` のまま保持し、推測で補わない。20枚は原本数であり読書画面数を固定しない。
 3. **表示・操作**: WH1実画面、20px/1.50、縦書き右から左、正確なスワイプ／全画面ピンチ／拡大中パン／図版固定／文章逆連結／可変高さ／24条件を**実配布候補**で検査する。原本の全字独立照合、iPhone実機検査、Chromium検査を混同しない。
 4. **Drive保存・読戻し**: `stage` は新規ファイルだけに保存。実際のDriveファイルIDを受取り、同一IDから再取得した内容・SHA256と対象範囲を比較する。修正版は上書きで旧版を失わない。G8-08が未完了なら「配布成功」を宣言しない。
-5. **公開専用Chrome入口**: 利用者から明示された未校正プレビューは、`reader/preview/<book-range>/index.html` の専用ローダーだけをGitHubに置く。原本・OCR本文・JSON原稿は置かない。見える公開データと私有データをハッシュで対応づける。公開の失敗と校正の未完了を別々に報告する。
+5. **公開専用Chrome入口**: 利用者から明示的に受領を依頼された未完成の確認版は、`reader/preview/<book-range>/index.html` の専用ローダーだけをGitHubに置く。原本・OCR本文・JSON原稿は置かない。見える公開データと私有データをハッシュで対応づける。公開の失敗と校正の未完了を別々に報告する。
 6. **書籍制作時の自動点検**: 新規／更新プレビューのプルリクエストで `.github/workflows/reader-book-creation.yml` を自動実行。書籍単位の登録・証跡・公開ローダーハッシュ・60-ID・プレビュー状態・私有データ混入を `node tools/reader-book-preflight.cjs --all` で点検する。単独本の場合 `node tools/reader-book-preflight.cjs BOOK_ID`。これに通ってもOCR／実機の60項目に合格したわけではない。
 7. **品質ゲートと公開用ツリー**: 既存の `reader-release-control.cjs`／`reader-publish-stage.cjs` で全共有資産・既存公開済みファイルの不変性を検証し、承認済みの公開物だけをステージングする。GitHub Pages全体を配信するときも、既存の正常なURLを消さない。公開未承認のファイルを勝手に含めない。
 8. **公開の事後確認**: GitHub Actionsの成功、個別Chrome URLのHTTP 200、ローダーの配信された実バイトのSHA256、Chromeでの私有HTMLの選択・表示を別々に記録する。実機iPhoneの合否は本人による実検査まで `not_run`。必ず **確認用URLを文字列・公開状態付き** で返す。失敗なら未公開と明記し、リンクだけで公開したと称さない。
@@ -199,10 +199,11 @@ OCR・文境界・文字組版・対象画面・校正差分を再検査する�
 前提不足・記録紛失・不一致は**default deny**。
 
 `--mode audit` は不審なOCRを読取専用で検出するが**絶対に納品許可を返さない**。
-`--mode preview` は別の未校正版であり、ユーザーからその版の
-「未校正OCRを確認用として受け取る」という明示的な依頼を受けて記録し、
-私有 preview manifest が一致する場合のみ
-`unverified_preview_only` として扱う。
+`--mode preview` は未完成の確認版であり、対象版と残る検査を開示したうえで
+その版を受け取る明示的な依頼を記録し、私有 preview manifest と同一の
+同意ファイルが一致する場合のみ `unverified_preview_only` として扱う。
+未校正OCRのv1文言条件は維持する。二稿照合済み・全QA未完了のv2は、
+正確な開示に対する実際の肯定短答を保存し、未校正という虚偽の引用を要求しない。
 通常の「作って」「次の20ページ」は preview の許可ではない。
 preview の検査成功も 60項目やiPhone実機の合格ではない。
 
@@ -218,3 +219,8 @@ preview の検査成功も 60項目やiPhone実機の合格ではない。
 禁止する外部権限制御が必要。現状は「公式制作経路は自動ゲート、
 チャット直納品は共通手順でゲート実行」という区別を保持する。
 
+
+
+### 照合済み・全QA未完了の確認版
+
+原本二稿の差分が解消していても、小字の追加原本点検・表示・操作等が残る版は完成ではない。現在の状態と正確な版を先に開示し、その質問に対する実際の肯定返信を同意v2へ結び付ける手順は `RELEASE_PROCESS.md` を参照する。文脈の無い作成/URL依頼を同意に変換せず、未完了をpassedへ書き換えない。既存60 ID・数・順序と通常版基準は変更しない。

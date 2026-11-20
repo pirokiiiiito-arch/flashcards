@@ -392,6 +392,14 @@
       "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/preview/nine-stories-041-060-safe-v4/index.html?import=1",
       "report": "reader/quality/reports/nine-stories-041-060-safe-v4-preview.json",
       "stage": "draft"
+    },
+    {
+      "id": "salinger-nine-stories-shibata-061-080",
+      "entry": "reader/preview/nine-stories-061-080-safe-v1/index.html",
+      "entryBlobSha": "6e17e465a9cf9420de5d1540bdd99bba8d055dee",
+      "url": "https://pirokiiiiito-arch.github.io/flashcards/reader/preview/nine-stories-061-080-safe-v1/index.html?import=1",
+      "report": "reader/quality/reports/nine-stories-061-080-safe-v1-preview.json",
+      "stage": "draft"
     }
   ]
 }

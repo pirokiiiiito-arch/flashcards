@@ -18,7 +18,8 @@ function selectTargets(root,admission=v.receipts){
   if(!/^[a-f0-9]{64}$/.test(expectedSha256))throw Error('BAD_ADMITTED_DIGEST '+book.entry);
   let url;
   try{url=new URL(book.url);}catch(_){throw Error('UNVERIFIED_BOOK_URL '+book.id);}
-  if(url.origin!==ORIGIN||url.pathname!=='/flashcards/'+book.entry||
+  if(url.origin!==ORIGIN||url.pathname!=='/flashcards/'+book.entry||url.username||url.password||url.hash||
+     !['','?import=1'].includes(url.search)||url.toString()!==book.url||
      !/^reader\/[a-zA-Z0-9_./-]+\/index\.html$/.test(book.entry)||book.entry.includes('..'))
    throw Error('BOOK_PUBLIC_URL_DOES_NOT_MATCH_ENTRY '+book.id);
   targets.push({bookId:book.id,entry:book.entry,url:url.toString(),expectedSha256});
@@ -28,13 +29,20 @@ function selectTargets(root,admission=v.receipts){
 }
 async function verifyOne(target,fetcher=fetch,{attempts=4,wait=ms=>new Promise(r=>setTimeout(r,ms))}={}){
  let error='NOT_ATTEMPTED',httpStatus=null,observedSha256=null;
- const url=new URL(target.url);
- url.searchParams.set('_delivery_sha',target.expectedSha256.slice(0,16));
+ // Query changes test a different resource. Fetch exactly the URL that will be issued.
+ // Manual redirect handling preserves the 3xx response for a fail-closed audit.
+ const requestedUrl=target.url,requestMethod='GET',redirectPolicy='manual';
+ let finalUrl=null,redirected=null;
  for(let i=0;i<attempts;i++){
+  httpStatus=null;observedSha256=null;finalUrl=null;redirected=null;
   try{
-   const response=await fetcher(url.toString(),{cache:'no-store',signal:AbortSignal.timeout(15000)});
+   const response=await fetcher(requestedUrl,{method:requestMethod,redirect:redirectPolicy,
+    cache:'no-store',signal:AbortSignal.timeout(15000)});
    httpStatus=response.status;
-   if(response.status!==200){error='HTTP_'+response.status;}
+   finalUrl=response.url||null;redirected=response.redirected;
+   if((response.status>=300&&response.status<400)||response.redirected===true){error='REDIRECT_NOT_ALLOWED';}
+   else if(finalUrl!==requestedUrl||redirected!==false){error='RESPONSE_URL_NOT_EXACT';}
+   else if(response.status!==200){error='HTTP_'+response.status;}
    else{
     const type=response.headers.get('content-type')||'';
     const size=Number(response.headers.get('content-length')||0);
@@ -45,7 +53,8 @@ async function verifyOne(target,fetcher=fetch,{attempts=4,wait=ms=>new Promise(r
      if(buffer.length>1024*1024)error='UNEXPECTED_PUBLIC_ENTRY_SIZE';
      else{
       observedSha256=v.hash(buffer);
-      if(observedSha256===target.expectedSha256)return {...target,status:'verified',httpStatus,observedSha256,attemptsUsed:i+1};
+      if(observedSha256===target.expectedSha256)return {...target,status:'verified',httpStatus,observedSha256,
+       requestMethod,requestedUrl,finalUrl,redirectPolicy,redirected,attemptsUsed:i+1};
       error='PUBLISHED_BYTES_DIFFER_FROM_ADMITTED_FILE';
      }
     }
@@ -53,7 +62,8 @@ async function verifyOne(target,fetcher=fetch,{attempts=4,wait=ms=>new Promise(r
   }catch(e){error='FETCH_FAILED_'+(e?.name||'UnknownError');}
   if(i+1<attempts)await wait(1250*(i+1));
  }
- return {...target,status:'blocked',httpStatus,observedSha256,error,attemptsUsed:attempts};
+ return {...target,status:'blocked',httpStatus,observedSha256,requestMethod,requestedUrl,finalUrl,
+  redirectPolicy,redirected,error,attemptsUsed:attempts};
 }
 async function verifyAll(targets,fetcher=fetch,options={}){
  const records=new Array(targets.length);let cursor=0;

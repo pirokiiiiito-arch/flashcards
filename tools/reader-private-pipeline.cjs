@@ -96,6 +96,37 @@ function withLock(file,fn){
 }
 function correct(file,eventFile){return withLock(file,()=>correctUnsafe(file,eventFile));}
 function build(file){return withLock(file,()=>buildUnsafe(file));}
+function authorizePreview(file,conversationFile,assessmentFile){
+ return withLock(file,()=>{
+  const {root,m}=load(file),before=fs.readFileSync(file),beforeSha=v.hash(before);
+  const conversationBytes=fs.readFileSync(conversationFile),assessmentBytes=fs.readFileSync(assessmentFile);
+  const conversation=JSON.parse(conversationBytes),assessment=JSON.parse(assessmentBytes);
+  // Copy the real evidence verbatim. Its record time is not a fabricated message time.
+  const prefix='review/preview-consent/';
+  const conversationEvidence=write(root,prefix+'conversation-'+v.hash(conversationBytes)+'.json',conversationBytes);
+  const assessmentEvidence=write(root,prefix+'assessment-'+v.hash(assessmentBytes)+'.json',assessmentBytes);
+  const c=require('./reader-preview-consent.cjs');
+  const consent={schema:'reader-preview-consent-v2',bookId:m.bookId,range:m.range,
+   artifactSha256:m.artifact.sha256,loaderSha256:m.loaderSha256,explicit:true,confirmedByUser:true,
+   requestedBy:'user',acceptanceKind:'direct_reply_to_artifact_disclosure',previewOnly:true,normalReleaseAuthorized:false,
+   requestText:conversation.userReplyExact,recordedAt:conversation.recordedAtUTC,timestampMeaning:conversation.timestampMeaning,
+   conversationEvidence,disclosureSha256:c.digest(conversation.assistantDisclosure),assessmentEvidence,
+   reviewState:{...c.STATES},sourceEvidenceDigests:Object.fromEntries(c.SOURCE_KEYS.map(k=>[k,m[k]?.sha256]))};
+  c.validateV2(consent,{subject:{bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,loaderSha256:m.loaderSha256},
+   manifest:m,conversation,assessment,rules:RULES});
+  const consentRef=write(root,prefix+'authorization-'+v.objHash(consent)+'.json',consent);
+  const candidate={...m,previewAuthorization:consentRef};
+  const candidateRef=write(root,'manifest-preview-consent-'+v.objHash(candidate)+'.json',candidate);
+  const checked=v.validateBundle(path.join(root,candidateRef.path),{phase:'preview'});
+  fail(checked.eligible,'PREVIEW_AUTHORIZATION_BLOCKED: '+checked.errors.join('; '));
+  fail(v.hash(fs.readFileSync(file))===beforeSha,'MANIFEST_CHANGED_DURING_AUTHORIZATION');
+  const priorManifest=write(root,'history/manifest-before-preview-consent-'+beforeSha+'.json',before);
+  saveManifest(root,candidate);
+  return {bookId:m.bookId,artifactSha256:m.artifact.sha256,previewAuthorization:consentRef,
+   priorManifest,candidateManifest:candidateRef,sourceEvidenceUnchanged:true,formalChecksUnchanged:true,
+   contentCertified:false,normalReleaseAuthorized:false};
+ });
+}
 function plan(file,request){
  fail(['stage','promote','attach','pages'].includes(request?.operation),'UNKNOWN_DELIVERY_OPERATION');
  const channel=request.channel;fail(['preview','production'].includes(channel),'EXPLICIT_CHANNEL_REQUIRED');
@@ -103,13 +134,13 @@ function plan(file,request){
  const phase=channel==='preview'?'preview':request.operation==='stage'?'prepare':request.operation==='pages'?'release':request.deviceVerified===true?'device':'deployed';
  const result=v.validateBundle(file,{phase});fail(result.eligible,'DELIVERY_BLOCKED: '+result.errors.join('; '));
  fail(request.expectedArtifactSha256===result.subject.artifactSha256,'PLAN_ARTIFACT_CHANGED');
- if(channel==='preview')fail(request.operation!=='promote'&&request.createOnly===true&&!request.normalFileId,'PREVIEW_CANNOT_REPLACE_NORMAL');
+ if(channel==='preview')fail(request.operation!=='promote'&&request.createOnly===true&&!request.normalFileId&&!request.targetFileId,'PREVIEW_CANNOT_REPLACE_NORMAL');
  if(request.operation==='promote')fail(request.targetFileId&&/^[a-f0-9]{64}$/.test(request.expectedCurrentSha256||''),'COMPARE_AND_SWAP_REQUIRED');
  // Managed issue, public Pages and final attachment MUST pass the one central
  // cross-chat ledger and OCR/source gate on the exact original artifact.
  // Only create-only PRIVATE staging is exempt: staging is NOT a delivery.
  let unified=null;
- if(request.operation==='attach'||request.operation==='promote'){
+ if(request.operation==='attach'||request.operation==='promote'||(request.operation==='pages'&&channel==='preview')){
   fail(request.workLedgerFile&&request.sourceProofFile,'SHARED_WORK_LEDGER_AND_SOURCE_PROOF_REQUIRED');
   const {root,m}=load(file);
   const artifact=path.join(root,m.artifact.path);
@@ -125,9 +156,17 @@ function plan(file,request){
    fail(request.driveReadbackFile&&request.driveFileId&&
         v.hash(fs.readFileSync(request.driveReadbackFile))===m.artifact.sha256,
         'UNVERIFIED_PREVIEW_SAME_ID_DRIVE_READBACK_REQUIRED');
+   if(result.authorization?.schema==='reader-preview-consent-v2'){
+    fail(request.driveCompletionFile,'PREVIEW_V2_DRIVE_COMPLETION_REQUIRED');
+    const completion=JSON.parse(fs.readFileSync(request.driveCompletionFile));
+    fail(completion.schema==='reader-delivery-completion-v1'&&completion.artifactSha256===m.artifact.sha256&&
+     completion.targetFileId===request.driveFileId&&/^[a-f0-9]{64}$/.test(completion.planSha256||''),
+     'PREVIEW_V2_SAME_ID_COMPLETION_MISMATCH');
+   }
   }
  }
  return {schema:'reader-delivery-plan-v2',
+  previewAuthorizationSha256:result.authorization?.sha256||null,
   unifiedGateMode:unified?.mode||null,
   unifiedGateArtifactSha256:unified?.artifactSha256||null,
   unifiedWorkLedgerSha256:request.workLedgerFile?v.hash(fs.readFileSync(request.workLedgerFile)):null,operation:request.operation,channel,artifactSha256:result.subject.artifactSha256,subjectSha256:result.subjectSha256,targetFileId:request.targetFileId||null,expectedCurrentSha256:request.expectedCurrentSha256||null,createOnly:request.createOnly===true,phase,postWriteReadbackRequired:true,expiresAt:new Date(Date.now()+15*60*1000).toISOString(),note:'Plan is not upload completion. Connector adapters must check current bytes before writing, then read back the exact target.'};
@@ -139,9 +178,11 @@ function exportChecked(file,out,request){
  fs.mkdirSync(out,{recursive:true,mode:0o700});write(out,p.fileName,b);write(out,'delivery-plan.json',p);return p;
 }
 function issue(file,request,context){
+ if(request?.channel==='preview')fail(request.operation==='pages','PREVIEW_RECEIPT_REQUIRES_PAGES_PLAN');
  const p=plan(file,request),r=v.validateBundle(file,{phase:p.phase});fail(r.eligible,'RECEIPT_BLOCKED');
  fail(context.book?.id===r.subject.bookId&&context.book.entry===context.entry&&context.publicFiles?.[context.entry]===r.subject.loaderSha256&&/^[a-f0-9]{64}$/.test(context.reportSha256||''),'RECEIPT_CONTEXT_MISMATCH');
- const payload={...r,channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,issuedAt:new Date().toISOString(),trustBoundary:'Local evidence attestation, not independent reviewer authentication.'};
+ if(p.channel==='preview')fail(/^reader\/preview\/[A-Za-z0-9_./-]+\/index\.html$/.test(context.entry)&&!context.entry.includes('..')&&context.book.stage==='draft','PREVIEW_RECEIPT_REQUIRES_DRAFT_ROUTE');
+ const payload={...r,...(p.channel==='preview'?{previewProtocol:'reader-immutable-preview-v3'}:{}),channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,issuedAt:new Date().toISOString(),trustBoundary:'Local evidence attestation, not independent reviewer authentication.'};
  return {schema:'reader-local-attestation-v1',payload,digest:v.objHash(payload)};
 }
 function verifyPlan(planFile,artifactFile,currentFile){
@@ -159,6 +200,6 @@ function completePlan(planFile,artifactFile,readbackFile,observedFileId){
  return {schema:'reader-delivery-completion-v1',planSha256:v.hash(fs.readFileSync(planFile)),artifactSha256:p.artifactSha256,targetFileId:observedFileId,completedAt:new Date().toISOString()};
 }
 if(require.main===module){
- const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='init-resolved')r=initResolved(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init-resolved HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX SOURCE_PREFLIGHT_REPORT | (legacy) init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='init-resolved'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
+ const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='init-resolved')r=initResolved(...a);else if(c==='authorize-preview')r=authorizePreview(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init-resolved HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX SOURCE_PREFLIGHT_REPORT | (legacy) init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | authorize-preview MANIFEST CONVERSATION_EVIDENCE ASSESSMENT | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='init-resolved'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
 }
-module.exports={init,initResolved,checkSourcePreflight,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};
+module.exports={init,initResolved,checkSourcePreflight,authorizePreview,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};

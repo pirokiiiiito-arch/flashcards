@@ -3,11 +3,17 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {validate}=require('../tools/reader-work-ledger-validate.cjs');
 const ledger=JSON.parse(fs.readFileSync(path.join(__dirname,'../reader/quality/work-ledger.json')));
-test('central cross-chat ledger contains current unverified 21–60 versions and no OCR',()=>{
+test('central cross-chat ledger preserves unverified 21–80 volumes and validates every metadata-only entry',()=>{
  const r=validate(ledger);assert.deepEqual(r.errors,[]);
  assert.equal(r.qualityIDsPreserved,true);
  assert.equal(r.metadataOnly,true);
- assert.equal(r.entries,2);
+ assert.equal(r.entries,ledger.books.length);
+ for(const range of [[21,40],[41,60],[61,80]]){
+  const book=ledger.books.find(b=>b.range[0]===range[0]&&b.range[1]===range[1]);
+  assert.ok(book,'Missing known volume '+range.join('–'));
+  assert.equal(book.qualityState,'unverified');
+  assert.equal(book.releaseStatus,'blocked');
+ }
 });
 test('known bad OCR cannot be promoted to completed by status-only ledger edits',()=>{
  const l=structuredClone(ledger),b=l.books.find(x=>x.range[0]===41);

@@ -29,7 +29,7 @@
 | release | prepareとG8-08：仮保存の実ファイル再取得一致 | 読書入口を公開するための証拠記録出力 |
 | deployed | releaseとG8-03：対象入口の公開成功・版確認 | 通常版への昇格、検査済み読書版の配布 |
 | device | deployedとG8-04：実際のiPhone Chromeの確認 | 実機確認済みの独立表示 |
-| preview | そのSHAの未校正版について明示的な確認依頼 | 専用preview入口・新規ファイルのみ。通常版置換不可 |
+| preview | そのSHAの未完成状態を開示したうえでの明示的な確認受領依頼 | 専用preview入口・新規ファイルのみ。通常版置換不可 |
 
 公開前に公開成功を要求しない。Driveの最初の読戻しは仮保存で実行する。iPhone未実施だけでは制作側完成を止めないが、既知の失敗を「未実施」と扱わない。prepareの出力名はSTAGING-NOT-RELEASEDであり、配布済み完成版ではない。
 
@@ -114,3 +114,22 @@ GitHub Pagesは全資産を含むため、共有本棚の不許可変更があ�
 テンプレートは公開可能なUIプログラムと架空の見本データのみ。実際の書籍本文・原本画像・OCR・認証情報をこれらのGitHubファイルへ書き込まない。制作時は非公開の元データから読書用データを供給し、既存60項目・私有原本照合・公開資格審査を省略しない。
 
 Pagesワークフローは tests/reader-standard-templates.test.cjs を実行する。**このテストの合格は実書籍の校正・公開成功やiPhone実機合格を意味しない。** 実書籍の完成状態と保存先は本ごとに従来どおり記録する。
+
+
+## 状態を正しく示す確認受領同意 v2
+
+`reader-preview-consent-v2` は、独立二稿の照合済みで全原本QA・60項目・表示・実機が未完了の確認版を扱う。`two_independent_transcriptions_reconciled` と `fullSourceQA:pending` を同時に保持し、原本QA全体や通常版の合格としない。既存の未校正OCR同意v1は変更しない。
+
+当該SHA・範囲と残る検査を開示した直前の質問と、利用者の実際の肯定短答をPRIVATE原記録として保存する。短い「確認用url」を別の文章へ作り替えない。記録作成日時をメッセージ送信日時と偽らない。否定、対象表示の相違、開示欠落、別SHA、異なるconsentファイル、二稿/差分/境界の未解消は拒否する。
+
+```sh
+node tools/reader-private-pipeline.cjs authorize-preview PRIVATE/manifest.json PRIVATE/conversation-acceptance.json PRIVATE/quality-assessment.json
+```
+
+このコマンドは原記録と実監査を完全ハッシュで取り込み、同意を新しい版付きファイルに保存する。既存manifestを履歴へ保存し、原本・本文・校正証拠・正式60状態を変更しない。PRIVATEの`private-quality-assessment-60-v1`は、正規60検査とは別の限定監査としてSHAと分類のみをreceiptへ残す。
+
+`stage` は `channel:preview`・`createOnly:true`・同じ `expectedArtifactSha256` で計画する。新規Driveファイルを保存する直前に `verify-plan`、そのIDの実バイトを再取得後に `complete-plan` を行う。完了記録には実際のIDを使う。未実施のDrive確認を生成しない。
+
+公開前の `pages` と最終 `attach` は同じ `previewConsentFile`、`workLedgerFile`、`sourceProofFile` を統一ゲートへ渡す。v2には実際の `driveReadbackFile`・`driveFileId` と正規`complete-plan`の `driveCompletionFile` も必要。`issue` はこのpages計画を再検査し、専用draft routeのreceiptへ `previewProtocol:reader-immutable-preview-v3` を設定してダイジェストに含める。stage用計画を公開receiptの代わりに使わない。
+
+preview成功は `contentCertified:false` のままで、通常版・全60合格・公開GET・実機を付与しない。公開後GETと正式リンク発行は既存の独立工程を実行する。承認原文・PRIVATEパス・Drive ID・書籍本文・原画像は公開receiptへ出さない。

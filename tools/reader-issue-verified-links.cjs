@@ -34,7 +34,8 @@ function validate(evidence, targets, options={}){
      !/^[0-9a-f]{64}$/.test(target.expectedSha256))blocked('INVALID_RELEASE_TARGET');
   let parsed;
   try{parsed=new URL(target.url);}catch(_){blocked('INVALID_TARGET_URL');}
-  if(parsed.origin!==ORIGIN||parsed.pathname!=='/flashcards/'+target.entry||parsed.hash||
+  if(parsed.origin!==ORIGIN||parsed.pathname!=='/flashcards/'+target.entry||parsed.username||parsed.password||parsed.hash||
+     parsed.toString()!==target.url||
      !['','?import=1'].includes(parsed.search))blocked('TARGET_URL_NOT_CANONICAL');
   if(root){
    const base=fs.realpathSync(root), local=path.resolve(base,target.entry);
@@ -44,6 +45,8 @@ function validate(evidence, targets, options={}){
   }
   const got=checks.get(target.entry);
   if(!got||got.bookId!==target.bookId||got.entry!==target.entry||got.url!==target.url||
+     got.requestMethod!=='GET'||got.requestedUrl!==target.url||got.finalUrl!==target.url||
+     got.redirectPolicy!=='manual'||got.redirected!==false||
      got.expectedSha256!==target.expectedSha256||got.observedSha256!==target.expectedSha256||
      got.status!=='verified'||got.httpStatus!==200||
      !Number.isSafeInteger(got.attemptsUsed)||got.attemptsUsed<1||got.attemptsUsed>4)

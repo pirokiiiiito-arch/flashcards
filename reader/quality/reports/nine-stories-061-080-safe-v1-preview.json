@@ -1,0 +1,987 @@
+{
+  "schema": "reader-quality-report-v1",
+  "standardFileId": "1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2",
+  "bookId": "salinger-nine-stories-shibata-061-080",
+  "entry": "reader/preview/nine-stories-061-080-safe-v1/index.html",
+  "stage": "draft",
+  "scanRange": [
+    61,
+    80
+  ],
+  "claimsCompleted": false,
+  "contentCertified": false,
+  "deviceVerification": "not_run",
+  "createdAt": "2026-11-20T03:27:01.361251+00:00",
+  "privateArtifact": {
+    "sha256": "39554a36f92f045051392b0489c5a2490e84e1d4c46b9eed53c2d43fa72c9025",
+    "bytes": 4576783
+  },
+  "loaderSha256": "7011b78c19c6d7c93985a2521bf461e4acd6d26bc5f0e283512bc1eed7d6bd95",
+  "checks": {
+    "G1-01": {
+      "status": "not_run"
+    },
+    "G1-02": {
+      "status": "not_run"
+    },
+    "G1-03": {
+      "status": "not_run"
+    },
+    "G1-04": {
+      "status": "not_run"
+    },
+    "G1-05": {
+      "status": "not_run"
+    },
+    "G1-07": {
+      "status": "not_run"
+    },
+    "G1-08": {
+      "status": "not_run"
+    },
+    "G1-10": {
+      "status": "not_run"
+    },
+    "G1-12": {
+      "status": "not_run"
+    },
+    "G2-01": {
+      "status": "not_run"
+    },
+    "G2-02": {
+      "status": "not_run"
+    },
+    "G2-03": {
+      "status": "not_run"
+    },
+    "G2-04": {
+      "status": "not_run"
+    },
+    "G2-05": {
+      "status": "not_run"
+    },
+    "G2-07": {
+      "status": "not_run"
+    },
+    "G2-11": {
+      "status": "not_run"
+    },
+    "G3-01": {
+      "status": "not_run"
+    },
+    "G3-02": {
+      "status": "not_run"
+    },
+    "G3-03": {
+      "status": "not_run"
+    },
+    "G3-04": {
+      "status": "not_run"
+    },
+    "G3-05": {
+      "status": "not_run"
+    },
+    "G3-06": {
+      "status": "not_run"
+    },
+    "G3-07": {
+      "status": "not_run"
+    },
+    "G4-01": {
+      "status": "not_run"
+    },
+    "G4-02": {
+      "status": "not_run"
+    },
+    "G4-03": {
+      "status": "not_run"
+    },
+    "G4-04": {
+      "status": "not_run"
+    },
+    "G4-05": {
+      "status": "not_run"
+    },
+    "G4-09": {
+      "status": "not_run"
+    },
+    "G5-01": {
+      "status": "not_run"
+    },
+    "G5-02": {
+      "status": "not_run"
+    },
+    "G5-03": {
+      "status": "not_run"
+    },
+    "G5-04": {
+      "status": "not_run"
+    },
+    "G5-05": {
+      "status": "not_run"
+    },
+    "G5-10": {
+      "status": "not_run"
+    },
+    "P20": {
+      "status": "not_run"
+    },
+    "G6-01": {
+      "status": "not_run"
+    },
+    "G6-02": {
+      "status": "not_run"
+    },
+    "G6-03": {
+      "status": "not_run"
+    },
+    "G6-05": {
+      "status": "not_run"
+    },
+    "G6-09": {
+      "status": "not_run"
+    },
+    "G6-11": {
+      "status": "not_run"
+    },
+    "G6-12": {
+      "status": "not_run"
+    },
+    "P22": {
+      "status": "not_run"
+    },
+    "P23": {
+      "status": "not_run"
+    },
+    "G7-01": {
+      "status": "not_run"
+    },
+    "G7-02": {
+      "status": "not_run"
+    },
+    "G7-03": {
+      "status": "not_run"
+    },
+    "G7-04": {
+      "status": "not_run"
+    },
+    "G7-05": {
+      "status": "not_run"
+    },
+    "G7-10": {
+      "status": "not_run"
+    },
+    "G7-12": {
+      "status": "not_run"
+    },
+    "G8-01": {
+      "status": "not_run"
+    },
+    "G8-02": {
+      "status": "not_run"
+    },
+    "G8-03": {
+      "status": "not_run"
+    },
+    "G8-04": {
+      "status": "not_run"
+    },
+    "G8-05": {
+      "status": "not_run"
+    },
+    "G8-07": {
+      "status": "not_run"
+    },
+    "G8-08": {
+      "status": "not_run"
+    },
+    "G8-11": {
+      "status": "not_run"
+    }
+  },
+  "checksMeaning": "Canonical-pipeline certification states, unchanged from the private manifest. The separate privateAssessment records completed source work without awarding a canonical PASS.",
+  "privateAssessment": {
+    "schema": "reader-private-assessment-summary-v1",
+    "assessmentSha256": "3d840a6059597b15f9dc2104b27ae9bca0b31f710196dfcb089cde6da00a209d",
+    "artifactSha256": "39554a36f92f045051392b0489c5a2490e84e1d4c46b9eed53c2d43fa72c9025",
+    "scopeLimitedEvidenceAssessment": true,
+    "canonicalGateCertified": false,
+    "statusCounts": {
+      "passed": 19,
+      "not_run": 31,
+      "needs_source_review": 1,
+      "not_applicable": 9
+    },
+    "classifications": {
+      "G1-01": {
+        "status": "passed",
+        "reason": "元ZIPの順序・全20埋込JPEGを元バイトへ直接比較した実記録があり、欠番・重複・順序/寸法/SHA不整合なし。",
+        "evidenceSha256": [
+          "e06231c40cf6df55855a28e0e3061f25a5334ead6c091a8967c7bd0ea7df0be4",
+          "5303741567c5eda72d3c930cde33010cb77671e53e167c2cfe5c83374c4559f9",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-02": {
+        "status": "passed",
+        "reason": "元ZIP実バイトと最終HTML内全20 JPEGが完全一致。",
+        "evidenceSha256": [
+          "e06231c40cf6df55855a28e0e3061f25a5334ead6c091a8967c7bd0ea7df0be4",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-03": {
+        "status": "passed",
+        "reason": "元JPEGと埋込JPEGのバイト・画素寸法が一致し、全20原画像の縦向きを目視済み。",
+        "evidenceSha256": [
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-04": {
+        "status": "passed",
+        "reason": "原画像20枚の全体を直接読み、本文313列・扉見出し1・柱9・ノンブル19・ルビ34を種別と概略座標で登録。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "587d534578ba4c9290d56e53a4700232b69d3993f2e033f3b59386057a6a4e37",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-05": {
+        "status": "passed",
+        "reason": "独立二稿と別の領域目視で19本文頁・1文字扉を確認し、本文頁を画像のみへ誤分類していない。",
+        "evidenceSha256": [
+          "5f688033085b383fbcd58f15a44921f09b090b831a20df93043ce867dab70329",
+          "5b76176834977a7f5bf17aafac076d27bc211c3e4618a62b3dfa893c078bc7c8",
+          "f325aed077b77c2e064e505bd63e37cd0c8817e83768cf92b084b54a94750ff8",
+          "374f0b062d4a7da99a60f71c03f74e1598e74e8feef7980e7b424c06ce2fd087",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-07": {
+        "status": "passed",
+        "reason": "実際の全20頁目視で四辺/余白/最右・最左本文列を台帳と照合し、見落とし又は画像端で切れた文字領域は観察されなかった。",
+        "evidenceSha256": [
+          "587d534578ba4c9290d56e53a4700232b69d3993f2e033f3b59386057a6a4e37",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-08": {
+        "status": "passed",
+        "reason": "スキャン番号と印刷ノンブルを独立保存。065はノンブルなしをnullで保持し、推測補完なし。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "e06231c40cf6df55855a28e0e3061f25a5334ead6c091a8967c7bd0ea7df0be4",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-10": {
+        "status": "not_run",
+        "reason": "画像内/非空の座標検査はあるが、全領域間の不正交差を分類した機械結果は未確認。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G1-12": {
+        "status": "needs_source_review",
+        "reason": "判読の疑義箇所は原画素拡大で解消したが、小さい字・薄い印刷・全余白を対象にした拡大巡回の全件記録までは揃っていない。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G2-01": {
+        "status": "passed",
+        "reason": "全313本文物理列と扉1列を原JPEGで直接確認した列頭/列末アンカーから文字offsetへ対応付けた。両範囲を連結して原本確定稿8873字に欠落重複なく一致。",
+        "evidenceSha256": [
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G2-02": {
+        "status": "not_applicable",
+        "reason": "061–080は単一の縦書き本文列群又は扉で、上下段・図への回り込み・複雑段組は原本目視で0。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G2-03": {
+        "status": "passed",
+        "reason": "本文、作品扉、柱、ノンブル、ルビを分離し、原本段落と会話開始/非会話引用を別属性で保持。注記/図説は対象原本に0。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G2-04": {
+        "status": "not_run",
+        "reason": "原本領域・列offset・段落・251読書セグメントのデータ逆引きは揃うが、実際の原本/読書閲覧導線は未操作。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G2-05": {
+        "status": "not_run",
+        "reason": "独立目視原稿180断片→175論理段落→251セグメントのデータ登録は確認済み。実表示ブロック数との比較は未実施。",
+        "evidenceSha256": [
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G2-07": {
+        "status": "not_run",
+        "reason": "原本物理列の全文と列末/次列頭は直接確認済み。原本段落/会話属性も二稿と原本で照合済みだが、派生読書ブロック全隣接のstructure_reviews内部整合・イベント位置の検査は未実施。",
+        "evidenceSha256": [
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "5f0928cc2035ccd0f467c95d081da9ee889c72ef0798c53703f73556ffa1e379",
+          "cfb80ffa9e0ef40b0563c3cead7ee4a22d3583081950765ae48eff303d2a7b8a"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G2-11": {
+        "status": "passed",
+        "reason": "原本唯一の作品扉065を独立見出しとして登録し、対応本文s066-p001直前に配置するデータを原本台帳と一致確認。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G3-01": {
+        "status": "passed",
+        "reason": "独立二稿で全20原本を直接転記し、全文差分を原画像へ戻って解決。確定稿の原本未確定文字0。 追加発見の073ルビ中点2字は修正履歴と新SHA限定再検証を参照。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "5f688033085b383fbcd58f15a44921f09b090b831a20df93043ce867dab70329",
+          "5b76176834977a7f5bf17aafac076d27bc211c3e4618a62b3dfa893c078bc7c8",
+          "f325aed077b77c2e064e505bd63e37cd0c8817e83768cf92b084b54a94750ff8",
+          "374f0b062d4a7da99a60f71c03f74e1598e74e8feef7980e7b424c06ce2fd087",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G3-02": {
+        "status": "passed",
+        "reason": "字形・句読点・小かな・引用符・ルビ差異を拡大原画素で解決。空白/ダッシュの符号化方針も記録。 追加発見の073ルビ中点2字は修正履歴と新SHA限定再検証を参照。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G3-03": {
+        "status": "passed",
+        "reason": "既存regex42候補だけの二稿一致に加え、専用原画像再照合で数字・数量・単位を各出現位置で直接確認した統合表がある。",
+        "evidenceSha256": [
+          "c6bc81b0a8c4ed2f8f7b70bd91d028cebfd873656d0b3360721838f8f5471898",
+          "0b3b2a63cb8c588b143c6d8f5c88e68ceec90c7204f34486c93c0d4a19195682",
+          "362e333ef260ba9706ba6ee47db05c65569cf6ea39817313a8271e039f35c776",
+          "b9ba4def7fd9bc350a7f845134ecf91a49157f925dfab96707af646ad2faee86",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G3-04": {
+        "status": "not_run",
+        "reason": "同書の固有名詞候補/出現一覧と専用原画像照合は完了。辞書候補との逆引きは未実施として残し、原本確認だけで項目全体を合格にしない。",
+        "evidenceSha256": [
+          "76465f20cadcbe35e3c2d5be49f341991167b330828ec17f82affbaf71a6c1c0",
+          "07f1f51d607ebda094fe3dbad72e5754f1db896546735d765b6b56ae2948c3ab",
+          "28cffd6d10206aa2ad7e588f5f8d08cbd76ca1c6c0c663a15638d52aa6b24d59",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G3-05": {
+        "status": "passed",
+        "reason": "原本差分記録に両稿・採択後・位置・確認担当/日時・理由を保存し、根拠なしの補筆は行っていない。 追加発見の073ルビ中点2字は修正履歴と新SHA限定再検証を参照。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G3-06": {
+        "status": "passed",
+        "reason": "一次稿と独立稿は互いの転記を見ずに別担当が原画像から作成し、その後全文差分を原本で解決。",
+        "evidenceSha256": [
+          "5f688033085b383fbcd58f15a44921f09b090b831a20df93043ce867dab70329",
+          "5b76176834977a7f5bf17aafac076d27bc211c3e4618a62b3dfa893c078bc7c8",
+          "f325aed077b77c2e064e505bd63e37cd0c8817e83768cf92b084b54a94750ff8",
+          "374f0b062d4a7da99a60f71c03f74e1598e74e8feef7980e7b424c06ce2fd087",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G3-07": {
+        "status": "passed",
+        "reason": "061–070の20差分と071–080の29差分を全文比較し、原本又は明示的符号化方針で解決。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G4-01": {
+        "status": "not_run",
+        "reason": "内部19＋入口出口2の原本頁境界は原本確認と現行prepare登録済み。全派生隣接本文ブロックのstructure_reviews内部整合検査は別で未実施。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "5f0928cc2035ccd0f467c95d081da9ee889c72ef0798c53703f73556ffa1e379",
+          "cfb80ffa9e0ef40b0563c3cead7ee4a22d3583081950765ae48eff303d2a7b8a"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G4-02": {
+        "status": "passed",
+        "reason": "原本で確定した五つの段落跨ぎと範囲外入口/出口の語中継続を、原文の字を足さずsourceSpansで接続。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "5f0928cc2035ccd0f467c95d081da9ee889c72ef0798c53703f73556ffa1e379",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G4-03": {
+        "status": "not_run",
+        "reason": "確定稿とHTML読書データは本文/見出しを分けて8873字完全往復一致。追加条件の実表示構造イベントとの全件比較は未実施。",
+        "evidenceSha256": [
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G4-04": {
+        "status": "not_run",
+        "reason": "現行改ページコードを保持し合成容量による回帰を実行したが、実画面容量での語句境界/はみ出し/進行保証の検証はない。",
+        "evidenceSha256": [
+          "ccd3b4081fa6a33972cd0f0ffb5be4611bad08f86f1c3c0cb6e8db8e3b781aea",
+          "2025c834d62f0c6e6f7715164b43d4ca33df80b0022825dcd3962dcc9e5bf0e6",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G4-05": {
+        "status": "not_run",
+        "reason": "範囲の原本境界とコード回帰の部分証拠はあるが、正規の既知境界故障/図説保全例を対象とした全回帰は未実施。",
+        "evidenceSha256": [
+          "5f0928cc2035ccd0f467c95d081da9ee889c72ef0798c53703f73556ffa1e379",
+          "ccd3b4081fa6a33972cd0f0ffb5be4611bad08f86f1c3c0cb6e8db8e3b781aea",
+          "36a1cbd14af1a9373685842d86826885b62a2573b2457ca49ed642db1291620b"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G4-09": {
+        "status": "passed",
+        "reason": "原本の跨ぎ会話と括弧を境界記録・会話属性で照合し、全内部括弧スタックの不整合0。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "18ef6768835c618358fa5e0c310d5dcd195d1999a3c9cfdf7c47764b93c06075",
+          "5f0928cc2035ccd0f467c95d081da9ee889c72ef0798c53703f73556ffa1e379"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G5-01": {
+        "status": "not_applicable",
+        "reason": "今回の原本061–080全20枚に図版・図説・原本目次が0件で、図版の件数/IDの対象が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G5-02": {
+        "status": "not_applicable",
+        "reason": "今回の原本061–080全20枚に図版・図説・原本目次が0件で、図版画素/切り出しの対象が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G5-03": {
+        "status": "not_applicable",
+        "reason": "今回の原本061–080全20枚に図版・図説・原本目次が0件で、図中文字/凡例の対象が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G5-04": {
+        "status": "not_applicable",
+        "reason": "今回の原本061–080全20枚に図版・図説・原本目次が0件で、図版分類と図説対応の対象が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G5-05": {
+        "status": "not_applicable",
+        "reason": "今回の原本061–080全20枚に図版・図説・原本目次が0件で、独立図説の複数画面送りの対象が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G5-10": {
+        "status": "not_applicable",
+        "reason": "今回の原本061–080全20枚に図版・図説・原本目次が0件で、目次内挿絵の対象が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "P20": {
+        "status": "not_applicable",
+        "reason": "今回の原本061–080全20枚に図版・図説・原本目次が0件で、原本目次項目/番号の対象が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G6-01": {
+        "status": "not_run",
+        "reason": "原本短頁は065扉11字だけと確認したが、実読書画面の全ページ長/列数は未測定。",
+        "evidenceSha256": [
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "18ef6768835c618358fa5e0c310d5dcd195d1999a3c9cfdf7c47764b93c06075"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G6-02": {
+        "status": "not_run",
+        "reason": "制御文字/文字化け/英数字/記号の限定走査と原本例外は記録した。字種比率変化など全検出条件の実行証拠はない。",
+        "evidenceSha256": [
+          "18ef6768835c618358fa5e0c310d5dcd195d1999a3c9cfdf7c47764b93c06075",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G6-03": {
+        "status": "not_run",
+        "reason": "原本列順と語中継続を直接確認して欠落/重複0だが、全派生段落イベントと不自然な強制改行の機械警告は未実施。",
+        "evidenceSha256": [
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "5f0928cc2035ccd0f467c95d081da9ee889c72ef0798c53703f73556ffa1e379"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G6-05": {
+        "status": "not_run",
+        "reason": "実施済みの原本差分/限定文字警告は未解決0。未実施の表示/構造検査を含めた全アラート0とは判定できない。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "18ef6768835c618358fa5e0c310d5dcd195d1999a3c9cfdf7c47764b93c06075"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G6-09": {
+        "status": "not_run",
+        "reason": "8字以上の連続反復は0、短い同一発話の重複2箇所は別発話と確認。短語/全物理列のコピー検出を含む網羅検査記録は未作成。",
+        "evidenceSha256": [
+          "18ef6768835c618358fa5e0c310d5dcd195d1999a3c9cfdf7c47764b93c06075",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G6-11": {
+        "status": "not_run",
+        "reason": "既存テスト49成功は確認されたが、指定6既知故障の正確な注入・検出率/誤警報率は未実施。",
+        "evidenceSha256": [
+          "36a1cbd14af1a9373685842d86826885b62a2573b2457ca49ed642db1291620b",
+          "cc721695f417a0c8830beb416df8cdceb4913d385d2dc086107eae74edf8ed20"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G6-12": {
+        "status": "not_run",
+        "reason": "二稿は独立に原本読取済みだが、左→右など別巡回順による見落とし専用監査の実施証拠はない。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "P22": {
+        "status": "not_run",
+        "reason": "既存fixtureで1字欠落の拒否を確認した部分証拠がある。要求4種類の注入全件は実施していない。",
+        "evidenceSha256": [
+          "36a1cbd14af1a9373685842d86826885b62a2573b2457ca49ed642db1291620b",
+          "cc721695f417a0c8830beb416df8cdceb4913d385d2dc086107eae74edf8ed20"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "P23": {
+        "status": "not_run",
+        "reason": "実際の原本例外分類はあるが、指定故障を含む検出率・誤警報率の母集団/計測は未実施。",
+        "evidenceSha256": [
+          "18ef6768835c618358fa5e0c310d5dcd195d1999a3c9cfdf7c47764b93c06075",
+          "36a1cbd14af1a9373685842d86826885b62a2573b2457ca49ed642db1291620b"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G7-01": {
+        "status": "not_run",
+        "reason": "最終SHAの実ブラウザー24条件・高さ変化・倍率/パン測定は一度も実施していない。",
+        "evidenceSha256": [
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G7-02": {
+        "status": "not_run",
+        "reason": "novel基準のCSSが前版とバイト一致する静的証拠だけ。computed CSS・表示と隠し計測枠・A±・数字方向は未測定。",
+        "evidenceSha256": [
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "b36c0579ab441061df18d22f0b5d752231cfe2b184d937d62fc27f9bb88837fb",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G7-03": {
+        "status": "not_run",
+        "reason": "原本確定稿とHTMLデータの一致は確認済みだが、全実表示ページを回収して逆連結していない。",
+        "evidenceSha256": [
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G7-04": {
+        "status": "not_run",
+        "reason": "今回の最終HTMLで実タッチ・ピンチ・パン・等倍復帰・親子倍率通知のケースを未実施。",
+        "evidenceSha256": [
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G7-05": {
+        "status": "not_run",
+        "reason": "原本の目視と静的HTML検証はあるが、今回の最終HTMLを表示した左右比較はない。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G7-10": {
+        "status": "not_applicable",
+        "reason": "対象原本061–080に項目＋ページ番号を持つ目次が存在しない。",
+        "evidenceSha256": [
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G7-12": {
+        "status": "not_run",
+        "reason": "生成後の元画像/bookdata静的一致は確認したが、UI操作の前後に比較するブラウザー検査は未実施。",
+        "evidenceSha256": [
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-01": {
+        "status": "not_run",
+        "reason": "実在するJST日時先頭ファイルと確認用/not_run状態は一致。端末保存旧版との選択・再取込み案内/キャッシュの確認は未実施。",
+        "evidenceSha256": [
+          "b36c0579ab441061df18d22f0b5d752231cfe2b184d937d62fc27f9bb88837fb",
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-02": {
+        "status": "not_run",
+        "reason": "実ローダーと今回HTMLの互換版受理/破損拒否・親子倍率通知は未検査。",
+        "evidenceSha256": [
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "cfb80ffa9e0ef40b0563c3cead7ee4a22d3583081950765ae48eff303d2a7b8a"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-03": {
+        "status": "not_run",
+        "reason": "今回の新URL公開・公開ログ・正確HTTPS GETは未実施。本文と元画像はPRIVATEのまま。",
+        "evidenceSha256": [
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "cfb80ffa9e0ef40b0563c3cead7ee4a22d3583081950765ae48eff303d2a7b8a"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-04": {
+        "status": "not_run",
+        "reason": "今回の最終SHAを利用者iPhone Chrome実機で確認した証拠はない。",
+        "evidenceSha256": [
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-05": {
+        "status": "not_run",
+        "reason": "今回の正確な最終SHAで正式prepareを実行したが、DISPLAY_NOT_CANONICALで停止。60件のPRIVATE実証範囲の集計を、正式合格又は表示/配布合格へ読み替えない。",
+        "evidenceSha256": [
+          "5bc0b36dec7537b8d83ba4a9c22185552a1ce2f75bed46d759f8ef390a503d87",
+          "cfb80ffa9e0ef40b0563c3cead7ee4a22d3583081950765ae48eff303d2a7b8a",
+          "536659bf0fdc2a26af05893433c96e562d2d4a7a84c4368658bcc3715b824759",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820",
+          "d2b39a6e56bf11d203e0d9e72a2db7bfc13ffec1a56156094dd701e0b31e99ad",
+          "8dedf1f6169f339425bd89f7a362948ac3a3294e21f4f84e3cb8cad7884b3d68",
+          "ef9a5a413022bfceccd5eba2df51687037db54d19642b87fbe7063e2fcec0f1a",
+          "2edb6a31affc9de7f58a1c55e5c4805f9d19c9198dfeeef277ed2558e0f477e8",
+          "b2f995dad70a7f6dc3b8689c2849a862b043226ea84805f54f6c20db99b34933",
+          "10ad5804a04f38d715efa12da6e83248f90691dd8c439a7d275f8abece523b4b"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-07": {
+        "status": "passed",
+        "reason": "原本ZIP/画像・二稿・確定稿・原本台帳・最新正本・出力HTMLを各SHAと版/範囲で結合して追跡可能。",
+        "evidenceSha256": [
+          "e06231c40cf6df55855a28e0e3061f25a5334ead6c091a8967c7bd0ea7df0be4",
+          "5303741567c5eda72d3c930cde33010cb77671e53e167c2cfe5c83374c4559f9",
+          "5bc0b36dec7537b8d83ba4a9c22185552a1ce2f75bed46d759f8ef390a503d87",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "b36c0579ab441061df18d22f0b5d752231cfe2b184d937d62fc27f9bb88837fb",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "39b6b139844c4559de5b249122dfd84fabd0121a48fe5e227d9e1a17b98d691e",
+          "d2d44eb4707e12849d101a7dcbf3b39dea23cee02585556f926c3a686191259a",
+          "2a478acefb407a8e5008d928470adecae8d13550ae58cb0aa5aab8350e99b688",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-08": {
+        "status": "not_run",
+        "reason": "同一セッションで最終ローカルHTMLの再読取・SHA一致はある。Drive保存後再取得又は公開入口と配布HTML組合せの再取得は未実施。",
+        "evidenceSha256": [
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "39cab5573fce0f96acc520120ef857f3f98cdea3d26d5615a864e1fdf6a87576",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      },
+      "G8-11": {
+        "status": "not_run",
+        "reason": "原本差分・境界・データ保存の再検査と合成コード回帰はある。全影響範囲の24条件/操作回帰は未実施。",
+        "evidenceSha256": [
+          "cfc2c8d34710f0c6c11a45ed01c575cbd61dea454eece306e28d97609db88350",
+          "688b31dc59424a2a4e9dff84fcd17b70ee8c227012cd4ae4aff581d4f9547977",
+          "49e02e3a42932095680d7071e3d258484738eb0fe2c19565de86cd90361e431d",
+          "6816e0d6aea49505045760e5623c4c7924825301b9dc675490ce0f33db6d8d83",
+          "a3716449df1684faeca93fa80ad45b3c64a357ca0f31de487f00feb4587fb2a7",
+          "8d4b75e7f61f15f8add6570e8316a53adea8a6933e9691955f2a1746053f6b0f",
+          "9e91a0e255f8c2682ad4ef434e4f58cbb7a87a30b0c5f2b5262f7da298d55d2d",
+          "ccd3b4081fa6a33972cd0f0ffb5be4611bad08f86f1c3c0cb6e8db8e3b781aea",
+          "19f89edff43ad429b6a8a43d28ca3987d7d280e7b1cf0a2bf57e469c873a3820"
+        ],
+        "scope": "Source scans 61–80 only; evidence classification, not canonical certification."
+      }
+    },
+    "sourceReviewStatus": "two_independent_transcriptions_reconciled_against_source",
+    "knownUnresolvedSourceDifferences": 0,
+    "sourceQAComplete": false,
+    "all60Passed": false,
+    "normalReleaseApproved": false,
+    "limitations": [
+      "Resolved known two-draft differences do not prove all source QA is complete.",
+      "G1-12 needs source review for incomplete exhaustive small/faint text enlargement coverage.",
+      "G3-04 dedicated source-name review exists, but dictionary-candidate review is not run.",
+      "No actual browser matrix, rendered-page roundtrip, touch/zoom, iPhone, Drive readback or new-URL GET is certified by this registration."
+    ]
+  },
+  "publicationAtRegistration": "not_run",
+  "publicPayload": "Empty local-file importer plus status and hash metadata only.",
+  "normalDeliveryAllowed": false,
+  "deliveryPrerequisites": {
+    "driveReadback": {
+      "status": "same_id_exact_bytes_verified",
+      "artifactSha256": "39554a36f92f045051392b0489c5a2490e84e1d4c46b9eed53c2d43fa72c9025",
+      "bytes": 4576783,
+      "evidenceSha256": "8de4279d59b280684182e696e49bf9a59ad1f481e6c0d34b35fbb6fd3976d35f",
+      "completionSha256": "95ac147993e7882571fc365e488c17d53c1669d740336b0a5ca03e4db623c75e",
+      "verifiedAt": "2026-11-20T03:37:06.495Z",
+      "canonical60PassAssigned": false
+    }
+  }
+}
