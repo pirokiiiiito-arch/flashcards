@@ -26,6 +26,7 @@ test('turning between vertical text and figure explanations swaps surfaces and p
   const classes = new Map();
   const captions = [];
   const env = {
+    verticalReaderSymbols: require('../templates/reader/v2/vertical-symbols.js'),
     $: el, main: el('reader-main'), sheet: el('sheet'), textFlow: el('text-flow'),
     document: {
       documentElement: {classList: {toggle: (name, value) => classes.set(name, value)}},

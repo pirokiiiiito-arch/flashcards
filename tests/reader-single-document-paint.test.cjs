@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const verticalReaderSymbols = require('../templates/reader/v2/vertical-symbols.js');
 
 function reader(name) {
   const script = fs.readFileSync(path.join(__dirname, '../templates/reader/v2', name + '.js'), 'utf8');
@@ -19,7 +20,7 @@ function reader(name) {
     replaceWith(image) { nodes.set(this.id, image); }
     decode() { return new Promise((resolve, reject) => { this.ready = resolve; this.failed = reject; }); }
   }
-  const api = new Function('$', 'Image', `
+  const api = new Function('$', 'Image', 'verticalReaderSymbols', `
     const book={},warning='',figures=[{source:'red',scan:2},{source:'blue',scan:3}];
     const pages=[{kind:'text',parts:[],scan:1},{kind:'image',figure:0,scan:2},
       {kind:'image',figure:1,scan:3},{kind:'text',parts:[],scan:4}];
@@ -31,7 +32,7 @@ function reader(name) {
     render();
     return {step:stepPage,goto:gotoPage,cancel:cancelPageTurn,
       state:()=>({index,scan:saved,pending:!!pendingPaint,text:!textFlow.hidden})};`);
-  return {api:api(node, Picture), node, images};
+  return {api:api(node, Picture, verticalReaderSymbols), node, images};
 }
 
 for (const name of ['standard', 'novel']) {
