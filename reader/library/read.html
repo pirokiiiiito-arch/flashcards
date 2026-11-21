@@ -32,7 +32,7 @@
 #saveOffline:disabled{opacity:.5}
 </style>
 <style id="wh1-stable-reading-height">#reader{height:100svh!important;}</style>
-<style id="browser-page-pinch-v2">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}#zoomOut,#zoomIn{display:none!important}#originalImage{cursor:default!important;-webkit-user-drag:none!important}</style>
+<style id="browser-page-pinch-v2">html:not(.native-book-input),html:not(.native-book-input) body,html:not(.native-book-input) body *{touch-action:pan-x pan-y pinch-zoom!important}#zoomOut,#zoomIn{display:none!important}#originalImage{cursor:default!important;-webkit-user-drag:none!important}</style>
 <style id="bookshelf-nav-ui-v1">
 /* Public host navigation only: imported book, page state and OCR data remain unchanged. */
 #reader{top:calc(44px + env(safe-area-inset-top))!important;height:calc(100svh - 44px - env(safe-area-inset-top))!important}
@@ -204,6 +204,18 @@ function pickedArchive(fileList){
  if(joined.size!==400389725)throw Error('分割ファイルの合計サイズが一致しません。');
  return joined;
 }
+let inputSession='',viewportSerial=0;
+function nativeBookInput(){return manifest?.readerInteractions==='native-pinch-toc-v1';}
+function syncReaderViewport(){
+ if(!nativeBookInput()||!inputSession)return;
+ const scale=Number(window.visualViewport?.scale||1);
+ if(Number.isFinite(scale)&&scale>=.5&&scale<=10)
+  $('reader').contentWindow?.postMessage({type:'reader-viewport-v8',session:inputSession,seq:++viewportSerial,scale},'*');
+}
+window.visualViewport?.addEventListener('resize',syncReaderViewport);
+window.visualViewport?.addEventListener('scroll',syncReaderViewport);
+window.addEventListener('pageshow',syncReaderViewport);
+window.addEventListener('resize',syncReaderViewport);
 function fillManifest(m){
  if(!m||m.schema!==1||!Array.isArray(m.range)||m.range[0]!==1||!Number.isInteger(m.range[1])||m.range[1]<1||m.range[1]>15000||!Array.isArray(m.segments)||m.segments.length<1||m.segments.length>1000)throw Error('統合読書ZIPの構成情報が正しくありません');
  for(let i=0;i<m.segments.length;i++){
@@ -213,6 +225,7 @@ function fillManifest(m){
  if(m.segments[0].start!==1||m.segments.at(-1).end!==m.range[1])throw Error('本の収録ページと目次が一致しません');
  for(let n=1;n<=m.range[1];n++)if(!m.originalScans?.[String(n)]?.path)throw Error('原本画像が不足しています：'+n);
  totalScans=m.range[1];bookTitle=String(m.title||bookTitle||'読書');manifest=m;SEGMENTS.splice(0,SEGMENTS.length,...m.segments);
+ document.documentElement.classList.toggle('native-book-input',nativeBookInput());
  document.title=bookTitle+'｜私の本棚';$('bookTitle').textContent=bookTitle;
  // Furniture's imported reader has its own toolbar; keep this control on the public bookshelf host.
  $('goToBookStart').hidden=!/洋家具の歴史と様式/.test(bookTitle);
@@ -569,6 +582,8 @@ async function openSegment(index,destination={}){
   const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
   const content=new Blob([decorateOtherBookReading(decorated)],{type:'text/html'});
   if(frameURL) URL.revokeObjectURL(frameURL);
+  inputSession=nativeBookInput()?crypto.randomUUID():'';
+  viewportSerial=0;
   frameURL=URL.createObjectURL(content);activeSegment=index;
   $('reader').src=frameURL;
  }catch(err){if(token===loadToken){clearBusy();setHint('読書区間の読み込みに失敗しました: '+(err.message||String(err)));$('setup').hidden=false;}throw err;}
@@ -582,7 +597,7 @@ async function handlePrepare(index){
    const bytes=await bookZip.readBytes(meta.path);assets.push({name,mime:meta.mime,data:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)});
   }
   if(token!==loadToken)return;
-  $('reader').contentWindow.postMessage({wh1bridge:1,action:'loadAssets',assets,size:currentState.size},'*',assets.map(a=>a.data));
+  $('reader').contentWindow.postMessage({wh1bridge:1,action:'loadAssets',assets,size:currentState.size,session:inputSession},'*',assets.map(a=>a.data));
  }catch(e){if(token===loadToken){clearBusy();$('setup').hidden=false;setHint('画像の照合・展開に失敗: '+(e.message||String(e)));}}
 }
 
@@ -610,13 +625,23 @@ function goToBookStart(){
  else openSegment(0,{mode:'first'}).catch(err=>console.warn('先頭への移動に失敗しました',err));
 }
 window.addEventListener('message',e=>{
- if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1)return;
+ if(e.source!==$('reader').contentWindow||!e.data)return;
+ if(nativeBookInput()&&inputSession&&e.data.session===inputSession&&e.data.type==='reader-ready-v8'){
+  syncReaderViewport();return;
+ }
+ if(e.data.wh1bridge!==1)return;
  const d=e.data;
  if(d.type==='bookStart'){goToBookStart();return;}
  if(d.segment!==activeSegment)return;
  if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);
  else if(d.type==='boundary'){const next=activeSegment+d.direction;if(next>=0&&next<SEGMENTS.length){const s=SEGMENTS[next];openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});}}
+ else if(d.type==='navigateScan'&&nativeBookInput()&&inputSession&&d.session===inputSession){
+  if(!Number.isInteger(d.scan)||d.scan<1||d.scan>totalScans)return;
+  const target=segmentForScan(d.scan),destination={scan:d.scan,view:d.view==='figure'?'figure':'text'};
+  if(target===activeSegment)issueChild('goto',{destination});
+  else openSegment(target,destination).catch(err=>console.warn('目次からの移動に失敗しました',err));
+ }
  else if(d.type==='menu')showMenu();
  else if(d.type==='original')openOriginal(scanFromPageKey(currentState.key)||d.scan);
 });

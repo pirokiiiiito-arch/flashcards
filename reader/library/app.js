@@ -57,7 +57,7 @@
     const parts=b.parts.filter(p=>p&&/^[A-Za-z0-9_-]{12,128}$/.test(p.id||'')&&Number(p.size)>0)
       .map(p=>({id:p.id,name:String(p.name||''),size:Number(p.size)}));
     if(parts.length!==b.parts.length)return null;
-    return {id:b.id,title:b.title.slice(0,140),sortTitle:typeof b.sortTitle==='string'?b.sortTitle.slice(0,140):'',subtitle:String(b.subtitle||'').slice(0,170),
+    return {id:b.id,editionUpdate:b.editionUpdate===true,title:b.title.slice(0,140),sortTitle:typeof b.sortTitle==='string'?b.sortTitle.slice(0,140):'',subtitle:String(b.subtitle||'').slice(0,170),
       status:String(b.status||''),scans:Number(b.scans)||null,totalBytes:Number(b.totalBytes)||parts.reduce((s,p)=>s+p.size,0),parts,coverFileId:/^[A-Za-z0-9_-]{12,128}$/.test(b.coverFileId||'')?b.coverFileId:null,format:'unified-zip-v1'};
   }
   async function refreshSaved() {
@@ -97,11 +97,22 @@
     matching.forEach((b,i)=>target.append(card(b,i)));
     $('bookCount').textContent=String(books.length);$('emptyState').hidden=matching.length!==0;
   }
+  async function hasNewEdition(book){
+    if(!book?.editionUpdate||!book.parts.length||!tokenValid()||!savedIds.has(book.id))return false;
+    const meta=await LibraryDB.getMeta(book.id);
+    return !!meta&&(meta.subtitle!==book.subtitle||meta.size!==book.totalBytes);
+  }
   async function showBook(book){selected=book; $('detailTitle').textContent=book.title;
     $('detailSub').textContent=[book.subtitle||'',book.totalBytes?nice(book.totalBytes):'',book.status||''].filter(Boolean).join(' ／ ');
     const local=savedIds.has(book.id);
     $('detailStatus').textContent=local?'この端末に保存されています。通信なしで開けます。':book.parts.length?'Google Driveから初回だけ書籍データを保存します。':'Google Drive連携後に読み込めます。';
     $('primaryBookAction').textContent=local?'続きを読む':book.parts.length?'Google Driveから保存して読む':'Google Driveを接続する';
+    const update=await hasNewEdition(book);
+    if(selected!==book)return;
+    if(update){
+      $('detailStatus').textContent='修正版を保存すると、前回の読書位置から再開できます。';
+      $('primaryBookAction').textContent='修正版を保存して読む';
+    }
     if(book.id===NINE_STORIES.id&&!local&&!tokenValid()){
       $('detailStatus').textContent='確認版を開けます。Google Driveに接続すると、この端末にも保存できます。';
       $('primaryBookAction').textContent='統合確認版を読む';
@@ -110,6 +121,9 @@
     $('downloadProgress').hidden=true; $('primaryBookAction').disabled=false;openSheet('book');
   }
   async function primaryAction(){if(!selected)return;
+    const book=selected,update=await hasNewEdition(book);
+    if(book!==selected||pendingDownload)return;
+    if(update){await download(book);return;}
     if(savedIds.has(selected.id)){location.href=readerHref(selected);return;}
     if(selected.id===NINE_STORIES.id&&!tokenValid()){location.href=nineStoriesOnline;return;}
     if(!selected.parts.length){closeSheet('book');openSettings();say('Googleアカウントへの接続が必要です');return;}
@@ -262,10 +276,16 @@
         done+=partDone;update(i+1,0);
       }
       if(book.totalBytes&&book.totalBytes!==done)throw new Error('統合書籍の合計サイズが一致しません');
-      await writer.commit(done);committed=true;
-      // Check local readback and ZIP envelope before claiming success.
-      const verify=await LibraryDB.readBlob(book.id);if(!verify||verify.blob.size!==done)throw new Error('保存後のデータ確認に失敗しました');
-      await assertZip(verify.blob);
+      if(book.editionUpdate){
+        await writer.commit(done,async blob=>{
+          await assertZip(blob);
+          if(ctrl.signal.aborted)throw new DOMException('中止しました','AbortError');
+        });
+      }else{
+        await writer.commit(done);committed=true;
+        const verify=await LibraryDB.readBlob(book.id);if(!verify||verify.blob.size!==done)throw new Error('保存後のデータ確認に失敗しました');
+        await assertZip(verify.blob);
+      }
       savedIds.add(book.id);renderShelf();$('detailStatus').textContent='端末に保存しました。次回から自動で開けます。';
       $('progressLabel').textContent='保存完了。読書画面を開きます。';
       location.href=readerHref(book);

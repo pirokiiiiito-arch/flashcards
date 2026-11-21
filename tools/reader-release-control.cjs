@@ -59,13 +59,13 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
- 'reader/library/read.html':'b5a1ef12c9d19518212e5d14fceb43c1409d9a1a'
+ 'reader/library/read.html':'f5551144e7f37d6f6587d71bd81694db75328cec'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'3cce4d67f061a6d33c0363cab44f78126c1d861c',
- 'reader/library/index.html':'6a8ab86575d7a6b77eecd1450043d9e0b49daa00',
- 'reader/library/sw.js':'3568790c926ddd5f10721e42b7e5a91aff4381c3'
+ 'reader/library/app.js':'41e3e4875dc24776d8026fee733b1d7e4bbf3689',
+ 'reader/library/index.html':'5b19a109330eaf43f8cf0ea469297ae716618094',
+ 'reader/library/sw.js':'0f4434269b2202eac61e5693ded771afe6fe5f1b'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -449,9 +449,21 @@ function admittedBookshelfNavUI(root,policy){
   const nineStoriesEntry=index.includes('app.js?v=bookshelf-nine-stories-286-20261121')&&
     sw.includes('private-bookshelf-shell-v21-nine-stories-286-20261121')&&
     sw.includes('app.js?v=bookshelf-nine-stories-286-20261121')&&app.includes("id:'nine-stories'");
+  const inputUpdate=index.includes('app.js?v=bookshelf-reader-input-20261121')&&
+    sw.includes('private-bookshelf-shell-v22-reader-input-20261121')&&sw.includes('app.js?v=bookshelf-reader-input-20261121');
+  if(inputUpdate){
+   const storagePath='reader/library/storage.js',source=fs.readFileSync(safe(root,storagePath));
+   const blob=crypto.createHash('sha1').update('blob '+source.length+String.fromCharCode(0)).update(source).digest('hex');
+   demand(blob==='5f8cb8637eee1d09363962c24830e02d1b5c556f'&&hex(policy.baseline.files[storagePath]),'BOOKSHELF_EDITION_STORAGE_BYTES_NOT_REVIEWED');
+   demand(app.includes('await hasNewEdition(book)')&&app.includes('await writer.commit(done,async blob=>'),'BOOKSHELF_EDITION_REFRESH_MISSING');
+   const reader=fs.readFileSync(safe(root,'reader/library/read.html'),'utf8');
+   demand(reader.includes("manifest?.readerInteractions==='native-pinch-toc-v1'")&&reader.includes('d.session===inputSession')&&
+    reader.includes("type:'reader-viewport-v8'")&&reader.includes("d.type==='navigateScan'"),'BOOKSHELF_READER_INPUT_BRIDGE_MISSING');
+   approved[storagePath]=hash(source);
+  }
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry||nineStoriesEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry||nineStoriesEntry||inputUpdate),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }

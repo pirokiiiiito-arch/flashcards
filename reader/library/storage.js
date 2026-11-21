@@ -37,6 +37,22 @@ const LibraryDB = (() => {
     const r = db.transaction('books', 'readonly').objectStore('books').getAll();
     r.onsuccess = () => resolve(r.result || []); r.onerror = () => reject(r.error);
   }); } finally { db.close(); } }
+  function generationBlob(chunks,meta) {
+    return new Promise((resolve,reject)=>{
+      const prefix=checkId(meta.id)+'|'+meta.generation+'|';
+      const range=IDBKeyRange.bound(prefix,prefix+'\uffff');
+      const req=chunks.getAll(range);
+      req.onerror=()=>reject(req.error);
+      req.onsuccess=()=>{
+        if(req.result.length!==meta.count || req.result.some(piece=>!(piece instanceof Blob))){
+          reject(new Error('保存中の書籍が一部欠落しています'));return;
+        }
+        const blob=new Blob(req.result,{type:'application/zip'});
+        if(blob.size!==meta.size){reject(new Error('保存中の書籍のサイズが一致しません'));return;}
+        resolve(blob);
+      };
+    });
+  }
   async function newWriter(book) {
     checkId(book.id);
     const db = await open();
@@ -49,13 +65,26 @@ const LibraryDB = (() => {
         await storePut(db, 'chunks', chunkKey(book.id, generation, count), blob);
         count++; total += blob.size;
       },
-      async commit(expectedSize = null) {
+      async commit(expectedSize = null, validate = null) {
         if (!active) throw new Error('保存処理は終了しています');
         if (!count || (expectedSize != null && total !== expectedSize)) throw new Error('書籍の保存サイズが一致しません');
         const meta = {id:book.id, title:String(book.title||book.id), subtitle:String(book.subtitle||''), scans:Number(book.scans)||null,
           generation, count, size:total, date:Date.now(), format:'unified-zip-v1'};
-        await storePut(db, 'books', book.id, meta);
-        active = false; db.close(); return meta;
+        if(!validate){
+          await storePut(db, 'books', book.id, meta);
+          active=false;db.close();return meta;
+        }
+        await validate(await generationBlob(db.transaction('chunks','readonly').objectStore('chunks'),meta));
+        const previous=await new Promise((resolve,reject)=>{
+          const tx=db.transaction('books','readwrite'),books=tx.objectStore('books'),old=books.get(book.id);
+          old.onsuccess=()=>books.put(meta,book.id);
+          tx.oncomplete=()=>resolve(old.result);
+          tx.onabort=tx.onerror=()=>reject(tx.error||new Error('修正版を保存できません'));
+        });
+        active=false;db.close();
+        if(previous?.generation&&previous.generation!==generation)
+          await deleteGeneration(book.id,previous.generation).catch(()=>{});
+        return meta;
       },
       async abort() {
         if (!active) return;
@@ -86,18 +115,20 @@ const LibraryDB = (() => {
     await deleteGeneration(id, old.generation); return true;
   }
   async function readBlob(id) {
-    const meta = await getMeta(checkId(id)); if (!meta) return null;
-    if (!Number.isInteger(meta.count) || meta.count < 1 || meta.count > 100000) throw new Error('書籍の保存情報が不正です');
-    const db = await open(); try {
-      const pieces = []; let total = 0;
-      for (let i=0; i<meta.count; i++) {
-        const b = await storeGet(db, 'chunks', chunkKey(id, meta.generation, i));
-        if (!(b instanceof Blob)) throw new Error('端末に保存した書籍が一部欠落しています');
-        pieces.push(b); total+=b.size;
-      }
-      if(total!==meta.size)throw new Error('書籍の保存サイズが一致しません');
-      return {blob:new Blob(pieces,{type:'application/zip'}),meta};
-    } finally { db.close(); }
+    const db=await open();
+    try{
+      return await new Promise((resolve,reject)=>{
+        const tx=db.transaction(['books','chunks'],'readonly');
+        const req=tx.objectStore('books').get(checkId(id));
+        req.onerror=()=>reject(req.error);
+        req.onsuccess=()=>{
+          const meta=req.result;
+          if(!meta){resolve(null);return;}
+          if(!Number.isInteger(meta.count)||meta.count<1||meta.count>100000){reject(new Error('書籍の保存情報が不正です'));return;}
+          generationBlob(tx.objectStore('chunks'),meta).then(blob=>resolve({blob,meta}),reject);
+        };
+      });
+    }finally{db.close();}
   }
   async function saveBlob(book, blob, onProgress) {
     const writer=await newWriter(book);
