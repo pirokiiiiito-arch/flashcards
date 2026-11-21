@@ -230,8 +230,123 @@ window.visualViewport?.addEventListener('resize',syncReaderViewport);
 window.visualViewport?.addEventListener('scroll',syncReaderViewport);
 window.addEventListener('pageshow',syncReaderViewport);
 window.addEventListener('resize',syncReaderViewport);
+// BEGIN WH3 continuous scan layout
+// A storage ZIP part is a source container. Only a natural reading-page boundary
+// may separate two display sections. Published files contain no private book data.
+async function wh3ReadingFlow(book,manifest){
+ const books=[],proofs=[],pages=new Map(),edges=new Map(),incoming=new Map();
+ const pair=ref=>ref.join('/');
+ for(const part of manifest.segments){
+  const html=await book.readText(part.part);
+  function field(id){
+   const tag='<script type="application/json" id="'+id+'">',a=html.indexOf(tag),b=html.indexOf('</'+'script>',a);
+   if(a<0||b<0)throw Error('分冊の構造を読み込めません');
+   return html.slice(a+tag.length,b);
+  }
+  // Original image bytes stay in the verified ZIP. Only the visible section needs them.
+  const src=JSON.parse(field('bookdata').replace(/"original"\s*:\s*"data:image\/[^"]*"/g,'"original":""'));
+  if(src.bookId!==manifest.bookId||src.range[0]!==part.start||src.range[1]!==part.end)throw Error('分冊の原本範囲が一致しません');
+  proofs.push({range:src.range,model:JSON.parse(field('reader-verified-structure')).model});
+  for(const p of src.pages){
+   if(pages.has(p.scan)||p.scan<part.start||p.scan>part.end)throw Error('原本番号が重複しています');
+   pages.set(p.scan,p);
+  }
+  for(const edge of src.continuations){
+   const from=pair(edge.from),to=pair(edge.to);
+   if(edges.has(from)&&pair(edges.get(from).to)!==to||incoming.has(to)&&incoming.get(to)!==from)throw Error('原本の本文接続が一致しません');
+   edges.set(from,edge);incoming.set(to,from);
+  }
+  books.push(src);
+ }
+ const first=manifest.range[0],last=manifest.range[1];
+ for(let n=first;n<=last;n++)if(!pages.has(n))throw Error('原本が不足しています');
+ const joins=[...edges.values()];
+ for(const e of joins)for(const ref of [e.from,e.to]){
+  if(pages.get(ref[0])?.blocks[ref[1]]?.type!=='body')throw Error('原本の本文接続先が見つかりません');
+ }
+ const graphemes=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
+ const length=s=>graphemes?Array.from(graphemes.segment(s)).length:Array.from(s).length;
+ const rank=n=>n>=252&&n<=257?509-n:n;
+ const flat=[];
+ for(const p of [...pages.values()].sort((a,b)=>rank(a.scan)-rank(b.scan))){
+  const n=p.scan,add=(id,kind,units)=>flat.push({id,kind,units,scan:n});
+  if([1,2,3,7].includes(n)||p.pageType==='reference'&&!p.blocks.length&&p.figures.length===1){add('p/'+n,'portrait',1);continue;}
+  if(p.toc_entries.length)add('t/'+n,'contents',p.toc_entries.length);
+  p.blocks.forEach((b,i)=>add(n+'/'+i,b.type,length(b.text)));
+  p.figures.forEach((f,i)=>{
+   const [x,y,w,h]=f.bbox;
+   if(p.pageType==='reference'&&p.blocks.length&&!x&&!y&&w===p.width&&h===p.height)return;
+   add('f/'+n+'/'+i,'figure',Math.max(1,length(f.caption||f.externalCaption?.text||'')));
+  });
+ }
+ function ordered(items){
+  const nodes=new Map(items.map(x=>[x.id,x])),result=[],seen=new Set();
+  for(let item of items){
+   if(nodes.has(incoming.get(item.id)))continue;
+   while(item){
+    if(seen.has(item.id))throw Error('本文の接続が重複しています');
+    seen.add(item.id);result.push(item);
+    const next=edges.get(item.id);item=next&&nodes.get(pair(next.to));
+   }
+  }
+  if(result.length!==items.length)throw Error('本文の接続に欠落があります');
+  return result;
+ }
+ const global=ordered(flat),hard=new Set(['portrait','figure','contents']);
+ const safe=[];
+ for(let n=first+1;n<=last;n++){
+  if(n>=253&&n<=257||joins.some(e=>Math.min(e.from[0],e.to[0])<n&&Math.max(e.from[0],e.to[0])>=n))continue;
+  const right=global.findIndex(item=>item.scan>=n);
+  if(right<1||global.slice(right).some(item=>item.scan<n))continue;
+  const before=global[right-1],after=global[right];
+  if(hard.has(before.kind)||hard.has(after.kind)||after.kind==='heading'&&before.kind!=='heading')safe.push(n);
+ }
+ const cuts=new Set([first]);
+ for(const part of manifest.segments.slice(1)){
+  if(safe.length)cuts.add(safe.reduce((best,n)=>Math.abs(n-part.start)<Math.abs(best-part.start)?n:best));
+ }
+ const starts=[...cuts].sort((a,b)=>a-b);
+ const sections=starts.map((start,i)=>({start,end:(starts[i+1]||last+1)-1,part:'wh3-flow-'+start,assets:{}}));
+ const contains=(section,scan)=>section.start<=scan&&scan<=section.end;
+ const trace=items=>{let at=0;return items.map(x=>{const start=at;at+=x.units;return {...x,start,end:at};});};
+ const ranges=sections.map(s=>trace(global.filter(x=>contains(s,x.scan))));
+ const oldRanges=manifest.segments.map(s=>trace(ordered(flat.filter(x=>contains(s,x.scan)))));
+ const anchors=new Map();
+ ranges.forEach((items,i)=>items.forEach(x=>anchors.set(x.id,{item:x,segment:i})));
+ function anchor(items,at){return items?.find(x=>x.start<=at&&at<x.end);}
+ function bookmark(i,key){
+  if(!/^wh3v2\.\d+$/.test(key||''))return key;
+  const at=Number(key.slice(6)),x=anchor(ranges[i],at);
+  return x?'wh3src:'+x.id+':'+(at-x.start):key;
+ }
+ function restore(saved){
+  const legacy=/^wh3v2\.(\d+)$/.exec(saved.key||''),stable=/^wh3src:([^:]+):(\d+)$/.exec(saved.key||'');
+  let id,offset;
+  if(legacy){const at=Number(legacy[1]),x=anchor(oldRanges[saved.segment],at);if(x){id=x.id;offset=at-x.start;}}
+  else if(stable){id=stable[1];offset=Number(stable[2]);}
+  const hit=anchors.get(id);
+  if(hit&&offset>=0&&offset<hit.item.units)return {...saved,segment:hit.segment,key:'wh3v2.'+(hit.item.start+offset)};
+  return {...saved,segment:Math.max(0,sections.findIndex(s=>contains(s,saved.scan))),key:''};
+ }
+ async function archive(index,measuring){
+  const section=sections[index],range=[section.start,section.end],selected=[];
+  for(let n=section.start;n<=section.end;n++){
+   const p=pages.get(n);
+   if(measuring){selected.push(p);continue;}
+   const blob=await book.imageBlob(manifest.originalScans[n].path);
+   const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});
+   selected.push({...p,original:src});
+  }
+  const src={...books[0],range,pages:selected,continuations:joins.filter(e=>contains(section,e.from[0])&&contains(section,e.to[0]))};
+  const evidence={range,sourceEditions:proofs.filter(v=>v.range[0]<=section.end&&v.range[1]>=section.start)};
+  const tag=(id,value)=>'<script type="application/json" id="'+id+'">'+JSON.stringify(value).replace(/</g,'\\u003c')+'</'+'script>';
+  return tag('reader-verified-structure',evidence)+tag('bookdata',src);
+ }
+ return {sections,archive,bookmark,restore};
+}
+// END WH3 continuous scan layout
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='wh1-heading-start-20261122-5';
+const wh3LayoutVersion='wh1-continuous-20261122-6';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
@@ -265,7 +380,7 @@ function wh3MeasureFrame(job,html,index){
  const pane=document.createElement('iframe'),session=crypto.randomUUID();
  pane.setAttribute('sandbox','allow-scripts');pane.setAttribute('aria-hidden','true');pane.tabIndex=-1;
  Object.assign(pane.style,{position:'fixed',left:'0',top:'0',width:job.width+'px',height:job.height+'px',zIndex:'-2',opacity:'0',pointerEvents:'none',border:'0'});
- const markup=wh3FrameDocument(job.layout,html,{font:job.font,origin:location.origin,session,measureOnly:true});
+ const markup=wh3FrameDocument(job.layout,html,{font:job.font,origin:location.origin,session,segment:index,measureOnly:true});
  const url=URL.createObjectURL(new Blob([markup],{type:'text/html'}));
  return new Promise((resolve,reject)=>{
   let done=false;
@@ -289,7 +404,7 @@ async function wh3MeasureBook(job){
   job.layout=await wh3Layout();
   for(let i=0;i<job.counts.length&&wh3Counts===job;i++){
    if(job.counts[i])continue;
-   const archived=await job.book.readText(SEGMENTS[i].part);
+   const archived=await job.book.wh3Flow.archive(i,true);
    if(wh3Counts!==job)return;
    const count=await wh3MeasureFrame(job,archived,i);
    if(wh3Counts!==job||!count)return;
@@ -308,7 +423,7 @@ async function wh3MeasureBook(job){
 function wh3UpdateState(d){
  if(!usesWh3StandardInput()||d.session!==inputSession||!Number.isInteger(d.pageIndex)||!Number.isInteger(d.pageCount)||d.pageIndex<0||d.pageIndex>=d.pageCount)return;
  const rect=$('reader').getBoundingClientRect(),width=Math.round(rect.width),height=Math.round(rect.height),font=d.size;
- const key='wh3-pages:'+wh3LayoutVersion+':'+width+'x'+height+':'+font+':'+SEGMENTS.map(s=>s.sha256||s.part).join('.');
+ const key='wh3-pages:'+wh3LayoutVersion+':'+width+'x'+height+':'+font+':'+manifest.segments.map(s=>s.sha256||s.part).join('.');
  // The shelf link stays visible above the same original-scan dialog used by WH1.
  $('originalOverlay').style.paddingTop='calc(48px + env(safe-area-inset-top))';
  const previous=wh3Counts;
@@ -332,10 +447,9 @@ async function turnWh3Section(index,direction){
  let url='',listener,timer,sequence=0,installed=false;
  previous.inert=true;
  try{
-  const segment=SEGMENTS[index];
-  const [layout,archive]=await Promise.all([wh3Layout(),book.readText(segment.part)]);
+  const [layout,archive]=await Promise.all([wh3Layout(),book.wh3Flow.archive(index,false)]);
   if(token!==loadToken||book!==bookZip)return;
-  const documentText=wh3FrameDocument(layout,archive,{origin:location.origin,session,font:currentState.size});
+  const documentText=wh3FrameDocument(layout,archive,{origin:location.origin,session,segment:index,font:currentState.size});
   url=URL.createObjectURL(new Blob([documentText],{type:'text/html'}));
   pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');
   // Paint behind the current opaque page. Removing its iframe early exposes the browser background.
@@ -377,7 +491,7 @@ async function turnWh3Section(index,direction){
 }
 // END WH3 retained turn
 // END WH3 reference presentation
-function fillManifest(m){
+function fillManifest(m,flow){
  if(!m||m.schema!==1||!Array.isArray(m.range)||m.range[0]!==1||!Number.isInteger(m.range[1])||m.range[1]<1||m.range[1]>15000||!Array.isArray(m.segments)||m.segments.length<1||m.segments.length>1000)throw Error('統合読書ZIPの構成情報が正しくありません');
  for(let i=0;i<m.segments.length;i++){
   const seg=m.segments[i];if(!seg.part||!seg.assets||seg.start>seg.end)throw Error('書籍の構成情報が壊れています');
@@ -385,7 +499,7 @@ function fillManifest(m){
  }
  if(m.segments[0].start!==1||m.segments.at(-1).end!==m.range[1])throw Error('本の収録ページと目次が一致しません');
  for(let n=1;n<=m.range[1];n++)if(!m.originalScans?.[String(n)]?.path)throw Error('原本画像が不足しています：'+n);
- totalScans=m.range[1];bookTitle=String(m.title||bookTitle||'読書');manifest=m;SEGMENTS.splice(0,SEGMENTS.length,...m.segments);
+ totalScans=m.range[1];bookTitle=String(m.title||bookTitle||'読書');manifest=m;SEGMENTS.splice(0,SEGMENTS.length,...(flow?.sections||m.segments));
  document.documentElement.classList.toggle('native-book-input',nativeBookInput());
  if(usesPresidentsTemplate()){
   $('reader').title=bookTitle+'｜全'+totalScans+'枚読書';
@@ -398,13 +512,13 @@ function fillManifest(m){
  $('scanLabel').textContent='スキャン番号から読む（1〜'+totalScans+'）';
  $('menuTitle').textContent='全巻目次｜'+bookTitle;
  $('partChoice').replaceChildren();const toc=$('allHeadings');toc.replaceChildren();
- for(let i=0;i<SEGMENTS.length;i++){
-  const seg=SEGMENTS[i],o=new Option(`${seg.start}〜${seg.end}枚目`,String(i));$('partChoice').append(o);
+ for(let i=0;i<m.segments.length;i++){
+  const seg=m.segments[i],o=new Option(`${seg.start}〜${seg.end}枚目`,String(i));$('partChoice').append(o);
   for(const heading of (seg.headings||[])){
    if(!heading.text||heading.text.length>110)continue;
    const btn=document.createElement('button');btn.className='tocButton';
    const lbl=document.createElement('small');lbl.textContent=heading.scan+'枚目';btn.append(lbl,document.createTextNode(heading.text));
-   btn.onclick=()=>{closeMenu();openSegment(i,usesPresidentsTemplate()?{scan:heading.scan,heading:heading.text}:{scan:heading.scan});};toc.append(btn);
+   btn.onclick=()=>{closeMenu();openSegment(flow?segmentForScan(heading.scan):i,flow?{scan:heading.scan,view:'text',heading:heading.text}:usesPresidentsTemplate()?{scan:heading.scan,heading:heading.text}:{scan:heading.scan});};toc.append(btn);
   }
  }
 }
@@ -464,7 +578,7 @@ class ZipBook {
 }
 const POSITION_KEY='BOOK_POSITION_'+BOOK_ID;
 function savePosition(){try{localStorage.setItem(POSITION_KEY,JSON.stringify(currentState));}catch(_){}}
-function restorePosition(){try{const raw=localStorage.getItem(POSITION_KEY)||(BOOK_ID==='wh1'?localStorage.getItem('WH1_UNIFIED_POSITION'):null);const p=JSON.parse(raw);if(p&&Number.isInteger(p.segment)&&p.segment>=0&&p.segment<SEGMENTS.length)return p;}catch(_){}return {segment:0,key:'',scan:1,size:20};}
+function restorePosition(){try{const raw=localStorage.getItem(POSITION_KEY)||(BOOK_ID==='wh1'?localStorage.getItem('WH1_UNIFIED_POSITION'):null);const p=JSON.parse(raw);if(p&&Number.isInteger(p.segment)&&p.segment>=0&&(p.segment<SEGMENTS.length||typeof manifest!=='undefined'&&manifest?.bookId==='wh3'&&p.segment<manifest.segments.length))return p;}catch(_){}return {segment:0,key:'',scan:1,size:20};}
 // Offline book storage: use small IndexedDB chunks rather than one huge 400 MB transaction.
 // Old v1 records remain readable so an already cached book does not require re-import.
 const OFFLINE_CHUNK_SIZE = 4 * 1024 * 1024;
@@ -560,11 +674,12 @@ async function loadBook(file,shouldSave=true){
   if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){
    book.readingFlow=await window.WH1ExactPager.continuousReading(book,m);
   }
-  fillManifest(m);bookZip=book;
+  if(m.bookId==='wh3'&&m.template_profile==='world_history_1')book.wh3Flow=await wh3ReadingFlow(book,m);
+  fillManifest(m,book.wh3Flow);bookZip=book;
   if(shouldSave)void saveCurrentBook();
   else setStorageState('このiPhoneに保存した書籍を開きました。次回も自動で開きます。',{show:false});
   $('setup').hidden=true;$('reader').style.display='block';
-  currentState=restorePosition();
+  currentState=restorePosition();if(book.wh3Flow)currentState=book.wh3Flow.restore(currentState);
   const requested=m.bookId==='wh3'&&m.template_profile==='world_history_1'?Number(new URLSearchParams(location.search).get('scan')):null;
   if(Number.isInteger(requested)&&requested>=1&&requested<=totalScans){
    const url=new URL(location.href);
@@ -577,8 +692,8 @@ async function loadBook(file,shouldSave=true){
   }else await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});
  }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
 }
-function positionText(){const s=SEGMENTS[currentState.segment];return s?`スキャン ${currentState.scan} / ${totalScans}　｜　区間 ${s.start}〜${s.end}　｜　文字 ${currentState.size}px`: '全巻';}
-function showMenu(){if(!bookZip)return;$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
+function positionText(){const s=bookZip?.wh3Flow?manifest.segments.find(x=>currentState.scan>=x.start&&currentState.scan<=x.end):SEGMENTS[currentState.segment];return s?`スキャン ${currentState.scan} / ${totalScans}　｜　区間 ${s.start}〜${s.end}　｜　文字 ${currentState.size}px`: '全巻';}
+function showMenu(){if(!bookZip)return;$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
 function closeMenu(){$('menuOverlay').hidden=true;}
 function segmentForScan(scan){const i=SEGMENTS.findIndex(s=>scan>=s.start&&scan<=s.end);return i<0?0:i;}
 // 原本画像ページでは、元の各区間読書HTMLにscan番号属性がない場合がある。
@@ -761,13 +876,13 @@ async function openSegment(index,destination={}){
  const token=++loadToken,s=SEGMENTS[index];pendingDest=destinationForScan(destination);pendingLoaded=false;
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
-  const text=await bookZip.readText(s.part);if(token!==loadToken)return;
+  const text=bookZip.wh3Flow?await bookZip.wh3Flow.archive(index,false):await bookZip.readText(s.part);if(token!==loadToken)return;
   inputSession=nativeBookInput()?crypto.randomUUID():'';
   viewportSerial=0;
   let rendered;
   if(usesWh3StandardInput()&&text.includes('<script type="application/json" id="bookdata">')){
    const layout=await wh3Layout();if(token!==loadToken)return;
-   rendered=wh3FrameDocument(layout,text,{origin:location.origin,session:inputSession,font:currentState.size});
+   rendered=wh3FrameDocument(layout,text,{origin:location.origin,session:inputSession,segment:index,font:currentState.size});
   }else{
    const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
    rendered=attachStandardHost(decorateOtherBookReading(decorated));
@@ -805,7 +920,7 @@ function handleChildState(d){
   pendingLoaded=true;
   if(pendingDest && Object.keys(pendingDest).length){$('reader').contentWindow.postMessage({wh1bridge:1,action:'goto',destination:pendingDest},'*');pendingDest=null;return;}
  }
- currentState={segment:activeSegment,key:d.key||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
+ currentState={segment:activeSegment,key:(bookZip?.wh3Flow?bookZip.wh3Flow.bookmark(activeSegment,d.key):d.key)||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
  wh3UpdateState(d);
  if(wh1ExactPager)wh1ExactPager.onState({...d,scan:currentState.scan});
  $('menuSummary').textContent=positionText();
@@ -867,7 +982,7 @@ $('zipInput').addEventListener('change',async()=>{if(!$('zipInput').files?.lengt
 $('resume').onclick=async()=>{try{const saved=await dbRead();if(!saved?.blob)throw Error('保存された書籍がありません');await loadBook(saved.blob,false);}catch(e){setHint(e.message||String(e));clearBusy();}};
 $('goToBookStart').addEventListener('click',goToBookStart);
 $('menuClose').onclick=closeMenu;$('menuReturn').onclick=closeMenu;$('shelfReturn').onclick=()=>{location.href='./';};
-$('partGo').onclick=()=>{const i=Number($('partChoice').value);closeMenu();openSegment(i,{scan:SEGMENTS[i].start});};
+$('partGo').onclick=()=>{const i=Number($('partChoice').value),scan=manifest.segments[i].start;closeMenu();openSegment(bookZip.wh3Flow?segmentForScan(scan):i,{scan});};
 $('scanGo').onclick=()=>{const v=Number($('scanNumber').value);if(!Number.isInteger(v)||v<1||v>totalScans){alert('1〜'+totalScans+'の番号を入力してください');return;}closeMenu();openSegment(segmentForScan(v),{scan:v});};
 $('scanNumber').addEventListener('keydown',e=>{if(e.key==='Enter')$('scanGo').click();});
 $('localToc').onclick=()=>{closeMenu();issueChild('localToc');};

@@ -28,6 +28,31 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='bf7d17add718dfb56f5968cf1985de7b23cd45fa'){
+    const previous=data.toString('utf8')
+      .replace(/\/\/ BEGIN WH3 continuous scan layout[\s\S]*?\/\/ END WH3 continuous scan layout\n/,'')
+      .replace("const i=Number($('partChoice').value),scan=manifest.segments[i].start;closeMenu();openSegment(bookZip.wh3Flow?segmentForScan(scan):i,{scan});","const i=Number($('partChoice').value);closeMenu();openSegment(i,{scan:SEGMENTS[i].start});")
+      .replace("key:(bookZip?.wh3Flow?bookZip.wh3Flow.bookmark(activeSegment,d.key):d.key)||'',scan:resolveStateScan(d)","key:d.key||'',scan:resolveStateScan(d)")
+      .replace("wh3FrameDocument(layout,text,{origin:location.origin,session:inputSession,segment:index,font:","wh3FrameDocument(layout,text,{origin:location.origin,session:inputSession,font:")
+      .replace("const text=bookZip.wh3Flow?await bookZip.wh3Flow.archive(index,false):await bookZip.readText(s.part);if(token","const text=await bookZip.readText(s.part);if(token")
+      .replace("String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber')","String(Math.max(0,activeSegment));$('scanNumber')")
+      .replace("function positionText(){const s=bookZip?.wh3Flow?manifest.segments.find(x=>currentState.scan>=x.start&&currentState.scan<=x.end):SEGMENTS[currentState.segment];","function positionText(){const s=SEGMENTS[currentState.segment];")
+      .replace("  currentState=restorePosition();if(book.wh3Flow)currentState=book.wh3Flow.restore(currentState);","  currentState=restorePosition();")
+      .replace("  if(m.bookId==='wh3'&&m.template_profile==='world_history_1')book.wh3Flow=await wh3ReadingFlow(book,m);\n  fillManifest(m,book.wh3Flow);bookZip=book;","  fillManifest(m);bookZip=book;")
+      .replace("(p.segment<SEGMENTS.length||typeof manifest!=='undefined'&&manifest?.bookId==='wh3'&&p.segment<manifest.segments.length))return p","p.segment<SEGMENTS.length)return p")
+      .replace("openSegment(flow?segmentForScan(heading.scan):i,flow?{scan:heading.scan,view:'text',heading:heading.text}:usesPresidentsTemplate()?{scan:heading.scan,heading:heading.text}:{scan:heading.scan});","openSegment(i,usesPresidentsTemplate()?{scan:heading.scan,heading:heading.text}:{scan:heading.scan});")
+      .replace("for(let i=0;i<m.segments.length;i++){\n  const seg=m.segments[i],o=new Option","for(let i=0;i<SEGMENTS.length;i++){\n  const seg=SEGMENTS[i],o=new Option")
+      .replace("...(flow?.sections||m.segments));","...m.segments);")
+      .replace("function fillManifest(m,flow){","function fillManifest(m){")
+      .replace("wh3FrameDocument(layout,archive,{origin:location.origin,session,segment:index,font:","wh3FrameDocument(layout,archive,{origin:location.origin,session,font:")
+      .replace("  const [layout,archive]=await Promise.all([wh3Layout(),book.wh3Flow.archive(index,false)]);","  const segment=SEGMENTS[index];\n  const [layout,archive]=await Promise.all([wh3Layout(),book.readText(segment.part)]);")
+      .replace("await job.book.wh3Flow.archive(i,true)","await job.book.readText(SEGMENTS[i].part)")
+      .replace("font:job.font,origin:location.origin,session,segment:index,measureOnly:true","font:job.font,origin:location.origin,session,measureOnly:true")
+      .replace("manifest.segments.map(s=>s.sha256||s.part).join('.')","SEGMENTS.map(s=>s.sha256||s.part).join('.')")
+      .replace("wh1-continuous-20261122-6","wh1-heading-start-20261122-5");
+    if(blobSHA(previous)!=='eeae4d967c814e87fe40a82551e6c74f397f9bae')throw Error('WH3_CONTINUOUS_REVERSE_CHECK_FAILED');
+    data=Buffer.from(previous);
+  }
   if(blobSHA(data)==='eeae4d967c814e87fe40a82551e6c74f397f9bae'){
     const previous=data.toString('utf8')
       .replace("wh1-heading-start-20261122-5","wh1-figure-paint-20261122-4")

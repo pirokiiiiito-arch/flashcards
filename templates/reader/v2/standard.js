@@ -244,7 +244,7 @@ function textPart(b,off,n){
    sourceStart:Math.max(0,off-r.start),sourceEnd:Math.min(r.end,off+n)-r.start
   }))};
 }
-function protectedPageBoundary(units,point){
+function protectedPageBoundary(units,point,checkWord=true){
  if(point<=0||point>=units.length)return false;
  const left=units.slice(Math.max(0,point-14),point).join('');
  const right=units.slice(point,Math.min(units.length,point+14)).join('');
@@ -252,7 +252,26 @@ function protectedPageBoundary(units,point){
  if(/(?:「|『|（|\()$/.test(left))return true;
  if(/(?:いずれ|それぞれ|どちら)$/.test(left)&&/^も/.test(right))return true;
  if(/[0-9０-９]$/.test(left)&&/^(?:年|月|日|時|分|秒|円|冊|個|頁|ページ|％|%|cm|kg|㎝|㎏)/.test(right))return true;
- return false;
+ return checkWord&&!wordBoundary(units,point);
+}
+function wordBoundary(units,point){
+ // Keep the tokenizer's context across page turns. Its offsets use UTF-16, whereas
+ // source spans and page measurements count graphemes.
+ const l=units[point-1],r=units[point],katakana=/[\p{Script=Katakana}ー]/u,latin=/[\p{Script=Latin}\p{Number}]/u;
+ if(katakana.test(l)&&katakana.test(r)||katakana.test(l)&&r==='・'||l==='・'&&katakana.test(r)||latin.test(l)&&latin.test(r))return false;
+ if(/^[-‐‑’']$/u.test(r)&&latin.test(l)&&latin.test(units[point+1]||'')||
+    /^[-‐‑’']$/u.test(l)&&latin.test(r)&&latin.test(units[point-2]||''))return false;
+ if(typeof Intl.Segmenter!=='function')return true;
+ const cache=wordBoundary.cache||(wordBoundary.cache=new WeakMap());
+ let ends=cache.get(units);
+ if(!ends){
+  const tokenizer=wordBoundary.tokenizer||(wordBoundary.tokenizer=new Intl.Segmenter('ja',{granularity:'word'}));
+  const offsets=new Set();for(const part of tokenizer.segment(units.join('')))offsets.add(part.index+part.segment.length);
+  ends=new Set();let offset=0;
+  units.forEach((unit,i)=>{offset+=unit.length;if(offsets.has(offset))ends.add(i+1);});
+  cache.set(units,ends);
+ }
+ return ends.has(point);
 }
 function paginateBlocks(group,start){
  group=joinLogicalContinuations(group);
@@ -278,7 +297,7 @@ function paginateBlocks(group,start){
    // Do not split a single Japanese grapheme. Prefer an in-range punctuation
    // boundary; this is not a substitute for original-source G4-04 review.
    if(lo<remaining){
-    const min=Math.max(1,lo-8);
+    const maximum=lo,min=Math.max(1,lo-8);
     for(let n=lo;n>=min;n--){
      if(/[。！？!?、」』）)]/.test(b.units[off+n-1]||'')&&
         !protectedPageBoundary(b.units,off+n)&&
@@ -286,8 +305,13 @@ function paginateBlocks(group,start){
     }
     // Preserve known source-side Japanese compounds and number+unit pairs
     // by carrying the entire unit to the next page whenever it still fits.
-    while(lo>1&&protectedPageBoundary(b.units,off+lo))lo--;
-    if(protectedPageBoundary(b.units,off+lo))
+    while(lo>0&&protectedPageBoundary(b.units,off+lo))lo--;
+    if(lo===0&&current.length){flush();continue;}
+    // An exceptionally long token may itself exceed an empty screen.
+    if(lo===0&&!current.length){
+     lo=maximum;while(lo>0&&protectedPageBoundary(b.units,off+lo,false))lo--;
+    }
+    if(lo===0||protectedPageBoundary(b.units,off+lo,false))
      throw Error('句読点・単位を安全に組版できません。原本と画面寸法を確認してください');
    }
    current.push(textPart(b,off,lo));off+=lo;at+=lo;flush();
