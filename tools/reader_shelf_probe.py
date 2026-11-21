@@ -29,6 +29,12 @@ SEED = '''async ([id,title,root])=>{
 API = '(window.StandardReader||window.NovelReader||window.WH1BookReader)'
 
 
+def wait_painted(frame, index=None):
+    frame.wait_for_function(
+        'i=>{const s='+API+'?.inspect();return s&&s.pages>0&&!s.paintPending&&(i==null||s.index===i)}',
+        arg=index)
+
+
 def touch(page, cdp, start, end):
     def send(kind, points):
         cdp.send('Input.dispatchTouchEvent',{'type':kind,'touchPoints':[{'id':i,'x':x,'y':y,'radiusX':3,'radiusY':3} for i,(x,y) in enumerate(points)]})
@@ -101,6 +107,7 @@ class Reader:
         else:
             self.frame.wait_for_function(API+'?.inspect().pages>0')
             self.frame.evaluate('n=>{const a='+API+';if(a.gotoScan)a.gotoScan(n)}',scan)
+            wait_painted(self.frame)
         return self.frame
 
     def state(self):
@@ -117,6 +124,7 @@ class Reader:
             ix=f.evaluate('''([lo,hi,scan,mode])=>{const a=window.StandardReader||window.NovelReader||window.WH1BookReader,pp=a.pageManifest();
              const candidates=pp.map((p,i)=>({p,i})).filter(({p,i})=>p.scan>=lo&&p.scan<=hi&&(mode==='figure'?p.kind==='image':mode==='text'?p.kind==='text':mode==='contents'&&window.WH1BookReader?p.kind==='contents':true));
              const right=candidates.filter(x=>x.p.scan===scan);let e=right.find(x=>x.i<pp.length-1)||right[0]||candidates.find(x=>x.i<pp.length-1)||candidates[0];if(!e)return -1;a.gotoPage(e.i);return e.i;}''',[start,end,scan,mode]);check(ix>=0,f'{start}-{end}: {mode} のページを特定できません')
+            wait_painted(f,ix)
         run_steps(self.page,f,case.get('steps',[]),scan)
         if mode=='original' and not case.get('steps'):
             f.locator(self.ui.get('originalButton','#original')).click()
@@ -168,8 +176,12 @@ class Reader:
             last=not self.ui.get('position') and self.frame.evaluate(API+'.inspect().index==='+API+'.inspect().pages-1')
             direction=1 if last else -1
             touch(page,cdp,[(190,400)],[(190,400+95*direction)])
+            if not self.ui.get('position'):
+                wait_painted(self.frame,before-direction)
             mid=self.state()[0]
             touch(page,cdp,[(190,400)],[(190,400-95*direction)])
+            if not self.ui.get('position'):
+                wait_painted(self.frame,before)
             after=self.state()[0]
             up,down=(after-mid,mid-before) if last else (mid-before,after-mid)
             check((up,down)==(1,-1) and self.state()==(before,observed),f'{start}-{end}: 等倍で1ページずつ往復しません')
@@ -240,6 +252,7 @@ class Reader:
             for ix in indices:
                 if ix is not None:
                     f.evaluate('i=>'+API+'.gotoPage(i)',ix)
+                    wait_painted(f,ix)
                 run_steps(page,f,ui.get('show',[]),n)
                 rows=f.locator(selector).evaluate_all('''(rows,u)=>rows.filter(r=>r.getClientRects().length).map(r=>{const a=u.label?r.querySelector(u.label):r.firstElementChild,b=u.number?r.querySelector(u.number):r.lastElementChild;if(!a||!b||a===b)throw Error('目次の項目名・掲載番号が分離されていません');const x=r.getBoundingClientRect(),p=a.getBoundingClientRect(),q=b.getBoundingClientRect();if(x.left<-.6||x.top<-.6||x.right>innerWidth+.6||x.bottom>innerHeight+.6||q.left<x.left-.6||q.right>x.right+.6||q.bottom>x.bottom+.6||q.top<x.top-.6||!((p.right<=q.left+.6)||(q.right<=p.left+.6)||(p.bottom<=q.top+.6)||(q.bottom<=p.top+.6)))throw Error('目次の項目名と番号が画面内に収まりません');return [a.textContent.trim(),b.textContent.trim()];})''',ui)
                 actual.extend(rows)
@@ -252,6 +265,7 @@ class Reader:
             f=self.open(n)
             if ix is not None:
                 f.evaluate('i=>'+API+'.gotoPage(i)',ix)
+                wait_painted(f,ix)
             run_steps(page,f,ui.get('show',[]),n)
             f.locator(selector+':visible').nth(i).click()
             if self.manifest.get('segments'):
@@ -331,6 +345,7 @@ def trace_template(frame, plan):
 
 def measure(site,archive,entry,manifest,reference,ranges,root,chromium,continuation=None):
     from playwright.sync_api import sync_playwright
+    from reader_shelf_turns import measure_turns
     class Handler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self):
             if self.path=='/__stage':
@@ -404,9 +419,10 @@ def measure(site,archive,entry,manifest,reference,ranges,root,chromium,continuat
             check(modes==observed,'原本にある画面種別のピンチ検査がそろっていません')
             joins=reader.measure_continuity(continuation)
             dest=reader.toc()
+            turns=measure_turns(page, reader, cdp, ranges)
             browser.close()
         check(shell in used,'配信対象の読書画面を取得できません')
-        return batches,dest,used,joins
+        return batches,dest,used,joins,turns
     finally:
         server.shutdown()
         thread.join()

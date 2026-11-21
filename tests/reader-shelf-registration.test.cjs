@@ -32,6 +32,7 @@ test('signed output covers the report, the actual archive, all batches and every
   const extra=structuredClone(db);extra.existing.push(extra.existing[0]);await assert.rejects(r.parseLedger(extra));
   const dig='a'.repeat(64),measure=['text',1,1,2,8,-10,1,0,1,-1];
   const rec={key:dig,entry:dig,bytes:256,chunkRoot:dig,sha256:dig,channel:'preview',evidence:{version:1,archive:dig,source:dig,host:dig,report:dig,first:1,last:20,modes:['text'],batches:[[1,20,[measure]]],toc:{kind:'source-absent',rows:0,landed:0,reference:dig,results:dig}}};
+  rec.evidence.pageTurns={version:1,report:dig,boundaries:[],sectionCount:1,sections:[]};
   r.validateEvidence(rec);
   await assert.rejects(r.parseLedger({...db,pending:[rec]}));
   await assert.rejects(r.parseLedger({...db,pending:[{...rec,signature:Buffer.alloc(64).toString('base64')}]}));
@@ -39,4 +40,26 @@ test('signed output covers the report, the actual archive, all batches and every
     const invalid=structuredClone(rec);change(invalid);assert.throws(()=>r.validateEvidence(invalid));
   }
   for(const signed of db.editions){const altered=structuredClone(signed);altered.bytes++;await assert.rejects(r.parseLedger({...db,editions:[altered]}));}
+});
+
+test('registration needs measured turns for every source boundary and every displayed section', async () => {
+  const r = await registration;
+  const old = baseline().editions.find(record => !record.evidence.pageTurns);
+  if (old) r.validateEvidence(old);
+  const dig = '3'.repeat(64);
+  const batch = (lo,hi) => [lo,hi,[['text',lo,1,2,8,-10,1,0,1,-1]]];
+  const record = {key:dig,entry:dig,bytes:256,chunkRoot:dig,sha256:dig,channel:'preview',evidence:{
+    version:1,archive:dig,source:dig,host:dig,report:dig,first:1,last:21,modes:['text'],
+    batches:[batch(1,20),batch(21,21)],toc:{kind:'source-absent',rows:0,landed:0,reference:dig,results:dig}
+  }};
+  assert.throws(() => r.validateEvidence(record));
+  record.evidence.pageTurns={version:1,report:dig,boundaries:[[20,21,'shared-page']],sectionCount:2,sections:[[0,1]]};
+  r.validateEvidence(record);
+  for(const edit of [
+    t => {t.boundaries=[];}, t => {t.boundaries[0][0]=19;}, t => {t.sections=[];},
+    t => {t.sections=[[1,2]];}, t => {t.report='unchecked';}
+  ]) {
+    const invalid=structuredClone(record);edit(invalid.evidence.pageTurns);
+    assert.throws(() => r.validateEvidence(invalid));
+  }
 });

@@ -103,7 +103,8 @@ $('text-flow').hidden=mode==='image';$('measure-text').hidden=mode==='image';
 $('figure-stage').hidden=mode!=='image';$('measure-figure').hidden=mode!=='image';
 function readPoint(){const p=readStored()||initialPosition;return Math.max(0,Number(p?.point)||0)}
 function persist(){
- const p=pages[index],v={schema:'standard-reader-position-v2',bookId,
+ if(!shownPage)return;
+ const p=shownPage,v={schema:'standard-reader-position-v2',bookId,
    point:p?.start||0,scan:p?.scan||1,font,updatedAt:Date.now()};
  try{localStorage.setItem(key,JSON.stringify(v))}catch(_){}
  postHost('reader-position-v1',{position:v});
@@ -540,25 +541,64 @@ function pageAt(point){
  for(let i=0;i<pages.length;i++)if(pages[i].start<=point)result=i;else break;
  return result;
 }
+let shownPage=null,pendingPaint=null;
 function currentSource(){
- const p=pages[index];if(!p)return null;
+ const p=shownPage;if(!p)return null;
  if(p.kind==='image')return figures[p.figure]?.ownedURL||figures[p.figure]?.source||null;
  const originals=Array.isArray(book.originals)?book.originals:[];
  return sourceURL||originals.find(x=>Number(x.scan)===Number(p.scan))?.src||null;
 }
-function setFigure(p){
- const f=figures[p.figure],src=f.ownedURL||f.source||null,img=$('figure-image');
+function setFigure(p,image){
+ const f=figures[p.figure],src=f.ownedURL||f.source||null;
  if(p.figure!==activeFigure||activeSrc!==src){
-  if(src){img.src=src;img.hidden=false;$('figure-placeholder').hidden=true}
-  else{img.removeAttribute('src');img.hidden=true;$('figure-placeholder').hidden=false}
-  img.alt=f.alt;activeFigure=p.figure;activeSrc=src;
+  const old=$('figure-image');
+  if(image){image.id=old.id;image.alt=f.alt;old.replaceWith(image);}
+  else{old.removeAttribute('src');old.alt=f.alt;old.hidden=true;}
+  $('figure-placeholder').hidden=!!image;
+  activeFigure=p.figure;activeSrc=src;
  }
  $('figure-caption-label').textContent=f.title;
  caption.textContent=p.caption;
  $('figure-stage').classList.toggle('no-caption',!f.caption);
 }
-function render(){
+function updatePageButtons(target){
+ // The visible page stays usable while a requested image is decoding.
+ $('prev').disabled=target===0&&index===0;
+ $('next').disabled=target===pages.length-1&&index===pages.length-1;
+}
+function render(target=index){
+ const p=pages[target];
+ if(p?.kind==='image'){
+  const figure=figures[p.figure],src=figure.ownedURL||figure.source;
+  if(src&&(activeFigure!==p.figure||activeSrc!==src)){
+   if(pendingPaint?.src===src){
+    pendingPaint.target=target;pendingPaint.page=p;updatePageButtons(target);return;
+   }
+   const image=new Image(),ticket={page:p,target,src};
+   pendingPaint=ticket;updatePageButtons(target);
+   const active=()=>pendingPaint===ticket&&pages[ticket.target]===ticket.page;
+   function failed(){
+    if(!active())return;
+    pendingPaint=null;updatePageButtons(index);
+    $('shelf-status').textContent='図版を読み込めませんでした。もう一度ページを選んでください。';
+   }
+   image.onload=async()=>{
+    if(!active())return;
+    try{if(image.decode)await image.decode();}catch{failed();return;}
+    if(!active())return;
+    if(!image.naturalWidth){failed();return;}
+    pendingPaint=null;commitPage(ticket.target,image);
+   };
+   image.onerror=failed;image.decoding='async';image.src=src;
+   return;
+  }
+ }
+ pendingPaint=null;commitPage(target);
+}
+function commitPage(target,image){
+ index=target;
  const p=pages[index];
+ shownPage=p;
  if(!p){
   $('page-major').textContent='0 / 0';$('page-minor').textContent='読書データ未登録';
   $('progress-fill').style.width='0%';$('prev').disabled=true;$('next').disabled=true;
@@ -569,16 +609,29 @@ function render(){
   const frag=document.createDocumentFragment();
   for(const part of p.parts)frag.append(partNode(part));
   textFlow.replaceChildren(frag);
- }else setFigure(p);
+ }else setFigure(p,image);
  $('page-major').textContent=(index+1)+' / '+pages.length;
  const total=Number(book.totalScans)||1;
  $('page-minor').textContent=isText?('原本 '+p.scan+' / '+total):
   ('原本 '+figures[p.figure].scan+' / '+total+' ｜ 図版 '+(p.figure+1)+' / '+figures.length+' ｜ 説明 '+p.subpage);
  $('progress-fill').style.width=(100*(index+1)/pages.length).toFixed(2)+'%';
- $('prev').disabled=index===0;$('next').disabled=index>=pages.length-1;
+ updatePageButtons(index);
+ $('shelf-status').textContent=warning||String(book.status||'見本・原本未登録');
  $('original').disabled=!currentSource();persist();
 }
-function gotoPage(n){if(!pages.length)return;const k=Math.max(0,Math.min(n,pages.length-1));if(k!==index){index=k;render()}}
+function cancelPageTurn(){
+ if(!pendingPaint)return;
+ pendingPaint=null;updatePageButtons(index);
+}
+function gotoPage(n){
+ if(!pages.length||!Number.isInteger(n))return;
+ const target=Math.max(0,Math.min(n,pages.length-1));
+ if(target===index&&pendingPaint&&pages[index]===shownPage){
+  cancelPageTurn();return;
+ }
+ if(target!==index||pendingPaint||!shownPage)render(target);
+}
+function stepPage(delta){gotoPage((pendingPaint?.target??index)+delta)}
 function menuRefresh(){
  const list=$('menu-items');list.replaceChildren();
  if(mode==='image'){
@@ -624,24 +677,24 @@ function schedule(){
 }
 function changeFont(d){
  const n=Math.max(16,Math.min(30,font+d));
- if(n===font)return;font=n;
+ if(n===font)return;cancelPageTurn();font=n;
  document.documentElement.style.setProperty('--size',font+'px');
  $('current-size').textContent=font+'px';
  $('smaller').disabled=font<=16;$('larger').disabled=font>=30;
  schedule();
 }
 function closeDialogs(){$('menu-backdrop').hidden=true;$('original-backdrop').hidden=true}
-$('prev').addEventListener('click',()=>gotoPage(index-1));
-$('next').addEventListener('click',()=>gotoPage(index+1));
+$('prev').addEventListener('click',()=>stepPage(-1));
+$('next').addEventListener('click',()=>stepPage(1));
 $('first').addEventListener('click',()=>gotoPage(0));
 $('smaller').addEventListener('click',()=>changeFont(-2));
 $('larger').addEventListener('click',()=>changeFont(2));
-$('all').addEventListener('click',()=>{$('menu-backdrop').hidden=false});
+$('all').addEventListener('click',()=>{cancelPageTurn();$('menu-backdrop').hidden=false});
 $('menu-close').addEventListener('click',closeDialogs);
 $('original-close').addEventListener('click',closeDialogs);
 for(const id of ['menu-backdrop','original-backdrop'])$(id).addEventListener('click',e=>{if(e.target===$(id))closeDialogs()});
 $('original').addEventListener('click',()=>{
- const src=currentSource();if(!src)return;
+ cancelPageTurn();const src=currentSource();if(!src)return;
  $('original-image').src=src;$('original-backdrop').hidden=false;
 });
 function fileURL(file){
@@ -675,7 +728,7 @@ main.addEventListener('touchend',e=>{
  const t=e.changedTouches[0],dy=t.clientY-touch.y,dx=t.clientX-touch.x;touch=null;
  if(Math.abs(dy)>45&&Math.abs(dy)>1.3*Math.abs(dx)){
   // Each completed touch sequence advances exactly one reading page.
-  e.preventDefault();gotoPage(index+(dy<0?1:-1));
+  e.preventDefault();stepPage(dy<0?1:-1);
  }
 },{passive:false});
 main.addEventListener('touchcancel',()=>{touch=null},{passive:true});
@@ -683,8 +736,8 @@ window.addEventListener('keydown',e=>{
  if(!$('menu-backdrop').hidden||!$('original-backdrop').hidden){
   if(e.key==='Escape')closeDialogs();return;
  }
- if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault();gotoPage(index+1)}
- if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();gotoPage(index-1)}
+ if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault();stepPage(1)}
+ if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();stepPage(-1)}
 });
 window.addEventListener('resize',schedule);
 if(window.visualViewport){
@@ -695,15 +748,20 @@ if(window.ResizeObserver)new ResizeObserver(schedule).observe(sheet);
 document.querySelector('.shelf-link')?.addEventListener('click',e=>{
  if(embedded&&host?.session){e.preventDefault();postHost('reader-back-to-shelf-v1')}
 });
-window.addEventListener('pagehide',()=>{
- persist();if(sourceURL)URL.revokeObjectURL(sourceURL);
+window.addEventListener('pageshow',e=>{
+ if(e.persisted&&!shownPage&&pages.length)render();
+});
+window.addEventListener('pagehide',e=>{
+ cancelPageTurn();persist();
+ if(e.persisted)return;
+ if(sourceURL)URL.revokeObjectURL(sourceURL);
  figures.forEach(f=>{if(f.ownedURL)URL.revokeObjectURL(f.ownedURL)});
 });
 $('smaller').disabled=font<=16;$('larger').disabled=font>=30;
 window.NovelReader=Object.freeze({version:'novel-v1',kind:mode,bookId,inspect:()=>({
- pages:pages.length,index,font,warning,originalReady:!!currentSource(),
+ pages:pages.length,index,font,warning,paintPending:!!pendingPaint,originalReady:!!currentSource(),
  zoomed:zoomed(),hostKnown,hostScale,
- currentKind:pages[index]?.kind,scan:pages[index]?.scan,
+ currentKind:shownPage?.kind,scan:shownPage?.scan,
  g404Exceptions:g404Audit.filter(x=>x.exception).length,
  g404Pass:!g404Audit.some(x=>x.exception)&&!warning,
  textIntegrity:pages.filter(p=>p.kind==='text').flatMap(p=>p.parts.map(x=>x.text)).join('')===

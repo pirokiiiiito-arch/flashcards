@@ -20,6 +20,14 @@ python tools/reader-shelf-register.py pack \
 - 前後に本文のある分冊境界には原本で照合した接続、または明示した段落・会話・見出しなどの区切りを用意する。既存の四工程の境界台帳は `--structure-reviews private/merged_bookdata.json` でも読み込める。段落などが続かない場合も、`source_review_status: "verified"`、`display_boundary`、実際の `left_suffix`・`right_prefix`、左右の本文ID（または `from`・`to`）を照合する。必要な判断が見つからない場合は該当する原本番号が表示される。画像だけの本では本文接続の指定は不要。
 - `prepare` はDriveから読み戻した実物を本棚で開く。分冊間で続く本文が実際の読書順で隣り合い、画面をまたぐ場合は語の境界にあることを検査する。原本から独立に作った区間越え接続一覧を原本照合表の `continuations` に含めると、省略・余分な接続も照合できる。結果は私有の `verification.json` の `continuity` に保存する。新規登録の前に、通常版と確認版それぞれの登録・校正手順を続ける。
 
+## ページ送りと分冊境界の検査
+
+原本20枚単位の制作・校正と、選択した書式を維持する。ページ送りでは、現在の紙面を表示したまま移動先の本文・図版とページ番号を準備し、一度に切り替える。「次へ」の直後に「前へ」を押した場合は元のページに戻す。遅れて終わった読み込みが本文やしおりを上書きしないよう、最後に指示された移動先を確認してから表示する。
+
+確認版・通常版の新規登録と差し替えには、既存の `prepare` を使う。保存済み書籍を開く経路で、元分冊の全境界と実際の表示区間の全境界を検査する。統合後に二つの原本が同じ画面に収まる場合も、元分冊番号と表示位置の対応を記録する。通常の往復と素早い折り返しで、Chromiumから取得した描画フレームの紙面とページ番号を移動前・移動先の表示と照合する。途中に白い紙面、読み込み表示、別ページの表紙、異なるページ番号などが映った場合は該当境界を修正して再検査する。表紙や白紙自体が正しい移動先なら、その正しい紙面と番号の組で判定する。
+
+私有の `verification.json` の `pageTurns` に検査結果を保存する。登録台帳の署名には検査結果のSHA-256と確認した境界を含める。登録済みの既存版は引き続き読める。新しい版の登録には、その版で取得した検査結果が必要になる。
+
 ## 制作から本棚まで
 
 1. いつもの20枚単位の制作と校正を進め、書籍の実体をDriveの非公開の仮置き先に用意する。原本から作った目次照合表、今回の書誌、Driveの現行本棚一覧を用意する。各分割ファイルを同じDrive IDから読み直し、順に `01.bin`、`02.bin` と保存する。読戻し記録 `parts.json` は各ファイルの `index`（1から）、`id`、`bytes`、`sha256` を持つ配列とする。
@@ -32,7 +40,7 @@ python tools/reader-shelf-register.py pack \
 
 ## 入力と実行例
 
-主な環境は Python 3.11以降、PlaywrightのChromium、Node.js 22以降。`--chromium` に実行ファイルを指定することもできる。発行時には所有者の非公開ファイル「本棚登録_発行鍵_P256.pem」を作業用の非公開ディレクトリに取得し、`--key` にそのパスを渡す。秘密鍵を公開リポジトリ、配信物、ログ、チャット本文に入れない。
+主な環境は Python 3.11以降、Pillow、PlaywrightのChromium、Node.js 22以降。`--chromium` に実行ファイルを指定することもできる。発行時には所有者の非公開ファイル「本棚登録_発行鍵_P256.pem」を作業用の非公開ディレクトリに取得し、`--key` にそのパスを渡す。秘密鍵を公開リポジトリ、配信物、ログ、チャット本文に入れない。
 
 `entry.json` は本棚の既存形式で `id,title,subtitle,status,scans,totalBytes,parts` を指定する。`parts` の各要素は `id,name,size` を持つ。通常版では既存の正式な納品判定のJSON配列を `--handoff` に指定し、実体とハッシュを照合する。確認版の本棚検査は正式校了・iPhone実機確認に昇格させない。
 
@@ -57,3 +65,5 @@ python tools/reader-shelf-register.py finalize \
 目次がある原本は `toc` に `kind:"source"` と `rows` を記す。各行は掲載元の原本番号 `source`、`label`、**印刷どおりの文字列** `number`、実際に開く原本番号 `target`、該当する場合の `view` と `destinationSelector` を持つ。原本に目次がない場合は `kind:"source-absent"`、空の `rows`、根拠の `basis` を指定する。本ごとに印刷ページとスキャン番号の対応を設定できる。
 
 標準読書画面と小説画面は標準のAPIで試験する。それ以外の既存形式は `ui.position` と `ui.scan` に実画面の数値を読む `selector`、必要なら `attribute` とキャプチャ付き `pattern` を指定する。`ui.goto` は本の正規の移動操作を `click`、`fill`、`select`、`wait` で指定する。値とセレクタ内の `{scan}` は対象の原本番号になる。`ui.frame`、画面別の `textSelector,figureSelector,originalSelector,contentsSelector`、目次の `toc.ui.show,row,label,number` も指定できる。これらは実際の画面要素を選ぶための設定であり、倍率や合格結果を指定する欄はない。
+
+独自の画面で境界試験に使う要素は、必要に応じて `ui.turns.body`（紙面）、`number`（ページ番号全体）、`next` と `prev`（前後ボタン）のCSSセレクタで指定する。総ページ数は `ui.turns.total`、同じ画面が複数の原本にまたがる場合の出典一覧は `ui.turns.sourceScans` に指定できる。どちらも `position` と同じ形式の抽出設定を使う。番号表示が「現在 / 総数」以外の形式なら、`ui.turns.numberPattern` の第1・第2キャプチャに現在番号と総数をそれぞれ指定する。

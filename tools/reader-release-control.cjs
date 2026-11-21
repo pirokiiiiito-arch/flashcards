@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const legacy=require('./reader-quality-gate.cjs');
 const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
 const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
-const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-scoped-review.cjs','reader-source-pages.cjs','reader-shelf-prior.cjs','reader-shelf-register.py','reader_shelf_probe.py'];
+const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-scoped-review.cjs','reader-source-pages.cjs','reader-shelf-prior.cjs','reader-shelf-register.py','reader_shelf_probe.py','reader_shelf_turns.py','reader_shelf_turn_frames.py'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
@@ -59,7 +59,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'1e931004f0a0619cc2940287181fceb8daf5d054',
- 'reader/library/read.html':'8a8404cd07ee7889f8c133003826f133ee051c69'
+ 'reader/library/read.html':'9e82997de0797ab051791edb0c71b15ae42301ca'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
@@ -341,7 +341,7 @@ function admittedBookshelfNavUI(root,policy){
  const wh3Layout='reader/library/wh3-format.html';
  if(fs.existsSync(safe(root,wh3Layout))){
   const bytes=fs.readFileSync(safe(root,wh3Layout)),digest=hash(bytes),html=bytes.toString('utf8');
-  demand(digest==='527cba84e5128d44422d146f46e6b1cd9a5851566ee6c7bd66ac4a4488c266eb'&&html.includes('<!--WH3_PRIVATE_DATA-->')&&html.includes('<!--WH3_PRIVATE_STRUCTURE-->')&&!/data:image\/[^;]+;base64,/.test(html),'WH3_PUBLIC_LAYOUT_NOT_REVIEWED');
+  demand(digest==='ba89467b9f64cbe3e5549b7c6ab1deb0217b1712f615f1e547af99350dc0611d'&&html.includes('<!--WH3_PRIVATE_DATA-->')&&html.includes('<!--WH3_PRIVATE_STRUCTURE-->')&&!/data:image\/[^;]+;base64,/.test(html),'WH3_PUBLIC_LAYOUT_NOT_REVIEWED');
   approved[wh3Layout]=digest;
  }
  let sharedChanged=0;
@@ -472,7 +472,7 @@ function admittedBookshelfNavUI(root,policy){
   if(registration){
     const files={
       "reader/library/storage.js": "91f1b91935626c1a33f8c97dab0175c9ddf6cd4a7b98b89798d709ef5b1ce746",
-      "reader/library/shelf-registration.mjs": "55e517270784d0861d0f80c16ff117960f577ea9dcba3c464a86c494bfe41621",
+      "reader/library/shelf-registration.mjs": "5b1c5311261c986f90361c1a557501421cc82aeb3642199ddb6bd5eacafb5c75",
       "reader/wh1/full/index.html": "389750d3d6cd32459a8af698595ae1e48e5819aef79aa3c1f8754fa2883ba381"
 };
     for(const [name,pin] of Object.entries(files)){

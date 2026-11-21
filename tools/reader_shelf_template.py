@@ -12,6 +12,18 @@ import re
 
 TEMPLATE = Path(__file__).resolve().parents[1] / 'templates/reader/v2'
 
+# Source volumes from the preceding v2 release can be assembled with the same
+# layout and the current page-turn renderer. Custom engines keep their own entry.
+PREVIOUS_ENGINE_SHA = {
+    'standard.js': 'aa50214094838cff85f5ace542e03d55d7703886d42557e44e4308d83a39f31c',
+    'novel.js': 'bb3e9d9674e9edc6fa440528ccfcc4b746a371c572fa55004c3dce0e49cac250',
+}
+
+
+def known_previous_engine(file, source):
+    return file in PREVIOUS_ENGINE_SHA and sha256(source.strip()).hexdigest() == PREVIOUS_ENGINE_SHA[file]
+
+
 
 class TemplateSource(HTMLParser):
     """Read literal data from private HTML. Source scripts are never evaluated."""
@@ -51,7 +63,8 @@ def verified_template(html, profile, part, read_bytes):
             if re.search(r'\btype=["\x27]application/json["\x27]',attrs,re.I) or re.fullmatch(r'\s*window\.READER_BOOK\s*=\s*\{.*\}\s*;?\s*',code,re.S):
                 return ''
             for file in scripts:
-                if not attrs.strip() and code.strip() == (TEMPLATE/file).read_text().strip():
+                if not attrs.strip() and (code.strip() == (TEMPLATE/file).read_text().strip()
+                                          or known_previous_engine(file, code.encode())):
                     return '<script src="./'+file+'"></script>'
             return match[0]
         value = re.sub(r'<script\b([^>]*)>(.*?)</script\s*>', script, value, flags=re.I|re.S)
@@ -73,7 +86,7 @@ def verified_template(html, profile, part, read_bytes):
             asset = read_bytes(str(PurePosixPath(part['part']).parent / file))
         except (FileNotFoundError, KeyError):
             continue
-        if asset != (TEMPLATE/file).read_bytes():
+        if asset != (TEMPLATE/file).read_bytes() and not known_previous_engine(file, asset):
             raise ValueError(f'個別の表示処理 {file} を含むため、書式を保った全巻HTMLを指定してください')
 
 

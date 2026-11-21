@@ -310,7 +310,7 @@ test('WH3 mounts the WH1 layout with the same private source in every section, i
 
 test('a Presidents section turn keeps the current page until the destination and global counter have painted',async()=>{
  const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
- const bridge=html.split('// BEGIN Presidents retained turn\n')[1].split('// END Presidents retained turn')[0];
+ const bridge=html.split('// BEGIN bookshelf retained turn\n')[1].split('// END bookshelf retained turn')[0];
  const listeners=new Map(),revoked=[],states=[],notices=[];
  class Pane{
   constructor(name){
@@ -327,7 +327,7 @@ test('a Presidents section turn keeps the current page until the destination and
   window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:(type,fn)=>{if(listeners.get(type)===fn)listeners.delete(type);}},
   document:{activeElement:first},crypto:crypto.webcrypto,Blob,setTimeout,clearTimeout,
   URL:{createObjectURL:()=>'blob:candidate',revokeObjectURL:id=>revoked.push(id)},
-  bookZip:{readText:async()=>'<body></body>',readBytes:async()=>new Uint8Array([3,5])},
+  bookZip:{readText:async()=>`<body><div id="reader-page"></div><strong id="location"></strong><script>function shiftPage(){} function showPage(){} const evt={type:'boundary'};</script></body>`,readBytes:async()=>new Uint8Array([3,5])},
   SEGMENTS:[{part:'a',assets:{}},{part:'b',assets:{image:{path:'p',mime:'image/jpeg'}}}],
   currentState:{size:20,key:'last'},loadToken:0,frameURL:'blob:previous',inputSession:'A',
   activeSegment:0,viewportSerial:0,pendingLoaded:true,pendingDest:null,totalScans:40,
@@ -340,16 +340,16 @@ test('a Presidents section turn keeps the current page until the destination and
  async function send(pane,type,extra={}){
   const handler=listeners.get('message');await handler({source:pane.contentWindow,data:{wh1bridge:1,segment:1,type,...extra}});
  }
- context.turnPresidentsSection(1,false);await flush();
+ context.turnSection(1,false);await flush();
  const cancelled=first.behind;
  assert.equal(first.removed,undefined);
- context.turnPresidentsSection(-1,true);
+ context.turnSection(-1,true);
  assert.equal(cancelled.removed,true);
  assert.deepEqual(states,[]);
- assert.equal(first.messages.at(-1).action,'presidentsResume');
+ assert.equal(first.messages.at(-1).action,'sectionResume');
  assert.equal(first.inert,false);
 
- context.turnPresidentsSection(1,false);await flush();
+ context.turnSection(1,false);await flush();
  const next=first.behind;
  await send(cancelled,'prepare');
  assert.equal(next.messages.length,0,'discarded iframe cannot start an asset load');
@@ -358,28 +358,30 @@ test('a Presidents section turn keeps the current page until the destination and
  assert.deepEqual([...new Uint8Array(next.messages[0].assets[0].data)],[3,5]);
  const session=next.messages[0].session;
  await send(next,'state',{totalPages:80,pageIndex:0});
- assert.equal(next.messages.at(-1).action,'presidentsTarget');
- await send(next,'presidentsTarget',{session,key:'first',pageIndex:0,totalPages:80,size:20,scan:21});
+ assert.equal(next.messages.at(-1).action,'sectionTarget');
+ await send(next,'sectionTarget',{session,key:'first',pageIndex:0,totalPages:80,size:20,scan:21});
  const [progress,paint]=next.messages.slice(-2);
  assert.equal(progress.label,'73 / 152');
  assert.equal(progress.scan,21);
- assert.equal(paint.action,'presidentsPaint');
+ assert.equal(paint.action,'sectionPaint');
  assert.deepEqual(states,[]);
- await send(next,'presidentsPainted',{session:'stale'});
+ await send(next,'sectionPainted',{session:'stale'});
  assert.equal(first.inert,false);
- context.turnPresidentsSection(1,true);
- await send(next,'presidentsPainted',{session});
- assert.equal(first.inert,true);
+ context.turnSection(1,true);
+ await send(next,'sectionPainted',{session});
+ assert.equal(first.inert,false,'an in-flight gesture must keep receiving its native touch events');
  assert.equal(first.removed,undefined);
- assert.equal(first.messages.at(-1).action,'presidentsSeal');
- await send(first,'presidentsSealed',{segment:0,session:'stale'});
+ assert.equal(first.messages.at(-1).action,'sectionSeal');
+ await send(first,'sectionSealed',{segment:0,session:'stale'});
  assert.deepEqual(states,[]);
- await send(first,'presidentsSealed',{segment:0,session:'A'});
+ await send(first,'sectionSealed',{segment:0,session:'A'});
  assert.equal(states[0].key,'first');
+ assert.equal(first.removed,undefined,'an already-targeted touch stays attached until its end');
+ await send(first,'sectionRetired',{session:'A',segment:0});
  assert.equal(first.removed,true);
  assert.equal(next.id,'reader');
  assert.equal(next.focused,true);
- assert.equal(next.messages.at(-1).action,'presidentsResume');
+ assert.equal(next.messages.at(-1).action,'sectionResume');
  assert.deepEqual([...next.messages.at(-1).directions],[1]);
  assert.ok(revoked.includes('blob:previous'));
  assert.deepEqual(notices,[]);
@@ -388,20 +390,90 @@ test('a Presidents section turn keeps the current page until the destination and
 
 test('Presidents controls share one ordered series of button, swipe and keyboard page turns',()=>{
  const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
- const source=html.slice(html.indexOf('function presidentsPaneBridge('),html.indexOf('function presidentsPaneDocument('));
+ const source=html.slice(html.indexOf('function sectionPaneBridge('),html.indexOf('function sectionPaneDocument('));
  const events=[],steps=[];
  let receive;
  const parent={postMessage:message=>events.push(message)},c=vm.createContext({
-  window:{addEventListener:(_,fn)=>{receive=fn;}},parent,pages:[{},{},{}],currentPage:2,
+  window:{addEventListener:(_,fn)=>{receive=fn;}},parent,pages:[{},{},{}],currentPage:2,fontPx:20,
   shiftPage:direction=>steps.push(direction)
  });
- vm.runInContext(source+"\npresidentsPaneBridge(0,'session',2);",c);
+ vm.runInContext(source+"\nsectionPaneBridge(0,'session',2);",c);
  c.shiftPage(1);c.shiftPage(-1);
  assert.deepEqual(events.map(d=>[d.direction,d.repeat]),[[1,false],[-1,true]]);
  assert.deepEqual(steps,[]);
  c.currentPage=1;
- receive({source:parent,data:{wh1bridge:1,action:'presidentsResume',session:'wrong'}});
+ receive({source:parent,data:{wh1bridge:1,action:'sectionResume',session:'wrong'}});
  c.shiftPage(-1);assert.deepEqual(steps,[]);
- receive({source:parent,data:{wh1bridge:1,action:'presidentsResume',session:'session',directions:[-1,1]}});
+ receive({source:parent,data:{wh1bridge:1,action:'sectionResume',session:'session',directions:[-1,1]}});
  assert.deepEqual(steps,[-1,1]);
+});
+
+test('structured section targets wait for decoded artwork and painted whole-book progress',async()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const source=html.slice(html.indexOf('function sectionPaneBridge('),html.indexOf('function sectionPaneDocument('));
+ const sent=[],parent={postMessage:d=>sent.push(d)},counter={dataset:{global:'4 / 6'}};
+ let receive,index=0,decodeDone;
+ const image={hidden:false,complete:true,naturalWidth:32,decode:()=>new Promise(resolve=>{decodeDone=resolve;})};
+ const win={
+  StandardReader:{inspect:()=>({pages:3,index,font:22,scan:31,originalReady:true,currentKind:'image'}),
+   pageManifest:()=>[{start:0},{start:8},{start:12}],gotoPage:n=>{index=n;}},
+  addEventListener:(_,fn)=>{receive=fn;}
+ };
+ const ctx={window:win,parent,requestAnimationFrame:cb=>setImmediate(cb),
+  document:{fonts:{ready:Promise.resolve()},getElementById:id=>id==='figure-image'?image:counter}};
+ vm.runInNewContext(source+"\nsectionPaneBridge(1,'S',3,true);",ctx);
+ const command=(action,extra={})=>receive({source:parent,data:{wh1bridge:1,session:'S',action,...extra}});
+ const wait=()=>new Promise(resolve=>setImmediate(resolve));
+ const first=command('sectionTarget',{direction:-1});await wait();
+ assert.equal(index,2);assert.deepEqual(sent,[]);
+ decodeDone();await first;
+ const target=sent.at(-1);
+ assert.equal(target.type,'sectionTarget');assert.equal(target.key,'wh3v2.12');
+ assert.equal(target.scan,31);assert.equal(target.size,22);
+ await command('sectionPaint',{...target,label:'6 / 6'});
+ assert.equal(sent.at(-1).type,'sectionError','a stale counter cannot authorize installation');
+ counter.dataset.global='6 / 6';
+ await command('sectionPaint',{...target,label:'6 / 6'});
+ assert.equal(sent.at(-1).type,'sectionPainted');
+ assert.equal(win.shelfSectionBoundary(1),true);
+ assert.equal(win.shelfSectionBoundary(-1),true);
+ assert.deepEqual(sent.slice(-2).map(m=>[m.type,m.direction,m.repeat]),[['sectionTurn',1,false],['sectionTurn',-1,true]]);
+ image.naturalWidth=0;
+ await command('sectionTarget',{direction:-1});assert.equal(sent.at(-1).type,'sectionError');
+});
+
+test('unknown legacy archives keep their native loader while known WH1 controls opt in independently of book ID',()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const source=html.slice(html.indexOf('function archiveHasPageControls('),html.indexOf('function sectionPaneBridge('));
+ const identifies=vm.runInNewContext(source+'\narchiveHasPageControls');
+ assert.equal(identifies('<body><script>parent.postMessage({type:"boundary"})</script></body>'),false);
+ const pager='<strong id="location"></strong><div id="reader-page"></div><script>function shiftPage(n){showPage()} function showPage(){} const m={type:"boundary"};</script>';
+ assert.equal(identifies(pager),true);
+ assert.ok(html.includes('const supportsTurn=!!bookZip.wh3Flow||archiveHasPageControls(text);'));
+ assert.ok(html.includes("if(d.type==='sectionTurn'&&inputSession&&d.session===inputSession)turnSection("));
+});
+
+test('a touch already down at the section boundary can finish on its original iframe',async()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const source=html.slice(html.indexOf('function sectionPaneBridge('),html.indexOf('function sectionPaneDocument('));
+ const handlers={},events=[],parent={postMessage:event=>events.push(event)},steps=[];
+ const win={StandardReader:{inspect:()=>({index:1,pages:2}),gotoPage:n=>steps.push(n)},
+  addEventListener:(name,fn)=>{handlers[name]=fn;}};
+ vm.runInNewContext(source+"\nsectionPaneBridge(0,'live',2,true);",{window:win,parent,setTimeout});
+ const command=action=>handlers.message({source:parent,data:{wh1bridge:1,session:'live',action}});
+ assert.equal(win.shelfSectionBoundary(1),true);
+ handlers.touchstart({touches:[{}]});command('sectionSeal');
+ assert.deepEqual(events.map(e=>e.type),['sectionTurn']);
+ assert.equal(win.shelfSectionBoundary(-1),true);
+ handlers.touchend({touches:[]});
+ await new Promise(resolve=>setTimeout(resolve,10));
+ assert.deepEqual(events.map(e=>e.type),['sectionTurn','sectionTurn','sectionSealed']);
+ handlers.pointerdown({pointerId:1});command('sectionRetire');
+ await new Promise(resolve=>setTimeout(resolve,10));
+ assert.notEqual(events.at(-1).type,'sectionRetired');
+ assert.equal(win.shelfSectionBoundary(-1),true);
+ handlers.pointerup({pointerId:1});
+ await new Promise(resolve=>setTimeout(resolve,10));
+ assert.deepEqual(events.slice(-2).map(e=>e.type),['sectionLateStep','sectionRetired']);
+ assert.deepEqual(steps,[]);
 });

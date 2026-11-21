@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Browser regressions run in dedicated CI; Pages only builds and verifies artifacts.
+    # The staged bookshelf also runs its small synthetic page-turn regression.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -230,8 +230,14 @@ jobs:
       - name: Verify cross-volume reading for newly packaged books
         working-directory: ${{ runner.temp }}/reader-pages
         run: |
-          node --test tests/reader-continuous-sections.test.cjs tests/reader-new-book-flow.test.cjs tests/reader-shelf-*.test.cjs
-          python3 -m unittest discover -s tests -p 'test_reader_shelf*.py'
+          node --test tests/reader-continuous-sections.test.cjs tests/reader-new-book-flow.test.cjs tests/reader-shelf-*.test.cjs tests/reader-single-document-paint.test.cjs
+          python3 -m venv "$RUNNER_TEMP/shelf-qa"
+          qa_python="$RUNNER_TEMP/shelf-qa/bin/python"
+          "$qa_python" -m pip install --disable-pip-version-check Pillow playwright
+          if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            "$qa_python" -m playwright install chromium
+          fi
+          "$qa_python" -m unittest discover -s tests -p 'test_reader_shelf*.py'
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:

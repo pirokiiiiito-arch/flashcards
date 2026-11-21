@@ -399,7 +399,7 @@ async function wh3ReadingFlow(book,manifest){
 }
 // END WH3 continuous scan layout
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='common-continuous-20261122-7';
+const wh3LayoutVersion='common-retained-turn-20261122-8';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
@@ -490,103 +490,102 @@ function wh3UpdateState(d){
  counts[activeSegment]=d.pageCount;const job={key,book:bookZip,width,height,font,counts,cancel:null};wh3Counts=job;
  wh3Progress();if(counts.some(n=>!n))void wh3MeasureBook(job);
 }
-// BEGIN WH3 retained turn
-let wh3TurningSection=false;
-async function turnWh3Section(index,direction){
- if(wh3TurningSection)return;
- wh3TurningSection=true;
- const token=++loadToken,book=bookZip,previous=$('reader'),previousURL=frameURL;
- const pane=previous.cloneNode(false),session=crypto.randomUUID();
- let url='',listener,timer,sequence=0,installed=false;
- previous.inert=true;
- try{
-  const [layout,archive]=await Promise.all([wh3Layout(),book.wh3Flow.archive(index,false)]);
-  if(token!==loadToken||book!==bookZip)return;
-  const documentText=wh3FrameDocument(layout,archive,{origin:location.origin,session,segment:index,font:currentState.size});
-  url=URL.createObjectURL(new Blob([documentText],{type:'text/html'}));
-  pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');
-  // Paint behind the current opaque page. Removing its iframe early exposes the browser background.
-  const rect=previous.getBoundingClientRect();
-  Object.assign(pane.style,{position:'fixed',left:rect.left+'px',top:rect.top+'px',width:rect.width+'px',height:rect.height+'px',
-   border:'0',display:'block',background:'var(--paper)',pointerEvents:'none'});
-  const state=await new Promise((resolve,reject)=>{
-   let requested=false;
-   listener=event=>{
-    if(event.source!==pane.contentWindow||!event.data)return;
-    const d=event.data;
-    if(d.session!==session)return;
-    if(d.type==='reader-ready-v8'){
-     pane.contentWindow.postMessage({type:'reader-viewport-v8',session,seq:++sequence,scale:window.visualViewport?.scale||1},'*');
-    }
-    if(d.wh1bridge!==1||d.type!=='state'||d.segment!==index||!d.pageCount)return;
-    const target=direction<0?d.pageCount-1:0;
-    if(d.pageIndex===target){resolve(d);return;}
-    if(!requested){
-     requested=true;
-     pane.contentWindow.postMessage({wh1bridge:1,action:'goto',destination:{mode:direction<0?'last':'first'}},'*');
-    }
-   };
-   timer=setTimeout(()=>reject(Error('次の分冊を表示できませんでした')),45000);
-   window.addEventListener('message',listener);pane.src=url;previous.before(pane);
-  });
-  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-  if(token!==loadToken||book!==bookZip)return;
-  pane.style.cssText=previous.style.cssText;previous.remove();pane.id='reader';pane.removeAttribute('aria-hidden');
-  frameURL=url;activeSegment=index;inputSession=session;viewportSerial=sequence;pendingDest=null;pendingLoaded=true;
-  installed=true;URL.revokeObjectURL(previousURL);syncReaderViewport();handleChildState(state);
- }catch(error){
-  if(token===loadToken)setStorageState('分冊を開けませんでした。もう一度ページを送ってください。',{warn:true});
- }finally{
-  clearTimeout(timer);if(listener)window.removeEventListener('message',listener);
-  if(!installed){pane.remove();if(url)URL.revokeObjectURL(url);previous.inert=false;}
-  wh3TurningSection=false;
- }
-}
-// END WH3 retained turn
 // END WH3 reference presentation
-// BEGIN Presidents retained turn
+// BEGIN bookshelf retained turn
 // The archived reader owns all page controls. Keep their order while the next
 // archive is opening behind the current, opaque page.
-function presidentsPaneBridge(segment,session,segments){
+function archiveHasPageControls(html){
+ // These globals and nodes belong to the archived WH1 pager. Other archives
+ // can keep their own message protocol, including ones which replace their document.
+ if(/id=["']segment-template["']/.test(html))return false;
+ return /function\s+shiftPage\s*\(/.test(html)&&/\bshowPage\s*\(/.test(html)&&
+  /id=["']reader-page["']/.test(html)&&/id=["']location["']/.test(html)&&
+  /type\s*:\s*["']boundary["']/.test(html);
+}
+function sectionPaneBridge(segment,session,segments,structured){
+ const api=structured?window.StandardReader:window.WH1BookReader;
  const send=(type,extra={})=>parent.postMessage({wh1bridge:1,type,segment,session,...extra},'*');
- const step=shiftPage;
- let waiting=false,sealed=false;
- shiftPage=function(direction){
-  if(sealed)return;
-  const crossing=direction<0?segment>0&&currentPage===0:segment+1<segments&&currentPage===pages.length-1;
-  if(!waiting&&!crossing){step(direction);return;}
-  send('presidentsTurn',{direction,repeat:waiting});waiting=true;
+ if(structured?!api:typeof shiftPage!=='function'||typeof currentPage==='undefined'||typeof pages==='undefined'||typeof fontPx==='undefined'){
+  send('sectionUnsupported');return;
+ }
+ const localStep=structured?direction=>api.gotoPage(api.inspect().index+direction):shiftPage;
+ const inspect=()=>structured?api.inspect():{
+  index:currentPage,pages:pages.length,font:fontPx,originalReady:api?.inspect().originalReady??true
  };
+ let waiting=false,sealed=false,sealRequested=false,retiring=false,touches=0;
+ const pointers=new Set(),afterInput=()=>{
+  if(touches||pointers.size)return;
+  if(retiring){send('sectionRetired');return;}
+  if(sealRequested&&!sealed){sealed=true;send('sectionSealed');}
+ };
+ // A gesture already targeted at this frame needs its ending event even if the
+ // next frame is ready halfway through. Let the page's own click/swipe run first.
+ window.addEventListener('pointerdown',e=>pointers.add(e.pointerId),true);
+ for(const type of ['pointerup','pointercancel'])window.addEventListener(type,e=>{
+  pointers.delete(e.pointerId);setTimeout(afterInput,0);
+ },true);
+ for(const type of ['touchstart','touchend','touchcancel'])window.addEventListener(type,e=>{
+  touches=e.touches.length;if(!touches)setTimeout(afterInput,0);
+ },{capture:true,passive:true});
+ function boundary(direction){
+  if(sealed){send('sectionLateStep',{direction});return true;}
+  const {index,pages}=inspect();
+  const crossing=direction<0?segment>0&&index===0:segment+1<segments&&index===pages-1;
+  if(!waiting&&!crossing)return false;
+  send('sectionTurn',{direction,repeat:waiting});waiting=true;return true;
+ }
+ function step(direction){if(!boundary(direction))localStep(direction);}
+ if(structured)window.shelfSectionBoundary=boundary;
+ else shiftPage=step;
  const paint=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+ const stateKey=index=>structured?'wh3v2.'+api.pageManifest()[index].start:pages[index].key;
+ async function verifyArtwork(shown){
+  if(!structured){
+   await Promise.all(Array.from(document.querySelectorAll('#reader-page img'),img=>img.decode()));return;
+  }
+  if(shown.warning)throw Error('組版失敗');
+  const id=shown.currentKind==='image'?'figure-image':shown.currentKind==='portrait'?'portrait-image':'';
+  if(!id)return;
+  const image=document.getElementById(id);
+  if(!image||image.hidden||!image.complete||!image.naturalWidth)throw Error('図版未表示');
+  await image.decode();
+ }
  window.addEventListener('message',async event=>{
   const d=event.data;
   if(event.source!==parent||!d||d.wh1bridge!==1||d.session!==session)return;
-  if(d.action==='presidentsResume'){
-   sealed=false;waiting=false;
-   for(const direction of d.directions||[])shiftPage(direction);
-  }else if(d.action==='presidentsSeal'){
-   sealed=true;send('presidentsSealed');
-  }else if(d.action==='presidentsTarget'){
+  if(d.action==='sectionResume'){
+   sealRequested=false;sealed=false;waiting=false;for(const direction of d.directions||[])step(direction);
+  }else if(d.action==='sectionSeal'){
+   sealRequested=true;afterInput();
+  }else if(d.action==='sectionRetire'){
+   retiring=true;setTimeout(afterInput,0);
+  }else if(d.action==='sectionStep'){
+   step(d.direction);
+  }else if(d.action==='sectionTarget'){
    try{
-    const reader=window.WH1BookReader;
-    while(!reader.inspect().originalReady)await paint();
     await document.fonts?.ready;
-    const state=reader.inspect();
-    reader.gotoPage(d.direction<0?state.pages-1:0);
-    await Promise.all(Array.from(document.querySelectorAll('#reader-page img'),img=>img.decode()));
-    const shown=reader.inspect();
-    send('presidentsTarget',{key:pages[currentPage].key,pageIndex:shown.index,totalPages:shown.pages,scan:shown.scan,size:fontPx});
-   }catch(_){send('presidentsError');}
-  }else if(d.action==='presidentsPaint'){
+    while(!inspect().originalReady||!inspect().pages)await paint();
+    const index=d.direction<0?inspect().pages-1:0;
+    if(api)api.gotoPage(index);else{currentPage=index;showPage();}
+    while(inspect().paintPending)await paint();
+    const shown=inspect();
+    await verifyArtwork(shown);
+    send('sectionTarget',{key:stateKey(shown.index),pageIndex:shown.index,totalPages:shown.pages,
+     pageCount:shown.pages,scan:api?.inspect().scan,size:shown.font});
+   }catch(_){send('sectionError');}
+  }else if(d.action==='sectionPaint'){
    await paint();await paint();
-   const shown=window.WH1BookReader.inspect();
-   if(pages[currentPage]?.key===d.key&&shown.pages===d.totalPages&&shown.index===d.pageIndex)send('presidentsPainted');
-   else send('presidentsError');
+   const shown=inspect(),location=document.getElementById(structured?'page-major':'location');
+   const label=structured?location?.dataset.global:location?.dataset.wh1Global;
+   if(!shown.paintPending&&!shown.warning&&stateKey(shown.index)===d.key&&shown.pages===d.totalPages&&
+    shown.index===d.pageIndex&&shown.font===d.size&&label===d.label)send('sectionPainted');
+   else send('sectionError');
   }
  });
 }
-function presidentsPaneDocument(html,index,session){
- const script='<script>('+presidentsPaneBridge.toString()+')('+[index,JSON.stringify(session),SEGMENTS.length].join(',')+');<\/script>';
+function sectionPaneDocument(html,index,session,structured=false){
+ const settings=JSON.stringify([index,session,SEGMENTS.length,structured]);
+ const script='<script>('+sectionPaneBridge.toString()+')(...'+settings+');<\/script>';
  return html.replace('</body>',()=>script+'</body>');
 }
 async function segmentAssets(book,segment,current){
@@ -598,25 +597,46 @@ async function segmentAssets(book,segment,current){
  }
  return current()?assets:null;
 }
-const presidentsTurnNotice='分冊を開けませんでした。もう一度ページを送ってください。';
-let presidentsTurn=null;
-function cancelPresidentsTurn(){presidentsTurn?.cancel();}
-function turnPresidentsSection(direction,repeat){
+const sectionTurnNotice='分冊を開けませんでした。もう一度ページを送ってください。';
+let sectionTurn=null;
+function cancelSectionTurn(){sectionTurn?.cancel();}
+// An input can start in the brief interval between a child's seal and the
+// parent's swap. Keep its original event target alive until the gesture ends.
+function retireSection(previous,oldSession,session,bounds){
+ previous.removeAttribute('id');previous.setAttribute('aria-hidden','true');
+ Object.assign(previous.style,{position:'fixed',left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px',
+  display:'block',pointerEvents:'none',opacity:'0',border:'0'});
+ function remove(){
+  clearTimeout(timer);window.removeEventListener('message',receive);previous.remove();
+ }
+ function receive(e){
+  const d=e.data;
+  if(e.source!==previous.contentWindow||d?.wh1bridge!==1||d.session!==oldSession)return;
+  if(d.type==='sectionRetired')remove();
+  else if(d.type==='sectionLateStep'&&inputSession===session&&(d.direction===1||d.direction===-1))
+   issueChild('sectionStep',{session,direction:d.direction});
+ }
+ const timer=setTimeout(remove,45000);
+ window.addEventListener('message',receive);
+ previous.contentWindow.postMessage({wh1bridge:1,action:'sectionRetire',session:oldSession},'*');
+}
+function turnSection(direction,repeat){
  if(direction!==1&&direction!==-1)return;
- if(presidentsTurn){
-  if(!presidentsTurn.queue.length&&direction===-presidentsTurn.direction){cancelPresidentsTurn();return;}
-  presidentsTurn.queue.push(direction);return;
+ if(sectionTurn){
+  if(!sectionTurn.queue.length&&direction===-sectionTurn.direction){cancelSectionTurn();return;}
+  sectionTurn.queue.push(direction);return;
  }
  const index=activeSegment+direction;
  if(repeat||index<0||index>=SEGMENTS.length){
-  issueChild('presidentsResume',{session:inputSession,directions:repeat?[direction]:[]});return;
+  issueChild('sectionResume',{session:inputSession,directions:repeat?[direction]:[]});return;
  }
  const previous=$('reader'),book=bookZip,segment=SEGMENTS[index],previousURL=frameURL;
+ const structured=!!book.wh3Flow;
  const previousSession=inputSession,session=crypto.randomUUID(),size=currentState.size,oldKey=currentState.key;
  const bounds=previous.getBoundingClientRect(),pane=previous.cloneNode(false);
  const token=++loadToken,queue=[];
- let url='',target=null,requested=false,sequence=0,readyToSwap=false,restoreFocus=false;
- const current=()=>presidentsTurn===job&&loadToken===token&&bookZip===book;
+ let url='',target=null,lastState=null,requested=false,sequence=0,readyToSwap=false,restoreFocus=false;
+ const current=()=>sectionTurn===job&&loadToken===token&&bookZip===book;
  const post=(action,extra={})=>pane.contentWindow.postMessage({wh1bridge:1,action,session,...extra},'*');
  const matchesViewport=()=>{
   const rect=previous.getBoundingClientRect();
@@ -624,31 +644,39 @@ function turnPresidentsSection(direction,repeat){
  };
  function cleanup(){
   clearTimeout(timer);window.removeEventListener('message',message);window.removeEventListener('resize',checkViewport);
-  presidentsTurn=null;
+  sectionTurn=null;
  }
  function cancel(){
   cleanup();pane.remove();if(url)URL.revokeObjectURL(url);
   previous.inert=false;
-  previous.contentWindow?.postMessage({wh1bridge:1,action:'presidentsResume',session:previousSession},'*');
+  previous.contentWindow?.postMessage({wh1bridge:1,action:'sectionResume',session:previousSession},'*');
  }
  function checkViewport(){if(!matchesViewport())cancel();}
+ function useLegacyLoader(){
+  // Mixed historical archives can change engines at a part boundary.
+  cancel();openSegment(index,direction<0?{mode:'last'}:{mode:'first',scan:segment.start}).catch(console.warn);
+ }
  function fail(){
   if(!current())return;
-  cancel();showReaderNotice(presidentsTurnNotice,true,9000);
+  cancel();showReaderNotice(sectionTurnNotice,true,9000);
  }
  async function message(event){
   if(!current())return;
   const d=event.data;
   if(!d)return;
-  if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='presidentsSealed'&&d.segment===activeSegment&&d.session===previousSession&&readyToSwap){
+  if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='sectionLateStep'&&d.session===previousSession){
+   if(d.direction===1||d.direction===-1)turnSection(d.direction,true);return;
+  }
+  if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='sectionSealed'&&d.segment===activeSegment&&d.session===previousSession&&readyToSwap){
    if(!matchesViewport()||size!==currentState.size||oldKey!==currentState.key){cancel();return;}
    cleanup();
-   pane.style.cssText=previous.style.cssText;pane.removeAttribute('aria-hidden');previous.remove();pane.id='reader';
+   pane.style.cssText=previous.style.cssText;pane.removeAttribute('aria-hidden');
+   retireSection(previous,previousSession,session,bounds);pane.id='reader';
    frameURL=url;activeSegment=index;inputSession=session;viewportSerial=sequence;pendingDest=null;pendingLoaded=true;
    if(restoreFocus)pane.focus({preventScroll:true});
-   if($('storageMessage').textContent===presidentsTurnNotice)$('storageBanner').hidden=true;
+   if($('storageMessage').textContent===sectionTurnNotice)$('storageBanner').hidden=true;
    URL.revokeObjectURL(previousURL);syncReaderViewport();handleChildState(target);
-   if(queue.length)post('presidentsResume',{directions:queue});
+   if(queue.length)post('sectionResume',{directions:queue});
    return;
   }
   if(event.source!==pane.contentWindow)return;
@@ -656,40 +684,74 @@ function turnPresidentsSection(direction,repeat){
    pane.contentWindow.postMessage({type:'reader-viewport-v8',session,seq:++sequence,scale:window.visualViewport?.scale||1},'*');return;
   }
   if(d.wh1bridge!==1||d.segment!==index)return;
+  if(d.type==='sectionUnsupported'&&d.session===session&&!structured){useLegacyLoader();return;}
   if(d.type==='prepare'){
    try{
     const assets=await segmentAssets(book,segment,current);
     if(assets)pane.contentWindow.postMessage({wh1bridge:1,action:'loadAssets',session,size,assets},'*',assets.map(a=>a.data));
    }catch(_){fail();}
-  }else if(d.type==='state'&&!requested&&d.totalPages>0){
-   requested=true;post('presidentsTarget',{direction});
-  }else if(d.session===session&&d.type==='presidentsTarget'){
+  }else if(d.type==='state'&&(d.totalPages||d.pageCount)>0){
+   lastState=d;
+   if(!requested){requested=true;post('sectionTarget',{direction});}
+  }else if(d.session===session&&d.type==='sectionTarget'){
    if(!d.key||d.pageIndex!==(direction<0?d.totalPages-1:0)||size!==d.size){fail();return;}
-   target=d;
-   const counts=wh1ExactPager?.getStatus().counts;
-   if(counts&&counts[index]===d.totalPages){
-    const total=counts.reduce((sum,n)=>sum+n,0),page=counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1);
-    post('globalProgress',{label:page+' / '+total,ratio:page/total,scan:d.scan,maxScans:totalScans});
-   }
-   post('presidentsPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages});
-  }else if(d.session===session&&d.type==='presidentsPainted'&&target){
+   target={...d,scan:d.scan||lastState?.scan};
+   if(!Number.isSafeInteger(target.scan)||target.scan<1||target.scan>totalScans){fail();return;}
+   // The candidate is still behind the current page. Wait for the same
+   // verified whole-book counts used by the visible reader before swapping.
+   const progress=()=>{
+    if(structured){
+     if(wh3Counts?.failed)throw Error('ページ計測失敗');
+     return wh3Counts?.counts?.every(n=>Number.isInteger(n)&&n>0)?wh3Counts.counts:null;
+    }
+    const status=wh1ExactPager?.getStatus();
+    if(status?.errorKey)throw Error('ページ計測失敗');
+    return status?.counts||(status?.active?null:[]);
+   };
+   try{
+    let counts=progress(),measured=-1;
+    while(!counts&&current()){
+     // Per-section counting has its own timeout. A book making progress may
+     // legitimately need more than one watchdog interval to measure all parts.
+     const completed=structured?wh3Counts?.counts.filter(Boolean).length:wh1ExactPager?.getStatus().completed;
+     if(completed!==measured){measured=completed;clearTimeout(timer);timer=setTimeout(fail,65000);}
+     await new Promise(resolve=>setTimeout(resolve,50));counts=progress();
+    }
+    if(!current())return;
+    if(counts.length&&counts[index]!==d.totalPages){fail();return;}
+    const total=counts.length?counts.reduce((sum,n)=>sum+n,0):totalScans;
+    const page=counts.length?counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1):target.scan;
+    const label=page+' / '+total;
+    post(structured?'wh3Progress':'globalProgress',{label,ratio:page/total,scan:target.scan,maxScans:totalScans});
+    post('sectionPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages,size,label});
+   }catch(_){fail();}
+  }else if(d.session===session&&d.type==='sectionPainted'&&target){
    readyToSwap=true;
    // All preceding input messages from this sender arrive before its acknowledgement.
    restoreFocus=document.activeElement===previous;
-   previous.inert=true;previous.contentWindow.postMessage({wh1bridge:1,action:'presidentsSeal',session:previousSession},'*');
-  }else if(d.session===session&&d.type==='presidentsError')fail();
+   previous.contentWindow.postMessage({wh1bridge:1,action:'sectionSeal',session:previousSession},'*');
+  }else if(d.session===session&&d.type==='sectionError')fail();
  }
  const job={direction,queue,cancel,oldKey,size};
- presidentsTurn=job;
- const timer=setTimeout(fail,45000);
+ sectionTurn=job;
+ let timer=setTimeout(fail,65000);
  window.addEventListener('resize',checkViewport);
  window.addEventListener('message',message);
  (async()=>{
   try{
-   const html=await book.readText(segment.part);
-   if(!current())return;
-   const decorated=window.WH1ExactPager?.decorate?window.WH1ExactPager.decorate(html):html;
-   const rendered=presidentsPaneDocument(decorateOtherBookReading(decorated),index,session);
+   let rendered;
+   if(structured){
+    const [layout,archive]=await Promise.all([wh3Layout(),book.wh3Flow.archive(index,false)]);
+    if(!current())return;
+    rendered=wh3FrameDocument(layout,archive,{origin:location.origin,session,segment:index,font:size});
+   }else{
+    const html=await book.readText(segment.part);
+    if(!current())return;
+    if(!archiveHasPageControls(html)){useLegacyLoader();return;}
+    const decorated=window.WH1ExactPager?.decorate?window.WH1ExactPager.decorate(html):html;
+    rendered=decorateOtherBookReading(decorated);
+   }
+   rendered=sectionPaneDocument(rendered,index,session,structured);
    url=URL.createObjectURL(new Blob([rendered],{type:'text/html'}));
    pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');
    Object.assign(pane.style,{position:'fixed',left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px',border:'0',display:'block',background:'var(--paper)',pointerEvents:'none'});
@@ -697,7 +759,7 @@ function turnPresidentsSection(direction,repeat){
   }catch(_){fail();}
  })();
 }
-// END Presidents retained turn
+// END bookshelf retained turn
 function fillManifest(m,flow){
  if(!m||m.schema!==1||!Array.isArray(m.range)||m.range[0]!==1||!Number.isInteger(m.range[1])||m.range[1]<1||m.range[1]>15000||!Array.isArray(m.segments)||m.segments.length<1||m.segments.length>1000)throw Error('統合読書ZIPの構成情報が正しくありません');
  for(let i=0;i<m.segments.length;i++){
@@ -990,7 +1052,7 @@ async function loadBook(file,shouldSave=true){
  }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
 }
 function positionText(){const s=bookZip?.wh3Flow?manifest.segments.find(x=>currentState.scan>=x.start&&currentState.scan<=x.end):SEGMENTS[currentState.segment];return s?`スキャン ${currentState.scan} / ${totalScans}　｜　区間 ${s.start}〜${s.end}　｜　文字 ${currentState.size}px`: '全巻';}
-function showMenu(){if(!bookZip)return;cancelPresidentsTurn();$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
+function showMenu(){if(!bookZip)return;cancelSectionTurn();$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
 function closeMenu(){$('menuOverlay').hidden=true;}
 function segmentForScan(scan){const i=SEGMENTS.findIndex(s=>scan>=s.start&&scan<=s.end);return i<0?0:i;}
 // 原本画像ページでは、元の各区間読書HTMLにscan番号属性がない場合がある。
@@ -1169,13 +1231,14 @@ header .topline .pill{min-width:0;overflow:hidden;text-overflow:ellipsis}`;
 
 async function openSegment(index,destination={}){
  if(!bookZip||index<0||index>=SEGMENTS.length)return;
- cancelPresidentsTurn();
+ cancelSectionTurn();
  if(bookZip.readingFlow)({index,destination}=bookZip.readingFlow.locate(index,destination));
  const token=++loadToken,s=SEGMENTS[index];pendingDest=destinationForScan(destination);pendingLoaded=false;
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
   const text=bookZip.wh3Flow?await bookZip.wh3Flow.archive(index,false):await bookZip.readText(s.part);if(token!==loadToken)return;
-  inputSession=nativeBookInput()?crypto.randomUUID():'';
+  const supportsTurn=!!bookZip.wh3Flow||archiveHasPageControls(text);
+  inputSession=nativeBookInput()||supportsTurn?crypto.randomUUID():'';
   viewportSerial=0;
   let rendered;
   if(usesWh3StandardInput()&&text.includes('<script type="application/json" id="bookdata">')){
@@ -1184,8 +1247,8 @@ async function openSegment(index,destination={}){
   }else{
    const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
    rendered=attachStandardHost(decorateOtherBookReading(decorated));
-   if(manifest?.bookId==='us-presidents-south'&&usesPresidentsTemplate())rendered=presidentsPaneDocument(rendered,index,inputSession);
   }
+  if(supportsTurn)rendered=sectionPaneDocument(rendered,index,inputSession,!!bookZip.wh3Flow);
   const content=new Blob([rendered],{type:'text/html'});
   if(frameURL) URL.revokeObjectURL(frameURL);
   frameURL=URL.createObjectURL(content);activeSegment=index;
@@ -1211,12 +1274,13 @@ const wh1ExactPager=window.WH1ExactPager?.create({
 });
 
 function handleChildState(d){
- if(presidentsTurn&&(d.key!==presidentsTurn.oldKey||d.size!==presidentsTurn.size))cancelPresidentsTurn();
+ const key=bookZip?.wh3Flow?bookZip.wh3Flow.bookmark(activeSegment,d.key):d.key;
+ if(sectionTurn&&(key!==sectionTurn.oldKey||d.size!==sectionTurn.size))cancelSectionTurn();
  if(!pendingLoaded){
   pendingLoaded=true;
   if(pendingDest && Object.keys(pendingDest).length){$('reader').contentWindow.postMessage({wh1bridge:1,action:'goto',destination:pendingDest},'*');pendingDest=null;return;}
  }
- currentState={segment:activeSegment,key:(bookZip?.wh3Flow?bookZip.wh3Flow.bookmark(activeSegment,d.key):d.key)||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
+ currentState={segment:activeSegment,key:key||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
  wh3UpdateState(d);
  if(wh1ExactPager)wh1ExactPager.onState({...d,scan:currentState.scan});
  $('menuSummary').textContent=positionText();
@@ -1239,15 +1303,14 @@ window.addEventListener('message',e=>{
  const d=e.data;
  if(d.type==='bookStart'){goToBookStart();return;}
  if(d.segment!==activeSegment)return;
- if(d.type==='presidentsTurn'&&d.session===inputSession&&usesPresidentsTemplate())turnPresidentsSection(d.direction,d.repeat);
+ if(d.type==='sectionTurn'&&inputSession&&d.session===inputSession)turnSection(d.direction,d.repeat);
  else if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);
  else if(d.type==='boundary'){
   const next=activeSegment+d.direction;
   if(next>=0&&next<SEGMENTS.length){
    const s=SEGMENTS[next];
-   if(bookZip.wh3Flow&&!Object.keys(s.assets).length)turnWh3Section(next,d.direction);
-   else openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});
+   openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});
   }
  }
  else if(d.type==='navigateScan'&&nativeBookInput()&&inputSession&&d.session===inputSession){
@@ -1260,9 +1323,9 @@ window.addEventListener('message',e=>{
  else if(d.type==='menu')showMenu();
  else if(d.type==='original')openOriginal(scanFromPageKey(currentState.key)||d.scan);
 });
-function issueChild(action,extra={}){if(action==='goto')cancelPresidentsTurn();if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}
+function issueChild(action,extra={}){if(action==='goto')cancelSectionTurn();if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}
 async function openOriginal(scan){
- cancelPresidentsTurn();
+ cancelSectionTurn();
  const n=Math.max(1,Math.min(totalScans,Number(scan)||currentState.scan));if(!bookZip)return;
  const entry=manifest.originalScans[String(n)];if(!entry)return;
  setBusy('原本スキャンを開いています…');

@@ -329,4 +329,4 @@ python3 tools/reader-merge-work.py --runtime runtime merge --request PRIVATE/req
 
 ## 本棚への最終登録
 
-新規・続きの統合・差し替え・確認版の本棚登録は `tools/reader-shelf-register.py` の共通処理を使う。20枚の途中や最後の分冊も含め、配布するZIPを実際の読書画面で検査する。手順は [本棚登録](SHELF_REGISTRATION.md) にある。
+新規・続きの統合・差し替え・確認版の本棚登録は `tools/reader-shelf-register.py` の共通処理を使う。20枚の途中や最後の分冊も含め、配布するZIPを実際の読書画面で検査する。元分冊と表示区間の全境界で、通常の往復と連続操作の途中に別の紙面・ページ番号が映らないことも検査する。手順は [本棚登録](SHELF_REGISTRATION.md) にある。

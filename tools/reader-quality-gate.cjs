@@ -28,6 +28,57 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='9e82997de0797ab051791edb0c71b15ae42301ca'){
+    const lines=data.toString('utf8').split('\n');
+    for(const [at,count,...prior] of [
+      [1327,1," cancelPresidentsTurn();"],
+      [1325,1,"function issueChild(action,extra={}){if(action==='goto')cancelPresidentsTurn();if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}"],
+      [1312,1,"   if(bookZip.wh3Flow&&!Object.keys(s.assets).length)turnWh3Section(next,d.direction);","   else openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});"],
+      [1305,1," if(d.type==='presidentsTurn'&&d.session===inputSession&&usesPresidentsTemplate())turnPresidentsSection(d.direction,d.repeat);"],
+      [1282,1," currentState={segment:activeSegment,key:(bookZip?.wh3Flow?bookZip.wh3Flow.bookmark(activeSegment,d.key):d.key)||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();"],
+      [1276,2," if(presidentsTurn&&(d.key!==presidentsTurn.oldKey||d.size!==presidentsTurn.size))cancelPresidentsTurn();"],
+      [1250,1],
+      [1249,0,"   if(manifest?.bookId==='us-presidents-south'&&usesPresidentsTemplate())rendered=presidentsPaneDocument(rendered,index,inputSession);"],
+      [1239,2,"  inputSession=nativeBookInput()?crypto.randomUUID():'';"],
+      [1233,1," cancelPresidentsTurn();"],
+      [1054,1,"function showMenu(){if(!bookZip)return;cancelPresidentsTurn();$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}"],
+      [761,1,"// END Presidents retained turn"],
+      [741,13,"   const html=await book.readText(segment.part);","   if(!current())return;","   const decorated=window.WH1ExactPager?.decorate?window.WH1ExactPager.decorate(html):html;","   const rendered=presidentsPaneDocument(decorateOtherBookReading(decorated),index,session);"],
+      [735,2," presidentsTurn=job;"," const timer=setTimeout(fail,45000);"],
+      [731,2,"   previous.inert=true;previous.contentWindow.postMessage({wh1bridge:1,action:'presidentsSeal',session:previousSession},'*');","  }else if(d.session===session&&d.type==='presidentsError')fail();"],
+      [697,31,"   target=d;","   const counts=wh1ExactPager?.getStatus().counts;","   if(counts&&counts[index]===d.totalPages){","    const total=counts.reduce((sum,n)=>sum+n,0),page=counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1);","    post('globalProgress',{label:page+' / '+total,ratio:page/total,scan:d.scan,maxScans:totalScans});","   }","   post('presidentsPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages});","  }else if(d.session===session&&d.type==='presidentsPainted'&&target){"],
+      [692,4,"  }else if(d.type==='state'&&!requested&&d.totalPages>0){","   requested=true;post('presidentsTarget',{direction});","  }else if(d.session===session&&d.type==='presidentsTarget'){"],
+      [686,1],
+      [678,1,"   if(queue.length)post('presidentsResume',{directions:queue});"],
+      [676,1,"   if($('storageMessage').textContent===presidentsTurnNotice)$('storageBanner').hidden=true;"],
+      [672,2,"   pane.style.cssText=previous.style.cssText;pane.removeAttribute('aria-hidden');previous.remove();pane.id='reader';"],
+      [666,4,"  if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='presidentsSealed'&&d.segment===activeSegment&&d.session===previousSession&&readyToSwap){"],
+      [660,1,"  cancel();showReaderNotice(presidentsTurnNotice,true,9000);"],
+      [654,4],
+      [651,1,"  previous.contentWindow?.postMessage({wh1bridge:1,action:'presidentsResume',session:previousSession},'*');"],
+      [646,1,"  presidentsTurn=null;"],
+      [637,2," let url='',target=null,requested=false,sequence=0,readyToSwap=false,restoreFocus=false;"," const current=()=>presidentsTurn===job&&loadToken===token&&bookZip===book;"],
+      [633,1],
+      [630,1,"  issueChild('presidentsResume',{session:inputSession,directions:repeat?[direction]:[]});return;"],
+      [624,3," if(presidentsTurn){","  if(!presidentsTurn.queue.length&&direction===-presidentsTurn.direction){cancelPresidentsTurn();return;}","  presidentsTurn.queue.push(direction);return;"],
+      [599,24,"const presidentsTurnNotice='分冊を開けませんでした。もう一度ページを送ってください。';","let presidentsTurn=null;","function cancelPresidentsTurn(){presidentsTurn?.cancel();}","function turnPresidentsSection(direction,repeat){"],
+      [585,3,"function presidentsPaneDocument(html,index,session){"," const script='<script>('+presidentsPaneBridge.toString()+')('+[index,JSON.stringify(session),SEGMENTS.length].join(',')+');<\\/script>';"],
+      [577,5,"   const shown=window.WH1BookReader.inspect();","   if(pages[currentPage]?.key===d.key&&shown.pages===d.totalPages&&shown.index===d.pageIndex)send('presidentsPainted');","   else send('presidentsError');"],
+      [566,10,"    const state=reader.inspect();","    reader.gotoPage(d.direction<0?state.pages-1:0);","    await Promise.all(Array.from(document.querySelectorAll('#reader-page img'),img=>img.decode()));","    const shown=reader.inspect();","    send('presidentsTarget',{key:pages[currentPage].key,pageIndex:shown.index,totalPages:shown.pages,scan:shown.scan,size:fontPx});","   }catch(_){send('presidentsError');}","  }else if(d.action==='presidentsPaint'){"],
+      [565,0,"    const reader=window.WH1BookReader;","    while(!reader.inspect().originalReady)await paint();"],
+      [555,9,"  if(d.action==='presidentsResume'){","   sealed=false;waiting=false;","   for(const direction of d.directions||[])shiftPage(direction);","  }else if(d.action==='presidentsSeal'){","   sealed=true;send('presidentsSealed');","  }else if(d.action==='presidentsTarget'){"],
+      [540,12],
+      [514,25],
+      [507,6," const step=shiftPage;"," let waiting=false,sealed=false;"," shiftPage=function(direction){","  if(sealed)return;","  const crossing=direction<0?segment>0&&currentPage===0:segment+1<segments&&currentPage===pages.length-1;","  if(!waiting&&!crossing){step(direction);return;}","  send('presidentsTurn',{direction,repeat:waiting});waiting=true;"],
+      [496,10,"function presidentsPaneBridge(segment,session,segments){"],
+      [493,1,"// BEGIN Presidents retained turn"],
+      [492,0,"// BEGIN WH3 retained turn","let wh3TurningSection=false;","async function turnWh3Section(index,direction){"," if(wh3TurningSection)return;"," wh3TurningSection=true;"," const token=++loadToken,book=bookZip,previous=$('reader'),previousURL=frameURL;"," const pane=previous.cloneNode(false),session=crypto.randomUUID();"," let url='',listener,timer,sequence=0,installed=false;"," previous.inert=true;"," try{","  const [layout,archive]=await Promise.all([wh3Layout(),book.wh3Flow.archive(index,false)]);","  if(token!==loadToken||book!==bookZip)return;","  const documentText=wh3FrameDocument(layout,archive,{origin:location.origin,session,segment:index,font:currentState.size});","  url=URL.createObjectURL(new Blob([documentText],{type:'text/html'}));","  pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');","  // Paint behind the current opaque page. Removing its iframe early exposes the browser background.","  const rect=previous.getBoundingClientRect();","  Object.assign(pane.style,{position:'fixed',left:rect.left+'px',top:rect.top+'px',width:rect.width+'px',height:rect.height+'px',","   border:'0',display:'block',background:'var(--paper)',pointerEvents:'none'});","  const state=await new Promise((resolve,reject)=>{","   let requested=false;","   listener=event=>{","    if(event.source!==pane.contentWindow||!event.data)return;","    const d=event.data;","    if(d.session!==session)return;","    if(d.type==='reader-ready-v8'){","     pane.contentWindow.postMessage({type:'reader-viewport-v8',session,seq:++sequence,scale:window.visualViewport?.scale||1},'*');","    }","    if(d.wh1bridge!==1||d.type!=='state'||d.segment!==index||!d.pageCount)return;","    const target=direction<0?d.pageCount-1:0;","    if(d.pageIndex===target){resolve(d);return;}","    if(!requested){","     requested=true;","     pane.contentWindow.postMessage({wh1bridge:1,action:'goto',destination:{mode:direction<0?'last':'first'}},'*');","    }","   };","   timer=setTimeout(()=>reject(Error('次の分冊を表示できませんでした')),45000);","   window.addEventListener('message',listener);pane.src=url;previous.before(pane);","  });","  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));","  if(token!==loadToken||book!==bookZip)return;","  pane.style.cssText=previous.style.cssText;previous.remove();pane.id='reader';pane.removeAttribute('aria-hidden');","  frameURL=url;activeSegment=index;inputSession=session;viewportSerial=sequence;pendingDest=null;pendingLoaded=true;","  installed=true;URL.revokeObjectURL(previousURL);syncReaderViewport();handleChildState(state);"," }catch(error){","  if(token===loadToken)setStorageState('分冊を開けませんでした。もう一度ページを送ってください。',{warn:true});"," }finally{","  clearTimeout(timer);if(listener)window.removeEventListener('message',listener);","  if(!installed){pane.remove();if(url)URL.revokeObjectURL(url);previous.inert=false;}","  wh3TurningSection=false;"," }","}","// END WH3 retained turn"],
+      [401,1,"const wh3LayoutVersion='common-continuous-20261122-7';"]
+    ])lines.splice(at,count,...prior);
+    const previous=Buffer.from(lines.join('\n'));
+    if(blobSHA(previous)!=='8a8404cd07ee7889f8c133003826f133ee051c69')throw Error('SHELF_RETAINED_TURN_REVERSE_CHECK_FAILED');
+    data=previous;
+  }
   if(blobSHA(data)==="8a8404cd07ee7889f8c133003826f133ee051c69"){
     // Inverse line edits against the exact reviewed host. Reapply legacy checks to the recovered bytes.
     const lines=data.toString('utf8').split('\n');

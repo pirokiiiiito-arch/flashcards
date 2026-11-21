@@ -1166,8 +1166,13 @@ if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>
  function capture(id,fn){$(id).addEventListener('click',e=>{if(fn()!==false){e.preventDefault();e.stopImmediatePropagation();}},true);}
  capture('first',()=>send('bookStart'));capture('all',()=>send('menu'));
  capture('original',()=>send('original',{scan:position()}));
- function boundary(dir){const d=api.inspect();if(dir<0&&d.index===0&&firstScan>1||dir>0&&d.index===d.pages-1&&lastScan<scanTotal){send('boundary',{direction:dir});return true;}return false;}
+ function boundary(dir){if(window.shelfSectionBoundary)return window.shelfSectionBoundary(dir);const d=api.inspect();if(dir<0&&d.index===0&&firstScan>1||dir>0&&d.index===d.pages-1&&lastScan<scanTotal){send('boundary',{direction:dir});return true;}return false;}
  capture('prev',()=>boundary(-1));capture('next',()=>boundary(1));
+ window.addEventListener('keydown',e=>{
+  if(!$('menu-backdrop').hidden||!$('original-backdrop').hidden)return;
+  const dir=['ArrowDown','PageDown'].includes(e.key)?1:['ArrowUp','PageUp'].includes(e.key)?-1:0;
+  if(dir&&boundary(dir)){e.preventDefault();e.stopImmediatePropagation();}
+ },true);
  let touch=null;const main=$('reader-main');main.addEventListener('touchstart',e=>{touch=!api.inspect().zoomed&&e.touches.length===1?[e.touches[0].clientX,e.touches[0].clientY]:null;},{capture:true,passive:true});
  main.addEventListener('touchcancel',()=>{touch=null;},{passive:true});
  main.addEventListener('touchmove',e=>{if(e.touches.length!==1)touch=null;},{passive:true});

@@ -104,6 +104,18 @@ def inspect_archive(archive,ref):
             check(len(options)==len(pairs) and options.get('user-scalable')=='yes' and float(options.get('maximum-scale','inf'))>=5,f'{start}〜{end}: 標準ピンチ設定が上書きされています')
             html_hashes.append(h.hexdigest())
         check(at==high+1,'末尾の分冊がありません')
+        original_ranges=m.get('readingFlow', {}).get('sourceRanges')
+        if original_ranges:
+            cuts={entry[0] for entry in entries}
+            cuts.add(high+1)
+            at=low
+            for start,end in original_ranges:
+                check(start==at and start<=end<=high, '元分冊範囲に欠落または重複があります')
+                cuts.add(start)
+                at=end+1
+            check(at==high+1, '末尾の元分冊範囲がありません')
+            ordered=sorted(cuts)
+            ranges=[(n,min(n+19,stop-1)) for start,stop in zip(ordered,ordered[1:]) for n in range(start,stop,20)]
         return m,ranges,html_hashes
 
 def write_set(out,files):
@@ -159,6 +171,47 @@ def registration_flow(archive, m, ref, admitted):
     return {'route': FLOW, 'edges': edges}
 
 
+def turn_summary(report, ranges):
+    """Bind the actual recorded turns to both the source ranges and the reader's sections."""
+    check(report.get('version') == 1 and [list(r) for r in report['ranges']] == [list(r) for r in ranges],
+          '境界検査の原本範囲が一致しません')
+    edges = [[r['after'], r['before'], r['kind']] for r in report['boundaries']]
+    expected = [[left[1], right[0]] for left, right in zip(ranges, ranges[1:])]
+    check([row[:2] for row in edges] == expected, '元分冊境界の往復検査に欠落・重複があります')
+    check(all(row[2] in ('segment','within-document','shared-page') for row in edges),
+          '元分冊境界の表示形式を確認できません')
+    count = report['sectionCount']
+    check(type(count) is int and count >= 1, '実際の表示区間数が得られません')
+    sections = [[r['fromSection'], r['toSection']] for r in report['sectionBoundaries']]
+    check(sections == [[i,i+1] for i in range(count-1)], '実際の表示区間の往復検査に欠落・重複があります')
+    measurements = report['measurements']
+    referenced = set()
+    required = {kind + action for kind in ('button','swipe')
+                for action in ('Forward','Back','RapidReturn','RapidReverse')}
+    actual_crossings = []
+    for boundary in report['boundaries']:
+        if 'displayCrossings' in boundary:
+            crossings = boundary['displayCrossings']
+            check(isinstance(crossings, list) and crossings and all(isinstance(row, dict) for row in crossings),
+                  '原本境界に対応する読書画面の往復記録がありません')
+            check(crossings[0].get('measurement') == boundary.get('measurement'),
+                  '原本境界の代表画面と先頭の往復記録が一致しません')
+            actual_crossings.extend(crossings)
+    for boundary in [*report['boundaries'], *report['sectionBoundaries'], *actual_crossings]:
+        index = boundary.get('measurement')
+        check(type(index) is int and 0 <= index < len(measurements), '分冊境界の画面記録がありません')
+        referenced.add(index)
+    check(len(referenced) == len(measurements), '元分冊・表示区間に対応しない画面記録があります')
+    for result in measurements:
+        cases = result.get('tests', {})
+        check(required <= cases.keys(), '通常の前後移動・素早い両方向の折り返しが未検査です')
+        for name in required:
+            case = cases[name]
+            check(type(case.get('frames')) is int and case['frames'] > 0 and case.get('intermediateFrames') == 0,
+                  '境界の実描画が未検査か、途中の画面が混ざっています')
+    return {'version':1, 'report':digest(report), 'boundaries':edges, 'sectionCount':count, 'sections':sections}
+
+
 def prepare(a):
     from subprocess import run
     site=a.site.resolve()
@@ -191,11 +244,12 @@ def prepare(a):
     admitted = any(row.get('key') == key and row.get('sha256') == full
                    for row in [*ledger.get('existing', []), *ledger.get('editions', [])])
     continuation = registration_flow(a.archive, m, ref, admitted)
-    batches,hits,hosts,joins=measure(site,a.archive,book,m,ref,ranges,root,a.chromium,continuation)
+    batches,hits,hosts,joins,turns=measure(site,a.archive,book,m,ref,ranges,root,a.chromium,continuation)
 
-    detail={'continuity':joins,'batches':batches,'destinations':hits,'hostFiles':hosts,'sourceSha256':hashlib.sha256(ref_bytes).hexdigest(),'physicalIPhone':'not tested by this tool'}
+    detail={'pageTurns':turns,'continuity':joins,'batches':batches,'destinations':hits,'hostFiles':hosts,'sourceSha256':hashlib.sha256(ref_bytes).hexdigest(),'physicalIPhone':'not tested by this tool'}
     report=digest(detail)
     evidence={'version':1,'archive':full,'source':detail['sourceSha256'],'host':digest(hosts),'report':report,'first':ref['range'][0],'last':ref['range'][1],'modes':sorted(ref['modes']),'singleScreen':bool(ref.get('singleScreen')),'batches':batches,'toc':{'kind':ref['toc']['kind'],'rows':len(ref['toc']['rows']),'landed':len(hits),'reference':digest(ref['toc']),'results':digest(hits)}}
+    evidence['pageTurns']=turn_summary(turns,ranges)
     record={'key':key,'entry':identity(book),'bytes':book['totalBytes'],'sha256':full,'chunkRoot':root,'channel':a.channel,'evidence':evidence}
     args=['node','--input-type=module','-e',"import fs from 'node:fs';import {parseLedger} from './reader/library/shelf-registration.mjs';await parseLedger(JSON.parse(fs.readFileSync(0)))"]
     signing="import fs from 'node:fs';import crypto from 'node:crypto';import {signingText} from './reader/library/shelf-registration.mjs';const r=JSON.parse(fs.readFileSync(0));console.log(crypto.sign('sha256',Buffer.from(signingText(r)),{key:fs.readFileSync(process.argv[1]),dsaEncoding:'ieee-p1363'}).toString('base64'));"
@@ -220,6 +274,10 @@ def checked_stage(a):
     detail=read(a.prepared/'verification.json')
     rec=plan['record']
     check(digest(detail)==plan['detailHash']==rec['evidence']['report'],'操作検査記録が変わりました')
+    check('pageTurns' in detail, '分冊境界の往復検査を含む最新版の prepare が必要です')
+    ranges=[row[:2] for row in rec['evidence']['batches']]
+    check(turn_summary(detail['pageTurns'],ranges)==rec['evidence'].get('pageTurns'),
+          '分冊境界の往復検査と署名対象が一致しません')
     db=read(a.registry)
     key=rec['key']
     check([r for r in db['pending'] if r['key']==key]==[rec],'公開済みの登録候補が違います')

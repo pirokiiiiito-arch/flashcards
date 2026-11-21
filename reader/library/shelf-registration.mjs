@@ -30,6 +30,26 @@ const positive = n => Number.isSafeInteger(n) && n > 0;
 function baseRecord(r) {
   return r && ['key','entry','sha256','chunkRoot'].every(k => hex.test(r[k])) && positive(r.bytes);
 }
+// These editions were signed and admitted before page-turn evidence was introduced.
+const previousSignatures = new Set([
+  '/BZQATy1RVm29fcrP4wgxgjNNm+k2qKoMLbjjt8H2mpB3AzucWhl1FX2lFc2ln5bSnNsDkNXHPIUocPIiMJQ5w==',
+  'SmZuQROqur7JtfESZGVh8n1V6iyedI74wwf/+hIgdriPD3UL/zCUEKOz3NFHh/cxix5E73D3JeByBV22JBjjlQ=='
+]);
+function validatePageTurns(record) {
+  const {pageTurns: t, batches} = record.evidence;
+  if (t === undefined && previousSignatures.has(record.signature)) return;
+  requireValue(t?.version === 1 && hex.test(t.report) && Array.isArray(t.boundaries) &&
+    t.boundaries.length === batches.length - 1, '全分冊境界の描画検査記録が必要です');
+  for (const [i, row] of t.boundaries.entries()) {
+    requireValue(Array.isArray(row) && row.length === 3 && row[0] === batches[i][1] &&
+      row[1] === batches[i+1][0] && ['segment','within-document','shared-page'].includes(row[2]),
+      '元分冊境界の往復検査に欠落または重複があります');
+  }
+  requireValue(positive(t.sectionCount) && Array.isArray(t.sections) &&
+    t.sections.length === t.sectionCount - 1 &&
+    t.sections.every((row,i) => Array.isArray(row) && row.length === 2 && row[0] === i && row[1] === i+1),
+    '表示区間の境界がすべて検査されていません');
+}
 export function validateEvidence(r) {
   const e = r.evidence;
   requireValue(baseRecord(r) && ['preview','release'].includes(r.channel) && e?.version === 1 &&
@@ -60,6 +80,7 @@ export function validateEvidence(r) {
   const t=e.toc;
   requireValue(t && Number.isInteger(t.rows) && t.rows>=0 && t.rows===t.landed && hex.test(t.reference) && hex.test(t.results) &&
     (t.rows ? t.kind==='source' && modes.has('contents') : t.kind==='source-absent' && !modes.has('contents')), '原本目次と実際の移動先の照合が必要です');
+  validatePageTurns(r);
   return r;
 }
 const publicSPKI = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIplDryA9HQEYXBj+RKvCmS9F7Plv8h/csCzjJ938ax3Z07ikPuA5+d80bYUAl2MUdh/zVVFRDsqfmVpz17K/YA==';
