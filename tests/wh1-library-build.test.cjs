@@ -170,3 +170,49 @@ test('a saved text position still resolves when its old page-start key falls ins
   assert.equal(jump('text:1:5'),1);
   assert.equal(jump('text:1:6'),-1);
 });
+
+test('only confirmed continuations in a saved Presidents book share one paragraph and retain scan and bookmark targets', async () => {
+  const original = [
+    [{scan:20,type:'body',text:'前の語と法'}],
+    [{scan:21,type:'body',text:'律の続き。',continuedFromPreviousSegment:true}, {scan:30,type:'heading',text:'次の節'}],
+    [{scan:41,type:'body',text:'独立した段落。'}],
+  ];
+  function part(blocks,i){
+    return '<script>\nconst blocks='+JSON.stringify(blocks)+';\n'+
+      " try{sessionStorage.setItem('us-presidents-south-"+(i*20+1)+"-"+(i*20+20)+"-page',p.key);}catch(e){}\n</script>";
+  }
+  const docs=original.map(part);
+  const manifest={bookId:'us-presidents-south',segments:docs.map((_,i)=>({part:String(i)}))};
+  const reader={readText:path=>docs[Number(path)]};
+  const layout=await context.window.WH1ExactPager.continuousReading(reader,manifest);
+  const blocks=i=>JSON.parse(layout.byPath.get(String(i)).match(/^const blocks=(.*);$/m)[1]);
+  assert.equal(blocks(0)[0].text,original[0][0].text+original[1][0].text);
+  assert.deepEqual(blocks(0)[0].sourceSpans,[{scan:20,start:0,end:5},{scan:21,start:5,end:10}]);
+  assert.equal(blocks(1)[0].text,'');assert.deepEqual(blocks(1)[1],original[1][1]);
+  assert.equal(layout.byPath.get('2'),docs[2]);
+  assert.equal(layout.locate(1,{scan:21}).index,0);
+  assert.equal(layout.locate(1,{key:'text:0:2',scan:21}).destination.key,'text:0:7');
+  assert.equal(layout.locate(1,{key:'text:1:0',scan:30}).index,1);
+  assert.equal(layout.locate(1,{mode:'first',scan:21}).index,1);
+  assert.equal(layout.locate(1,{scan:21,view:'figure'}).index,1);
+  assert.equal(layout.locate(1,{scan:21,heading:'次の節'}).index,1);
+  assert.equal(await context.window.WH1ExactPager.continuousReading(reader,{...manifest,bookId:'wh1'}),null);
+});
+
+test('page cuts prefer punctuation and keep Japanese words, names, and English tokens intact', () => {
+  const marker="function keepPunctuationWithPrevious(text,preferred,maxFit){\n return maxFit;\n}";
+  const document=segment('us-presidents-south').replace('function paginate(blocks) {',
+    "const PAGE_INITIAL_FORBIDDEN=/^[、。]/;\nfunction keepNumericGroup(t,k){return k;}\n"+marker+"\nfunction paginate(blocks) {");
+  const cut=(text,max)=>child(decorate(document),'keepPunctuationWithPrevious('+JSON.stringify(text)+','+max+','+max+')');
+  const ja='新しい習慣や法律を調べる。';
+  assert.ok(cut(ja,ja.indexOf('律'))<=ja.indexOf('法'));
+  const punctuation='資料を読み、法律を調べる。';
+  assert.equal(cut(punctuation,punctuation.indexOf('律')),punctuation.indexOf('、')+1);
+  assert.equal(cut('資料に James を記録する。',7),4);
+  const kana='次はジョージ・ワシントンの話。';
+  assert.equal(cut(kana,kana.indexOf('ワ')+2),kana.indexOf('ジ'));
+  assert.equal(cut('A well-known word',8),2);
+  assert.equal(cut('法律',1),0);
+  assert.equal(child(decorate(document),"keepPunctuationWithPrevious('abcdefghij',5,6,'abcdefghij',0,true)"),6);
+  assert.equal(cut('法律',2),2);
+});

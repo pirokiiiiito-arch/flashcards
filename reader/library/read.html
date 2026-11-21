@@ -455,7 +455,7 @@ class ZipBook {
   if(raw.length!==e.uncompressed||crc32(raw)!==e.crc)throw Error('ZIP内のファイルが破損しています: '+path);
   return raw;
  }
- async readText(path){return new TextDecoder().decode(await this.readBytes(path));}
+ async readText(path){return this.readingFlow?.byPath.get(path)??new TextDecoder().decode(await this.readBytes(path));}
  async imageBlob(path){
   const {entry:e,blob}=await this.dataSlice(path);
   if(e.method!==0) return new Blob([await this.readBytes(path)],{type:/\.png$/i.test(path)?'image/png':/\.webp$/i.test(path)?'image/webp':'image/jpeg'});
@@ -557,6 +557,9 @@ async function loadBook(file,shouldSave=true){
   const replacement=!shouldSave&&window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID,manifest:m,isSaved:true});
   if(replacement){location.replace(replacement);return;}
   if(shouldSave)await LibraryDB.authorizeFile({id:BOOK_ID},file);
+  if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){
+   book.readingFlow=await window.WH1ExactPager.continuousReading(book,m);
+  }
   fillManifest(m);bookZip=book;
   if(shouldSave)void saveCurrentBook();
   else setStorageState('このiPhoneに保存した書籍を開きました。次回も自動で開きます。',{show:false});
@@ -752,6 +755,7 @@ header .topline .pill{min-width:0;overflow:hidden;text-overflow:ellipsis}`;
 
 async function openSegment(index,destination={}){
  if(!bookZip||index<0||index>=SEGMENTS.length)return;
+ if(bookZip.readingFlow)({index,destination}=bookZip.readingFlow.locate(index,destination));
  const token=++loadToken,s=SEGMENTS[index];pendingDest=destinationForScan(destination);pendingLoaded=false;
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
@@ -836,7 +840,7 @@ window.addEventListener('message',e=>{
   if(!Number.isInteger(d.scan)||d.scan<1||d.scan>totalScans)return;
   const target=segmentForScan(d.scan),destination={scan:d.scan,view:d.view==='figure'?'figure':'text'};
   if((usesWh3StandardInput()||usesPresidentsTemplate())&&typeof d.heading==='string')destination.heading=d.heading.slice(0,240);
-  if(target===activeSegment)issueChild('goto',{destination});
+  if(target===activeSegment&&!bookZip.readingFlow)issueChild('goto',{destination});
   else openSegment(target,destination).catch(err=>console.warn('目次からの移動に失敗しました',err));
  }
  else if(d.type==='menu')showMenu();

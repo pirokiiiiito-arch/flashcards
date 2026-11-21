@@ -28,6 +28,15 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='dc74f97fd4f0df6a75ca81da352551f317fe84c7'){
+    const previous=data.toString('utf8')
+      .replace(" async readText(path){return this.readingFlow?.byPath.get(path)??new TextDecoder().decode(await this.readBytes(path));}\n"," async readText(path){return new TextDecoder().decode(await this.readBytes(path));}\n")
+      .replace("  if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){\n   book.readingFlow=await window.WH1ExactPager.continuousReading(book,m);\n  }\n","")
+      .replace(" if(bookZip.readingFlow)({index,destination}=bookZip.readingFlow.locate(index,destination));\n","")
+      .replace("  if(target===activeSegment&&!bookZip.readingFlow)issueChild('goto',{destination});\n","  if(target===activeSegment)issueChild('goto',{destination});\n");
+    if(blobSHA(previous)!=='847f84ef2b71c1d05656dd27c90a0fcd6b1bae1a')throw Error('PRESIDENTS_WORD_FLOW_REVERSE_CHECK_FAILED');
+    data=Buffer.from(previous);
+  }
   if(blobSHA(data)==='847f84ef2b71c1d05656dd27c90a0fcd6b1bae1a'){
     const previous=data.toString('utf8')
       .replace("const wh3LayoutVersion='wh1-figure-paint-20261122-4';","const wh3LayoutVersion='wh1-aside-20261122-3';")

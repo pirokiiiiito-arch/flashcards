@@ -63,11 +63,123 @@ function auditPart(html){
 // The released Presidents volume stores its WH1 layout script in each private segment.
 // Apply the same page break to those saved segments in the reader and in the background counter.
 const presidentsKeyLine=/^ try\{sessionStorage\.setItem\('us-presidents-south-\d+-\d+-page',p\.key\);\}catch\(e\)\{\}$/m;
+// The archive keeps source scans in 20-scan files. Join only a paragraph that the
+// archive marks as continued. Empty its old slot to preserve image and bookmark IDs.
+async function continuousReading(book, manifest){
+ if(manifest.bookId!=='us-presidents-south')return null;
+ const html=await Promise.all(manifest.segments.map(entry=>book.readText(entry.part)));
+ const blockLine=/^const blocks=(\[.*\]);$/m;
+ const parts=html.map(source=>{
+  const match=presidentsKeyLine.test(source)&&blockLine.exec(source);
+  return match?JSON.parse(match[1]):null;
+ });
+ if(parts.some(blocks=>!blocks))return null;
+ const joins=new Map(), changed=new Set();
+ const spans=block=>block.sourceSpans||[{scan:block.scan,start:0,end:block.text.length}];
+ for(let i=1;i<parts.length;i++){
+  const left=parts[i-1].at(-1),right=parts[i][0];
+  if(!right?.continuedFromPreviousSegment||right.type!=='body'||left?.type!=='body')continue;
+  const length=left.text.length, extra=spans(right);
+  joins.set(i,{block:parts[i-1].length-1,length,borrowed:right.text.length,spans:extra});
+  left.sourceSpans=[...spans(left),...extra.map(span=>({...span,start:span.start+length,end:span.end+length}))];
+  left.text+=right.text;
+  right.text='';
+  changed.add(i-1);changed.add(i);
+ }
+ for(const i of changed){
+  const json=JSON.stringify(parts[i]).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+  html[i]=html[i].replace(blockLine,()=>'const blocks='+json+';');
+ }
+ function locate(index,destination){
+  const join=joins.get(index);
+  if(join&&!destination.mode){
+   const old=/^text:0:(\d+)$/.exec(destination.key||'');
+   const requested=!destination.key&&!destination.heading&&destination.view!=='figure'&&join.spans.find(s=>s.scan===destination.scan);
+   const offset=old?Number(old[1]):requested?requested.start:-1;
+   if(offset>=0&&offset<join.borrowed)return {index:index-1,destination:{...destination,key:'text:'+join.block+':'+(join.length+offset)}};
+  }
+  return {index,destination};
+ }
+ const byPath=new Map(manifest.segments.map((segment,i)=>[segment.part,html[i]]));
+ return {byPath,locate};
+}
+
+// This function runs in both the visible private segment and its measurement
+// frame. Cache word boundaries for full paragraphs, so a suffix keeps its context.
+function presidentsWordBreaks(){
+ const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'word'}):null;
+ const graphemes=segmenter?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
+ const cache=new Map();
+ const punctuation=/[、。，．､｡，！？!?：；」』）〕〉》】〗｝〟’”]/u;
+ const open=/[（(「『［【〈《〔“‘]$/u;
+ const noStart=/^[々ヽヾゝゞーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎ\p{Mark}\uFE0F\u200D]/u;
+ const latin=/[\p{Script=Latin}\p{Number}]/u;
+ const kana=/[\p{Script=Katakana}ー]/u;
+ function wordEnds(full){
+  if(cache.has(full))return cache.get(full);
+  const ends=new Set();
+  if(segmenter){
+   for(const part of segmenter.segment(full))ends.add(part.index+part.segment.length);
+  }else{
+   const category=c=>kana.test(c)?'kana':latin.test(c)?'latin':/\p{Script=Han}/u.test(c)?'han':/\p{Script=Hiragana}/u.test(c)?'hira':c;
+   let last='',i=0;
+   for(const c of full){
+    if(last&&(category(last)!==category(c)||punctuation.test(last)||/\s/u.test(last)))ends.add(i);
+    last=c;i+=c.length;
+   }
+   ends.add(i);
+  }
+  cache.set(full,ends);return ends;
+ }
+ return function(text,preferred,maxFit,full=text,offset=0,emptyPage=false){
+  if(maxFit>=text.length)return text.length;
+  const max=Math.max(0,Math.min(maxFit,text.length-1)),goal=Math.min(max,Math.max(1,preferred));
+  const ends=wordEnds(full);
+  function valid(k){
+   if(k<=0||!ends.has(offset+k))return false;
+   const prev=text[k-1],next=text[k];
+   if(PAGE_INITIAL_FORBIDDEN.test(next)||noStart.test(next)||open.test(prev)||keepNumericGroup(text,k)!==k)return false;
+   if(kana.test(prev)&&kana.test(next))return false;
+   if((prev==='・'&&kana.test(next))||(kana.test(prev)&&next==='・'))return false;
+   if(latin.test(prev)&&latin.test(next))return false;
+   const joiner=/[-‐‑’']/u;
+   if(latin.test(prev)&&joiner.test(next)&&latin.test(text[k+1]||''))return false;
+   if(joiner.test(prev)&&latin.test(next)&&latin.test(text[k-2]||''))return false;
+   return true;
+  }
+  for(let k=max;k>=Math.max(1,goal-22);k--)if(punctuation.test(text[k-1])&&valid(k))return k;
+  for(let k=goal;k>=1;k--)if(valid(k))return k;
+  for(let k=max;k>goal;k--)if(valid(k))return k;
+  // A token larger than an otherwise empty screen must span screens. Take the
+  // fitting graphemes together, never one UTF-16 code unit per screen.
+  if(emptyPage&&max>0){
+   let end=0;
+   for(const item of (graphemes?graphemes.segment(text):text)){
+    const length=(graphemes?item.segment:item).length;
+    if(end+length>max)break;
+    end+=length;
+   }
+   if(end)return end;
+  }
+  return 0;
+ };
+}
+
 function preparePart(html){
  if(!presidentsKeyLine.test(html))return auditPart(html);
  const loop='  let remain=b.text,offset=0;\n  while(remain.length){';
  const headingBreak="  if(b.type==='heading'&&parts.some(part=>part.type!=='heading'))flush();";
  if(!html.includes(headingBreak))html=html.replace(loop,headingBreak+'\n'+loop);
+
+ // The legacy layout used a character-limit fallback after punctuation.
+ const start='function keepPunctuationWithPrevious(text,preferred,maxFit){';
+ if(html.includes(start)){
+  const from=html.indexOf(start),to=html.indexOf('\n}',from)+2;
+  html=html.slice(0,from)+'const keepPunctuationWithPrevious=('+presidentsWordBreaks.toString()+')();'+html.slice(to);
+  html=html.replace('keepPunctuationWithPrevious(remain,Math.max(1,lo-allowance),lo)','keepPunctuationWithPrevious(remain,Math.max(1,lo-allowance),lo,b.text,offset,!parts.length)')
+   .replace('keepPunctuationWithPrevious(remain,Math.max(1,cut-2),Math.max(1,cut-2))','keepPunctuationWithPrevious(remain,Math.max(1,cut-2),Math.max(1,cut-2),b.text,offset,!parts.length)')
+   .replace('keepPunctuationWithPrevious(remaining,desired,n)','keepPunctuationWithPrevious(remaining,desired,n,all,offset,true)');
+ }
 
  // Text page keys store a block and its UTF-16 offset. Repagination can move
  // that exact offset into the middle of a page. Restore the containing page.
@@ -89,7 +201,7 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
  const getBookKey=()=>{
   const book=getBook(),manifest=getManifest(),segments=getSegments();
   const revision=segments.map(s=>(s.source_sha256||s.part||'').slice(0,16)).join('-');
-  const layout=manifest?.bookId==='us-presidents-south'?'section-starts-v1:':'';
+  const layout=manifest?.bookId==='us-presidents-south'?'word-flow-v2:':'';
   return (useExactPagination()?manifest.bookId+':'+layout:'')+`${REVISION}:${book?.blob?.size||0}:${manifest?.created||''}:${revision}`;
  };
  const exact=()=>useExactPagination()||(getManifest()?.range?.[0]===1&&getManifest()?.range?.[1]===274&&getSegments()?.length===14);
@@ -153,7 +265,8 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
   (async()=>{try{
    const counts=[];for(let i=0;i<getSegments().length;i++){
     if(active!==run||run.cancelled)return;
-    const html=await getBook().readText(getSegments()[i].part),count=await measurePart(run,i,html);
+    const html=await getBook().readText(getSegments()[i].part);
+    const count=await measurePart(run,i,html);
     counts.push(count);run.completedCounts=counts.length;await new Promise(resolve=>setTimeout(resolve,40));
    }
    if(active!==run||run.cancelled||!verifiedCounts(counts))return;
@@ -174,5 +287,5 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
  return {onState,retry:()=>{if(lastState){cached=null;errorKey='';start(geometry(lastState));}},getStatus:()=>({active:!!active,exact:!!cached,counts:cached?.counts||null,step:active?.step?.index,completed:active?.completedCounts,errorKey})};
 }
 
-window.WH1ExactPager={decorate,create};
+window.WH1ExactPager={decorate,create,continuousReading};
 })();

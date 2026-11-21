@@ -59,7 +59,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'1e931004f0a0619cc2940287181fceb8daf5d054',
- 'reader/library/read.html':'847f84ef2b71c1d05656dd27c90a0fcd6b1bae1a'
+ 'reader/library/read.html':'dc74f97fd4f0df6a75ca81da352551f317fe84c7'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
@@ -397,7 +397,7 @@ function admittedBookshelfNavUI(root,policy){
   const pager='reader/wh1/all/wh1-exact-pagination.js',pagerCopy='reader/library/wh1-pager-v9.js';
   const pagerDigest=hash(fs.readFileSync(safe(root,pager)));
   if(pagerDigest!==policy.baseline.files[pager]){
-   demand(pagerDigest==='1d2e7fade16119f67c5b786442f21dd90fdffdb9fb4a28989f11e74f6baac51d'&&hash(fs.readFileSync(safe(root,pagerCopy)))===pagerDigest,'PINNED_WH1_PAGER_MISMATCH');
+   demand(pagerDigest==='350d499fe9189050a7755c64f40741e093eb8386d7f8de33f1463b4d29872b33'&&hash(fs.readFileSync(safe(root,pagerCopy)))===pagerDigest,'PINNED_WH1_PAGER_MISMATCH');
    approved[pager]=pagerDigest;approved[pagerCopy]=pagerDigest;
   }
   const copyPaths=['wh1-exact-pagination.js','wh1-figure-viewport-v9.js','wh1-display-check-v9.js'];
