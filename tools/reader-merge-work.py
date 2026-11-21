@@ -125,7 +125,8 @@ def resume_queue(args, scope):
                 and data.get('requestedScope') == scope and data.get('bookId') == scope['bookId']
                 and data.get('scanRange') == scope['scanRange']):
             return {'readyTasks': data['readyTasks'], 'nextProductionTask': data.get('nextAction'),
-                    'deferredTasks': data.get('deferredTasks', []), 'externalWaiting': data.get('externalWaiting', [])}
+                    'deferredTasks': data.get('deferredTasks', []), 'externalWaiting': data.get('externalWaiting', []),
+                    'sourceReview': data.get('sourceReview')}
         return {'resumeErrors': data.get('errors', ['再開台帳を照合できませんでした'])}
     except (OSError, ValueError, KeyError) as error:
         return {'resumeErrors': [str(error)]}

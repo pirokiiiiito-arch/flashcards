@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const legacy=require('./reader-quality-gate.cjs');
 const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
 const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
-const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-scoped-review.cjs'];
+const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-scoped-review.cjs','reader-source-pages.cjs'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
@@ -107,6 +107,8 @@ function textFields(pages){
   for(const [i,b]of(p.blocks||[]).entries())put('blocks/'+i,b.text);
   for(const [i,f]of(p.figures||[]).entries()){put('figures/'+i+'/caption',f.caption);put('figures/'+i+'/title',f.display_title);}
   for(const [i,a]of(p.boxed_articles||[]).entries()){put('boxed/'+i+'/text',a.text);put('boxed/'+i+'/title',a.title);}
+  for(const [i,r]of(Array.isArray(p.ruby)?p.ruby:[]).entries()){if(r){put('ruby/'+i+'/base',r.base);put('ruby/'+i+'/reading',r.reading??r.rt);}}
+  for(const [i,n]of(Array.isArray(p.notes)?p.notes:[]).entries())put('notes/'+i+'/text',typeof n==='string'?n:n?.text);
   for(const [i,h]of(p.headings||[]).entries())put('headings/'+i,typeof h==='string'?h:h.text||h.title);
   for(const [i,t]of(p.toc_entries||[]).entries()){put('toc/'+i+'/text',t.text||t.name||t.title);put('toc/'+i+'/page',String(t.page??t.number??''));}
  }
@@ -133,7 +135,7 @@ function replay(raw,events){
    demand(f.representation==='original_JPEG_unchanged'&&Array.isArray(f.source_box_xyxy)&&objHash(f.source_box_xyxy)===objHash([0,0,p.source_image_width,p.source_image_height]),'REGISTRATION_NOT_WHOLE_ORIGINAL');
    p.figures.push(structuredClone(f));previous=objHash(data);demand(previous===e.afterDataSha256,'CORRECTION_CHAIN_BROKEN');continue;
   }
-  demand(/^(reading_text|title|(?:figures\/\d+\/(?:caption|display_title))|(?:boxed_articles\/\d+\/(?:text|title))|(?:blocks\/\d+\/text))$/.test(e.pointer||''),'UNSAFE_CORRECTION_FIELD');
+  demand(/^(reading_text|title|(?:figures\/\d+\/(?:caption|display_title))|(?:boxed_articles\/\d+\/(?:text|title))|(?:blocks\/\d+\/text)|(?:ruby\/\d+\/(?:base|reading|rt))|(?:notes\/\d+\/text))$/.test(e.pointer||''),'UNSAFE_CORRECTION_FIELD');
   const parts=e.pointer.split('/');let target=p;for(const part of parts.slice(0,-1)){demand(target&&Object.hasOwn(target,part),'CORRECTION_PATH_MISSING');target=target[part];}
   const key=parts.at(-1);demand((target[key]??null)===e.before&&typeof e.after==='string','STALE_CORRECTION');
   target[key]=e.after;previous=objHash(data);demand(previous===e.afterDataSha256,'CORRECTION_CHAIN_BROKEN');
@@ -146,34 +148,17 @@ function anomalies(fields){
   for(const [kind,re]of patterns)for(const m of text.matchAll(re))found.push({id:objHash([field,kind,m.index,m[0]]),field,kind,offset:m.index,text:m[0]});
  }return found;
 }
-function validateSourceEvidence(root,m,pages,events,index){
-  const fields=textFields(pages),inventory=json(root,m.inventory),second=json(root,m.second),resolutions=json(root,m.resolutions),boundaries=json(root,m.boundaries);
-  demand(Array.isArray(inventory.pages)&&inventory.pages.length===pages.length,'INVENTORY_PAGE_COUNT');
-  const covered=new Set(),regionIDs=new Set();
-  for(let i=0;i<pages.length;i++){
-   const p=pages[i],v=inventory.pages[i];demand(v.scan===p.scan&&v.sourceSha256===p.sha256&&v.reviewedBy&&v.secondReviewer&&v.firstPassId&&v.secondPassId&&v.firstPassId!==v.secondPassId&&v.edgesChecked===true&&v.secondViewedFirst===false,'INVENTORY_NOT_INDEPENDENT '+p.scan);
-   demand(Number.isInteger(v.width)&&v.width>0&&Number.isInteger(v.height)&&v.height>0&&Array.isArray(v.regions),'INVALID_REGION_MAP');
-   for(const r of v.regions){demand(r.id&&!regionIDs.has(r.id)&&['body','heading','caption','boxed','toc','image_label','running_head','page_number','photo'].includes(r.kind),'INVALID_REGION');regionIDs.add(r.id);
-    demand(Array.isArray(r.box)&&r.box.length===4&&r.box.every(Number.isFinite)&&r.box[0]>=0&&r.box[1]>=0&&r.box[2]>r.box[0]&&r.box[3]>r.box[1]&&r.box[2]<=v.width&&r.box[3]<=v.height,'REGION_OUT_OF_BOUNDS');
-    if(['body','heading','caption','boxed','toc'].includes(r.kind)){demand(Array.isArray(r.fields)&&r.fields.length&&r.fields.every(k=>k.startsWith(p.scan+'/')&&Object.hasOwn(fields,k)),'UNREGISTERED_TEXT_REGION');for(const k of r.fields)covered.add(k);}
-    else demand(r.reason&&r.reason.length>5,'UNJUSTIFIED_NONPROSE_REGION');
-   }
+function validateSourceEvidence(root,m,pages,index,sourceReview){
+  const first=sourceReview.queue[0];
+  if(first){
+   const issue=first.issues[0];
+   throw Error(issue.reason+' '+(issue.field||first.scan));
   }
-  demand(Object.keys(fields).every(k=>covered.has(k)),'TEXT_WITHOUT_SOURCE_REGION');
-  demand(m.firstPassId&&second.runId&&second.runId!==m.firstPassId&&second.viewedFirst===false&&second.sourceIndexSha256===m.originalIndex.sha256&&second.method&&second.fields&&second.reviewedBy,'SECOND_PASS_NOT_INDEPENDENT');
-  demand(objHash(Object.keys(second.fields).sort())===objHash(Object.keys(fields).sort()),'SECOND_PASS_FIELD_COVERAGE');
-  for(const [k,v]of Object.entries(fields))if(v!==second.fields[k]){
-   const r=resolutions.differences?.find(x=>x.field===k&&x.firstSha256===hash(v)&&x.secondSha256===hash(second.fields[k]));
-   demand(r&&r.resolved===true&&r.canonicalSha256===hash(v)&&regionIDs.has(r.regionId)&&r.reviewedBy&&r.reason,'UNRESOLVED_SECOND_PASS '+k);
-  }
-  for(const e of events)demand(regionIDs.has(e.sourceRegion),'CORRECTION_REGION_MISSING');
-  demand(Array.isArray(resolutions.openIssues)&&resolutions.openIssues.length===0,'UNRESOLVED_ISSUES');
-  for(const a of anomalies(fields))demand(resolutions.alerts?.some(r=>r.id===a.id&&r.decision==='source_confirmed'&&r.reviewedBy&&regionIDs.has(r.regionId)&&r.reason),'UNRESOLVED_ANOMALY '+a.field);
-  for(const [field,text]of Object.entries(fields))for(const n of text.matchAll(/[0-9０-９〇零一二三四五六七八九十百千万億]+/gu))demand(resolutions.numbers?.some(r=>r.field===field&&r.offset===n.index&&r.text===n[0]&&r.reviewedBy&&regionIDs.has(r.regionId)),'UNVERIFIED_NUMBER '+field);
+  const fields=textFields(pages),boundaries=json(root,m.boundaries);
   const expected=[];for(let s=m.range[0]-1;s<=m.range[1];s++)expected.push(s+'>'+String(s+1));
   demand(Array.isArray(boundaries.items)&&objHash(boundaries.items.map(x=>x.id).sort())===objHash(expected.sort()),'BOUNDARY_COVERAGE');
   for(const b of boundaries.items){const [left,right]=b.id.split('>').map(Number);if(index[left])demand(b.leftSourceSha256===index[left],'BOUNDARY_SOURCE_MISMATCH');if(index[right])demand(b.rightSourceSha256===index[right],'BOUNDARY_SOURCE_MISMATCH');demand(b.reviewedBy&&b.reason&&b.resolved===true&&typeof b.leftTail==='string'&&typeof b.rightHead==='string'&&(b.kind==='book_start'?b.leftSourceSha256===null:hex(b.leftSourceSha256))&&(b.kind==='book_end'?b.rightSourceSha256===null:hex(b.rightSourceSha256)),'UNVERIFIED_BOUNDARY');}
-  return {fields,inventory,second,resolutions,boundaries};
+  return {fields,boundaries};
 }
 function validateBundle(file,{phase='prepare'}={}){
  const errors=[],warnings=['A verifier checks evidence and consistency; it cannot prove that a reviewer actually read a scan.'],result={schema:SCHEMA,phase,errors,warnings,eligible:false};
@@ -194,6 +179,8 @@ function validateBundle(file,{phase='prepare'}={}){
   for(const p of pages)demand(hex(index[p.scan]),'SOURCE_PAGE_MISSING');
   result.subject={bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,canonicalSha256:m.canonical.sha256,rawSha256:m.raw.sha256,originalIndexSha256:m.originalIndex.sha256,templateSha256:m.template.sha256,profileSha256:m.profile.sha256,loaderSha256:m.loaderSha256};
   demand(hex(m.loaderSha256),'LOADER_IDENTITY_REQUIRED');result.subjectSha256=objHash(result.subject);
+  const sourceReview=require('./reader-source-pages.cjs').fromBundle(root,m,pages,index,events,raw);
+  result.sourceReview=sourceReview;
   if(phase==='preview'){
    const a=json(root,m.previewAuthorization);
    if(a.schema==='reader-preview-consent-v3'){
@@ -212,7 +199,7 @@ function validateBundle(file,{phase='prepare'}={}){
    }else if(a.schema==='reader-preview-consent-v2'){
     // Reuse the real source checks, stopping before display and final sixty gates.
     // This certifies their consistency, not completion of every source QA item.
-    const {fields}=validateSourceEvidence(root,m,pages,events,index);
+    const {fields}=validateSourceEvidence(root,m,pages,index,sourceReview);
     const accepted=require('./reader-preview-consent.cjs').validateV2(a,{subject:result.subject,manifest:m,
      conversation:json(root,a.conversationEvidence),assessment:json(root,a.assessmentEvidence),rules:legacy.RULES});
     const checks=json(root,m.checks);
@@ -241,7 +228,8 @@ function validateBundle(file,{phase='prepare'}={}){
    }
    result.eligible=true;result.contentCertified=false;return result;
   }
-  const {fields}=validateSourceEvidence(root,m,pages,events,index),display=json(root,m.display);
+  const {fields}=validateSourceEvidence(root,m,pages,index,sourceReview),display=json(root,m.display);
+  require('./reader-scoped-review.cjs').verifyNovelStarts(root,m,pages,profile,template,display,fields);
   demand(display.artifactSha256===m.artifact.sha256&&display.actualPixels===true&&objHash(display.fields)===objHash(fields),'DISPLAY_NOT_CANONICAL');
   const conditions=new Set();for(const c of display.conditions||[]){demand(c.passed===true&&c.artifactSha256===m.artifact.sha256&&c.actualPixels===true&&objHash(c.scans)===objHash(pages.map(p=>p.scan))&&c.overflowCount===0&&c.roundTripSha256===objHash(fields),'INCOMPLETE_DISPLAY_CONDITION');conditions.add(c.width+'/'+c.fontPx);}
   for(const w of[320,390,430])for(const f of[16,18,20,22,24,26,28,30])demand(conditions.has(w+'/'+f),'MISSING_24_CONDITION '+w+'/'+f);

@@ -268,6 +268,25 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
   })).sort((a,b)=>a.path.localeCompare(b.path));
   for(const [file,sha256]of tracked)need(hash(fs.readFileSync(file))===sha256,'INPUT_CHANGED_DURING_RESUME',path.relative(root,file));
   const queues=queueSummary(repair);
+  // Use the exact adopted HTML. Older workspaces can still resume their other
+  // tasks when they do not yet contain a compatible source bundle.
+  let sourceReview;
+  try{
+   sourceReview=require('./reader-source-pages.cjs').fromManifest(manifest.file,requestedScope);
+  }catch(error){
+   sourceReview=require('./reader-source-pages.cjs').pendingRange(entry.bookId,entry.scanRange,error.message);
+  }
+  if(sourceReview.queue&&!queues.adoptionRequired&&repair.status!=='blocked'&&sourceReview.status!=='source_records_unavailable'){
+   for(const row of sourceReview.queue){
+    if(queues.readyTasks.some(t=>t.scan===row.scan||String(t.scan||'').startsWith(row.scan+'/')))continue;
+    const task={id:'collate_original_page:'+row.scan,type:'collate_original_page',scan:row.scan,
+     reason:row.nextAction,lane:'text',blockedBy:[],recorded:false};
+    queues.productionPending=[...queues.productionPending,task];
+    queues.readyTasks=[...queues.readyTasks,task];
+    if(queues.queues)queues.queues={...queues.queues,text:[...(queues.queues.text||[]),task]};
+    if(!queues.nextAction)queues.nextAction=task;
+   }
+  }
   return {...base,status:'resume_consistent',entrySha256:expectedEntrySha256,bookId:entry.bookId,
    scanRange:entry.scanRange,profile:entry.profile,surface,requestedScope,
    adoptedArtifact:{path:entry.adoptedArtifact.path,sha256:artifact.sha256,bytes:artifact.bytes.length},
@@ -281,7 +300,7 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
     reason:'Nested source/review records remain private. Restore the entire quality workspace, then verify this selected entry again.'},
     publicRepositoryCode:'Restore exact repository bytes listed in toolchain; do not put repository code into the private archive.',
     selectionPolicy:'Only this entry selects current state; retained/history files are evidence, never fallback entry points.'},
-   ...queues,repairPlan:repair,
+   ...queues,sourceReview,repairPlan:repair,
    checks:{selectedWorkflow:true,activeRelease:true,formalHandoff:true,commonSixtyIds:true,
     adoptedArtifactBothSides:true,toolDependenciesPinned:chain.dependencyCount,filesRechecked:tracked.size},
    warnings:[...new Set([...base.warnings,...(repair.warnings||[]),

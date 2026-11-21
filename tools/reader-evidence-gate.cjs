@@ -28,6 +28,7 @@ function inspect(manifestFile,phase='prepare',validate=verifier.validateBundle){
   const passed=result?.eligible===true&&errors.length===0;
   stages.push({
    phase:step,decision:passed?'passed':'blocked',
+   ...(result.sourceReview?{sourceReview:result.sourceReview}:{}),
    subjectSha256:id,artifactSha256,loaderSha256:currentLoader,
    evidenceIndex:passed?(result.evidenceIndex||null):null,
    errors

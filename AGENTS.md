@@ -243,3 +243,7 @@ both the copyable exact HTML location and the copyable `https://` Chrome entry
 with separate statuses: artifact integrity, independent 60-rule source checks,
 Drive readback, public served SHA, Chrome file-import test, and real iPhone test.
 Where any evidence is missing, report `未検証` rather than `完了`.
+
+## 全ページの原本照合と小説の作品・章の開始
+
+作業開始時はライブラリ直下の現行正本とその運用版を参照する。各分冊・統合版では対象 HTML に対して `node tools/reader-source-pages.cjs PRIVATE/manifest.json --request PRIVATE/request.json` を実行し、原本番号・未解決の欄を引き継ぐ。独立転記との不一致は同じ原本・同じ領域で読み直して確定する。小説の作品・章の見出しは次ページの先頭に置き、後続本文を左列に続ける。実行手順と必要な記録は [書籍制作手順](reader/quality/BOOK_CREATION_PROCESS.md) に従う。

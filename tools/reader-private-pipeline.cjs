@@ -64,7 +64,7 @@ function correctUnsafe(file,eventFile){
  fail(v.objHash(v.replay(raw,events))===v.objHash(old),'PRIOR_CANONICAL_DIVERGED');
  fail(e.expectedCanonicalSha256===m.canonical.sha256,'CANONICAL_VERSION_CONFLICT');
  const p=(Array.isArray(old)?old:old.pages).find(p=>p.scan===e.scan);fail(p,'UNKNOWN_SCAN');
- const parts=String(e.pointer).split('/');fail(/^(reading_text|title|figures\/\d+\/(caption|display_title)|boxed_articles\/\d+\/(text|title)|blocks\/\d+\/text)$/.test(e.pointer),'UNSAFE_TEXT_EDIT');
+ const parts=String(e.pointer).split('/');fail(/^(reading_text|title|figures\/\d+\/(caption|display_title)|boxed_articles\/\d+\/(text|title)|blocks\/\d+\/text|ruby\/\d+\/(base|reading|rt)|notes\/\d+\/text)$/.test(e.pointer),'UNSAFE_TEXT_EDIT');
  const clone=structuredClone(old),pp=(Array.isArray(clone)?clone:clone.pages).find(p=>p.scan===e.scan);let dest=pp;for(const key of parts.slice(0,-1))dest=dest[key];
  fail(dest&&(dest[parts.at(-1)]??null)===e.before&&typeof e.after==='string','EDIT_PRECONDITION');dest[parts.at(-1)]=e.after;
  const record={...e,sourceSha256:p.sha256,beforeDataSha256:v.objHash(old),afterDataSha256:v.objHash(clone)};
@@ -218,7 +218,10 @@ function issue(file,request,context){
  const p=plan(file,request),r=v.validateBundle(file,{phase:p.phase});fail(r.eligible,'RECEIPT_BLOCKED');
  fail(context.book?.id===r.subject.bookId&&context.book.entry===context.entry&&context.publicFiles?.[context.entry]===r.subject.loaderSha256&&/^[a-f0-9]{64}$/.test(context.reportSha256||''),'RECEIPT_CONTEXT_MISMATCH');
  if(p.channel==='preview')fail(/^reader\/preview\/[A-Za-z0-9_./-]+\/index\.html$/.test(context.entry)&&!context.entry.includes('..')&&context.book.stage==='draft','PREVIEW_RECEIPT_REQUIRES_DRAFT_ROUTE');
- const payload={...r,...(p.channel==='preview'?{previewProtocol:'reader-immutable-preview-v3'}:{}),channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,issuedAt:new Date().toISOString(),trustBoundary:'Local evidence attestation, not independent reviewer authentication.'};
+ // Publish only aggregate coverage. Page worklists belong to the private workspace.
+ const {sourceReview,...receipt}=r;
+ if(sourceReview)receipt.sourceReview={totalScans:sourceReview.totalScans,matchedScans:sourceReview.matchedScans,pendingScans:sourceReview.pendingScans};
+ const payload={...receipt,...(p.channel==='preview'?{previewProtocol:'reader-immutable-preview-v3'}:{}),channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,issuedAt:new Date().toISOString(),trustBoundary:'Local evidence attestation, not independent reviewer authentication.'};
  return {schema:'reader-local-attestation-v1',payload,digest:v.objHash(payload)};
 }
 function verifyPlan(planFile,artifactFile,currentFile){

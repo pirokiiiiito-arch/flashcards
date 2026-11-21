@@ -50,6 +50,8 @@ node tools/reader-work-resume.cjs \
 統合保留時には、同じ依頼の工程台帳に登録済みでSHAが一致する候補を使う。正しい候補が一つなら入口がそのまま選定・統合を実行する。複数候補の採用判断や変更済み入力の承認は採用記録で確認する。合格済み原稿を作り直さない。
 採用済みの制作再開entryがある書籍は、両コマンドに `--entry PRIVATE/current-work.json --expected-entry-sha256 ENTRY_SHA` を付ける。ENTRY_SHAは選定記録の外部固定値を使う。統合が保留になったらWorkは結果の `nextAction` と `diagnostics` の該当箇所を処理する。個別ファイルの読み取り照合結果は `inputAudit` に出る。依頼範囲内の前提が整った作業は `nextProductionTask` と `readyTasks` を参照し、同じターンで着手して実際の証拠を記録する。原本・根拠・権限を必要とする判断は制作の既存手順に従う。依頼・入力・環境が変わるまで同一失敗の統合を反復しない。継続できる作業が尽きた時に、不足している資料または判断を具体的に伝える。
 
+各分冊と統合後の `sourceReview.queue` は依頼の原本全番号から算出する。原本と照合するページ・欄・理由を次の作業に引き継ぐ。記録の不足は該当ページを保留にし、同じ依頼で実行できる作業は続ける。確定入力の統合が終了したら、統合確認版の HTML に対しても [分冊・統合後の原本全ページ照合](BOOK_CREATION_PROCESS.md) を実行する。
+
 ## 私有 entry の形式
 
 schema は `reader-work-resume-v1`、`purpose` は `private_work_resume` です。entry は私有領域に置き、公開リポジトリ内に置くと停止します。

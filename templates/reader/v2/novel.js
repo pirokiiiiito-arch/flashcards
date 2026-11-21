@@ -20,6 +20,7 @@ const sourceBlocks=Array.isArray(book.blocks)?book.blocks:[];
 let blocks=window.NovelDialogue.expandBlocks(sourceBlocks)
  .map(b=>({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':'body',
    text:b.text,scan:b.scan,units:split(b.text),
+   id:sourceBlocks[b.sourceBlockIndex]?.id,sourceHeadingId:sourceBlocks[b.sourceBlockIndex]?.sourceHeadingId||sourceBlocks[b.sourceBlockIndex]?.source_heading_id,
    // Only the first visual segment of an explicitly marked source continuation joins.
    sourceJoined:b.sourceStart===0&&!!sourceBlocks[b.sourceBlockIndex]?.joinPrevious&&b.type!=='dialogue'}));
 let figures=(Array.isArray(book.figures)?book.figures:[]).map((f,i)=>({
@@ -40,7 +41,7 @@ if(mode==='mixed'){
     // TOC rows are atomic and must never be merged into narration.
     if(b.type==='toc')return [{...b,type:'toc',scan,sourceJoined:false}];
     return window.NovelDialogue.expandBlocks([{...b,scan}]).map(segment=>({
-     ...segment,sourceJoined:segment.sourceStart===0&&!!b.joinPrevious&&segment.type!=='dialogue'
+     ...segment,id:b.id,sourceHeadingId:b.sourceHeadingId||b.source_heading_id,sourceJoined:segment.sourceStart===0&&!!b.joinPrevious&&segment.type!=='dialogue'
     }));
    });
    for(const b of segments){
@@ -48,7 +49,7 @@ if(mode==='mixed'){
     const scan=Number(b.scan);
     if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
     blocks.push({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':b.type==='toc'?'toc':'body',
-     text:b.text,scan,units:split(b.text),sourceJoined:!!b.sourceJoined});
+     text:b.text,scan,units:split(b.text),id:b.id,sourceHeadingId:b.sourceHeadingId||b.source_heading_id,sourceJoined:!!b.sourceJoined});
     flow.push({kind:'text',block:blocks.length-1});
    }
   }else if(entry?.kind==='break'){
@@ -67,6 +68,7 @@ if(mode==='mixed'){
 }else if(mode==='text'){
  blocks.forEach((_,i)=>flow.push({kind:'text',block:i}));
 }else figures.forEach((_,i)=>flow.push({kind:'image',figure:i}));
+blocks.forEach((b,i)=>{if(!b.id)b.id='scan-'+b.scan+'-block-'+i;});
 const main=$('reader-main'),sheet=$('sheet'),measureSheet=$('measure-sheet');
 const textFlow=$('text-flow'),measureText=$('measure-text'),caption=$('figure-caption'),measureCaption=$('measure-caption');
 const host=window.__readerHost||null,embedded=window.parent!==window;
@@ -138,6 +140,12 @@ function partNode(p){
   p.type==='toc'?'paragraph novel-toc-entry':
   ('paragraph novel-paragraph '+(p.type==='dialogue'?'novel-dialogue':'novel-narration')+
    (p.continued?' continued':'')+(p.type!=='dialogue'&&p.text.startsWith('　')?' source-indented':''));
+ if(p.type==='heading'){
+  el.dataset.headingId=p.id;
+  el.dataset.sourceHeadingId=p.sourceHeadingId||p.id;
+  el.dataset.headingFrom=String(p.headingFrom);
+  el.dataset.headingTo=String(p.headingFrom+Array.from(p.text).length);
+ }else el.dataset.bodyId=p.id;
  el.textContent=p.text;return el;
 }
 function fitsParts(existing,additional){
@@ -167,7 +175,9 @@ function joinLogicalContinuations(source){
 }
 function textPart(b,off,n){
  const span=b.sourceRanges?.find(r=>r.end>off);
- return {type:b.type,scan:span?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
+ return {type:b.type,id:b.id,sourceHeadingId:b.sourceHeadingId,
+  headingFrom:b.type==='heading'?Array.from(b.units.slice(0,off).join('')).length:undefined,
+  scan:span?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
   continued:off>0||!!b.sourceJoined,
   sourceSpans:b.sourceRanges?.filter(r=>r.end>off&&r.start<off+n).map(r=>({
    scan:r.scan,sourceStart:Math.max(0,off-r.start),
@@ -399,7 +409,12 @@ function paginateAll(){
  };
  for(const item of flow){
   if(item.kind==='break'){flush();continue}
-  if(item.kind==='text'){pending.push(blocks[item.block]);continue}
+  if(item.kind==='text'){
+   const block=blocks[item.block];
+   if(block.type==='heading')flush();
+   pending.push(block);
+   continue;
+  }
   flush();measureText.hidden=true;$('measure-figure').hidden=false;
   const part=paginateOneFigure(item.figure,at);out.push(...part);
   if(part.length)at=part[part.length-1].end;

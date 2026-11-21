@@ -213,6 +213,8 @@ function inspect(opts,inject={}){
     const result=phases.inspect(opts.manifest,phase,(file,{phase})=>{
      const checked=validate(file,{phase});if(phase==='preview'&&checked.eligible)validatedPreview=checked;return checked;
     });
+    const sourceStage=result.stages.find(s=>s.sourceReview);
+    if(sourceStage)report.sourceReview=sourceStage.sourceReview;
     if(!result.eligible)errors.push('CANONICAL_STAGE_NOT_PASSED_'+(result.stages.find(s=>s.decision==='blocked')?.phase||'unknown'));
     else if(mode==='preview'){
       report.previewOnly=true;

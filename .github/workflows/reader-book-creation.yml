@@ -41,6 +41,10 @@ on:
       - 'tools/reader-private-pipeline.cjs'
       - 'tests/test_reader_source_preflight.py'
       - 'tests/reader-source-pipeline-gate.test.cjs'
+      - 'tools/reader-source-pages.cjs'
+      - 'templates/reader/v2/novel.js'
+      - 'tests/browser-novel-heading-pages.cjs'
+      - 'tests/reader-source-pages.test.cjs'
       - 'tests/reader-handoff-check.test.cjs'
       - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
       - 'tests/browser-nine-stories-safe-loader-v2.cjs'
@@ -97,6 +101,10 @@ on:
       - 'tools/reader-private-pipeline.cjs'
       - 'tests/test_reader_source_preflight.py'
       - 'tests/reader-source-pipeline-gate.test.cjs'
+      - 'tools/reader-source-pages.cjs'
+      - 'templates/reader/v2/novel.js'
+      - 'tests/browser-novel-heading-pages.cjs'
+      - 'tests/reader-source-pages.test.cjs'
       - 'tests/reader-handoff-check.test.cjs'
       - 'tests/reader-nine-stories-safe-loader-v2.test.cjs'
       - 'tests/browser-nine-stories-safe-loader-v2.cjs'
@@ -144,7 +152,7 @@ jobs:
           node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
           node tools/reader-work-ledger-validate.cjs
           node --check tools/reader-private-pipeline.cjs
-          node --test tests/reader-source-pipeline-gate.test.cjs
+          node --test tests/reader-source-pipeline-gate.test.cjs tests/reader-source-pages.test.cjs
           node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs tests/reader-nine-stories-safe-loader-v2.test.cjs
           node --check tools/reader-evidence-gate.cjs
           node --check tools/reader-verify-pages.cjs
@@ -157,6 +165,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_reader_source_preflight.py' -v
       - name: Exercise new pinned importer in Chromium with synthetic 20-page sample
         run: |
+          node tests/browser-novel-heading-pages.cjs
           node --check tests/browser-nine-stories-safe-loader-v2.cjs
           node tests/browser-nine-stories-safe-loader-v2.cjs
           node --check tests/browser-nine-stories-041-060-safe-loader-v2.cjs

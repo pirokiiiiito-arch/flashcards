@@ -94,6 +94,69 @@ function bodyProblems(c,model){
   model.segments.some(s=>ends.get(s.id)!==Array.from(s.text).length)))errors.push('completed_body_coverage_mismatch');
  return errors;
 }
+function checkNovelStarts(condition){
+ const starts=(condition.fragments||[]).filter(f=>f.start===0);
+ const pages=new Set();
+ for(const f of starts){
+  if(f.visible!==true||f.dom_index!==0||!Number.isSafeInteger(f.page_index)||f.page_index<0||
+     f.page_index>=condition.page_count||pages.has(f.page_index))return false;
+  if((condition.body_anchors||[]).some(a=>a.page_index===f.page_index&&a.dom_index<=f.dom_index))return false;
+  pages.add(f.page_index);
+ }
+ return true;
+}
+
+// The normal verifier uses the same frozen browser observations as the heading
+// audit. Historical previews may still be delivered with their incomplete state.
+function verifyNovelStarts(root,m,pages,profile,shell,display,fields){
+ const novel=profile.templateProfile==='novel'||profile.template_profile==='novel'||
+  /\bwindow\.NovelReader\s*=|class=["'][^"']*\bnovel-reading\b/.test(shell);
+ if(!novel)return;
+ const v=api(),inventory=v.json(root,m.inventory);
+ const heads=inventory.pages.flatMap(p=>p.regions.filter(r=>r.kind==='heading'));
+ const structuralHeads=pages.flatMap(p=>(p.blocks||[]).filter(b=>[b.kind,b.type].includes('heading')).map(b=>b.text));
+ const expected=heads.map(h=>{
+  const candidates=[...new Set(h.fields.map(k=>fields[k]))];
+  const text=h.fields.includes(h.headingField)?fields[h.headingField]:candidates.length===1?candidates[0]:null;
+  demand(typeof text==='string'&&text.length>0,'NOVEL_HEADING_SOURCE_FIELD_REQUIRED');
+  return text;
+ });
+ const counts=list=>{const out=new Map();for(const value of list)out.set(value,(out.get(value)||0)+1);return out;};
+ const sourceCounts=counts(expected);
+ const headingFields=new Set(heads.flatMap(h=>h.fields));
+ const hasBody=Object.keys(fields).some(k=>/\/(?:body|blocks\/\d+)$/.test(k)&&!headingFields.has(k));
+ for(const [text,count] of counts(structuralHeads))demand((sourceCounts.get(text)||0)>=count,'NOVEL_HEADING_SOURCE_INVENTORY_REQUIRED');
+ if(!heads.length)return;
+ const ref=display.headingObservations||(m.previewDisplay&&v.json(root,m.previewDisplay).observations);
+ demand(ref,'NOVEL_HEADING_OBSERVATIONS_REQUIRED');
+ const obs=v.json(root,ref),plan=conditionPlan();
+ demand(obs.schema==='reader-heading-dom-observations-v1'&&obs.collector==='heading-dom-probe-v1'&&
+  obs.html_sha256===m.artifact.sha256&&obs.conditions?.length===plan.length,'NOVEL_HEADING_OBSERVATIONS_STALE');
+ for(const target of plan){
+  const c=obs.conditions.find(o=>o.id===target.id);
+  demand(c&&Object.entries(target).every(([k,value])=>c[k]===value)&&c.completed===true&&
+   Number.isSafeInteger(c.page_count)&&c.page_count>0&&c.visited_pages?.length===c.page_count&&
+   c.visited_pages.every((n,i)=>n===i)&&Array.isArray(c.errors)&&!c.errors.length&&
+   Array.isArray(c.fragments)&&Array.isArray(c.body_anchors),'NOVEL_HEADING_CONDITION_INCOMPLETE '+target.id);
+  const groups=new Map();
+  for(const f of c.fragments){
+   demand(typeof f.source_heading_id==='string'&&f.source_heading_id&&f.visible===true&&typeof f.text==='string',
+    'NOVEL_HEADING_SOURCE_ID_REQUIRED');
+   if(!groups.has(f.source_heading_id))groups.set(f.source_heading_id,[]);
+   groups.get(f.source_heading_id).push(f);
+  }
+  const observed=[];
+  for(const parts of groups.values()){
+   parts.sort((a,b)=>a.start-b.start);let at=0;
+   for(const f of parts){const n=Array.from(f.text).length;demand(n&&f.start===at&&f.end===at+n,'NOVEL_HEADING_FRAGMENT_GAP');at+=n;}
+   observed.push(parts.map(f=>f.text).join(''));
+  }
+  demand(same(observed.sort(),expected.slice().sort()),'NOVEL_HEADING_SOURCE_COVERAGE');
+  if(hasBody)
+   demand(c.body_anchors.some(a=>a.visible===true&&a.body_id),'NOVEL_BODY_ANCHORS_REQUIRED');
+  demand(checkNovelStarts(c),'NOVEL_HEADING_MUST_START_PAGE '+target.id);
+ }
+}
 function validateDisplay(root,m){
  const v=api(),d=v.json(root,m.previewDisplay),plan=conditionPlan();
  demand(d.schema==='reader-preview-display-v1'&&d.artifactSha256===m.artifact.sha256&&STATES.has(d.status),
@@ -145,6 +208,7 @@ function validateDisplay(root,m){
    observed[0].completed===c.completed&&Array.isArray(observed[0].errors),'PREVIEW_DISPLAY_HEADING_PAGE_COVERAGE');
   if(c.completed)completed++;
   issues+=c.issues.length;derivedIssues+=bodyProblems(c,model).length+observed[0].errors.length;
+  if(model.template_profile==='novel'&&!checkNovelStarts(observed[0]))derivedIssues++;
   for(const image of c.image_pages){demand(Number.isSafeInteger(image.page_index)&&c.visited_pages.includes(image.page_index)&&Array.isArray(image.issues),'PREVIEW_DISPLAY_IMAGE_PAGE_INVALID');derivedIssues+=image.issues.length;}
  }
  demand(observations.conditions.length===report.conditions.length&&report.completed_conditions===completed&&report.issue_count===issues,
@@ -199,4 +263,4 @@ function validate(root,m,pages,index,rules){
  return {source,display,assessment,sourceEvidenceIndex:Object.fromEntries(SOURCE_KEYS.map(k=>[k,m[k].sha256])),
   reviewState:{sourceTranscription:'reviewed_partial_canonical',fullSourceQA:'pending',canonical60:'incomplete',display24Conditions:display.status,iphone:'not_run'}};
 }
-module.exports={SOURCE_KEYS,STATES,conditionPlan,pointer,validateSource,validateDisplay,validateAssessment,validate};
+module.exports={SOURCE_KEYS,STATES,verifyNovelStarts,conditionPlan,pointer,validateSource,validateDisplay,validateAssessment,validate};

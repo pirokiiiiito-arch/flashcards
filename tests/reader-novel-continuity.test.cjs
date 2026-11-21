@@ -101,7 +101,11 @@ test('source offsets remain correct when three scans join and page begins in the
 test('source scanning metadata survives mixed-mode image and explicit-break barriers',()=>{
  const flow=engine.slice(engine.indexOf('function paginateAll()'),engine.indexOf('function pageAt('));
  assert.match(flow,/if\(item\.kind==='break'\)\{flush\(\);continue\}/);
- assert.match(flow,/if\(item\.kind==='text'\)\{pending\.push\(blocks\[item\.block\]\);continue\}/);
+ const blocks=[source(20,'前の話。'),source(21,'次の話',false,'heading'),source(21,'風が鳴る。')];
+ const items=blocks.map((_,block)=>({kind:'text',block}));
+ const run=new Function('flow','blocks','paginateBlocks','measureText','$','let g404Audit;'+flow+';return paginateAll();');
+ const groups=run(items,blocks,(items)=>paginateWithCapacity(items,1000),{},()=>({}));
+ assert.deepEqual(groups.map(page=>page.parts.map(part=>part.text)),[['前の話。'],['次の話','風が鳴る。']]);
  assert.match(flow,/flush\(\);measureText\.hidden=true/);
  assert.match(engine,/pageManifest:.*sourceSpans:/s);
 });

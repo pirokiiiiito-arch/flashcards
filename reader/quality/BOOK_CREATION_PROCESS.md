@@ -35,7 +35,23 @@ PRIVATE entryから照合する。過去の公開入口や歴史保管用の台�
 
 図版を伴う目次でも原本は不変で保持し、実物の構成に基づき文字組版と画像表示を切り替える。独立照合が不足すれば該当項目は `not_run` / `needs_source_review` とし、画像が表示できるだけで目次の合格を宣言しない。本文も原文と目次の間で文字の追加・削除・重複がないことを別に確認する。
 
+## 分冊・統合後の原本全ページ照合
+
+各20枚の分冊と統合した全範囲の双方で、採用した HTML の私有 manifest を照合する。依頼の原本番号を全件数え、端まで確認した領域台帳と、初稿を見ずに原本から読んだ第二稿を使う。
+
+```sh
+node tools/reader-source-pages.cjs PRIVATE/manifest.json --request PRIVATE/request.json
+```
+
+`totalScans` は依頼範囲、`matchedScans` はページ単位の照合記録がそろった数、`queue` は原本番号・欄・理由の一覧。本文の欠落が疑われるときは初稿・第二稿を並べ、原本の該当欄を全文読み直す。違いを解消した記録には既存の `field`, `firstSha256`, `secondSha256`, `canonicalSha256`, `regionId`, `reviewedBy`, `reason`, `resolved` と、原本画像の `sourceSha256`、読み直した採用欄の全文 `sourceReading` を記録する。訂正履歴がある欄の `firstSha256` は凍結した初稿の欄を指す。本文欄から独立に抽出した図注も同じ方法で確認する。白紙は両方の領域確認と `blankPage: true`, `hasReadableText: false` を記録する。
+
+既存の `allScanReview` 形式に残っている一次・追加の保留件数は `pendingImportedFindings` に引き継ぐ。個別に決着した箇所は `resolutions.carriedIssues` に原本番号 `scan`、元のグループ名 `group`（pending または extraPending）、その記録順 `ordinal`（1始まり）、元記録の `priorReviewSha256`、`sourceSha256`、採用欄の `field` と `canonicalSha256`、`regionId`、`offset`（コードポイント、0始まり）、`sourceReading`、`reviewedBy`、`reason`、`resolved: true` を保存する。他形式の既知の指摘は `resolutions.openIssues` に原本番号と内容を引き継ぐ。
+
+確認版では未解決ページを表示・引継ぎし、作業可能な別ページの校正を続ける。原本の読みが確定したページだけを校了の対象とし、既定の検査を実行する。
+
 ## 小説用の会話文レイアウト（ナイン・ストーリーズ以後の小説向け）
+
+原本で作品・章の開始と確認した見出しは新しい読書ページの先頭に置き、収まる冒頭本文はその左列に続ける。分冊と統合後の HTML は、文字サイズ変更後も各作品の先頭を実表示で確認する。小説の確定時は原本で確認した作品・章を領域台帳の heading に登録し、同じ HTML の既存の DOM 観測（heading_dom_probe.js）が記録した全ページ・24条件のファイルを display.headingObservations に指定する。採用済み previewDisplay.observations も利用できる。複数の異なる文字欄が一つの見出し領域を参照する場合は headingField に見出し本文の欄を指定する。
 
 小説で日本語の会話文を扱う場合は、歴史書の通常文章テンプレートとは別に `templates/reader/v2/novel.html`、`novel-dialogue.js`、`novel.js`、`novel.css` を参照する。これは現行60項目の追加・緩和ではない。WH1基準の明朝体20px・line-height 1.50・縦書き右から左・上下バー・原本保全・位置保存は共通。
 
