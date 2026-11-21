@@ -352,6 +352,25 @@ async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
   const book=await new ZipBook(file).index();const m=JSON.parse(await book.readText('manifest.json'));
+  // BEGIN verified standalone bookshelf edition
+  if(m.format==='standalone-reader-html-v1'){
+   const trustedSha='f018635c4ad2c624c99250b66e19b84e597da1c48e5659f60f6ac9abc5bb34e3';
+   if(m.schema!==1||m.bookId!=='nine-stories'||m.entry!=='reader.html'||m.sha256!==trustedSha||(!shouldSave&&BOOK_ID!==m.bookId))
+    throw Error('本棚に登録した統合確認版と一致しません');
+   const bytes=await book.readBytes(m.entry);
+   const hash=await crypto.subtle.digest('SHA-256',bytes);
+   if(Array.from(new Uint8Array(hash),v=>v.toString(16).padStart(2,'0')).join('')!==trustedSha)
+    throw Error('統合確認版の本文ファイルが一致しません');
+   if(shouldSave){
+    await LibraryDB.saveBlob({id:m.bookId,title:'ナイン・ストーリーズ',subtitle:'全286枚・統合確認版',scans:286},file);
+    location.replace('./read.html?id='+encodeURIComponent(m.bookId));
+    return;
+   }
+   const html=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+   document.open();document.write(html);document.close();
+   return;
+  }
+  // END verified standalone bookshelf edition
   // A saved book can be reopened in the WH1 renderer without copying its ZIP
   // or changing its ID/position key. Keep an unsaved manual import in this page.
   const replacement=!shouldSave&&window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID,manifest:m,isSaved:true});

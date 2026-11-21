@@ -59,13 +59,13 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'4ef3d87b7ff68e1241cc233c49c56d305026cc3a',
- 'reader/library/read.html':'f681ad2b69a35be8854cb905c0cee212c7e6be64'
+ 'reader/library/read.html':'48efbe38606ec1591290264b7d81ca9704d296b4'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'2e2e6662a866805f90e55643dec4eb94a4d386e4',
- 'reader/library/index.html':'206460fae3840f4aec53707ad6ef2afc9903d304',
- 'reader/library/sw.js':'67e9e8767f5190a807605e3166ef1153b7a4a7d5'
+ 'reader/library/app.js':'3cce4d67f061a6d33c0363cab44f78126c1d861c',
+ 'reader/library/index.html':'6a8ab86575d7a6b77eecd1450043d9e0b49daa00',
+ 'reader/library/sw.js':'3568790c926ddd5f10721e42b7e5a91aff4381c3'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -446,9 +446,12 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('private-bookshelf-shell-v20-uk-wh1-text-geometry-v1-20261115')&&
     sw.includes('app.js?v=bookshelf-uk-wh1-text-geometry-v1-20261115')&&
     app.includes('&v=uk-wh1-text-geometry-v1-20261115');
+  const nineStoriesEntry=index.includes('app.js?v=bookshelf-nine-stories-286-20261121')&&
+    sw.includes('private-bookshelf-shell-v21-nine-stories-286-20261121')&&
+    sw.includes('app.js?v=bookshelf-nine-stories-286-20261121')&&app.includes("id:'nine-stories'");
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry||nineStoriesEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }

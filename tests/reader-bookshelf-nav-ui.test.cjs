@@ -7,6 +7,20 @@ const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-p
 const registry=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/registry.json')));
 const paths=['01-20','21-40','41-60','61-80','81-100','101-120'].map(dir=>'reader/furniture/'+dir+'/index.html');
 const blobSHA=text=>{const data=Buffer.from(text);return crypto.createHash('sha1').update('blob '+data.length+String.fromCharCode(0)).update(data).digest('hex');};
+test('a saved standalone book must match both its registered identity and its exact private HTML',async()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const source=html.split('// BEGIN verified standalone bookshelf edition')[1].split('// END verified standalone bookshelf edition')[0];
+ const fingerprint='f018635c4ad2c624c99250b66e19b84e597da1c48e5659f60f6ac9abc5bb34e3';
+ const manifest={schema:1,format:'standalone-reader-html-v1',bookId:'nine-stories',entry:'reader.html',sha256:fingerprint};
+ const check=(m,id='nine-stories')=>vm.runInNewContext('(async()=>{'+source+'})()',{
+  m,BOOK_ID:id,shouldSave:false,crypto:crypto.webcrypto,
+  book:{readBytes:()=>Buffer.from('edited document')}
+ });
+ await assert.rejects(check(manifest),/本文ファイルが一致しません/);
+ await assert.rejects(check({...manifest,entry:'other.html'}),/本棚に登録した/);
+ await assert.rejects(check({...manifest,sha256:'0'.repeat(64)}),/本棚に登録した/);
+ await assert.rejects(check(manifest,'wh1'),/本棚に登録した/);
+});
 test('all six existing furniture host readers expose a persistent native bookshelf link',()=>{
  const approved=gate.admittedBookshelfNavUI(root,policy);
  assert.deepEqual(Object.keys(approved).filter(f=>paths.includes(f)).sort(),paths.slice().sort());
@@ -69,8 +83,9 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
     .replace(" if(d.type==='bookStart'){goToBookStart();return;}",
       " if(d.type==='bookStart'){\n  closeMenu();\n  if(activeSegment===0)issueChild('goto',{destination:{mode:'first'}});\n  else openSegment(0,{mode:'first'}).catch(err=>console.warn('先頭への移動に失敗しました',err));\n  return;\n }")
     .replace("\n$('goToBookStart').addEventListener('click',goToBookStart);",'');
+  const beforeStandalone=restored.replace(/\n  \/\/ BEGIN verified standalone bookshelf edition[\s\S]*?\n  \/\/ END verified standalone bookshelf edition/,'');
   const originalReader=p==='reader/library/read.html'
-    ?stripOtherBooksParity(stripFurnitureStart(restored)).replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'')
+    ?stripOtherBooksParity(stripFurnitureStart(beforeStandalone)).replace(/\n<script id="wh2-unified-swipe-host-v1">[\s\S]*?<\/script>(?=\n<script>\n'use strict';)/,'')
     :restored;
   assert.equal(blobSHA(originalReader),registry.legacyFrozenEntries[p],'OCR/reader engine remains byte-identical to baseline');
  }

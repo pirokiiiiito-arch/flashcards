@@ -17,11 +17,12 @@ const revision='wh1-library-v9-20261110';
  const shelfRevision=swCode.match(/'\.\/app\.js\?v=([^']+)'/)?.[1];
  const shelfCache=swCode.match(/const CACHE='([^']+)'/)?.[1];
  test('bookshelf version and cache are derived from the same source and cannot drift',()=>{
-  assert.match(shelfRevision||'',/^bookshelf-uk-[a-z0-9-]+-202611\d{2}$/);
-  assert.match(shelfCache||'',/^private-bookshelf-shell-v\d+-uk-[a-z0-9-]+-202611\d{2}$/);
+  assert.match(shelfRevision||'',/^bookshelf-[a-z0-9-]+-\d{8}$/);
+  assert.match(shelfCache||'',/^private-bookshelf-shell-v\d+-[a-z0-9-]+-\d{8}$/);
+  assert.equal(shelfCache.replace(/^private-bookshelf-shell-v\d+-/,''),shelfRevision.slice('bookshelf-'.length));
   assert.ok(read(folder+'index.html').includes('./app.js?v='+shelfRevision));
   assert.ok(swCode.includes("./app.js?v="+shelfRevision));
-  assert.ok(read(folder+'app.js').includes('&v='+shelfRevision.slice('bookshelf-'.length).replace(/^uk-/,'uk-')));
+  assert.ok(read(folder+'app.js').includes('&v=uk-wh1-text-geometry-v1-20261115'));
  });
 
 
