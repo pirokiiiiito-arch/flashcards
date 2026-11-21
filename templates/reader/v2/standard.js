@@ -21,7 +21,7 @@ const sourceKind=b=>b.type==='heading'?'heading':
 let blocks=(Array.isArray(book.blocks)?book.blocks:[]).filter(b=>b&&typeof b.text==='string'&&b.text.length)
  .map((b,i)=>({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
    text:b.text,scan:Number(b.scan)||1,units:split(b.text),
-   sourceBlock:i,sourceJoined:b.joinPrevious===true}));
+   sourceBlock:i,sourceJoined:b.joinPrevious===true,continuesHeading:b.continuesHeading===true}));
 let figures=(Array.isArray(book.figures)?book.figures:[]).map((f,i)=>({
  id:String(f.id||'figure-'+(i+1)),title:String(f.title||'図版 '+(i+1)),
  alt:String(f.alt||f.title||'原本画像'),scan:Number(f.scan)||1,
@@ -41,7 +41,7 @@ if(mode==='mixed'){
     if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
     blocks.push({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
       text:b.text,scan,units:split(b.text),sourceBlock:blocks.length,
-      sourceJoined:b.joinPrevious===true});
+      sourceJoined:b.joinPrevious===true,continuesHeading:b.continuesHeading===true});
     flow.push({kind:'text',block:blocks.length-1});
    }
   }else if(entry?.kind==='image'){
@@ -262,6 +262,8 @@ function paginateBlocks(group,start){
   current=[];begin=at;
  };
  for(const b of group){
+  // Only registered lines of the same heading can follow a heading on this page.
+  if(b.type==='heading'&&!(b.continuesHeading&&current.at(-1)?.type==='heading'))flush();
   let off=0;
   while(off<b.units.length){
    const remaining=b.units.length-off,whole=textPart(b,off,remaining);

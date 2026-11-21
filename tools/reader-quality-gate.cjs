@@ -28,6 +28,14 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='eeae4d967c814e87fe40a82551e6c74f397f9bae'){
+    const previous=data.toString('utf8')
+      .replace("wh1-heading-start-20261122-5","wh1-figure-paint-20261122-4")
+      .replace("   if(url.searchParams.get('view')==='figure')destination.view='figure';\n   const heading=url.searchParams.get('heading');\n   if(url.searchParams.get('view')==='text'&&heading){destination.view='text';destination.heading=heading.slice(0,240);}","   if(url.searchParams.get('view')==='figure')destination.view='figure';")
+      .replace("url.searchParams.delete('scan');url.searchParams.delete('view');url.searchParams.delete('heading');","url.searchParams.delete('scan');url.searchParams.delete('view');");
+    if(blobSHA(previous)!=='dc74f97fd4f0df6a75ca81da352551f317fe84c7')throw Error('WH3_HEADING_PAGE_REVERSE_CHECK_FAILED');
+    data=Buffer.from(previous);
+  }
   if(blobSHA(data)==='dc74f97fd4f0df6a75ca81da352551f317fe84c7'){
     const previous=data.toString('utf8')
       .replace(" async readText(path){return this.readingFlow?.byPath.get(path)??new TextDecoder().decode(await this.readBytes(path));}\n"," async readText(path){return new TextDecoder().decode(await this.readBytes(path));}\n")

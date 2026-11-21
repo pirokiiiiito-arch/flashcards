@@ -59,7 +59,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'1e931004f0a0619cc2940287181fceb8daf5d054',
- 'reader/library/read.html':'dc74f97fd4f0df6a75ca81da352551f317fe84c7'
+ 'reader/library/read.html':'eeae4d967c814e87fe40a82551e6c74f397f9bae'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
@@ -341,7 +341,7 @@ function admittedBookshelfNavUI(root,policy){
  const wh3Layout='reader/library/wh3-format.html';
  if(fs.existsSync(safe(root,wh3Layout))){
   const bytes=fs.readFileSync(safe(root,wh3Layout)),digest=hash(bytes),html=bytes.toString('utf8');
-  demand(digest==='f96b25c7d7054c8e7eeeda4925a1caeccef9c02073aba41895b042a2bfdce128'&&html.includes('<!--WH3_PRIVATE_DATA-->')&&html.includes('<!--WH3_PRIVATE_STRUCTURE-->')&&!/data:image\/[^;]+;base64,/.test(html),'WH3_PUBLIC_LAYOUT_NOT_REVIEWED');
+  demand(digest==='ff6122a267a9eabb3465269de692d22a29491637c79167738c9bb5575b3aefb0'&&html.includes('<!--WH3_PRIVATE_DATA-->')&&html.includes('<!--WH3_PRIVATE_STRUCTURE-->')&&!/data:image\/[^;]+;base64,/.test(html),'WH3_PUBLIC_LAYOUT_NOT_REVIEWED');
   approved[wh3Layout]=digest;
  }
  let sharedChanged=0;

@@ -48,6 +48,7 @@
 `standard.js` は、原本の印刷ページ境界で読書画面を強制的に区切らない。原本照合により後続の文章が前の本文から続くと確定したとき、**後続側**の本文ブロックへ `joinPrevious:true` を付ける。`paginateBlocks()` で組版候補を選ぶ**前**に、`joinLogicalContinuations()` が続きの本文を一つの論理テキストとして扱う。既存書籍の原本文字列を変更・推測補完したり、画像を再圧縮したりしない。
 
 - `kind:'text'` の `blocks` と、`kind:'mixed'` の `entries[].blocks` に対応。例：`{kind:'text',scan:20,blocks:[{type:'body',text:'前半'}]}` の次に `{kind:'text',scan:21,blocks:[{type:'body',text:'続き',joinPrevious:true}]}`。数値の連続から推測して連結してはいけない。
+- 本文の章・節・小見出しは新しい読書ページの右端から始める。見出しに続く本文は同じページの左隣から組む。原本で一つの見出しを複数のブロックに分けた場合だけ、2行目以降の見出しブロックに `continuesHeading:true` を付ける。目次の項目・図題・柱・通常の段落は各々の表示規則に従う。
 - `type:'heading'`、`type:'toc'`、`type:'note'`、`type:'footnote'`、`type:'caption'` は本文の連結境界。これらは従来の表示書式を維持し、本文に無条件で埋め込まない。`kind:'break'` は表示ページを増やさない明示的な論理区切りで、連結を止める。
 - 既定の `kind:'image'` は図版を独立して表示し、その位置で本文の連結を止める。**原本照合で図版専用ページを挟む連続本文と確認できた場合のみ**、当該画像の `entry` に `deferUntilContinuation:true` を付けられる。これにより図版のJPEG/PNGは保持したまま、続きの本文の**あと**に独立した図版ページとして提示する。前の本文や後続の `joinPrevious:true` が欠けていたら、図版を隠さず `G402_DEFERRED_IMAGE_*` の組版エラーにする。注記は別データ・本文参照として管理し、本文の一語の途中へ無条件に挿入しない。
 - 元原本への追跡情報は `StandardReader.pageManifest()[].sourceSpans` の `{scan,sourceBlock,sourceStart,sourceEnd}` に残す。書記素オフセットは元の登録本文ブロックに相対的で、ひとつの表示ページに複数の原本ページが入っても消さない。読書ページに表示する原本番号は先頭側の原本を代表することがあり、表示番号のみを唯一の逆引き根拠にしない。

@@ -231,7 +231,7 @@ window.visualViewport?.addEventListener('scroll',syncReaderViewport);
 window.addEventListener('pageshow',syncReaderViewport);
 window.addEventListener('resize',syncReaderViewport);
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='wh1-figure-paint-20261122-4';
+const wh3LayoutVersion='wh1-heading-start-20261122-5';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
@@ -570,8 +570,10 @@ async function loadBook(file,shouldSave=true){
    const url=new URL(location.href);
    const destination={scan:requested};
    if(url.searchParams.get('view')==='figure')destination.view='figure';
+   const heading=url.searchParams.get('heading');
+   if(url.searchParams.get('view')==='text'&&heading){destination.view='text';destination.heading=heading.slice(0,240);}
    await openSegment(segmentForScan(requested),destination);
-   url.searchParams.delete('scan');url.searchParams.delete('view');history.replaceState(null,'',url);
+   url.searchParams.delete('scan');url.searchParams.delete('view');url.searchParams.delete('heading');history.replaceState(null,'',url);
   }else await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});
  }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
 }
