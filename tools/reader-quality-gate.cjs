@@ -28,6 +28,13 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='e39e9b761c3bd5b4238ca5ba2dd13c786f2c67b1'){
+    const previous=data.toString('utf8')
+      .replace(/\/\/ BEGIN Nine Stories legacy epigraph layout\n[\s\S]*?\/\/ END Nine Stories legacy epigraph layout\n/,'')
+      .replace("   document.open();\n   if(inherited)writeLegacyNineEpigraph(bytes);\n   else document.write(new TextDecoder('utf-8',{fatal:true}).decode(bytes));\n   document.close();","   const html=new TextDecoder('utf-8',{fatal:true}).decode(bytes);\n   document.open();document.write(html);document.close();");
+    if(blobSHA(previous)!=='86af1c58518dfcd31c8200f3829c750d78efc23d')throw Error('NINE_EPIGRAPH_REVERSE_CHECK_FAILED');
+    data=Buffer.from(previous);
+  }
   if(blobSHA(data)==='86af1c58518dfcd31c8200f3829c750d78efc23d'){
     const previous=data.toString('utf8')
       .replace(/\/\/ BEGIN Presidents retained turn\n[\s\S]*?\/\/ END Presidents retained turn\n/,'')

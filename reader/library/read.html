@@ -798,6 +798,86 @@ async function saveCurrentBook({force=false}={}){
  })();
  return savingPromise;
 }
+// BEGIN Nine Stories legacy epigraph layout
+// Apply the current front-matter layout when displaying the legacy signed edition.
+// The original archive and its saved reading position remain the source for each open.
+function writeLegacyNineEpigraph(bytes){
+ const decoder=new TextDecoder('utf-8',{fatal:true});
+ // With this known edition the styles are at the front and the reader engine is at
+ // the end. Stream the embedded images through once, without rebuilding a giant string.
+ const chunkSize=256*1024, engineOffset=bytes.length-chunkSize;
+ const front=decoder.decode(bytes.subarray(0,chunkSize),{stream:true});
+ const style=front.indexOf('<style id="novel-style">');
+ const styleEnd=front.indexOf('</style>',style);
+ document.write(front.slice(0,styleEnd)+`
+/* Center the epigraph in the reading area at the selected text size. */
+.sheet:has(.text-flow:not([hidden]) > .nine-epigraph:only-child) {
+ padding-block:var(--bottom-safe);
+}
+.text-flow:has(> .nine-epigraph:only-child) {
+ display:flex;
+ writing-mode:horizontal-tb;
+ width:100%;
+ align-items:center;
+ justify-content:center;
+}
+.nine-epigraph {
+ writing-mode:vertical-rl;
+ text-orientation:mixed;
+ inline-size:max-content;
+ max-inline-size:100%;
+ flex:none;
+}
+.nine-epigraph-column {
+ display:block;
+ white-space:normal;
+ overflow-wrap:anywhere;
+}
+.nine-epigraph-credit { text-align:end; }
+`+front.slice(styleEnd));
+ for(let pos=chunkSize;pos<engineOffset;pos+=chunkSize){
+  const end=Math.min(pos+chunkSize,engineOffset);
+  document.write(decoder.decode(bytes.subarray(pos,end),{stream:true}));
+ }
+ const tail=decoder.decode(bytes.subarray(engineOffset));
+ const tag='<script id="private-novel-engine">';
+ const engineStart=tail.lastIndexOf(tag)+tag.length;
+ const engine=tail.slice(engineStart);
+ const partStart='function partNode(p){';
+ const blockStart=`  const b=group[bi],terminal=bi===group.length-1;
+  let off=0;`;
+ const centered=engine.replace(partStart,()=>String.raw`function partNode(p){
+ if(p.scan===7 && p.sourceSpans?.length && p.sourceSpans.every(s=>s.scan===7)){
+  const node=document.createElement('span');
+  node.className='nine-epigraph';
+  node.dataset.logicalParagraph=p.logicalParagraphId||'';
+  node.dataset.canonicalSegment=p.canonicalSegmentId||'';
+  node.dataset.sourceSpans=JSON.stringify(p.sourceSpans);
+  const block=blocks.find(b=>b.id===p.canonicalSegmentId);
+  const units=Array.from(block.text), start=p.logicalStart-block.logicalStart;
+  const end=start+Array.from(p.text).length;
+  const comma=units.indexOf('、'), newline=units.indexOf('\n');
+  const stops=[0];
+  if(comma>=0 && (newline<0 || comma<newline))stops.push(comma+1);
+  if(newline>=0)stops.push(newline+1);
+  stops.push(units.length);
+  for(let i=1;i<stops.length;i++){
+   const a=Math.max(start,stops[i-1]), b=Math.min(end,stops[i]);
+   if(a>=b)continue;
+   const col=document.createElement('span');
+   col.className='nine-epigraph-column'+(newline>=0 && a>newline?' nine-epigraph-credit':'');
+   const text=units.slice(a,b).join('');
+   if(typeof setVerticalText==='function')setVerticalText(col,text);
+   else col.textContent=text;
+   node.append(col);
+  }
+  return node;
+ }`).replace(blockStart,()=>`  const b=group[bi],terminal=bi===group.length-1;
+  if(b.scan===7 || (bi>0 && group[bi-1].scan===7))flush();
+  let off=0;`);
+ document.write(tail.slice(0,engineStart)+centered);
+}
+// END Nine Stories legacy epigraph layout
 async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
@@ -818,8 +898,10 @@ async function loadBook(file,shouldSave=true){
     location.replace('./read.html?id='+encodeURIComponent(m.bookId));
     return;
    }
-   const html=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
-   document.open();document.write(html);document.close();
+   document.open();
+   if(inherited)writeLegacyNineEpigraph(bytes);
+   else document.write(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+   document.close();
    return;
   }
   // END verified standalone bookshelf edition
