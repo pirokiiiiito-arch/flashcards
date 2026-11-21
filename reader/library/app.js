@@ -98,9 +98,9 @@
     $('bookCount').textContent=String(books.length);$('emptyState').hidden=matching.length!==0;
   }
   async function hasNewEdition(book){
-    if(!book?.editionUpdate||!book.parts.length||!tokenValid()||!savedIds.has(book.id))return false;
+    if(!book?.registrationRoot||!book.parts.length||!tokenValid()||!savedIds.has(book.id))return false;
     const meta=await LibraryDB.getMeta(book.id);
-    return !!meta&&(meta.subtitle!==book.subtitle||meta.size!==book.totalBytes);
+    return !!meta && (meta.registrationRoot ? meta.registrationRoot!==book.registrationRoot : book.registrationChannel!=='existing'||meta.subtitle!==book.subtitle||meta.size!==book.totalBytes);
   }
   async function showBook(book){selected=book; $('detailTitle').textContent=book.title;
     $('detailSub').textContent=[book.subtitle||'',book.totalBytes?nice(book.totalBytes):'',book.status||''].filter(Boolean).join(' ／ ');
@@ -119,7 +119,7 @@
     $('downloadProgress').hidden=true; $('primaryBookAction').disabled=unavailable;openSheet('book');
   }
   async function primaryAction(){if(!selected)return;
-    const book=selected,update=book.editionUpdate&&await hasNewEdition(book);
+    const book=selected,update=await hasNewEdition(book);
     if(book!==selected||pendingDownload)return;
     if(update){await download(book);return;}
     if(savedIds.has(selected.id)){location.href=readerHref(selected);return;}
@@ -229,8 +229,11 @@
         const json=await res.json();if(json?.schema===1&&Array.isArray(json.books))catalog=json.books.map(safeBook).filter(Boolean);
       }
       const found=discoveredBooks(files);
+      const rejectedIds=new Set([...catalog,...found].map(b=>b.id));
+      const previous=books.filter(b=>b.registrationRoot && rejectedIds.has(b.id));
+      const admitted=await LibraryDB.catalogFilter([...catalog,...found,...previous]);
       const seen=new Set();books=[];
-      for(const b of [...catalog,...found]){if(seen.has(b.id))continue;seen.add(b.id);books.push(b);}
+      for(const b of admitted){if(seen.has(b.id))continue;seen.add(b.id);books.push(b);}
       if(!books.some(x=>x.id==='wh1'))books.unshift(PREVIEW);
       if(!books.some(x=>x.id===UK_PREVIEW.id))books.push(UK_PREVIEW);
       if(!books.some(x=>x.id===NINE_STORIES.id))books.push(NINE_STORIES);
@@ -255,7 +258,7 @@
     const update=(i,partDone=0)=>{const current=done+partDone;const ratio=Math.max(0,Math.min(100,Math.round(current/total*100)));
       $('progressBar').style.width=ratio+'%';$('progressLabel').textContent=`Google Driveから保存中：${i}/${book.parts.length}　${nice(current)} / ${nice(total)}（${ratio}%）`;
     };
-    let committed=false;
+
     try{
       for(let i=0;i<book.parts.length;i++){
         if(ctrl.signal.aborted)throw new DOMException('中止しました','AbortError');
@@ -277,20 +280,14 @@
         done+=partDone;update(i+1,0);
       }
       if(book.totalBytes&&book.totalBytes!==done)throw new Error('統合書籍の合計サイズが一致しません');
-      if(book.editionUpdate){
-        await writer.commit(done,async blob=>{
-          await assertZip(blob);
-          if(ctrl.signal.aborted)throw new DOMException('中止しました','AbortError');
-        });
-      }else{
-        await writer.commit(done);committed=true;
-        const verify=await LibraryDB.readBlob(book.id);if(!verify||verify.blob.size!==done)throw new Error('保存後のデータ確認に失敗しました');
-        await assertZip(verify.blob);
-      }
+      await writer.commit(done,async blob=>{
+        await assertZip(blob);
+        if(ctrl.signal.aborted)throw new DOMException('中止しました','AbortError');
+      });
       savedIds.add(book.id);renderShelf();$('detailStatus').textContent='端末に保存しました。次回から自動で開けます。';
       $('progressLabel').textContent='保存完了。読書画面を開きます。';
       location.href=readerHref(book);
-    }catch(e){if(committed)await LibraryDB.removeBook(book.id).catch(()=>{});else await writer.abort();$('primaryBookAction').disabled=false;
+    }catch(e){await writer.abort();$('primaryBookAction').disabled=false;
       if(e.name==='AbortError'){$('detailStatus').textContent='ダウンロードを中止しました。';say('ダウンロードを中止しました');}
       else{$('detailStatus').textContent='保存できませんでした：'+(e.message||e);say('保存エラー：'+(e.message||e));}
       $('downloadProgress').hidden=true;

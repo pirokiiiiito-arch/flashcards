@@ -269,6 +269,7 @@ footer.reader-footer .location>#location,footer.reader-footer .location>#positio
  async function attach(blob,shouldSave=false){
   const token=++openToken;opening=true;busy('統合読書v3の目録を確認しています…');
   try{
+   if(shouldSave)await LibraryDB.authorizeFile({id:BOOK_ID},blob);
    const candidate=await new ZipReader(blob).init(),m=JSON.parse(await candidate.readText('manifest.json'));
    if(m.schema!=='uk82-stream-v2'||m.engine_revision!=='native-full-page-pinch-v3-20261112'||m.total_scans!==TOTAL||m.range?.[0]!==1||m.range?.[1]!==TOTAL||m.engine!=='reader/engine.html'||m.pages?.length!==TOTAL)
       throw Error('旧版のZIPです。Google Driveから「画面全体ピンチ拡大v3」を選び直してください');

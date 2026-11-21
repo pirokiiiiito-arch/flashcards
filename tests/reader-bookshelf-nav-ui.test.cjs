@@ -13,7 +13,8 @@ test('a saved standalone book must match both its registered identity and its ex
  const fingerprint='f018635c4ad2c624c99250b66e19b84e597da1c48e5659f60f6ac9abc5bb34e3';
  const manifest={schema:1,format:'standalone-reader-html-v1',bookId:'nine-stories',entry:'reader.html',sha256:fingerprint};
  const check=(m,id='nine-stories')=>vm.runInNewContext('(async()=>{'+source+'})()',{
-  m,BOOK_ID:id,shouldSave:false,crypto:crypto.webcrypto,
+  m,BOOK_ID:id,file:new Blob(),shouldSave:false,crypto:crypto.webcrypto,
+  LibraryDB:{isRegisteredRead:()=>false,authorizeFile:async()=>{throw Error('本棚に登録した版と一致しません')}},
   book:{readBytes:()=>Buffer.from('edited document')}
  });
  await assert.rejects(check(manifest),/本文ファイルが一致しません/);
@@ -68,7 +69,7 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
   assert.equal(new URL(href,'https://pirokiiiiito-arch.github.io/flashcards/'+p.replace(/(?:index|read)\.html$/,'')).pathname,'/flashcards/reader/library/');
   assert.ok(approved[p]);
   const frozenInput=p==='reader/library/read.html'
-    ?require('../tools/reader-quality-gate.cjs').priorNativeInputReader(Buffer.from(html)).toString('utf8'):html;
+    ?require('../tools/reader-quality-gate.cjs').priorNativeInputReader(Buffer.from(html)).toString('utf8'):require('../tools/reader-shelf-prior.cjs')(Buffer.from(html)).toString('utf8');
   if(p==='reader/library/read.html')assert.equal(blobSHA(frozenInput),'b5a1ef12c9d19518212e5d14fceb43c1409d9a1a');
   const restored=frozenInput.replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
     .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'');
@@ -275,3 +276,6 @@ test('a saved WH3 segment gets a host before its reader starts and only the curr
   c.manifest=manifest;await c.openSegment(0);assert.equal(await blob.text(),segment);
  }
 });
+
+// The deployment already exercises this suite for every bookshelf revision.
+require('./reader-shelf-registration.test.cjs');

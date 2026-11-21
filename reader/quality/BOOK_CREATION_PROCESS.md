@@ -326,3 +326,7 @@ python3 tools/reader-merge-work.py --runtime runtime merge --request PRIVATE/req
 採用済みの制作再開entryがある書籍は、両コマンドに `--entry PRIVATE/current-work.json --expected-entry-sha256 ENTRY_SHA` を付ける。ENTRY_SHAは選定記録の外部固定値を使う。統合が保留になったらWorkは結果の `nextAction` と `diagnostics` の該当箇所を処理する。個別ファイルの読み取り照合結果は `inputAudit` に出る。依頼範囲内の前提が整った作業は `nextProductionTask` と `readyTasks` を参照し、同じターンで着手して実際の証拠を記録する。原本・根拠・権限を必要とする判断は制作の既存手順に従う。依頼・入力・環境が変わるまで同一失敗の統合を反復しない。継続できる作業が尽きた時に、不足している資料または判断を具体的に伝える。
 
 統合報告の `requested_scope` に依頼の書籍ID・原本範囲・SHAが残る。4工程の合格後に必要な表示・配布検査は従来どおり実施する。Workの再開時は、採用した実行版・工程台帳・引継記録を一組で復元する。
+
+## 本棚への最終登録
+
+新規・続きの統合・差し替え・確認版の本棚登録は `tools/reader-shelf-register.py` の共通処理を使う。20枚の途中や最後の分冊も含め、配布するZIPを実際の読書画面で検査する。手順は [本棚登録](SHELF_REGISTRATION.md) にある。

@@ -5,6 +5,18 @@
 const fs=require('node:fs'),path=require('node:path');
 const v=require('./reader-release-control.cjs');
 const ORIGIN='https://pirokiiiiito-arch.github.io';
+const shelfFiles=[
+ ['reader/library/index.html','html'],['reader/library/read.html','html'],
+ ['reader/library/app.js','script'],['reader/library/storage.js','script'],
+ ['reader/library/sw.js','script'],['reader/library/shelf-registration.mjs','script'],
+ ['reader/quality/shelf-registration.json','json']
+];
+function shelfTargets(root){
+ return shelfFiles.map(([entry,kind])=>({
+  entry,kind,url:ORIGIN+'/flashcards/'+entry,
+  expectedSha256:v.hash(fs.readFileSync(path.join(root,entry)))
+ }));
+}
 function selectTargets(root,admission=v.receipts){
  const policy=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/release-policy.json'),'utf8'));
  const registry=JSON.parse(fs.readFileSync(path.join(root,'reader/quality/registry.json'),'utf8'));
@@ -46,7 +58,9 @@ async function verifyOne(target,fetcher=fetch,{attempts=4,wait=ms=>new Promise(r
    else{
     const type=response.headers.get('content-type')||'';
     const size=Number(response.headers.get('content-length')||0);
-    if(!/^text\/html\b/i.test(type))error='NOT_HTML_RESPONSE';
+    const expectedType=target.kind==='script' ? /^(application|text)\/(x-)?(java|ecma)script\b/i :
+     target.kind==='json' ? /^application\/json\b/i : /^text\/html\b/i;
+    if(!expectedType.test(type))error=target.kind ? 'UNEXPECTED_SHELF_CONTENT_TYPE' : 'NOT_HTML_RESPONSE';
     else if(size>1024*1024)error='UNEXPECTED_PUBLIC_ENTRY_SIZE';
     else{
      const buffer=Buffer.from(await response.arrayBuffer());
@@ -85,7 +99,10 @@ if(require.main===module){
   const root=path.resolve(process.argv[2]||path.join(__dirname,'..'));
   const output=process.argv[3];
   let report;
-  try{report=await verifyAll(selectTargets(root));}
+  try{
+   const [books,shelf]=await Promise.all([verifyAll(selectTargets(root)),verifyAll(shelfTargets(root))]);
+   report={...books,eligible:books.eligible&&shelf.eligible,shelfChecks:shelf.checks};
+  }
   catch(e){report={schema:'reader-public-delivery-evidence-v1',eligible:false,checks:[],errors:[e.message],checkedAt:new Date().toISOString()};}
   const json=JSON.stringify(report,null,2)+'\n';
   if(output){fs.mkdirSync(path.dirname(path.resolve(output)),{recursive:true});fs.writeFileSync(output,json);}

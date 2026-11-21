@@ -263,11 +263,15 @@ async function dbRead(){
   return old?.blob ? old : null;
  }finally{db.close();}
 }
+async function approveBookshelfArchive(blob){
+ const rules=await import('../../library/shelf-registration.mjs');
+ return rules.admitBlob({id:'wh1'},blob,await rules.ledger());
+}
 async function dbSave(blob,{force=false}={}){
+ const admission=await approveBookshelfArchive(blob);
  const db=await dbOpen();try{
   const oldMeta=await idbGet(db,'archive','active-v2');
-  const oldLegacy=oldMeta?null:await idbGet(db,'archive','full');
-  if(!force && ((oldMeta?.size===blob.size)||(oldLegacy?.blob?.size===blob.size)))
+  if(!force && oldMeta?.registrationRoot===admission.chunkRoot)
    return {already:true};
   const chunks=Math.ceil(blob.size/OFFLINE_CHUNK_SIZE);
   const generation='book-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
@@ -278,7 +282,7 @@ async function dbSave(blob,{force=false}={}){
     setStorageState('このiPhoneに書籍を保存中：'+progress+'％（ページを閉じないでください）',{show:true});
    }
   }
-  const meta={type:'chunks-v2',size:blob.size,count:chunks,generation,name:blob.name||'世界の歴史1.zip',saved:Date.now()};
+  const meta={type:'chunks-v2',registrationRoot:admission.chunkRoot,size:blob.size,count:chunks,generation,name:blob.name||'世界の歴史1.zip',saved:Date.now()};
   await idbPut(db,'archive','active-v2',meta);
   return {saved:true};
  }finally{db.close();}
@@ -307,6 +311,7 @@ async function saveCurrentBook({force=false}={}){
 async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
+  if(shouldSave)await approveBookshelfArchive(file);
   const book=await new ZipBook(file).index();const m=JSON.parse(await book.readText('manifest.json'));
   fillManifest(m);bookZip=book;
   if(shouldSave)void saveCurrentBook();

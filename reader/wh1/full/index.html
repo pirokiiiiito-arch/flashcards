@@ -189,10 +189,15 @@ function savePosition(){try{localStorage.setItem('WH1_UNIFIED_POSITION',JSON.str
 function restorePosition(){try{let p=JSON.parse(localStorage.getItem('WH1_UNIFIED_POSITION'));if(p && Number.isInteger(p.segment)&&p.segment>=0&&p.segment<14)return p;}catch(_){}return {segment:0,key:'',scan:1,size:20};}
 async function dbOpen(){return new Promise((resolve,reject)=>{const req=indexedDB.open('wh1-unified-book',1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('archive'))req.result.createObjectStore('archive');};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
 async function dbRead(){const db=await dbOpen();try{return await new Promise((resolve,reject)=>{const r=db.transaction('archive','readonly').objectStore('archive').get('full');r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error);});}finally{db.close();}}
-async function dbSave(blob){const db=await dbOpen();try{return await new Promise((resolve,reject)=>{const tr=db.transaction('archive','readwrite');tr.objectStore('archive').put({blob,name:blob.name||'世界の歴史1.zip',saved:Date.now()},'full');tr.oncomplete=resolve;tr.onerror=()=>reject(tr.error);tr.onabort=()=>reject(tr.error);});}finally{db.close();}}
+async function approveBookshelfArchive(blob){
+ const rules=await import('../../library/shelf-registration.mjs');
+ return rules.admitBlob({id:'wh1'},blob,await rules.ledger());
+}
+async function dbSave(blob){await approveBookshelfArchive(blob);const db=await dbOpen();try{return await new Promise((resolve,reject)=>{const tr=db.transaction('archive','readwrite');tr.objectStore('archive').put({blob,name:blob.name||'世界の歴史1.zip',saved:Date.now()},'full');tr.oncomplete=resolve;tr.onerror=()=>reject(tr.error);tr.onabort=()=>reject(tr.error);});}finally{db.close();}}
 async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
+  if(shouldSave)await approveBookshelfArchive(file);
   const book=await new ZipBook(file).index();const m=JSON.parse(await book.readText('manifest.json'));
   fillManifest(m);bookZip=book;
   if(shouldSave){

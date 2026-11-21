@@ -83,7 +83,9 @@ test('current UK WH1 geometry revision is byte-pinned without upgrading draft or
  assert.equal(report.claimsCompleted,false);
  assert.equal(reg.legacyFrozenEntries[entry],managed.migratedFromFrozenBlobSha,
   'frozen historical bytes remain bound to original identity');
- assert.equal(gate.blobSHA(bytes),'c6ece4949b885c81bfa4374e19f049b23825e6e0',
+ assert.equal(gate.blobSHA(bytes),'4e83af9c9caf975ceb28a18f5201bd26ef500ada',
+  'exact public shell with the common registration guard');
+ assert.equal(gate.blobSHA(require('../tools/reader-shelf-prior.cjs')(bytes)),'c6ece4949b885c81bfa4374e19f049b23825e6e0',
   'only exactly reviewed public geometry is admitted');
  assert.equal(gate.approvedUKWh1GeometryUI(managed,bytes),true);
  assert.equal(gate.approvedUKWh1GeometryUI({...managed,id:'other',entry:'reader/wh1/all/index.html'},bytes),false);

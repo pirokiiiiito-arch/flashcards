@@ -3,6 +3,7 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const priorShelfShell=require('./reader-shelf-prior.cjs');
 const ROOT=path.resolve(__dirname,'..');
 const ID='1CngvhZvJPQsGizwmaVKC_old4Vlvxzn2';
 const RULES=["G1-01","G1-02","G1-03","G1-04","G1-05","G1-07","G1-08","G1-10","G1-12","G2-01","G2-02","G2-03","G2-04","G2-05","G2-07","G2-11","G3-01","G3-02","G3-03","G3-04","G3-05","G3-06","G3-07","G4-01","G4-02","G4-03","G4-04","G4-05","G4-09","G5-01","G5-02","G5-03","G5-04","G5-05","G5-10","P20","G6-01","G6-02","G6-03","G6-05","G6-09","G6-11","G6-12","P22","P23","G7-01","G7-02","G7-03","G7-04","G7-05","G7-10","G7-12","G8-01","G8-02","G8-03","G8-04","G8-05","G8-07","G8-08","G8-11"];
@@ -20,13 +21,14 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
 });
 // Narrow, byte-exact admission for the independently reviewed bookshelf title-order UI.
-const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976','ef6bedffc87bfe7038121a19e43fb496c65837b8','206460fae3840f4aec53707ad6ef2afc9903d304','6a8ab86575d7a6b77eecd1450043d9e0b49daa00','5b19a109330eaf43f8cf0ea469297ae716618094','53a8097dff6490590949dee8d6fa33942443e6d9']);
+const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976','ef6bedffc87bfe7038121a19e43fb496c65837b8','206460fae3840f4aec53707ad6ef2afc9903d304','6a8ab86575d7a6b77eecd1450043d9e0b49daa00','5b19a109330eaf43f8cf0ea469297ae716618094','53a8097dff6490590949dee8d6fa33942443e6d9','5278def2a0ef742bfc416e6461fef5476ee4754c']);
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  data=priorShelfShell(data);
   const blob=blobSHA(data);
   if(blob!=='f5551144e7f37d6f6587d71bd81694db75328cec'&&blob!=='c42490874b5e54dea08a524655d4f5632005e71d')return data;
     const prior=data.toString('utf8')
@@ -49,6 +51,7 @@ function blobSHA(bytes){const b=Buffer.isBuffer(bytes)?bytes:Buffer.from(bytes);
    Any different byte, different book, modified engine or banned word guard fails. */
 function approvedUKWh1GeometryUI(book,bytes){
  if(book?.entry!=='reader/british-interiors/full/index.html'||!Buffer.isBuffer(bytes))return false;
+ bytes=priorShelfShell(bytes);
  if(blobSHA(bytes)!=='c6ece4949b885c81bfa4374e19f049b23825e6e0')return false;
  const html=bytes.toString('utf8');
  return html.includes('id="firstPageButton"')&&
@@ -142,7 +145,7 @@ function validate(root=ROOT){
   }
   if(seen.has(p))errors.push('DUPLICATE_ROUTE '+p);seen.add(p);
   if(!paths.includes(p)){errors.push('MISSING_LEGACY '+p);continue;}
-  let data=fs.readFileSync(path.join(root,p));
+  let data=priorShelfShell(fs.readFileSync(path.join(root,p)));
   if(p==='reader/library/read.html')data=priorNativeInputReader(data);
   const actual=blobSHA(data),expectedHref=p==='reader/library/read.html'?'./':'../../library/';
   const uiPinned=BOOKSHELF_NAV_UI_BLOBS[p]===actual&&
@@ -160,7 +163,8 @@ function validate(root=ROOT){
      data.includes(Buffer.from('app.js?v=bookshelf-uk-wh1-text-geometry-v1-20261115'))||
      data.includes(Buffer.from('app.js?v=bookshelf-nine-stories-286-20261121'))||
      data.includes(Buffer.from('app.js?v=bookshelf-reader-input-20261121'))||
-     data.includes(Buffer.from('app.js?v=bookshelf-device-save-20261121')));
+     data.includes(Buffer.from('app.js?v=bookshelf-device-save-20261121'))||
+     data.includes(Buffer.from('app.js?v=bookshelf-registration-20261122')));
   // Admit only the exact 2026-11-15 public presentation layer for the shared shelf.
   // Inverse-transform its layout-only additions and verify the untouched
   // historical engine's original frozen Git blob byte-for-byte.

@@ -3,6 +3,20 @@
 const LibraryDB = (() => {
   const DB = 'private-bookshelf-v1';
   const VERSION = 1;
+  const rulesURL = new URL('./shelf-registration.mjs', document.currentScript.src).href;
+  const admittedReads = new WeakMap();
+  async function authorizeFile(book, blob) {
+    const policy = await import(rulesURL);
+    return policy.admitBlob(book, blob, await policy.ledger(true));
+  }
+  async function catalogFilter(entries) {
+    const policy = await import(rulesURL), active = await policy.ledger(true), admitted = [];
+    for (const book of entries) {
+      const record = await policy.admitEntry(book, active);
+      if (record) admitted.push({...book, registrationRoot:record.chunkRoot, registrationChannel:record.channel || 'existing'});
+    }
+    return admitted;
+  }
   const CHUNK = 4 * 1024 * 1024;
   const SAFE_ID = /^[a-zA-Z0-9_-]{1,90}$/;
   function checkId(id) { if (!SAFE_ID.test(id)) throw new Error('書籍IDが不正です'); return id; }
@@ -56,6 +70,7 @@ const LibraryDB = (() => {
   async function newWriter(book) {
     checkId(book.id);
     const db = await open();
+    const original = await storeGet(db, 'books', book.id);
     const generation = `g${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     let count = 0, total = 0, active = true;
     return {
@@ -70,14 +85,16 @@ const LibraryDB = (() => {
         if (!count || (expectedSize != null && total !== expectedSize)) throw new Error('書籍の保存サイズが一致しません');
         const meta = {id:book.id, title:String(book.title||book.id), subtitle:String(book.subtitle||''), scans:Number(book.scans)||null,
           generation, count, size:total, date:Date.now(), format:'unified-zip-v1'};
-        if(!validate){
-          await storePut(db, 'books', book.id, meta);
-          active=false;db.close();return meta;
-        }
-        await validate(await generationBlob(db.transaction('chunks','readonly').objectStore('chunks'),meta));
+        const blob=await generationBlob(db.transaction('chunks','readonly').objectStore('chunks'),meta);
+        const admission=await authorizeFile(book,blob);
+        if(validate)await validate(blob);
+        meta.registrationRoot=admission.chunkRoot;
         const previous=await new Promise((resolve,reject)=>{
           const tx=db.transaction('books','readwrite'),books=tx.objectStore('books'),old=books.get(book.id);
-          old.onsuccess=()=>books.put(meta,book.id);
+          old.onsuccess=()=>{
+            if(old.result?.generation!==original?.generation && old.result?.registrationRoot!==meta.registrationRoot) { tx.abort(); return; }
+            books.put(meta,book.id);
+          };
           tx.oncomplete=()=>resolve(old.result);
           tx.onabort=tx.onerror=()=>reject(tx.error||new Error('修正版を保存できません'));
         });
@@ -127,7 +144,7 @@ const LibraryDB = (() => {
           if(!Number.isInteger(meta.count)||meta.count<1||meta.count>100000){reject(new Error('書籍の保存情報が不正です'));return;}
           generationBlob(tx.objectStore('chunks'),meta).then(blob=>resolve({blob,meta}),reject);
         };
-      });
+      }).then(saved=>{if(saved?.meta.registrationRoot)admittedReads.set(saved.blob,id);return saved;});
     }finally{db.close();}
   }
   async function saveBlob(book, blob, onProgress) {
@@ -172,6 +189,10 @@ const LibraryDB = (() => {
       }finally{db.close();}
     }catch(_){return false;}
   }
-  async function findBlob(id) { const cached=await readBlob(id);return cached || (id==='wh1'?await legacyWh1():null); }
-  return {CHUNK,getMeta,listMeta,newWriter,readBlob,findBlob,legacyWh1,hasBook,removeBook,saveBlob};
+  async function findBlob(id) {
+    const cached=await readBlob(id);if(cached || id!=='wh1')return cached;
+    const legacy=await legacyWh1();if(legacy){await authorizeFile({id},legacy.blob);admittedReads.set(legacy.blob,id);}
+    return legacy;
+  }
+  return {CHUNK,authorizeFile,catalogFilter,isRegisteredRead:(id,blob)=>admittedReads.get(blob)===id,getMeta,listMeta,newWriter,readBlob,findBlob,legacyWh1,hasBook,removeBook,saveBlob};
 })();

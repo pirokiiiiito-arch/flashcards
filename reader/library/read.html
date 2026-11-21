@@ -345,7 +345,8 @@ function idbPut(db,store,key,value){return new Promise((resolve,reject)=>{
 async function dbRead(){const result=await LibraryDB.findBlob(BOOK_ID);return result?{blob:result.blob,meta:result.meta}:null;}
 async function dbSave(blob,{force=false}={}){
  const present=await LibraryDB.getMeta(BOOK_ID);
- if(!force&&present?.size===blob.size)return {already:true};
+ const admission=await LibraryDB.authorizeFile({id:BOOK_ID},blob);
+ if(!force&&present?.registrationRoot===admission.chunkRoot)return {already:true};
  await LibraryDB.saveBlob({id:BOOK_ID,title:bookTitle,scans:totalScans},blob,(saved,total)=>{
   const pct=Math.round(saved/total*100);setStorageState('端末のブラウザー保存中：'+pct+'％（ページを閉じないでください）',{show:true});
  });
@@ -379,14 +380,16 @@ async function loadBook(file,shouldSave=true){
   // BEGIN verified standalone bookshelf edition
   if(m.format==='standalone-reader-html-v1'){
    const trustedSha='f018635c4ad2c624c99250b66e19b84e597da1c48e5659f60f6ac9abc5bb34e3';
-   if(m.schema!==1||m.bookId!=='nine-stories'||m.entry!=='reader.html'||m.sha256!==trustedSha||(!shouldSave&&BOOK_ID!==m.bookId))
+   const inherited=m.bookId==='nine-stories'&&m.sha256===trustedSha;
+   if(m.schema!==1||!/^[A-Za-z0-9_-]{1,90}$/.test(m.bookId)||m.entry!=='reader.html'||!/^[a-f0-9]{64}$/.test(m.sha256)||(!shouldSave&&BOOK_ID!==m.bookId))
     throw Error('本棚に登録した統合確認版と一致しません');
+   if(shouldSave || (!inherited && !LibraryDB.isRegisteredRead(m.bookId,file)))await LibraryDB.authorizeFile({id:m.bookId},file);
    const bytes=await book.readBytes(m.entry);
    const hash=await crypto.subtle.digest('SHA-256',bytes);
-   if(Array.from(new Uint8Array(hash),v=>v.toString(16).padStart(2,'0')).join('')!==trustedSha)
+   if(Array.from(new Uint8Array(hash),v=>v.toString(16).padStart(2,'0')).join('')!==m.sha256)
     throw Error('統合確認版の本文ファイルが一致しません');
    if(shouldSave){
-    await LibraryDB.saveBlob({id:m.bookId,title:'ナイン・ストーリーズ',subtitle:'全286枚・統合確認版',scans:286},file);
+    await LibraryDB.saveBlob({id:m.bookId,title:m.title||m.bookId,subtitle:m.edition||'',scans:m.range?.[1]||m.totalScans||null},file);
     location.replace('./read.html?id='+encodeURIComponent(m.bookId));
     return;
    }
@@ -399,6 +402,7 @@ async function loadBook(file,shouldSave=true){
   // or changing its ID/position key. Keep an unsaved manual import in this page.
   const replacement=!shouldSave&&window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID,manifest:m,isSaved:true});
   if(replacement){location.replace(replacement);return;}
+  if(shouldSave)await LibraryDB.authorizeFile({id:BOOK_ID},file);
   fillManifest(m);bookZip=book;
   if(shouldSave)void saveCurrentBook();
   else setStorageState('このiPhoneに保存した書籍を開きました。次回も自動で開きます。',{show:false});

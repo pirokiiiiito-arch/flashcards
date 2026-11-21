@@ -247,3 +247,7 @@ Where any evidence is missing, report `未検証` rather than `完了`.
 ## 全ページの原本照合と小説の作品・章の開始
 
 作業開始時はライブラリ直下の現行正本とその運用版を参照する。各分冊・統合版では対象 HTML に対して `node tools/reader-source-pages.cjs PRIVATE/manifest.json --request PRIVATE/request.json` を実行し、原本番号・未解決の欄を引き継ぐ。独立転記との不一致は同じ原本・同じ領域で読み直して確定する。小説の作品・章の見出しは次ページの先頭に置き、後続本文を左列に続ける。実行手順と必要な記録は [書籍制作手順](reader/quality/BOOK_CREATION_PROCESS.md) に従う。
+
+## 本棚の新規登録・差し替え（確認版・通常版共通）
+
+書籍を本棚に追加するとき、分冊追加・読書画面修正・統合で配布実体を差し替えるときは、`tools/reader-shelf-register.py` の `prepare` → `catalog` → `finalize` を使う。Driveへの仮置き後に同じファイルIDから読み戻し、配信対象の本棚で実体を開いて、全範囲のピンチ・パン・スワイプ、および原本目次の項目と着地点を検査する。実行例・署名鍵の取得・検査失敗からの再開は `reader/quality/SHELF_REGISTRATION.md` にある。通常版の60項目・実機・独立校正の既存判定も適用する。端末側は検査済み台帳に一致する版だけを新たに表示・保存する。切替時の既存版は当時の実体に限定して引き継ぐ。

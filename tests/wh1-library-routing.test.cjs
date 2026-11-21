@@ -33,7 +33,7 @@ function readerHarness({id, pathname = '/flashcards/reader/library/read.html', t
     SEGMENTS: Array(14).fill({}), currentState: {segment: 0, key: '', scan: 1, size: 20}, bookZip: null, $,
     localStorage: {getItem: key => {reads.push(key); return values.get(key) || null;},
       setItem: (key, value) => writes.push([key, value]), removeItem() {throw Error('Position deletion is forbidden');}},
-    LibraryDB: {findBlob: async key => {calls.push(['findBlob', key]); return {blob: new Blob(['saved']), meta: {id: key}};}},
+    LibraryDB: {authorizeFile:async b=>{calls.push(['admitFile',b.id]);},findBlob: async key => {calls.push(['findBlob', key]); return {blob: new Blob(['saved']), meta: {id: key}};}},
     setBusy: () => {}, clearBusy: () => {}, setHint: text => calls.push(['hint', text]),
     fillManifest: () => calls.push(['fillManifest']),
     saveCurrentBook: async () => calls.push(['saveCurrentBook']),
@@ -116,6 +116,7 @@ test('manual unsaved import and other saved books keep their existing flows', as
   const imported = readerHarness({id: 'g_manual'});
   await imported.context.loadBook(new Blob(['unsaved']), true);
   assert.equal(imported.calls.some(([name]) => name === 'replace'), false);
+  assert.deepEqual(imported.calls.filter(([name])=>name==='admitFile'),[['admitFile','g_manual']]);
   assert.equal(imported.calls.filter(([name]) => name === 'saveCurrentBook').length, 1, 'existing manual save flow is retained');
   assert.equal(imported.calls.some(([name]) => name === 'open'), true);
   const other = readerHarness({id: 'g_world2', title: '世界の歴史2'});
@@ -132,11 +133,11 @@ test('both actual bookshelf saved-open and completed-download paths use routing 
     const selected = {...book, parts: [{id: 'fixture_file', size: 4}], totalBytes: 4};
     const location = {};
     const c = {window: {WH1ReaderRouting: routing}, selected, savedIds: new Set([book.id]), location,
-      $, pendingDownload: null, Blob, Uint8Array, AbortController, DOMException,
+      $, pendingDownload: null, hasNewEdition:async()=>false, Blob, Uint8Array, AbortController, DOMException,
       nice: String, renderShelf() {}, say() {}, closeSheet() {}, openSettings() {},
       LibraryDB: {CHUNK: 4, newWriter: async target => {
         assert.equal(target.id, book.id);
-        return {write: async () => {}, commit: async () => actions.push('commit'), abort: async () => actions.push('abort')};
+        return {write: async () => {}, commit: async (size,validate) => {await validate(new Blob([new Uint8Array(size)]));actions.push('commit');}, abort: async () => actions.push('abort')};
       }, readBlob: async id => {assert.equal(id, book.id); return {blob: new Blob([new Uint8Array(4)])};},
       removeBook() {throw Error('Successful routing must not remove a book');}},
       driveRequest: async () => ({arrayBuffer: async () => new Uint8Array(4).buffer}),
@@ -147,7 +148,7 @@ test('both actual bookshelf saved-open and completed-download paths use routing 
     location.href = '';
     await c.download(selected);
     assert.equal(location.href, routing.href(book));
-    assert.deepEqual(actions, ['commit', 'verified']);
+    assert.deepEqual(actions, ['verified', 'commit']);
   }
 });
 
@@ -169,7 +170,7 @@ test('Nine Stories returns to the same book after connecting, then uses the comm
     PREVIEW:{id:'wh1'},UK_PREVIEW:{id:'uk-interiors'},NINE_STORIES:fixture,
     listFolder:async()=>[{name:'bookshelf.json',id:'index'}],
     driveRequest:async()=>({json:async()=>({schema:1,books:[indexed]})}),discoveredBooks:()=>[],safeBook:b=>b,
-    refreshSaved:async()=>{},download:async book=>downloads.push(book)};
+    LibraryDB:{catalogFilter:async books=>books.filter(b=>b.id===fixture.id)},refreshSaved:async()=>{},download:async book=>downloads.push(book)};
   vm.createContext(c);
   vm.runInContext([
     between(app,'function openSheet(','function normalizeTitle('),

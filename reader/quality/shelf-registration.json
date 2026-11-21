@@ -1,0 +1,422 @@
+{
+  "schema": "shelf-registration-v1",
+  "existing": [
+    {
+      "key": "09e0a554f768058593bcdf3f290ffc3ddb41ff70139f2a10998dbdf81de0e896",
+      "entry": "20acf89a129e62ef1792ceedb3ef159ca3193e70f88a31afcf6904b57b423f6b",
+      "bytes": 48360270,
+      "sha256": "a7904ab8822d3a703c2cc9d9813e3720061c9e059dd3824c23896236f0fceb30",
+      "chunkRoot": "7cec2026ab1bbde9abb47457e0dbc4636ea4e4aaad88bf320d390e4c4bab4dbb"
+    },
+    {
+      "key": "44b80bf5277e29dc0ce391c375b44723814b52a5d1457a65a84a8f1028b80bb4",
+      "entry": "05893998520359df329b4b5dab50abfa97f2605ea087d3565affb70e0700f9cd",
+      "bytes": 266228559,
+      "sha256": "d375ee491f7a65745afaeb50328fc085b98f207fb3241fc005a57faa7d0aba2a",
+      "chunkRoot": "833807fb8d94d2cd8cdc6f0f984a906903d9a3535f32716783698c70f5efffa6"
+    },
+    {
+      "key": "96cc3367601a1db95f3cbc885afdb8147e7ce9bff6c341fbcb0f178005982f29",
+      "entry": "f7679947a7dc1023a9769f058fc1f25d8300a990158fa74648d014ef0c6a5d08",
+      "bytes": 400389725,
+      "sha256": "311bcd76e91eb57cad6747e88574cab909fa71779ed404fdc0b143bc5e8e49ad",
+      "chunkRoot": "f02a560d0ae1e600de9eb4815fc3d266000f3526ba2edf26dd179260b39479f9"
+    },
+    {
+      "key": "ab2052a6f5688569dca4e0cae51bf066904ca3c48585a3d84f5b4047419ed40b",
+      "entry": "35bbbd5a42b593de5b29d51f07cdd22c8f54df60dc829608654ac7ab82e71bd4",
+      "bytes": 126760402,
+      "sha256": "47a6ca0ddfb888cad5b7d62abdd25d289245eb3311f82e9cf79dd4f5a65f0c57",
+      "chunkRoot": "3bad5ed17a582aeb32e3f800e64e7b419f706dfd86c5b18763b4e6c006139256"
+    },
+    {
+      "key": "e050420e5f5814c949ceb5da7676758de95b50a6bf682ad56437abb71ad48f1c",
+      "entry": "4358d1b8eb515b1c40770adb93bc36c2b9b9042a53f25a828f80f8ff942d76d5",
+      "bytes": 190930447,
+      "sha256": "acbe5238bc7a3c68bdb3ddeae0229c8e08c79e06db4d0fc963eded719e7fb126",
+      "chunkRoot": "1ae9db65dda4ee18c220aa87c1f8ab4c5a18a4c15aa191885b527d25c8e98201"
+    },
+    {
+      "key": "e8c544bf2b0d07be92f5b4a44f6057d8d1e94ae725dc4f6ac139a06748d3f7a4",
+      "entry": "37a3bc799a3669ba792d7565b2edeff8d011738e4d24e6912bd1c9b54ac1ab4b",
+      "bytes": 509560814,
+      "sha256": "1364299f117d7512d30e70c21b48541952c539986b85171d3cc3098546b88fed",
+      "chunkRoot": "fd05348e6c18702905c4a9517cc0afbfc227373aa695e2aab99c140afa4b6ad5"
+    },
+    {
+      "key": "ed13a6e333b4f384f0f8bd128dfb3209e56ee4a990f0715d3a3f9ccf83f022c2",
+      "entry": "7672bdf8263bacbb78e6c381c2d4cde5ed9a0001da3e547361113e2ed4d1c24c",
+      "bytes": 249842496,
+      "sha256": "5d24d0c69caa54a8ae067459c6f2ff9e708ea237b6e4d5e2a2c3e156693460c2",
+      "chunkRoot": "67f16c3fa0ee7087a7cd448c098165701b3c5c52a62b05f0b6ffabc5ee824fb6"
+    },
+    {
+      "key": "ff461c82c760570d3377e45fac5d0721a847ed487c5cbfe78c6835295591e90d",
+      "entry": "990c6cd53e64b682bc5d813fdc3e2860a11551ff1a5f48a17b2412dd72162daf",
+      "bytes": 430286318,
+      "sha256": "efc7d0bc3de37decf3176c23e4124fd85339f301fb00783f34c44e7d7357337e",
+      "chunkRoot": "356d4c31a4c3c96378efa025e1b9821255c7016c79a812565782e7d6e4519464"
+    }
+  ],
+  "editions": [
+    {
+      "key": "e050420e5f5814c949ceb5da7676758de95b50a6bf682ad56437abb71ad48f1c",
+      "entry": "4358d1b8eb515b1c40770adb93bc36c2b9b9042a53f25a828f80f8ff942d76d5",
+      "bytes": 190930447,
+      "sha256": "acbe5238bc7a3c68bdb3ddeae0229c8e08c79e06db4d0fc963eded719e7fb126",
+      "chunkRoot": "1ae9db65dda4ee18c220aa87c1f8ab4c5a18a4c15aa191885b527d25c8e98201",
+      "channel": "preview",
+      "evidence": {
+        "version": 1,
+        "archive": "acbe5238bc7a3c68bdb3ddeae0229c8e08c79e06db4d0fc963eded719e7fb126",
+        "source": "34a06743aeae72af608f2f931a2f6577fb5952b615aa7dac8c7a9a3cc3f6b99d",
+        "host": "e197348a220d89b1cf70269c7c7a69e59af49c2431aaf16c2b4846871d020944",
+        "report": "b43c9850ae26b5b7e859302b6b307994c5bcc9e15f0465178e1d74b0c4f98589",
+        "first": 1,
+        "last": 320,
+        "modes": [
+          "contents",
+          "figure",
+          "original",
+          "text"
+        ],
+        "singleScreen": false,
+        "batches": [
+          [
+            1,
+            20,
+            [
+              [
+                "text",
+                1,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "figure",
+                8,
+                1,
+                5,
+                -45,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "contents",
+                3,
+                1,
+                5,
+                -45,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            21,
+            40,
+            [
+              [
+                "text",
+                30,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            41,
+            60,
+            [
+              [
+                "text",
+                41,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            61,
+            80,
+            [
+              [
+                "text",
+                65,
+                1,
+                5,
+                -42,
+                -53,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            81,
+            100,
+            [
+              [
+                "text",
+                90,
+                1,
+                5,
+                -43,
+                -54,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            101,
+            120,
+            [
+              [
+                "text",
+                110,
+                1,
+                5,
+                -47,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            121,
+            140,
+            [
+              [
+                "text",
+                122,
+                1,
+                5,
+                -48,
+                -59,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            141,
+            160,
+            [
+              [
+                "text",
+                141,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            161,
+            180,
+            [
+              [
+                "text",
+                161,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            181,
+            200,
+            [
+              [
+                "text",
+                181,
+                1,
+                5,
+                -49,
+                -62,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            201,
+            220,
+            [
+              [
+                "text",
+                201,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            221,
+            240,
+            [
+              [
+                "text",
+                221,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            241,
+            260,
+            [
+              [
+                "text",
+                241,
+                1,
+                5,
+                -45,
+                -56,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            261,
+            280,
+            [
+              [
+                "text",
+                261,
+                1,
+                5,
+                -45,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            281,
+            300,
+            [
+              [
+                "text",
+                281,
+                1,
+                5,
+                -47,
+                -59,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            301,
+            320,
+            [
+              [
+                "text",
+                310,
+                1,
+                5,
+                -51,
+                -65,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "original",
+                320,
+                1,
+                5,
+                -46,
+                -59,
+                1,
+                0,
+                0,
+                0
+              ]
+            ]
+          ]
+        ],
+        "toc": {
+          "kind": "source",
+          "rows": 201,
+          "landed": 201,
+          "reference": "08c48a85728539f1711dbe3643f3e3bc0020a80ab46c73ff41d6d986d73b7f64",
+          "results": "96852eb82c29991f7069835ffb08506eb5582debcb60e2cee443fdff78981559"
+        }
+      },
+      "signature": "/BZQATy1RVm29fcrP4wgxgjNNm+k2qKoMLbjjt8H2mpB3AzucWhl1FX2lFc2ln5bSnNsDkNXHPIUocPIiMJQ5w=="
+    }
+  ],
+  "pending": []
+}
