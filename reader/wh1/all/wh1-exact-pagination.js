@@ -60,13 +60,37 @@ function auditPart(html){
  if(html.includes('id="wh1-figure-audit-1130"'))return html;
  return inject(html.replace('</head>',AUDIT_CSS+'</head>'),AUDIT_SCRIPT);
 }
-const decorate=html=>inject(auditPart(html).replace('</head>',CHILD_CSS+TOP_START_STYLE+'</head>'),CHILD_BRIDGE);
+// The released Presidents volume stores its WH1 layout script in each private segment.
+// Apply the same page break to those saved segments in the reader and in the background counter.
+const presidentsKeyLine=/^ try\{sessionStorage\.setItem\('us-presidents-south-\d+-\d+-page',p\.key\);\}catch\(e\)\{\}$/m;
+function preparePart(html){
+ if(!presidentsKeyLine.test(html))return auditPart(html);
+ const loop='  let remain=b.text,offset=0;\n  while(remain.length){';
+ const headingBreak="  if(b.type==='heading'&&parts.some(part=>part.type!=='heading'))flush();";
+ if(!html.includes(headingBreak))html=html.replace(loop,headingBreak+'\n'+loop);
+
+ // Text page keys store a block and its UTF-16 offset. Repagination can move
+ // that exact offset into the middle of a page. Restore the containing page.
+ const lookup='    if(dest?.key) idx=pages.findIndex(p=>p.key===dest.key);';
+ const fallback=String.raw`
+    if(idx<0 && typeof dest?.key==='string'){
+      const anchor=/^text:(\d+):(\d+)$/.exec(dest.key);
+      if(anchor){
+        const block=Number(anchor[1]),offset=Number(anchor[2]);
+        idx=pages.findIndex(page=>page.parts?.some(part=>part.block===block&&
+          part.offset<=offset&&offset<part.offset+part.text.length));
+      }
+    }`;
+ return html.includes(fallback)?html:html.replace(lookup,()=>lookup+fallback);
+}
+const decorate=html=>inject(preparePart(html).replace('</head>',CHILD_CSS+TOP_START_STYLE+'</head>'),CHILD_BRIDGE);
 function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getScan,useExactPagination=()=>false}) {
  let cached=null,active=null,lastState=null,errorKey='';
  const getBookKey=()=>{
   const book=getBook(),manifest=getManifest(),segments=getSegments();
   const revision=segments.map(s=>(s.source_sha256||s.part||'').slice(0,16)).join('-');
-  return (useExactPagination()?manifest.bookId+':':'')+`${REVISION}:${book?.blob?.size||0}:${manifest?.created||''}:${revision}`;
+  const layout=manifest?.bookId==='us-presidents-south'?'section-starts-v1:':'';
+  return (useExactPagination()?manifest.bookId+':'+layout:'')+`${REVISION}:${book?.blob?.size||0}:${manifest?.created||''}:${revision}`;
  };
  const exact=()=>useExactPagination()||(getManifest()?.range?.[0]===1&&getManifest()?.range?.[1]===274&&getSegments()?.length===14);
  function geometry(state){
@@ -121,7 +145,7 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
   const clear=()=>{clearTimeout(step.timer);if(run.step===step)run.step=null;if(run.frame===frame){frame.remove();run.frame=null;}};
   step.resolve=value=>{clear();resolve(value);};step.reject=err=>{clear();reject(err);};run.step=step;
   step.timer=setTimeout(()=>step.reject(Error(`${index+1}区間目の組版が完了しませんでした`)),45000);
-  frame.srcdoc=inject(auditPart(html).replace('</head>',TOP_START_STYLE+'</head>'),MEASURE_BRIDGE);
+  frame.srcdoc=inject(preparePart(html).replace('</head>',TOP_START_STYLE+'</head>'),MEASURE_BRIDGE);
  });}
  function start(config){
   if(!exact()||!getBook())return;cancel();errorKey='';send('全巻ページ数を計測中…');

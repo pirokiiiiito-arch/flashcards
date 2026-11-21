@@ -397,7 +397,7 @@ function admittedBookshelfNavUI(root,policy){
   const pager='reader/wh1/all/wh1-exact-pagination.js',pagerCopy='reader/library/wh1-pager-v9.js';
   const pagerDigest=hash(fs.readFileSync(safe(root,pager)));
   if(pagerDigest!==policy.baseline.files[pager]){
-   demand(pagerDigest==='e0a81b8e7f8726e33f3600aaa66e82d19bf632b1f275c6facb20a9d4a6ee580e'&&hash(fs.readFileSync(safe(root,pagerCopy)))===pagerDigest,'PINNED_WH1_PAGER_MISMATCH');
+   demand(pagerDigest==='1d2e7fade16119f67c5b786442f21dd90fdffdb9fb4a28989f11e74f6baac51d'&&hash(fs.readFileSync(safe(root,pagerCopy)))===pagerDigest,'PINNED_WH1_PAGER_MISMATCH');
    approved[pager]=pagerDigest;approved[pagerCopy]=pagerDigest;
   }
   const copyPaths=['wh1-exact-pagination.js','wh1-figure-viewport-v9.js','wh1-display-check-v9.js'];

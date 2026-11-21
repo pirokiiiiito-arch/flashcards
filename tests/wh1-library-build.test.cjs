@@ -109,3 +109,64 @@ test('shelf worker fetches fresh app code and serves the correct reader offline 
  ])handlers.fetch({request,respondWith:()=>{throw Error('Private or non-GET request intercepted');}});
  assert.doesNotMatch(read(folder+'sw.js'),/caches\.delete\(|indexedDB\.|localStorage\.(?:clear|removeItem)\(/);
 });
+
+const source = read('reader/wh1/all/wh1-exact-pagination.js');
+const context = vm.createContext({window: {}});
+vm.runInContext(source, context);
+const decorate = context.window.WH1ExactPager.decorate;
+
+// Use the layout loop and storage key of the shipped archive, with a synthetic
+// one-screen text fixture. The real private scans are exercised separately.
+function segment(id) {
+  return `<html><head></head><body><script>
+function paginate(blocks) {
+ const pages=[];
+ let parts=[];
+ function flush(){if(parts.length){pages.push(parts);parts=[];}}
+ for(const b of blocks){
+  let remain=b.text,offset=0;
+  while(remain.length){
+   parts.push({type:b.type,text:remain});remain='';
+  }
+ }
+ flush();return pages.map(page=>page.map(part=>part.text));
+}
+function save(p){
+ try{sessionStorage.setItem('${id}-1-20-page',p.key);}catch(e){}
+}
+function jump(dest,pages){
+    let idx=-1;
+    if(dest?.key) idx=pages.findIndex(p=>p.key===dest.key);
+    return idx;
+}
+</script></body></html>`;
+}
+
+function child(html, expression) {
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  return JSON.parse(vm.runInNewContext(script + '\nJSON.stringify(' + expression + ')'));
+}
+const blocks = [
+  {type:'body',text:'Before'}, {type:'heading',text:'Section'},
+  {type:'heading',text:'Subheading'}, {type:'body',text:'After'},
+  {type:'heading',text:'Next section'}, {type:'body',text:'Next paragraph'},
+];
+test('saved Presidents sections start on a fresh page with consecutive headings together', () => {
+  const document = decorate(segment('us-presidents-south'));
+  assert.deepEqual(child(document,'paginate('+JSON.stringify(blocks)+')'),
+    [['Before'], ['Section','Subheading','After'], ['Next section','Next paragraph']]);
+  assert.deepEqual(child(decorate(segment('wh1')),'paginate('+JSON.stringify(blocks)+')'),
+    [blocks.map(part=>part.text)]);
+});
+test('a saved text position still resolves when its old page-start key falls inside a new page', () => {
+  const document = decorate(segment('us-presidents-south'));
+  const pages = [
+    {key:'text:1:0',parts:[{block:1,offset:0,text:'abc'}]},
+    {key:'text:1:3',parts:[{block:1,offset:3,text:'def'}]},
+  ];
+  const jump = key=>child(document,'jump('+JSON.stringify({key})+','+JSON.stringify(pages)+')');
+  assert.equal(jump('text:1:0'),0);
+  assert.equal(jump('text:1:3'),1);
+  assert.equal(jump('text:1:5'),1);
+  assert.equal(jump('text:1:6'),-1);
+});
