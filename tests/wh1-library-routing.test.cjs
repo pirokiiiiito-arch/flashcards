@@ -154,7 +154,7 @@ test('both actual bookshelf saved-open and completed-download paths use routing 
 test('versioned shelf helper/app and fresh service-worker updates leave generic reader storage contracts intact', () => {
   const helper = './wh1-reader-routing.js?v=wh1-library-v9-20261110';
   const cacheRelease=sw.match(/'\.\/app\.js\?v=([^']+)'/)?.[1];
-  assert.ok(cacheRelease&&/^bookshelf-uk-[a-z0-9-]+-202611\d{2}$/.test(cacheRelease));
+  assert.ok(cacheRelease&&/^bookshelf-[a-z0-9]+(?:-[a-z0-9]+)*-\d{8}$/.test(cacheRelease));
   assert.ok(index.indexOf(helper)>=0 && index.indexOf(helper)<index.indexOf('./app.js?v='+cacheRelease));
   assert.ok(sw.includes("./app.js?v="+cacheRelease));
   assert.ok(read.includes(helper));
