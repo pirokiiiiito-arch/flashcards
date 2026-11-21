@@ -95,7 +95,8 @@ class TouchReader(unittest.TestCase):
                shutil.which('google-chrome') or cls.pw.chromium.executable_path)
         if not Path(exe).is_file():
             raise unittest.SkipTest('Chromium is required for the touch reader fixture')
-        cls.browser = cls.pw.chromium.launch(executable_path=exe, args=['--no-sandbox', '--disable-dev-shm-usage'])
+        cls.browser = cls.pw.chromium.launch(executable_path=exe, args=['--no-sandbox', '--disable-gpu',
+                                                                       '--no-zygote', '--disable-dev-shm-usage'])
         cls.addClassCleanup(cls.browser.close)
 
     def fixture(self, sources, fault=None):

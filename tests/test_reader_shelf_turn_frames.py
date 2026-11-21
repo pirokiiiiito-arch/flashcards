@@ -62,7 +62,8 @@ class ChromiumFrames(unittest.TestCase):
                           shutil.which('chromium') or shutil.which('google-chrome') or pw.chromium.executable_path)
             if not Path(executable).is_file():
                 self.skipTest('Chromium is required for the compositor test')
-            browser = pw.chromium.launch(executable_path=executable, args=['--no-sandbox', '--disable-dev-shm-usage'])
+            browser = pw.chromium.launch(executable_path=executable, args=['--no-sandbox', '--disable-gpu',
+                                                                           '--no-zygote', '--disable-dev-shm-usage'])
             try:
                 self.check_recording(browser)
             finally:
@@ -75,10 +76,17 @@ class ChromiumFrames(unittest.TestCase):
           <style>body{margin:0} #paper{position:absolute;top:55px;left:14px;width:360px;height:656px;
           background:#fffdf8;font:24px serif;color:#233;touch-action:none} #number{position:absolute;left:155px;top:735px;
           width:90px;text-align:center;font:18px sans-serif}button{position:absolute;left:302px;top:735px}
-          button:focus{outline:4px dotted magenta}</style>
+          button:focus{outline:4px dotted magenta}
+          #paper i{position:absolute;top:65px;width:54px;height:31px}
+          #paper .A{left:18px;background:#821f45}#paper .B{left:95px;background:#245585;border-radius:50%}
+          #paper .C{left:165px;height:58px;background:#29765b}
+          #number i{display:block;margin:2px auto 0;width:11px;height:3px;background:#253b52}
+          #number .B{width:27px}</style>
           <main id="paper"></main><output id="number"></output><button onclick="show('B')">次へ</button>
-          <script>function show(key){paper.textContent=({A:'海辺に残る古い地図',B:'町を流れる朝の川',
-          C:'試験用の表紙'})[key];number.textContent=key==='B'?'73 / 120':'72 / 120'}show('A')</script>''')
+          <script>function mark(el,key){const shape=document.createElement('i');shape.className=key;el.append(shape)}
+          function setNumber(key){number.textContent=key==='B'?'73 / 120':'72 / 120';mark(number,key)}
+          function show(key){paper.textContent=({A:'海辺に残る古い地図',B:'町を流れる朝の川',C:'試験用の表紙'})[key];
+          mark(paper,key);setNumber(key==='B'?'B':'A')}show('A')</script>''')
         cdp = page.context.new_cdp_session(page)
         regions = [page.locator(selector).bounding_box() for selector in ['#paper', '#number']]
         def go(key):
@@ -88,8 +96,13 @@ class ChromiumFrames(unittest.TestCase):
             old = film.reference()
             go('B')
             new = film.reference()
+            go('C')
+            cover = film.reference()
             go('A')
-            self.assertNotEqual(old, new)
+            for a, b in ((old, new), (old, cover), (new, cover)):
+                self.assertNotEqual(a[0], b[0], 'Each reference must have distinct paper pixels')
+            self.assertNotEqual(old[1], new[1], 'Page numbers must have distinct pixels')
+            self.assertEqual(old[1], cover[1])
             def tap_next():
                 page.locator('button').tap()
                 page.wait_for_function("number.textContent==='73 / 120'")
@@ -112,8 +125,8 @@ class ChromiumFrames(unittest.TestCase):
                     page.evaluate('''mode=>{
                       if(mode==='blank'){paper.textContent='';number.textContent=''}
                       if(mode==='cover')show('C');
-                      if(mode==='number-first')number.textContent='73 / 120';
-                      if(mode==='body-first'){show('B');number.textContent='72 / 120'}
+                      if(mode==='number-first')setNumber('B');
+                      if(mode==='body-first'){show('B');setNumber('A')}
                     }''', mode)
                     page.wait_for_timeout(85)
                     go('B')
@@ -122,7 +135,7 @@ class ChromiumFrames(unittest.TestCase):
                 go('A')
             def one_paint():
                 page.evaluate("""() => new Promise(done => requestAnimationFrame(() => {
-                  show('B');number.textContent='72 / 120';
+                  show('B');setNumber('A');
                   requestAnimationFrame(() => {show('B');requestAnimationFrame(() => done())});
                 }))""")
             with self.assertRaisesRegex(ValueError, '合成フレーム'):
