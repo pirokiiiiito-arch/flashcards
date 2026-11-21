@@ -28,6 +28,14 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='847f84ef2b71c1d05656dd27c90a0fcd6b1bae1a'){
+    const previous=data.toString('utf8')
+      .replace("const wh3LayoutVersion='wh1-figure-paint-20261122-4';","const wh3LayoutVersion='wh1-aside-20261122-3';")
+      .replace(/\/\/ BEGIN WH3 retained turn[\s\S]*?\/\/ END WH3 retained turn\n/,'')
+      .replace(" else if(d.type==='boundary'){\n  const next=activeSegment+d.direction;\n  if(next>=0&&next<SEGMENTS.length){\n   const s=SEGMENTS[next];\n   if(usesWh3StandardInput()&&!Object.keys(s.assets).length)turnWh3Section(next,d.direction);\n   else openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});\n  }\n }"," else if(d.type==='boundary'){const next=activeSegment+d.direction;if(next>=0&&next<SEGMENTS.length){const s=SEGMENTS[next];openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});}}");
+    if(blobSHA(previous)!=='651d9926850a7ad7508c376f1e42651aa2b5c33f')throw Error('WH3_FIGURE_PAINT_REVERSE_CHECK_FAILED');
+    data=Buffer.from(previous);
+  }
   // Restore the exact shared host before resource- and title-specific routing was added.
   if(blobSHA(data)==="651d9926850a7ad7508c376f1e42651aa2b5c33f"){
     const prior=data.toString('utf8')

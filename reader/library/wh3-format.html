@@ -185,6 +185,11 @@ html.wh3-picture #reader-main::before,html.wh3-picture #reader-main::after{
  mask-image:none!important;-webkit-mask-image:none!important;
  writing-mode:horizontal-tb!important;direction:ltr!important;transform:translateZ(0)!important;
 }
+/* Caption updates must not repaint the artwork on the same card. */
+#figure-stage .figure-bundle-art{
+ contain:paint;isolation:isolate;transform:translateZ(0)!important;
+}
+#figure-stage .figure-bundle-art img[hidden]{display:none!important}
 .figure-bundle[data-wh1-viewport="8"] .figure-bundle-header,
 .figure-bundle[data-wh1-viewport="8"] .figure-bundle-explanation,
 .figure-bundle[data-wh1-viewport="8"] .figure-bundle-caption-text,
@@ -234,7 +239,7 @@ html.wh3-picture #reader-main::before,html.wh3-picture #reader-main::after{
  <div class="figure-bundle-tabs" data-role="tabs" hidden></div>
  <div class="figure-bundle-art"><img id="measure-figure-image" alt=""><span id="measure-figure-placeholder" hidden></span></div>
  <div class="figure-bundle-figlabel" data-role="label"></div>
- <div class="figure-bundle-explanation"><div class="figure-bundle-caption-label" id="measure-caption-label"><span data-role="caption-label"></span><span class="figure-bundle-image-sequence" data-role="sequence"></span></div>
+ <div class="figure-bundle-explanation"><div class="figure-bundle-caption-label" id="measure-caption-label"><span data-role="caption-label"></span><span class="figure-bundle-image-sequence" data-role="sequence">1 / 1</span></div>
  <div class="figure-bundle-caption-text caption-flow"><span class="figure-bundle-caption-content" id="measure-caption"></span></div><div class="figure-bundle-empty" data-role="empty" hidden>原本にこの図の独立した説明文はありません。</div></div>
 </section>
 </div></div>
@@ -686,12 +691,11 @@ function paginateContents(item,at){
  }
  box.hidden=true;return result;
 }
-function fillFigureLabels(container,f,p){
+function fillFigureLabels(container,f){
  const set=(r,s)=>{const n=container.querySelector('[data-role="'+r+'"]');if(n.textContent!==s)n.textContent=s};
  const type=f.title.includes('地図')?'地図':f.title.includes('年表')?'年表':'図版';
  set('kicker',type+' ＋ 説明｜原本'+f.scan+'枚目');set('title',f.title);set('label',f.alt||f.title);
  set('caption-label',type==='地図'?'図題・凡例':type==='年表'?'年表の文字':'この図の説明');
- set('sequence',p?.captionCount?(p.subpage+' / '+p.captionCount):'1 / 1');
  container.querySelector('[data-role="empty"]').hidden=!!f.caption;
  container.querySelector('.figure-bundle-caption-label').hidden=!f.caption;
  container.querySelector('.figure-bundle-caption-text').hidden=!f.caption;
@@ -706,7 +710,7 @@ function captionFits(value,f,off){
 
 function paginateOneFigure(i,start){
  const f=figures[i],out=[];let at=start;
- fillFigureLabels($('measure-figure'),f,null);
+ fillFigureLabels($('measure-figure'),f);
  if(!f.units.length)return [{kind:'image',figure:i,caption:'',start,end:start+1,subpage:1,scan:f.scan}];
  let off=0,count=0;
  while(off<f.units.length){
@@ -784,16 +788,73 @@ function currentSource(){
  const originals=Array.isArray(book.originals)?book.originals:[];
  return sourceURL||originals.find(x=>Number(x.scan)===Number(p.scan))?.src||null;
 }
-function setFigure(p){
- const f=figures[p.figure],src=f.ownedURL||f.source||null,img=$('figure-image');
- if(p.figure!==activeFigure||activeSrc!==src){
-  if(src){img.src=src;img.hidden=false;$('figure-placeholder').hidden=true}
-  else{img.removeAttribute('src');img.hidden=true;$('figure-placeholder').hidden=false}
-  img.alt=f.alt;activeFigure=p.figure;activeSrc=src;
+// Prepare only the current screen and its immediate neighbours. The mounted image
+// remains painted while another image is loading, even if the user turns again.
+const artworkCache=new Map();
+let pendingPaint=null;
+function prepareArtwork(key,src){
+ if(!src)return null;
+ let asset=artworkCache.get(key);
+ artworkCache.delete(key);
+ if(!asset||asset.src!==src){
+  const image=new Image();
+  asset={src,image,waiting:null,failed:false};
+  asset.waiting=new Promise(resolve=>{
+   function finish(failed){
+    image.onload=null;image.onerror=null;asset.failed=failed;asset.waiting=null;resolve();
+   }
+   image.onload=async()=>{
+    try{if(image.decode)await image.decode();}catch{/* Some engines only signal SVG readiness via load. */}
+    finish(!image.naturalWidth);
+   };
+   image.onerror=()=>finish(true);
+  });
+  image.decoding='async';image.src=src;
  }
- fillFigureLabels($('figure-stage'),f,p);
+ artworkCache.set(key,asset);
+ if(artworkCache.size>3)artworkCache.delete(artworkCache.keys().next().value);
+ return asset;
+}
+function pageArtwork(p){
+ if(p?.kind==='image'){
+  const f=figures[p.figure];return prepareArtwork(f,f.ownedURL||f.source);
+ }
+ if(p?.kind==='portrait'){
+  const original=book.originals?.find(o=>Number(o.scan)===Number(p.scan));
+  return prepareArtwork(original||p,sourceURL||original?.src);
+ }
+ return null;
+}
+function waitingForArtwork(p,asset){
+ if(!asset?.waiting){pendingPaint=null;return false;}
+ if(pendingPaint?.page!==p||pendingPaint.asset!==asset){
+  const ticket={page:p,asset};pendingPaint=ticket;
+  asset.waiting.then(()=>{if(pendingPaint===ticket&&pages[index]===p)render();});
+ }
+ return true;
+}
+function mountArtwork(id,asset,alt){
+ const old=$(id);
+ if(!asset||asset.failed){old.hidden=true;return false;}
+ const image=asset.image;
+ image.alt=alt;image.hidden=false;
+ if(old!==image){image.id=id;old.replaceWith(image);}
+ return true;
+}
+function setFigure(p,asset){
+ const f=figures[p.figure],src=f.ownedURL||f.source||null,card=$('figure-stage');
+ if(p.figure!==activeFigure||activeSrc!==src||asset&&!asset.failed&&$('figure-image')!==asset.image){
+  const visible=mountArtwork('figure-image',asset,f.alt);
+  const placeholder=$('figure-placeholder');
+  placeholder.textContent=asset?.failed?'図版を表示できません。「原本」で確認できます。':'';
+  placeholder.hidden=visible;
+  fillFigureLabels(card,f);
+  card.classList.toggle('no-caption',!f.caption);
+  activeFigure=p.figure;activeSrc=src;
+ }
+ const sequence=card.querySelector('[data-role="sequence"]'),label=p.captionCount?p.subpage+' / '+p.captionCount:'1 / 1';
+ if(sequence.textContent!==label)sequence.textContent=label;
  paintCaption(caption,p.caption,f,p.capOffset||0);
- $('figure-stage').classList.toggle('no-caption',!f.caption);
 }
 function render(){
  const p=pages[index];
@@ -802,13 +863,18 @@ function render(){
   $('progress-fill').style.width='0%';$('prev').disabled=true;$('next').disabled=true;
   $('original').disabled=true;return;
  }
+ const asset=pageArtwork(p);
+ if(waitingForArtwork(p,asset))return;
  const scan=selectedOriginal?.scan||p.scan;
  // Figures never share the paint surface that clips the leftmost vertical text column.
  const picture=p.kind==='image',figurePage=$('figure-page'),entering=picture&&figurePage.hidden;
- document.documentElement.classList.toggle('wh3-picture',picture);
- $('reader-page').hidden=picture;figurePage.hidden=!picture;
- textFlow.hidden=p.kind!=='text';$('portrait').hidden=p.kind!=='portrait';$('contents').hidden=p.kind!=='toc';
- $('figure-stage').hidden=!picture;
+ if(figurePage.hidden!==!picture){
+  document.documentElement.classList.toggle('wh3-picture',picture);
+  $('reader-page').hidden=picture;figurePage.hidden=!picture;$('figure-stage').hidden=!picture;
+ }
+ if(!picture){
+  textFlow.hidden=p.kind!=='text';$('portrait').hidden=p.kind!=='portrait';$('contents').hidden=p.kind!=='toc';
+ }
  if(entering&&!zoomed()){
   for(const element of [main,sheet,figurePage])if(element.scrollLeft!==0)element.scrollLeft=0;
  }
@@ -816,10 +882,9 @@ function render(){
   const frag=document.createDocumentFragment();for(const part of p.parts)frag.append(partNode(part));
   textFlow.replaceChildren(frag);
  }else if(p.kind==='portrait'){
-  const el=$('portrait-image'),src=currentSource();if(src&&el.getAttribute('src')!==src)el.src=src;
-  el.alt=p.title;
+  mountArtwork('portrait-image',asset,p.title);
  }else if(p.kind==='toc')$('contents').replaceChildren(tocElement(p));
- else setFigure(p);
+ else setFigure(p,asset);
  $('page-major').textContent=(index+1)+' / '+pages.length;
  const description=p.kind==='text'?[sectionOf(scan),'本文'].filter(Boolean).join(' '):p.kind==='image'?'図版｜'+figures[p.figure].title:p.kind==='toc'?'目次':p.title;
  $('page-description').textContent=description;
@@ -828,6 +893,7 @@ function render(){
  $('progress-fill').style.setProperty('--local-progress',100*(index+1)/pages.length+'%');
  $('prev').disabled=index===0;$('next').disabled=index>=pages.length-1;
  $('original').disabled=!currentSource();persist();
+ pageArtwork(pages[index-1]);pageArtwork(pages[index+1]);
 }
 function gotoPage(n){if(!pages.length)return;const k=Math.max(0,Math.min(n,pages.length-1));if(k!==index){selectedOriginal=null;index=k;render()}}
 function menuRefresh(){
@@ -968,7 +1034,7 @@ window.addEventListener('pagehide',()=>{
 });
 $('smaller').disabled=font<=16;$('larger').disabled=font>=30;
 window.StandardReader=Object.freeze({version:'v2',kind:mode,bookId,inspect:()=>({
- pages:pages.length,index,font,warning,originalReady:!!currentSource(),
+ pages:pages.length,index,font,warning,paintPending:!!pendingPaint,originalReady:!!currentSource(),
  zoomed:zoomed(),hostKnown,hostScale,
  currentKind:pages[index]?.kind,scan:pages[index]?.scan,
  textIntegrity:pages.filter(p=>p.kind==='text').flatMap(p=>p.parts.map(x=>x.text)).join('')===
@@ -990,7 +1056,7 @@ if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>
  document.documentElement.classList.add('bookshelf-segment');
  let selectedOrigin=null;
  function position(){const d=api.inspect();if(selectedOrigin&&selectedOrigin.index!==d.index)selectedOrigin=null;return selectedOrigin?.scan||d.scan;}
- function snapshot(){const d=api.inspect();if(!d.pages)return;const pg=api.pageManifest()[d.index];
+ function snapshot(){const d=api.inspect();if(!d.pages||d.paintPending)return;const pg=api.pageManifest()[d.index];
    send('state',{scan:position(),size:d.font,key:'wh3v2.'+pg.start,pageIndex:d.index,pageCount:d.pages,session:window.__readerHost?.session});
    if(firstScan>1&&d.index===0)$('prev').disabled=false;
    if(lastScan<260&&d.index===d.pages-1)$('next').disabled=false;

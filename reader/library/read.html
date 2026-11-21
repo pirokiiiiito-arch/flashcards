@@ -231,7 +231,7 @@ window.visualViewport?.addEventListener('scroll',syncReaderViewport);
 window.addEventListener('pageshow',syncReaderViewport);
 window.addEventListener('resize',syncReaderViewport);
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='wh1-aside-20261122-3';
+const wh3LayoutVersion='wh1-figure-paint-20261122-4';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
@@ -322,6 +322,60 @@ function wh3UpdateState(d){
  counts[activeSegment]=d.pageCount;const job={key,book:bookZip,width,height,font,counts,cancel:null};wh3Counts=job;
  wh3Progress();if(counts.some(n=>!n))void wh3MeasureBook(job);
 }
+// BEGIN WH3 retained turn
+let wh3TurningSection=false;
+async function turnWh3Section(index,direction){
+ if(wh3TurningSection)return;
+ wh3TurningSection=true;
+ const token=++loadToken,book=bookZip,previous=$('reader'),previousURL=frameURL;
+ const pane=previous.cloneNode(false),session=crypto.randomUUID();
+ let url='',listener,timer,sequence=0,installed=false;
+ previous.inert=true;
+ try{
+  const segment=SEGMENTS[index];
+  const [layout,archive]=await Promise.all([wh3Layout(),book.readText(segment.part)]);
+  if(token!==loadToken||book!==bookZip)return;
+  const documentText=wh3FrameDocument(layout,archive,{origin:location.origin,session,font:currentState.size});
+  url=URL.createObjectURL(new Blob([documentText],{type:'text/html'}));
+  pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');
+  // Paint behind the current opaque page. Removing its iframe early exposes the browser background.
+  const rect=previous.getBoundingClientRect();
+  Object.assign(pane.style,{position:'fixed',left:rect.left+'px',top:rect.top+'px',width:rect.width+'px',height:rect.height+'px',
+   border:'0',display:'block',background:'var(--paper)',pointerEvents:'none'});
+  const state=await new Promise((resolve,reject)=>{
+   let requested=false;
+   listener=event=>{
+    if(event.source!==pane.contentWindow||!event.data)return;
+    const d=event.data;
+    if(d.session!==session)return;
+    if(d.type==='reader-ready-v8'){
+     pane.contentWindow.postMessage({type:'reader-viewport-v8',session,seq:++sequence,scale:window.visualViewport?.scale||1},'*');
+    }
+    if(d.wh1bridge!==1||d.type!=='state'||d.segment!==index||!d.pageCount)return;
+    const target=direction<0?d.pageCount-1:0;
+    if(d.pageIndex===target){resolve(d);return;}
+    if(!requested){
+     requested=true;
+     pane.contentWindow.postMessage({wh1bridge:1,action:'goto',destination:{mode:direction<0?'last':'first'}},'*');
+    }
+   };
+   timer=setTimeout(()=>reject(Error('次の分冊を表示できませんでした')),45000);
+   window.addEventListener('message',listener);pane.src=url;previous.before(pane);
+  });
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  if(token!==loadToken||book!==bookZip)return;
+  pane.style.cssText=previous.style.cssText;previous.remove();pane.id='reader';pane.removeAttribute('aria-hidden');
+  frameURL=url;activeSegment=index;inputSession=session;viewportSerial=sequence;pendingDest=null;pendingLoaded=true;
+  installed=true;URL.revokeObjectURL(previousURL);syncReaderViewport();handleChildState(state);
+ }catch(error){
+  if(token===loadToken)setStorageState('分冊を開けませんでした。もう一度ページを送ってください。',{warn:true});
+ }finally{
+  clearTimeout(timer);if(listener)window.removeEventListener('message',listener);
+  if(!installed){pane.remove();if(url)URL.revokeObjectURL(url);previous.inert=false;}
+  wh3TurningSection=false;
+ }
+}
+// END WH3 retained turn
 // END WH3 reference presentation
 function fillManifest(m){
  if(!m||m.schema!==1||!Array.isArray(m.range)||m.range[0]!==1||!Number.isInteger(m.range[1])||m.range[1]<1||m.range[1]>15000||!Array.isArray(m.segments)||m.segments.length<1||m.segments.length>1000)throw Error('統合読書ZIPの構成情報が正しくありません');
@@ -770,7 +824,14 @@ window.addEventListener('message',e=>{
  if(d.segment!==activeSegment)return;
  if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);
- else if(d.type==='boundary'){const next=activeSegment+d.direction;if(next>=0&&next<SEGMENTS.length){const s=SEGMENTS[next];openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});}}
+ else if(d.type==='boundary'){
+  const next=activeSegment+d.direction;
+  if(next>=0&&next<SEGMENTS.length){
+   const s=SEGMENTS[next];
+   if(usesWh3StandardInput()&&!Object.keys(s.assets).length)turnWh3Section(next,d.direction);
+   else openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});
+  }
+ }
  else if(d.type==='navigateScan'&&nativeBookInput()&&inputSession&&d.session===inputSession){
   if(!Number.isInteger(d.scan)||d.scan<1||d.scan>totalScans)return;
   const target=segmentForScan(d.scan),destination={scan:d.scan,view:d.view==='figure'?'figure':'text'};

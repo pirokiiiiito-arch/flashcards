@@ -36,7 +36,7 @@ test('turning between vertical text and figure explanations swaps surfaces and p
       {kind: 'image', scan: 11, figure: 0, caption: 'b'}
     ],
     selectedOriginal: null, book: {totalScans: 260}, figures: [{title: 'Long figure title'}],
-    zoomed: () => false, setFigure: p => captions.push(p.caption),
+    pageArtwork: () => null, waitingForArtwork: () => false, zoomed: () => false, setFigure: p => captions.push(p.caption),
     sectionOf: () => '', persist() {}, currentSource: () => true
   };
   const context = vm.createContext(env);
