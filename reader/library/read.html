@@ -546,7 +546,10 @@ function sectionPaneBridge(segment,session,segments,structured){
   if(sealed){send('sectionLateStep',{direction});return true;}
   const {index,pages}=inspect();
   const crossing=direction<0?segment>0&&index===0:segment+1<segments&&index===pages-1;
-  if(!waiting&&!crossing)return false;
+  if(!waiting&&!crossing){
+   if(structured&&(index<12||pages-index<=12))send('sectionActivity');
+   return false;
+  }
   send('sectionTurn',{direction,repeat:waiting});waiting=true;return true;
  }
  function step(direction){if(!boundary(direction))localStep(direction);}
@@ -572,7 +575,7 @@ function sectionPaneBridge(segment,session,segments,structured){
   const d=event.data;
   if(event.source!==parent||!d||d.wh1bridge!==1||d.session!==session)return;
   if(d.action==='sectionResume'){
-   sealRequested=false;sealed=false;waiting=false;for(const direction of d.directions||[])step(direction);
+   retiring=false;sealRequested=false;sealed=false;waiting=false;for(const direction of d.directions||[])step(direction);
   }else if(d.action==='sectionSeal'){
    sealRequested=true;afterInput();
   }else if(d.action==='sectionRetire'){
@@ -616,16 +619,57 @@ async function segmentAssets(book,segment,current){
  return current()?assets:null;
 }
 const sectionTurnNotice='分冊を開けませんでした。もう一度ページを送ってください。';
-let sectionTurn=null;
-function cancelSectionTurn(){sectionTurn?.cancel();}
+let sectionTurn=null,nearSection=null,parkedSection=null,nearTimer=null;
+function postponeAdjacentSection(){
+ if(!nearTimer)return;
+ clearTimeout(nearTimer.timer);
+ if(nearTimer.idle!==undefined)window.cancelIdleCallback?.(nearTimer.idle);
+ nearTimer=null;
+}
+function releaseParkedSection(){
+ if(!parkedSection)return;
+ parkedSection.pane.remove();URL.revokeObjectURL(parkedSection.url);parkedSection=null;
+}
+function cancelSectionTurn(){
+ postponeAdjacentSection();sectionTurn?.cancel();nearSection?.cancel();releaseParkedSection();
+}
+function prepareAdjacentSection(d){
+ if(!bookZip?.wh3Flow||sectionTurn||!Number.isInteger(d.pageIndex)||!Number.isInteger(d.pageCount))return;
+ const back=d.pageIndex,forward=d.pageCount-1-back;
+ const direction=activeSegment+1<SEGMENTS.length&&forward<12&&(activeSegment===0||forward<=back)?1:
+  activeSegment>0&&back<12?-1:0;
+ if(nearSection?.direction===direction&&nearSection.valid())return;
+ nearSection?.cancel();
+ if(!direction){postponeAdjacentSection();releaseParkedSection();return;}
+ if(parkedSection?.index===activeSegment+direction){
+  postponeAdjacentSection();turnSection(direction,false,true);return;
+ }
+ if(nearTimer?.direction===direction&&nearTimer.key===currentState.key&&nearTimer.size===d.size)return;
+ postponeAdjacentSection();
+ // Let the current picture finish painting. Fast successive inputs defer the
+ // speculative work; normal reading leaves time well before the actual boundary.
+ const task={direction,key:currentState.key,size:d.size};nearTimer=task;
+ const start=()=>{
+  if(nearTimer!==task)return;
+  nearTimer=null;turnSection(direction,false,true);
+ };
+ task.timer=setTimeout(()=>{
+  if(nearTimer!==task)return;
+  if(window.requestIdleCallback)task.idle=window.requestIdleCallback(start,{timeout:350});
+  else start();
+ },220);
+}
 // An input can start in the brief interval between a child's seal and the
 // parent's swap. Keep its original event target alive until the gesture ends.
-function retireSection(previous,oldSession,session,bounds){
+function retireSection(previous,oldSession,session,bounds,keep){
  previous.removeAttribute('id');previous.setAttribute('aria-hidden','true');
  Object.assign(previous.style,{position:'fixed',left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px',
-  display:'block',pointerEvents:'none',opacity:'0',border:'0'});
+  display:'block',pointerEvents:'none',opacity:keep?'1':'0',border:'0'});
+ if(keep)previous.style.zIndex='0';
  function remove(){
-  clearTimeout(timer);window.removeEventListener('message',receive);previous.remove();
+  clearTimeout(timer);window.removeEventListener('message',receive);
+  if(!keep)previous.remove();
+  else if(previous.id!=='reader')previous.inert=true;
  }
  function receive(e){
   const d=e.data;
@@ -638,8 +682,13 @@ function retireSection(previous,oldSession,session,bounds){
  window.addEventListener('message',receive);
  previous.contentWindow.postMessage({wh1bridge:1,action:'sectionRetire',session:oldSession},'*');
 }
-function turnSection(direction,repeat){
+function turnSection(direction,repeat,preparing=false){
  if(direction!==1&&direction!==-1)return;
+ if(!preparing)postponeAdjacentSection();
+ if(!preparing&&nearSection){
+  if(direction===nearSection.direction&&!repeat&&nearSection.valid()){nearSection.take();return;}
+  nearSection.cancel();
+ }
  if(sectionTurn){
   if(!sectionTurn.queue.length&&direction===-sectionTurn.direction){cancelSectionTurn();return;}
   sectionTurn.queue.push(direction);return;
@@ -650,11 +699,16 @@ function turnSection(direction,repeat){
  }
  const previous=$('reader'),book=bookZip,segment=SEGMENTS[index],previousURL=frameURL;
  const structured=!!book.wh3Flow;
- const previousSession=inputSession,session=crypto.randomUUID(),size=currentState.size,oldKey=currentState.key;
- const bounds=previous.getBoundingClientRect(),pane=previous.cloneNode(false);
- const token=++loadToken,queue=[];
- let url='',target=null,lastState=null,requested=false,sequence=0,readyToSwap=false,restoreFocus=false;
- const current=()=>sectionTurn===job&&loadToken===token&&bookZip===book;
+ const previousSession=inputSession,size=currentState.size,bounds=previous.getBoundingClientRect();
+ const cached=parkedSection;
+ const reuse=cached&&cached.index===index&&cached.book===book&&cached.size===size&&
+  Math.abs(cached.bounds.width-bounds.width)<1&&Math.abs(cached.bounds.height-bounds.height)<1;
+ if(reuse)parkedSection=null;else releaseParkedSection();
+ const session=reuse?cached.session:crypto.randomUUID(),pane=reuse?cached.pane:previous.cloneNode(false);
+ const token=preparing||reuse?loadToken:++loadToken,queue=[];
+ let url=reuse?cached.url:'',target=null,lastState=null,requested=false,sequence=reuse?cached.sequence:0;
+ let readyToSwap=false,restoreFocus=false,labelCounts=null;
+ const current=()=>(sectionTurn===job||nearSection===job)&&loadToken===token&&bookZip===book;
  const post=(action,extra={})=>pane.contentWindow.postMessage({wh1bridge:1,action,session,...extra},'*');
  const matchesViewport=()=>{
   const rect=previous.getBoundingClientRect();
@@ -662,12 +716,26 @@ function turnSection(direction,repeat){
  };
  function cleanup(){
   clearTimeout(timer);window.removeEventListener('message',message);window.removeEventListener('resize',checkViewport);
-  sectionTurn=null;
+  if(sectionTurn===job)sectionTurn=null;
+  if(nearSection===job)nearSection=null;
  }
  function cancel(){
+  const turning=sectionTurn===job;
   cleanup();pane.remove();if(url)URL.revokeObjectURL(url);
-  previous.inert=false;
-  previous.contentWindow?.postMessage({wh1bridge:1,action:'sectionResume',session:previousSession},'*');
+  if(turning){
+   previous.inert=false;
+   previous.contentWindow?.postMessage({wh1bridge:1,action:'sectionResume',session:previousSession},'*');
+  }
+ }
+ function valid(){return current()&&size===currentState.size&&matchesViewport()&&(!labelCounts||labelCounts===wh3Counts);}
+ function seal(){
+  restoreFocus=document.activeElement===previous;
+  previous.contentWindow.postMessage({wh1bridge:1,action:'sectionSeal',session:previousSession},'*');
+ }
+ function take(){
+  nearSection=null;sectionTurn=job;job.oldKey=currentState.key;
+  clearTimeout(timer);timer=setTimeout(fail,65000);
+  if(readyToSwap)seal();
  }
  function checkViewport(){if(!matchesViewport())cancel();}
  function useLegacyLoader(){
@@ -676,7 +744,7 @@ function turnSection(direction,repeat){
  }
  function fail(){
   if(!current())return;
-  cancel();showReaderNotice(sectionTurnNotice,true,9000);
+  const turning=sectionTurn===job;cancel();if(turning)showReaderNotice(sectionTurnNotice,true,9000);
  }
  async function message(event){
   if(!current())return;
@@ -685,16 +753,27 @@ function turnSection(direction,repeat){
   if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='sectionLateStep'&&d.session===previousSession){
    if(d.direction===1||d.direction===-1)turnSection(d.direction,true);return;
   }
-  if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='sectionSealed'&&d.segment===activeSegment&&d.session===previousSession&&readyToSwap){
-   if(!matchesViewport()||size!==currentState.size||oldKey!==currentState.key){cancel();return;}
+  if(sectionTurn===job&&event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='sectionSealed'&&d.segment===activeSegment&&d.session===previousSession&&readyToSwap){
+   if(!matchesViewport()||size!==currentState.size||job.oldKey!==currentState.key){cancel();return;}
    cleanup();
    pane.style.cssText=previous.style.cssText;pane.removeAttribute('aria-hidden');
-   retireSection(previous,previousSession,session,bounds);pane.id='reader';
+   if(structured){
+    // Both live documents already contain their boundary page. Keep just the
+    // old neighbour behind the opaque active page until the reader moves away.
+    parkedSection={pane:previous,url:previousURL,session:previousSession,sequence:viewportSerial,index:activeSegment,book,size,bounds};
+    pane.style.zIndex='1';
+   }
+   retireSection(previous,previousSession,session,bounds,structured);pane.id='reader';pane.inert=false;
    frameURL=url;activeSegment=index;inputSession=session;viewportSerial=sequence;pendingDest=null;pendingLoaded=true;
    if(restoreFocus)pane.focus({preventScroll:true});
    if($('storageMessage').textContent===sectionTurnNotice)$('storageBanner').hidden=true;
-   URL.revokeObjectURL(previousURL);syncReaderViewport();handleChildState(target);
-   if(queue.length)post('sectionResume',{directions:queue});
+   if(!structured)URL.revokeObjectURL(previousURL);
+   if(labelCounts&&labelCounts===wh3Counts&&labelCounts.counts[index]!==target.totalPages){
+    labelCounts.counts[index]=target.totalPages;
+    try{localStorage.setItem(labelCounts.key,JSON.stringify(labelCounts.counts));}catch(_){}
+   }
+   syncReaderViewport();handleChildState(target);
+   if(reuse||queue.length)post('sectionResume',{directions:queue});
    return;
   }
   if(event.source!==pane.contentWindow)return;
@@ -744,29 +823,29 @@ function turnSection(direction,repeat){
         measured.font!==d.size||!Number.isSafeInteger(d.totalPages)||d.totalPages<1){fail();return;}
      // The mounted destination has finished layout at the current dimensions.
      // Use that observed count just as we use the active pane's observed count.
-     counts[index]=d.totalPages;
-     try{localStorage.setItem(measured.key,JSON.stringify(counts));}catch(_){}
+     // Change the visible book's counter only when this pane is committed.
+     counts=counts.slice();counts[index]=d.totalPages;
     }
     const total=counts.length?counts.reduce((sum,n)=>sum+n,0):totalScans;
     const page=counts.length?counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1):target.scan;
-    const label=page+' / '+total;
+    const label=page+' / '+total;if(structured)labelCounts=wh3Counts;
     post(structured?'wh3Progress':'globalProgress',{label,ratio:page/total,scan:target.scan,maxScans:totalScans});
     post('sectionPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages,size,label});
    }catch(_){fail();}
   }else if(d.session===session&&d.type==='sectionPainted'&&target){
    readyToSwap=true;
-   // All preceding input messages from this sender arrive before its acknowledgement.
-   restoreFocus=document.activeElement===previous;
-   previous.contentWindow.postMessage({wh1bridge:1,action:'sectionSeal',session:previousSession},'*');
+   // A speculative paint remains invisible until the active page receives input.
+   if(sectionTurn===job)seal();else clearTimeout(timer);
   }else if(d.session===session&&d.type==='sectionError')fail();
  }
- const job={direction,queue,cancel,oldKey,size};
- sectionTurn=job;
+ const job={direction,queue,cancel,take,valid,oldKey:currentState.key,size};
+ if(preparing)nearSection=job;else sectionTurn=job;
  let timer=setTimeout(fail,65000);
  window.addEventListener('resize',checkViewport);
  window.addEventListener('message',message);
  (async()=>{
   try{
+   if(reuse){requested=true;post('sectionTarget',{direction});return;}
    let rendered;
    if(structured){
     const [layout,archive]=await Promise.all([wh3Layout(),wh3DisplayArchive(book,index)]);
@@ -781,7 +860,7 @@ function turnSection(direction,repeat){
    }
    rendered=sectionPaneDocument(rendered,index,session,structured);
    url=URL.createObjectURL(new Blob([rendered],{type:'text/html'}));
-   pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');
+   pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');pane.inert=true;
    Object.assign(pane.style,{position:'fixed',left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px',border:'0',display:'block',background:'var(--paper)',pointerEvents:'none'});
    pane.src=url;previous.before(pane);
   }catch(_){fail();}
@@ -1310,6 +1389,7 @@ function handleChildState(d){
  }
  currentState={segment:activeSegment,key:key||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
  wh3UpdateState(d);
+ prepareAdjacentSection(d);
  if(wh1ExactPager)wh1ExactPager.onState({...d,scan:currentState.scan});
  $('menuSummary').textContent=positionText();
 }
@@ -1332,6 +1412,7 @@ window.addEventListener('message',e=>{
  if(d.type==='bookStart'){goToBookStart();return;}
  if(d.segment!==activeSegment)return;
  if(d.type==='sectionOriginal'&&bookZip?.wh3Flow&&inputSession&&d.session===inputSession){void sendSectionOriginal(e,bookZip,SEGMENTS[activeSegment]);return;}
+ if(d.type==='sectionActivity'&&inputSession&&d.session===inputSession){postponeAdjacentSection();return;}
  if(d.type==='sectionTurn'&&inputSession&&d.session===inputSession)turnSection(d.direction,d.repeat);
  else if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);

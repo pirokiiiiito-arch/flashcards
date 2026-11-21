@@ -527,6 +527,7 @@ function syncMeasure(){
  const r=sheet.getBoundingClientRect();
  if(r.width<80||r.height<80)throw Error('表示領域が小さすぎます');
  measureSheet.style.width=r.width+'px';measureSheet.style.height=r.height+'px';
+ return r;
 }
 function fit(el){return el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1}
 // BEGIN reader vertical symbols
@@ -1144,12 +1145,17 @@ function menuRefresh(){
   }
  }
 }
+let measuredLayout='',fontGeneration=0;
 function rebuild(){
  try{
   const point=pages[index]?.start??readPoint();
-  syncMeasure();
+  const rect=syncMeasure();
+  // Both the initial animation frame and ResizeObserver can report this very
+  // same layout. Reuse its actual pages until a pagination input changes.
+  const layout=[rect.width,rect.height,innerWidth,innerHeight,font,fontGeneration,document.fonts?.status].join('/');
+  if(host&&!host.measureOnly&&!warning&&layout===measuredLayout)return;
   pages=paginateAll();
-  index=pageAt(point);warning='';
+  measuredLayout=layout;index=pageAt(point);warning='';
   if(host?.measureOnly){postHost('wh3-measured',{count:pages.length,font});return;}
   render();menuRefresh();
  }catch(e){
@@ -1237,6 +1243,9 @@ if(window.visualViewport){
  window.visualViewport.addEventListener('scroll',reflectZoom);
 }
 if(!host?.measureOnly&&window.ResizeObserver)new ResizeObserver(schedule).observe(sheet);
+if(host&&!host.measureOnly){
+ for(const event of ['loadingdone','loadingerror'])document.fonts?.addEventListener(event,()=>{fontGeneration++;schedule();});
+}
 document.querySelector('.shelf-link')?.addEventListener('click',e=>{
  if(embedded&&host?.session){e.preventDefault();postHost('reader-back-to-shelf-v1')}
 });

@@ -28,6 +28,39 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='9fcca1e95b82fa764bcb1866d89fc0e66c247c6c'){
+    // Restore the last byte-pinned host, then run the earlier frozen-reader checks.
+    const lines=data.toString('utf8').split('\n');
+    for(const [at,count,...prior] of [
+      [1414,1],
+      [1391,1],
+      [862,1,"   pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');"],
+      [847,1],
+      [840,2," const job={direction,queue,cancel,oldKey,size};"," sectionTurn=job;"],
+      [836,2,"   // All preceding input messages from this sender arrive before its acknowledgement.","   restoreFocus=document.activeElement===previous;","   previous.contentWindow.postMessage({wh1bridge:1,action:'sectionSeal',session:previousSession},'*');"],
+      [830,1,"    const label=page+' / '+total;"],
+      [825,2,"     counts[index]=d.totalPages;","     try{localStorage.setItem(measured.key,JSON.stringify(counts));}catch(_){}"],
+      [769,7,"   URL.revokeObjectURL(previousURL);syncReaderViewport();handleChildState(target);","   if(queue.length)post('sectionResume',{directions:queue});"],
+      [759,7,"   retireSection(previous,previousSession,session,bounds);pane.id='reader';"],
+      [755,2,"  if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='sectionSealed'&&d.segment===activeSegment&&d.session===previousSession&&readyToSwap){","   if(!matchesViewport()||size!==currentState.size||oldKey!==currentState.key){cancel();return;}"],
+      [746,1,"  cancel();showReaderNotice(sectionTurnNotice,true,9000);"],
+      [724,14,"  previous.inert=false;","  previous.contentWindow?.postMessage({wh1bridge:1,action:'sectionResume',session:previousSession},'*');"],
+      [722,1],
+      [718,2,"  sectionTurn=null;"],
+      [701,10," const previousSession=inputSession,session=crypto.randomUUID(),size=currentState.size,oldKey=currentState.key;"," const bounds=previous.getBoundingClientRect(),pane=previous.cloneNode(false);"," const token=++loadToken,queue=[];"," let url='',target=null,lastState=null,requested=false,sequence=0,readyToSwap=false,restoreFocus=false;"," const current=()=>sectionTurn===job&&loadToken===token&&bookZip===book;"],
+      [686,5],
+      [684,1,"function turnSection(direction,repeat){"],
+      [669,3,"  clearTimeout(timer);window.removeEventListener('message',receive);previous.remove();"],
+      [666,2,"  display:'block',pointerEvents:'none',opacity:'0',border:'0'});"],
+      [663,1,"function retireSection(previous,oldSession,session,bounds){"],
+      [621,40,"let sectionTurn=null;","function cancelSectionTurn(){sectionTurn?.cancel();}"],
+      [577,1,"   sealRequested=false;sealed=false;waiting=false;for(const direction of d.directions||[])step(direction);"],
+      [548,4,"  if(!waiting&&!crossing)return false;"]
+    ])lines.splice(at,count,...prior);
+    const previous=Buffer.from(lines.join('\n'));
+    if(blobSHA(previous)!=='d3ad5065bc6e3f5f951c0d5286ed9096a658953b')throw Error('SHELF_ADJACENT_PAGE_REVERSE_CHECK_FAILED');
+    data=previous;
+  }
   if(blobSHA(data)==='d3ad5065bc6e3f5f951c0d5286ed9096a658953b'){
     // Restore the last byte-pinned host, then run the earlier frozen-reader checks.
     const lines=data.toString('utf8').split('\n');

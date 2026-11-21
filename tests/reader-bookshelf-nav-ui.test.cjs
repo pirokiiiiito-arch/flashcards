@@ -323,8 +323,20 @@ function retainedTurnFixture(){
   remove(){this.removed=true;}
  }
  const first=new Pane('active'),storageMessage={textContent:''},storageBanner={hidden:true};
+ const win={
+  addEventListener(type,fn){
+   if(!listeners.has(type))listeners.set(type,new Set());
+   listeners.get(type).add(fn);
+  },
+  removeEventListener(type,fn){
+   const handlers=listeners.get(type);
+   if(!handlers)return;
+   handlers.delete(fn);
+   if(!handlers.size)listeners.delete(type);
+  }
+ };
  const context=vm.createContext({
-  window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:(type,fn)=>{if(listeners.get(type)===fn)listeners.delete(type);}},
+  window:win,
   document:{activeElement:first},crypto:crypto.webcrypto,Blob,setTimeout,clearTimeout,
   URL:{createObjectURL:()=>'blob:candidate',revokeObjectURL:id=>revoked.push(id)},
   bookZip:{readText:async()=>`<body><div id="reader-page"></div><strong id="location"></strong><script>function shiftPage(){} function showPage(){} const evt={type:'boundary'};</script></body>`,readBytes:async()=>new Uint8Array([3,5])},
@@ -338,7 +350,8 @@ function retainedTurnFixture(){
  vm.runInContext(bridge,context);
  const flush=()=>new Promise(resolve=>setImmediate(resolve));
  async function send(pane,type,extra={}){
-  const handler=listeners.get('message');await handler({source:pane.contentWindow,data:{wh1bridge:1,segment:1,type,...extra}});
+  const event={source:pane.contentWindow,data:{wh1bridge:1,segment:1,type,...extra}};
+  for(const handler of Array.from(listeners.get('message')||[]))await handler(event);
  }
  return {context,first,send,flush,listeners,revoked,states,notices};
 }
@@ -393,6 +406,140 @@ test('a Presidents section turn keeps the current page until the destination and
  assert.equal(listeners.size,0);
 });
 
+function approachingBoundaryFixture(){
+ const fixture=retainedTurnFixture(),{context}=fixture;
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const update=vm.runInContext('('+html.slice(html.indexOf('function handleChildState('),html.indexOf('function goToBookStart('))+')',context);
+ const reads=[],bookmarks=[];
+ const timers=new Map();
+ context.setTimeout=(fn,delay)=>{const id=Symbol();timers.set(id,{fn,delay});return id;};
+ context.clearTimeout=id=>timers.delete(id);
+ const idleCallbacks=new Set();
+ context.window.requestIdleCallback=fn=>{idleCallbacks.add(fn);return fn;};
+ context.window.cancelIdleCallback=fn=>idleCallbacks.delete(fn);
+ async function idle(){
+  for(const [id,{fn,delay}] of [...timers]){
+   if(delay<=1000&&timers.delete(id))fn();
+  }
+  for(const fn of [...idleCallbacks])if(idleCallbacks.delete(fn))fn();
+  await fixture.flush();
+ }
+ const lookup=context.$,summary={};
+ context.$=id=>id==='menuSummary'?summary:lookup(id);
+ context.wh1ExactPager=null;
+ context.bookZip.wh3Flow={bookmark:(segment,key)=>key};
+ context.wh3Layout=async()=>'layout';
+ context.wh3DisplayArchive=async(_book,index)=>{reads.push(index);return 'source';};
+ context.wh3FrameDocument=()=>'<body></body>';
+ context.location={origin:'https://books.example'};
+ context.wh3Counts={book:context.bookZip,key:'counts',width:390,height:630,font:20,counts:[72,80]};
+ context.wh3UpdateState=()=>{};
+ context.resolveStateScan=d=>d.scan;
+ context.savePosition=()=>bookmarks.push({...context.currentState});
+ context.clearBusy=()=>{};
+ context.positionText=()=>'';
+ const state=pageIndex=>({key:'page-'+pageIndex,scan:20,size:20,session:'A',pageIndex,pageCount:72});
+ return {...fixture,idle,reads,bookmarks,report:update,show:pageIndex=>update(state(pageIndex))};
+}
+
+test('an approaching boundary prepares the next screen before input and turns without a second archive open',async()=>{
+ const {context,first,send,flush,idle,states,notices,reads,bookmarks,report,show}=approachingBoundaryFixture();
+ try{
+  show(35);await idle();
+  assert.equal(reads.length,0,'an ordinary mid-section page reserves no other document');
+  show(70);await flush();
+  assert.deepEqual(reads,[],'the current page has priority until reading is idle');
+  await idle();
+  assert.deepEqual(reads,[1],'the following section is read while the previous page is still visible');
+  const next=first.behind;
+  await send(next,'state',{pageCount:80,pageIndex:0});
+  const {session}=next.messages.at(-1);
+  await send(next,'sectionTarget',{session,key:'wh3v2.0',pageIndex:0,totalPages:80,size:20,scan:21});
+  await send(next,'sectionPainted',{session});
+  assert.ok(!next.focused && !first.removed);
+  assert.ok(!first.messages.some(m=>m.action==='sectionSeal'),'preparation cannot consume an active touch');
+  assert.deepEqual(states,[]);
+  assert.equal(context.activeSegment,0);
+  show(71);await flush();
+  assert.equal(bookmarks.at(-1).key,'page-71','opening the hidden page cannot advance a bookmark');
+  context.turnSection(1,false);await flush();
+  assert.deepEqual(reads,[1],'the input handler reuses the already-painted destination');
+  assert.equal(first.messages.at(-1).action,'sectionSeal');
+  await send(first,'sectionSealed',{segment:0,session:'A'});
+  assert.equal(context.activeSegment,1);
+  assert.equal(next.id,'reader');
+  assert.equal(states.at(-1).key,'wh3v2.0');
+  await send(first,'sectionRetired',{segment:0,session:'A'});
+  assert.ok(!first.removed,'the neighbouring page remains available for an immediate reverse');
+  const lookup=context.$;
+  context.$=id=>id==='reader'?next:lookup(id);
+  report({key:'wh3v2.0',scan:21,size:20,session,pageIndex:0,pageCount:80});
+  await flush();
+  assert.equal(first.messages.at(-1).action,'sectionTarget');
+  await send(first,'sectionTarget',{session:'A',segment:0,key:'page-71',pageIndex:71,totalPages:72,size:20,scan:20});
+  await send(first,'sectionPainted',{session:'A',segment:0});
+  context.turnSection(-1,false);await flush();
+  await send(next,'sectionSealed',{segment:1,session});
+  assert.equal(context.activeSegment,0);
+  assert.equal(first.id,'reader');
+  assert.equal(states.at(-1).key,'page-71');
+  assert.deepEqual(reads,[1],'reversal does not re-read the section just left');
+  await send(next,'sectionRetired',{segment:1,session});
+  assert.deepEqual(notices,[]);
+ }finally{context.cancelSectionTurn();}
+});
+
+test('input during preparation reuses the pending archive, and cannot reveal its unfinished page',async()=>{
+ const {context,first,send,flush,idle,states,notices,show}=approachingBoundaryFixture();
+ let opens=0,deliver;
+ context.wh3DisplayArchive=()=>{opens++;return new Promise(resolve=>{deliver=resolve;});};
+ try{
+  show(71);await idle();
+  assert.equal(opens,1);
+  context.turnSection(1,false);await flush();
+  assert.equal(opens,1);
+  assert.equal(first.behind,undefined);
+  assert.deepEqual(states,[]);
+  deliver('source');await flush();
+  const next=first.behind;
+  await send(next,'state',{pageCount:80,pageIndex:0});
+  const {session}=next.messages.at(-1);
+  await send(next,'sectionTarget',{session,key:'wh3v2.0',pageIndex:0,totalPages:80,size:20,scan:21});
+  assert.ok(!first.messages.some(m=>m.action==='sectionSeal'));
+  await send(next,'sectionPainted',{session});
+  assert.equal(first.messages.at(-1).action,'sectionSeal');
+  assert.deepEqual(states,[]);
+  assert.deepEqual(notices,[]);
+ }finally{context.cancelSectionTurn();}
+});
+
+test('background preparation is discarded if the reader moves away, changes layout, or cannot open the section',async()=>{
+ for(const leave of ['move','resize','font','error']){
+  const {context,first,send,flush,idle,states,notices,listeners,report,show}=approachingBoundaryFixture();
+  try{
+   show(70);await idle();
+   const candidate=first.behind;
+   assert.ok(candidate);
+   if(leave==='move')show(40);
+   else if(leave==='resize'){
+    first.getBoundingClientRect=()=>({left:0,top:40,width:390,height:550});
+    for(const resize of [...(listeners.get('resize')||[])])resize();
+   }else if(leave==='font'){
+    report({key:'page-70',scan:20,size:24,session:'A',pageIndex:70,pageCount:72});
+   }else{
+    await send(candidate,'state',{pageCount:80,pageIndex:0});
+    await send(candidate,'sectionError',{session:candidate.messages.at(-1).session});
+   }
+   await flush();
+   assert.equal(candidate.removed,true);
+   assert.equal(context.activeSegment,0);
+   assert.deepEqual(states,[]);
+   assert.deepEqual(notices,[]);
+   assert.ok(!first.messages.some(m=>m.action==='sectionSeal'));
+  }finally{context.cancelSectionTurn();}
+ }
+});
+
 test('only the mounted target at the measured viewport can correct a stale structured page count',async()=>{
  for(const measuredHeight of [630,570]){
   const {context,first,send,flush,states,notices}=retainedTurnFixture();
@@ -417,13 +564,19 @@ test('only the mounted target at the measured viewport can correct a stale struc
    if(measuredHeight===630){
     assert.equal(next.messages.at(-2).label,'73 / 152');
     assert.equal(next.messages.at(-1).action,'sectionPaint');
+    assert.equal(stored.size,0,'the current page keeps its verified total during preparation');
+    assert.equal(states.length,0);
+    await send(next,'sectionPainted',{session});
+    await send(first,'sectionSealed',{segment:0,session:'A'});
     assert.deepEqual(JSON.parse(stored.get('stored-counts')),[72,80]);
+    assert.equal(states.length,1);
     assert.equal(notices.length,0);
    }else{
     assert.equal(stored.size,0,'a different viewport must not overwrite the count');
     assert.ok(next.removed);assert.equal(notices.length,1);
+    assert.equal(states.length,0,'verification never swaps an unpainted target');
    }
-   assert.equal(states.length,0,'verification never swaps an unpainted target');
+   if(measuredHeight===630)await send(first,'sectionRetired',{segment:0,session:'A'});
   }finally{context.cancelSectionTurn();}
  }
 });

@@ -9,6 +9,38 @@ const root = process.env.READER_AUDIT_ROOT || path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'reader/library/wh3-format.html'), 'utf8');
 const render = html.slice(html.indexOf('function render(){'), html.indexOf('function gotoPage('));
 
+test('the same hosted viewport paginates once and changes of size or fonts paginate again', () => {
+  const beforeRebuild = html.lastIndexOf('\n}', html.indexOf('function rebuild(){')) + 2;
+  const rebuild = html.slice(beforeRebuild, html.indexOf('function zoomed(){'));
+  const rect = {width: 390, height: 630};
+  const pages = [{start: 0}];
+  const fonts = {status: 'loaded'};
+  let layouts = 0;
+  const context = vm.createContext({
+    host: {measureOnly: false}, pages, index: 0, font: 20, warning: '',
+    innerWidth: 390, innerHeight: 630, document: {fonts},
+    syncMeasure: () => rect, paginateAll: () => { layouts++; return pages; },
+    pageAt: () => 0, render() {}, menuRefresh() {}
+  });
+  vm.runInContext(rebuild, context);
+  context.rebuild();
+  context.rebuild();
+  assert.equal(layouts, 1, 'initial paint and ResizeObserver may report identical geometry');
+  rect.height -= 1;
+  context.rebuild();
+  assert.equal(layouts, 2);
+  context.font += 2;
+  context.rebuild();
+  assert.equal(layouts, 3);
+  fonts.status = 'loading';
+  context.rebuild();
+  assert.equal(layouts, 4);
+  fonts.status = 'loaded';
+  context.rebuild();
+  context.rebuild();
+  assert.equal(layouts, 5);
+});
+
 test('horizontal figure pages own a full-width surface outside the clipped vertical-text stage', () => {
   const display = html.slice(html.indexOf('<main '), html.indexOf('</main>'));
   assert.match(display, /id="text-flow"[\s\S]*?id="contents" hidden><\/div>\s*<\/div>\s*<div class="reading-stage" id="figure-page" hidden>\s*<section[^>]+id="figure-stage"[^>]+data-wh1-viewport="8"/);
