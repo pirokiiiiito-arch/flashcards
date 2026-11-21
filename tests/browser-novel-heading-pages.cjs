@@ -58,7 +58,7 @@ async function test(){
     await evaluate(frames);
     const state=await evaluate('NovelReader.inspect()');
     assert.equal(state.font,font);assert.equal(state.pages,3);assert.ok(state.textIntegrity&&!state.warning);
-    for(const [index,expected] of [[0,['前の話がここで終わる。']],[1,['朝の駅？','何の声？！！※（鳥）…ー']],[2,['夕方の駅','A1→＋＝￥　どこ？、。']]]){
+    for(const [index,expected] of [[0,['前の話がここで終わる。']],[1,['朝の駅？','何の声？\u0021！※（鳥）…ー']],[2,['夕方の駅','A1→＋＝￥　どこ？、。']]]){
      const dom=await evaluate(`(()=>{NovelReader.gotoPage(${index});return [...document.querySelector('#text-flow').children].map(n=>({tag:n.tagName,text:n.textContent,visible:n.getBoundingClientRect().width>0,orientation:getComputedStyle(n).textOrientation,
       upright:[...n.querySelectorAll('span')].filter(s=>getComputedStyle(s).textOrientation==='upright'&&s.getBoundingClientRect().width>0).map(s=>s.textContent)}));})()`);
      const actual=await evaluate(`(()=>{
