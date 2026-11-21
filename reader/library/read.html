@@ -205,6 +205,9 @@ function pickedArchive(fileList){
  return joined;
 }
 let inputSession='',viewportSerial=0;
+function usesPresidentsTemplate(){
+ return BOOK_ID==='us-presidents-south'&&manifest?.bookId===BOOK_ID&&manifest.template_profile==='world_history_1'&&manifest.canonicalTemplate==='wh1-0011-0030';
+}
 function usesWh3StandardInput(){
  return manifest?.bookId==='wh3'&&manifest.template_profile==='world_history_1';
 }
@@ -330,6 +333,10 @@ function fillManifest(m){
  for(let n=1;n<=m.range[1];n++)if(!m.originalScans?.[String(n)]?.path)throw Error('原本画像が不足しています：'+n);
  totalScans=m.range[1];bookTitle=String(m.title||bookTitle||'読書');manifest=m;SEGMENTS.splice(0,SEGMENTS.length,...m.segments);
  document.documentElement.classList.toggle('native-book-input',nativeBookInput());
+ if(usesPresidentsTemplate()){
+  $('reader').title=bookTitle+'｜全'+totalScans+'枚読書';
+  $('originalOverlay').style.paddingTop=$('bookshelfNav').getBoundingClientRect().height+'px';
+ }
  document.title=bookTitle+'｜私の本棚';$('bookTitle').textContent=bookTitle;
  // Furniture's imported reader has its own toolbar; keep this control on the public bookshelf host.
  $('goToBookStart').hidden=!/洋家具の歴史と様式/.test(bookTitle);
@@ -631,7 +638,7 @@ header .topline .pill{min-width:0;overflow:hidden;text-overflow:ellipsis}`;
   return html.replace(templateTag,()=>symbolTemplate[1]+encoded+symbolTemplate[3]);
  }
  // END symbol dictionary bookshelf layout
- if(BOOK_ID==='wh1'||/wh2-parent-viewport-receiver-v6|wh2-wh1-parity-ui/.test(html))return html;
+ if(BOOK_ID==='wh1'||usesPresidentsTemplate()||/wh2-parent-viewport-receiver-v6|wh2-wh1-parity-ui/.test(html))return html;
  if(!html.includes('</head>')||!html.includes('</body>'))return html;
  const style=`<style id="bookshelf-other-books-wh1-layout">
  :root{--paper:#fffdf8;--chrome:#f7f8f3}
@@ -729,7 +736,8 @@ async function handlePrepare(index){
 
 const wh1ExactPager=window.WH1ExactPager?.create({
  getReader:()=>$('reader'),getBook:()=>bookZip,getSegments:()=>SEGMENTS,
- getManifest:()=>manifest,getActiveSegment:()=>activeSegment,getScan:()=>currentState.scan
+ getManifest:()=>manifest,getActiveSegment:()=>activeSegment,getScan:()=>currentState.scan,
+ useExactPagination:usesPresidentsTemplate
 });
 
 function handleChildState(d){
@@ -805,6 +813,11 @@ $('zoomOut').onclick=()=>{originalScale=Math.max(0.7,Math.round((originalScale-.
 $('zoomIn').onclick=()=>{originalScale=Math.min(5,Math.round((originalScale+.25)*100)/100);setOriginalScale();};
 window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();closeOriginal();}});
 async function recoverSavedBook(){
+ if(BOOK_ID==='us-presidents-south'&&location.pathname.endsWith('/read.html')){
+  const route=new URL('read-wh1-v9.html',location.href);
+  route.search=location.search;route.hash=location.hash;
+  location.replace(route);return;
+ }
  const replacement=window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID});
  if(replacement){location.replace(replacement);return;}
  try{const saved=await dbRead();if(saved?.blob){$('resume').hidden=false;await loadBook(saved.blob,false);}}

@@ -61,14 +61,14 @@ function auditPart(html){
  return inject(html.replace('</head>',AUDIT_CSS+'</head>'),AUDIT_SCRIPT);
 }
 const decorate=html=>inject(auditPart(html).replace('</head>',CHILD_CSS+TOP_START_STYLE+'</head>'),CHILD_BRIDGE);
-function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getScan}) {
+function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getScan,useExactPagination=()=>false}) {
  let cached=null,active=null,lastState=null,errorKey='';
  const getBookKey=()=>{
   const book=getBook(),manifest=getManifest(),segments=getSegments();
   const revision=segments.map(s=>(s.source_sha256||s.part||'').slice(0,16)).join('-');
-  return `${REVISION}:${book?.blob?.size||0}:${manifest?.created||''}:${revision}`;
+  return (useExactPagination()?manifest.bookId+':':'')+`${REVISION}:${book?.blob?.size||0}:${manifest?.created||''}:${revision}`;
  };
- const isWh1=()=>getManifest()?.range?.[0]===1&&getManifest()?.range?.[1]===274&&getSegments()?.length===14;
+ const exact=()=>useExactPagination()||(getManifest()?.range?.[0]===1&&getManifest()?.range?.[1]===274&&getSegments()?.length===14);
  function geometry(state){
   const reader=getReader(),rect=reader.getBoundingClientRect();
   const width=Math.round(rect.width),height=Math.round(rect.height),font=Number(state.size)||20;
@@ -78,7 +78,7 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
   const scan=Math.max(1,Math.min(getManifest()?.range?.[1]||274,Number(lastState?.scan||getScan())||1));
   getReader()?.contentWindow?.postMessage({wh1bridge:1,action:'globalProgress',label,ratio,scan,maxScans:getManifest()?.range?.[1]||274},'*');
  }
- function verifiedCounts(value){return Array.isArray(value)&&value.length===14&&value.every(n=>Number.isInteger(n)&&n>0&&n<3000);}
+ function verifiedCounts(value){return Array.isArray(value)&&value.length===getSegments().length&&value.every(n=>Number.isInteger(n)&&n>0&&n<3000);}
  function storeKey(signature){return 'WH1_EXACT_BOOK_PAGES:'+signature;}
  function loadCached(signature){try{const data=JSON.parse(localStorage.getItem(storeKey(signature)));return verifiedCounts(data?.counts)?data.counts:null;}catch(_){return null;}}
  function saveCached(signature,counts){try{localStorage.setItem(storeKey(signature),JSON.stringify({counts,verifiedAt:Date.now()}));}catch(_){}}
@@ -124,7 +124,7 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
   frame.srcdoc=inject(auditPart(html).replace('</head>',TOP_START_STYLE+'</head>'),MEASURE_BRIDGE);
  });}
  function start(config){
-  if(!isWh1()||!getBook())return;cancel();errorKey='';send('全巻ページ数を計測中…');
+  if(!exact()||!getBook())return;cancel();errorKey='';send('全巻ページ数を計測中…');
   const run={frame:null,config,serial:Date.now(),step:null,cancelled:false};active=run;
   (async()=>{try{
    const counts=[];for(let i=0;i<getSegments().length;i++){
@@ -138,7 +138,7 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
  }
  function onState(state){
   lastState={...state};if(!getBook()||!getManifest())return;
-  if(!isWh1()){const total=getManifest()?.range?.[1]||274,scan=Math.max(1,Math.min(total,Number(state.scan)||1));send(scan+' / '+total,scan/total);return;}
+  if(!exact()){const total=getManifest()?.range?.[1]||274,scan=Math.max(1,Math.min(total,Number(state.scan)||1));send(scan+' / '+total,scan/total);return;}
   const config=geometry(state);
   if(cached?.key===config.key){showExact(state);return;}
   if(active?.config.key===config.key){send('全巻ページ数を計測中…');return;}

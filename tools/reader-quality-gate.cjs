@@ -28,6 +28,17 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  // Restore the exact shared host before resource- and title-specific routing was added.
+  if(blobSHA(data)==="781d6ece33c1e683a0a75403ad4969d11a226a1a"){
+    const prior=data.toString('utf8')
+      .replace("function usesPresidentsTemplate(){\n return BOOK_ID==='us-presidents-south'&&manifest?.bookId===BOOK_ID&&manifest.template_profile==='world_history_1'&&manifest.canonicalTemplate==='wh1-0011-0030';\n}\n","")
+      .replace(" if(usesPresidentsTemplate()){\n  $('reader').title=bookTitle+'｜全'+totalScans+'枚読書';\n  $('originalOverlay').style.paddingTop=$('bookshelfNav').getBoundingClientRect().height+'px';\n }\n","")
+      .replace(" if(BOOK_ID==='wh1'||usesPresidentsTemplate()||/wh2-parent-viewport-receiver-v6|wh2-wh1-parity-ui/.test(html))return html;\n"," if(BOOK_ID==='wh1'||/wh2-parent-viewport-receiver-v6|wh2-wh1-parity-ui/.test(html))return html;\n")
+      .replace(" getManifest:()=>manifest,getActiveSegment:()=>activeSegment,getScan:()=>currentState.scan,\n useExactPagination:usesPresidentsTemplate\n"," getManifest:()=>manifest,getActiveSegment:()=>activeSegment,getScan:()=>currentState.scan\n")
+      .replace(" if(BOOK_ID==='us-presidents-south'&&location.pathname.endsWith('/read.html')){\n  const route=new URL('read-wh1-v9.html',location.href);\n  route.search=location.search;route.hash=location.hash;\n  location.replace(route);return;\n }\n","");
+    if(blobSHA(prior)!=="b68d4c34ddf0d3dbaf1e6645336fba3983301a17")throw Error('WH1_BOOK_ROUTE_REVERSE_CHECK_FAILED');
+    data=Buffer.from(prior);
+  }
   data=priorShelfShell(data);
   let blob=blobSHA(data);
   if(['159505170aa3e8be559267505866a87fd79f543a','22069835a57b00724a0a481a734275ae0bf2cd38','b68d4c34ddf0d3dbaf1e6645336fba3983301a17'].includes(blob)){

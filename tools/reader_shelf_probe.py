@@ -27,7 +27,7 @@ SEED = '''async ([id,title,root])=>{
  const len=4*1024*1024;let count=0;for(let at=0;at<blob.size;at+=len)await put('chunks',id+'|qa|'+String(count++).padStart(6,'0'),blob.slice(at,at+len));
  await put('books',id,{id,title,generation:'qa',size:blob.size,count,registrationRoot:root});db.close();
 }'''
-API = '(window.StandardReader||window.NovelReader)'
+API = '(window.StandardReader||window.NovelReader||window.WH1BookReader)'
 
 
 def touch(page, cdp, start, end):
@@ -115,14 +115,15 @@ class Reader:
         mode=case['mode']
         f=self.open(scan)
         if not self.ui.get('position'):
-            ix=f.evaluate('''([lo,hi,scan,mode])=>{const a=window.StandardReader||window.NovelReader,pp=a.pageManifest();
-             const candidates=pp.map((p,i)=>({p,i})).filter(({p,i})=>p.scan>=lo&&p.scan<=hi&&(mode==='figure'?p.kind==='image':mode==='text'?p.kind==='text':true));
+            ix=f.evaluate('''([lo,hi,scan,mode])=>{const a=window.StandardReader||window.NovelReader||window.WH1BookReader,pp=a.pageManifest();
+             const candidates=pp.map((p,i)=>({p,i})).filter(({p,i})=>p.scan>=lo&&p.scan<=hi&&(mode==='figure'?p.kind==='image':mode==='text'?p.kind==='text':mode==='contents'&&window.WH1BookReader?p.kind==='contents':true));
              const right=candidates.filter(x=>x.p.scan===scan);let e=right.find(x=>x.i<pp.length-1)||right[0]||candidates.find(x=>x.i<pp.length-1)||candidates[0];if(!e)return -1;a.gotoPage(e.i);return e.i;}''',[start,end,scan,mode]);check(ix>=0,f'{start}-{end}: {mode} のページを特定できません')
         run_steps(self.page,f,case.get('steps',[]),scan)
         if mode=='original' and not case.get('steps'):
             f.locator(self.ui.get('originalButton','#original')).click()
         defaults={'text':'#text-flow','figure':'#figure-stage .figure-frame','contents':'#text-flow','original':'#original-image'}
-        target=f.locator(case.get('selector') or self.ui.get(mode+'Selector') or defaults[mode])
+        surface=self.page if mode=='original' and self.ui.get('originalFrame')=='parent' else f
+        target=surface.locator(case.get('selector') or self.ui.get(mode+'Selector') or defaults[mode])
         target.wait_for(state='visible')
         box=target.bounding_box()
         check(box and box['width']>0 and box['height']>0,'検査対象が画面にありません')
@@ -131,7 +132,8 @@ class Reader:
         check(box['x']<=x<=box['x']+box['width'] and box['y']<=y<=box['y']+box['height'],'ピンチ中心が対象の外です')
         if mode=='figure':
             target.tap()
-            assert_modal=f.locator(self.ui.get('originalModal','#original-backdrop'))
+            modal_frame=self.page if self.ui.get('originalFrame')=='parent' else f
+            assert_modal=modal_frame.locator(self.ui.get('originalModal','#original-backdrop'))
             check(not assert_modal.is_visible(),'図版の単独タップが拡大画面を開きました')
         return x,y
 
@@ -225,7 +227,7 @@ class Reader:
             else:
                 self.frame.wait_for_function('n=>{const a='+API+';if(!a)return false;const p=a.pageManifest()[a.inspect().index];return p&&[p.scan,...(p.sourceScans||[]),...(p.sourceSpans||[]).map(x=>x.scan),...((window.READER_BOOK?.entries||[]).filter(x=>x.kind==="image")[p.figure]?.sourceScans||[])].includes(n)}',arg=r['target'])
             if r.get('view')=='figure' and not self.ui.get('position'):
-                check(self.frame.evaluate('(window.StandardReader||window.NovelReader).inspect().currentKind')=="image",'図版の目次が該当する図版画面に到着しません')
+                check(self.frame.evaluate(API+'.inspect().currentKind')=="image",'図版の目次が該当する図版画面に到着しません')
             if r.get('destinationSelector'):
                 self.frame.locator(r['destinationSelector']).wait_for(state='visible')
             out.append([r['source'],r['target'],r.get('view')]);
@@ -288,7 +290,7 @@ def measure(site,archive,entry,manifest,reference,ranges,root,chromium):
                 cases=[sample,*cases]
                 frame=reader.open(start)
                 if not reader.ui.get('position'):
-                    detected=frame.evaluate('()=>{const a=window.StandardReader||window.NovelReader;return [a.pageManifest().some(p=>p.kind==="image"),a.inspect().originalReady===true]}')
+                    detected=frame.evaluate('()=>{const a='+API+';return [a.pageManifest().some(p=>p.kind==="image"),a.inspect().originalReady===true]}')
                     check(not detected[0] or 'figure' in modes,'書籍に図版があります。図版での検査が必要です')
                     check(not detected[1] or 'original' in modes,'原本画面の検査が必要です')
                 batch=[]

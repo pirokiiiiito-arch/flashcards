@@ -59,7 +59,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'1e931004f0a0619cc2940287181fceb8daf5d054',
- 'reader/library/read.html':'b68d4c34ddf0d3dbaf1e6645336fba3983301a17'
+ 'reader/library/read.html':'781d6ece33c1e683a0a75403ad4969d11a226a1a'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
@@ -393,6 +393,13 @@ function admittedBookshelfNavUI(root,policy){
   demand(read.split(navPager).length===2,'LIBRARY_DERIVATIVE_PAGER_MISSING');
   const library=read.replace(navPager,libraryScripts).replace('<title>','<title>確認9.1｜')
     .replace('<body>','<body>\n'+fallback);
+  // Reuse the WH1 pager for an explicitly declared canonical edition. Pin both identical copies.
+  const pager='reader/wh1/all/wh1-exact-pagination.js',pagerCopy='reader/library/wh1-pager-v9.js';
+  const pagerDigest=hash(fs.readFileSync(safe(root,pager)));
+  if(pagerDigest!==policy.baseline.files[pager]){
+   demand(pagerDigest==='e0a81b8e7f8726e33f3600aaa66e82d19bf632b1f275c6facb20a9d4a6ee580e'&&hash(fs.readFileSync(safe(root,pagerCopy)))===pagerDigest,'PINNED_WH1_PAGER_MISMATCH');
+   approved[pager]=pagerDigest;approved[pagerCopy]=pagerDigest;
+  }
   const copyPaths=['wh1-exact-pagination.js','wh1-figure-viewport-v9.js','wh1-display-check-v9.js'];
   const copyDests=['wh1-pager-v9.js','wh1-figure-viewport-v9.js','wh1-display-check-v9.js'];
   const copied=Object.fromEntries(copyDests.map((dest,i)=>[dest,hash(fs.readFileSync(safe(root,'reader/wh1/all/'+copyPaths[i])))]));
