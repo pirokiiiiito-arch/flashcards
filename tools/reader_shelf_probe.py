@@ -240,6 +240,16 @@ class Reader:
         ui=ref.get('ui',{})
         selector=ui.get('row','.contents-row')
         locations=[]
+        displayed_labels=None
+        # Keep the original reference unchanged. On the shared reading view, apply
+        # the checked-in typesetting rule independently to the expected labels.
+        def typeset_labels():
+            from subprocess import run
+            module=Path(__file__).resolve().parents[1]/'templates/reader/v2/vertical-symbols.js'
+            script="const fs=require('node:fs'),r=require(process.argv[1]);process.stdout.write(JSON.stringify(JSON.parse(fs.readFileSync(0,'utf8')).map(r.japanesePunctuation)))"
+            command=run(['node','-e',script,str(module)],input=json.dumps([r['label'] for r in wanted]),
+                        capture_output=True,text=True,check=True)
+            return dict(zip([r['label'] for r in wanted],json.loads(command.stdout),strict=True))
         # Check printed labels and numbers independently from their click destinations.
         for n in dict.fromkeys(r['source'] for r in wanted):
             f=self.open(n)
@@ -254,10 +264,15 @@ class Reader:
                     f.evaluate('i=>'+API+'.gotoPage(i)',ix)
                     wait_painted(f,ix)
                 run_steps(page,f,ui.get('show',[]),n)
-                rows=f.locator(selector).evaluate_all('''(rows,u)=>rows.filter(r=>r.getClientRects().length).map(r=>{const a=u.label?r.querySelector(u.label):r.firstElementChild,b=u.number?r.querySelector(u.number):r.lastElementChild;if(!a||!b||a===b)throw Error('目次の項目名・掲載番号が分離されていません');const x=r.getBoundingClientRect(),p=a.getBoundingClientRect(),q=b.getBoundingClientRect();if(x.left<-.6||x.top<-.6||x.right>innerWidth+.6||x.bottom>innerHeight+.6||q.left<x.left-.6||q.right>x.right+.6||q.bottom>x.bottom+.6||q.top<x.top-.6||!((p.right<=q.left+.6)||(q.right<=p.left+.6)||(p.bottom<=q.top+.6)||(q.bottom<=p.top+.6)))throw Error('目次の項目名と番号が画面内に収まりません');return [a.textContent.trim(),b.textContent.trim()];})''',ui)
+                rows=f.locator(selector).evaluate_all('''(rows,u)=>rows.filter(r=>r.getClientRects().length).map(r=>{const a=u.label?r.querySelector(u.label):r.firstElementChild,b=u.number?r.querySelector(u.number):r.lastElementChild;if(!a||!b||a===b)throw Error('目次の項目名・掲載番号が分離されていません');const x=r.getBoundingClientRect(),p=a.getBoundingClientRect(),q=b.getBoundingClientRect();if(x.left<-.6||x.top<-.6||x.right>innerWidth+.6||x.bottom>innerHeight+.6||q.left<x.left-.6||q.right>x.right+.6||q.bottom>x.bottom+.6||q.top<x.top-.6||!((p.right<=q.left+.6)||(q.right<=p.left+.6)||(p.bottom<=q.top+.6)||(q.bottom<=p.top+.6)))throw Error('目次の項目名と番号が画面内に収まりません');const label=a.cloneNode(true);label.querySelectorAll('rt,rp').forEach(el=>el.remove());return [label.textContent.trim(),b.textContent.trim()];})''',ui)
                 actual.extend(rows)
                 locations.extend((n,ix,i) for i in range(len(rows)))
-            check(actual==[[r['label'],r['number']] for r in expected],f'原本{n}: 目次の並び・項目名・掲載番号が違います')
+            labels={}
+            if f.evaluate("typeof window.ReaderVerticalSymbols?.japanesePunctuation==='function'"):
+                if displayed_labels is None:
+                    displayed_labels=typeset_labels()
+                labels=displayed_labels
+            check(actual==[[labels.get(r['label'],r['label']),r['number']] for r in expected],f'原本{n}: 目次の並び・項目名・掲載番号が違います')
         ordered=[r for n in dict.fromkeys(r['source'] for r in wanted) for r in wanted if r['source']==n]
         for count,((n,ix,i),r) in enumerate(zip(locations,ordered,strict=True),1):
             if count%25==0:

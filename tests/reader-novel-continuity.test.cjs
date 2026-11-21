@@ -8,7 +8,7 @@ const split=x=>Array.from(new Intl.Segmenter('ja',{granularity:'grapheme'}).segm
 const begin=engine.indexOf('function joinLogicalContinuations(');
 const end=engine.indexOf('// G4-04:',begin);
 if(begin<0||end<=begin)throw Error('Shared novel engine must define source-continuation mapping');
-const {joinLogicalContinuations,textPart}=new Function(engine.slice(begin,end)+'\nreturn {joinLogicalContinuations,textPart};')();
+const {joinLogicalContinuations,textPart}=new Function('verticalReaderSymbols','split',engine.slice(begin,end)+'\nreturn {joinLogicalContinuations,textPart};')(require('../templates/reader/v2/vertical-symbols.js'),split);
 const source=(scan,text,sourceJoined=false,type='body')=>({scan,text,type,sourceJoined,units:split(text)});
 const same=a=>JSON.parse(JSON.stringify(a));
 const paginateBegin=engine.indexOf('function paginateBlocks('),paginateEnd=engine.indexOf('function captionFits(',paginateBegin);

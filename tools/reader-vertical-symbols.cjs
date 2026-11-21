@@ -10,6 +10,17 @@ const canonical=source.match(region)[0];
 const legacy=/^\/\/ Both forms of the question mark stand upright in Japanese vertical text\.\nfunction setVerticalText\(element, text\)\{[\s\S]*?^\}\n(?=function partNode\(p\)\{)/m;
 const partText="text:b.units.slice(off,off+n).join(''),";
 const partEdges="before:b.units.slice(Math.max(0,off-3),off).join('').slice(-3),after:b.units.slice(off+n,off+n+3).join('').slice(0,3),";
+const joinEnd=' return logical;\n}\nfunction textPart(';
+const displayPlan=` // Normalize each joined paragraph before measuring or slicing a page.
+ // All substitutions retain the original source offsets used by bookmarks and ruby.
+ for(const block of logical){
+  const display=verticalReaderSymbols.displayText(block.text);
+  if(display===block.text)continue;
+  block.sourceUnits=block.units;
+  block.units=split(display);
+ }
+`;
+const displayedPart="text:(b.sourceUnits||b.units).slice(off,off+n).join(''),displayText:b.units.slice(off,off+n).join(''),";
 function syncEngine(engine){
  const matches=engine.match(region)||[];
  if(matches.length>1)throw Error('multiple vertical-symbol implementations');
@@ -23,16 +34,25 @@ function syncEngine(engine){
  // Each measurement trial and displayed page may contain only part of a numeral.
  // Carry the original adjacent graphemes into both versions of the standard reader.
  if(!engine.includes(partEdges)){
-  if(engine.split(partText).length!==2)throw Error('unrecognized source text fragment; supply its original neighbouring characters');
-  engine=engine.replace(partText,partText+'\n  '+partEdges);
+  const slot=engine.includes(displayedPart)?displayedPart:partText;
+  if(engine.split(slot).length!==2)throw Error('unrecognized source text fragment; supply its original neighbouring characters');
+  engine=engine.replace(slot,slot+'\n  '+partEdges);
+ }
+ if(!engine.includes(displayPlan)){
+  if(!engine.includes(joinEnd))throw Error('unrecognized logical paragraph assembly');
+  engine=engine.replace(joinEnd,displayPlan+joinEnd);
+ }
+ if(!engine.includes(displayedPart)){
+  if(engine.split(partText).length!==2)throw Error('unrecognized original paragraph range');
+  engine=engine.replace(partText,displayedPart);
  }
  return engine.replace('setVerticalText(el,p.text);','setVerticalText(el,p.text,p);');
 }
 function checkEngine(engine){
  const blocks=engine.match(region)||[];
  if(blocks.length!==1||blocks[0]!==canonical)throw Error('vertical-symbol rendering code differs from the common rule');
- const part=engine.match(/function partNode\(p\)\{([\s\S]*?)\n\}/)?.[1];
- if(!engine.includes(partEdges)||!part||!part.includes('setVerticalText(el,p.text,p)')||(part.includes('novel-toc-title')&&!part.includes('setVerticalText(title,')))throw Error('vertical paragraph, heading or contents title is not connected');
+ const part=engine.match(/function partNode\(p\)\{([\s\S]*?)\n\}\nfunction fitsParts\(/)?.[1];
+ if(!engine.includes(partEdges)||!engine.includes(displayPlan)||!engine.includes(displayedPart)||!part||!part.includes('setVerticalText(el,p.text,p)')||(part.includes('novel-toc-title')&&!part.includes('setVerticalText(title,')))throw Error('vertical paragraph, heading or contents title is not connected');
  if(!/function fitsParts[\s\S]*?fragment\.append\(partNode\(p\)\)/.test(engine)||!/for\(const part of p\.parts\)frag\.append\(partNode\(part\)\)/.test(engine))throw Error('measurement and display do not share the vertical renderer');
 }
 function checkFile(file){

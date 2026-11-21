@@ -7,7 +7,7 @@ async function test(){
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'novel-heading-'));
  const template=path.join(__dirname,'../templates/reader/v2');
  const book={id:'synthetic-sections',kind:'text',title:'検査用短編',blocks:[
-  {type:'body',scan:20,text:'前の話がここで終わる。'},
+  {type:'body',scan:20,text:'前の話は，ここで終わる．'},
   {type:'heading',scan:21,text:'朝の駅?'},{type:'body',scan:21,text:'何の声?!！※（鳥）…ー'},
   {type:'heading',scan:22,text:'第2章の駅'},{type:'body',scan:22,text:'A1→＋＝￥　1世紀、1660年、3.5、７冊？'}]};
  const fixtureUpright=/[?？!！※→＋＝￥]|[12](?=章|世紀)/gu;
@@ -58,7 +58,7 @@ async function test(){
     await evaluate(frames);
     const state=await evaluate('NovelReader.inspect()');
     assert.equal(state.font,font);assert.equal(state.pages,3);assert.ok(state.textIntegrity&&!state.warning);
-    for(const [index,expected] of [[0,['前の話がここで終わる。']],[1,['朝の駅？','何の声？\u0021！※（鳥）…ー']],[2,['第2章の駅','A1→＋＝￥　1世紀、1660年、3.5、７冊？']]]){
+    for(const [index,expected] of [[0,['前の話は、ここで終わる。']],[1,['朝の駅？','何の声？\u0021！※（鳥）…ー']],[2,['第2章の駅','A1→＋＝￥　1世紀、1660年、3.5、７冊？']]]){
      const dom=await evaluate(`(()=>{NovelReader.gotoPage(${index});return [...document.querySelector('#text-flow').children].map(n=>({tag:n.tagName,text:n.textContent,visible:n.getBoundingClientRect().width>0,orientation:getComputedStyle(n).textOrientation,
       upright:[...n.querySelectorAll('span')].filter(s=>getComputedStyle(s).textOrientation==='upright'&&s.getBoundingClientRect().width>0).map(s=>s.textContent)}));})()`);
      const actual=await evaluate(`(()=>{

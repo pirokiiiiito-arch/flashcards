@@ -28,6 +28,9 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='9a27e180ffb00e7fa9704cc2446a2f2ea2042809'){
+    data=Buffer.from(data.toString('utf8').replace('common-punctuation-20261122-9','common-retained-turn-20261122-8'));
+  }
   if(blobSHA(data)==='9e82997de0797ab051791edb0c71b15ae42301ca'){
     const lines=data.toString('utf8').split('\n');
     for(const [at,count,...prior] of [

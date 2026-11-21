@@ -505,9 +505,54 @@ const verticalReaderSymbols=(()=>{
  const wave=new Set(['~','～','〜','∼']);
  const attaches=/^[\p{M}\u200c\u200d\u{1f3fb}-\u{1f3ff}\u{e0020}-\u{e007f}]/u;
  const isSymbol=/[0-9\p{P}\p{S}ーｰ]/u;
- // The reading edition uses one fullwidth upright question mark for each source question.
+ const japanese=/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ー]/u;
+ const digit=/\p{Nd}/u;
+ const latin=/\p{Script=Latin}/u;
+ // Protect address components (including separators in query strings) as one token.
+ // Japanese prose can follow a URL without a space; its final punctuation is outside the address.
+ const address=/(?:https?:\/\/|ftp:\/\/|www\.)[A-Z0-9%._~:/?@!$&'*+,;=#()-]+|[A-Z0-9_%+.-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+ function japanesePunctuation(source){
+  if(!/[,，.．]/u.test(source)||!japanese.test(source))return source;
+  if(/^[\s　]*(?:学名|英名)[\s　:：]*[\p{Script=Latin}][^\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]*$/u.test(source))return source;
+  const addresses=Array.from(source.matchAll(address),m=>[m.index,m.index+m[0].replace(/[.,]+$/u,'').length]);
+  let addressIndex=0;
+  return source.replace(/[,，.．]/gu,(mark,at)=>{
+   while(addressIndex<addresses.length&&addresses[addressIndex][1]<=at)addressIndex++;
+   if(addressIndex<addresses.length&&addresses[addressIndex][0]<=at)return mark;
+   const period=mark==='.'||mark==='．';
+   const left=source.slice(Math.max(0,at-96),at),right=source.slice(at+1,at+97);
+   const last=left.slice(-1),next=right[0]||'';
+   // Decimal numbers, grouped numbers, numbered page lists and decimal fractions such as ".5".
+   if(digit.test(last)&&digit.test(right.trimStart()[0]||''))return mark;
+   if(period&&digit.test(next)&&(!last||/[\s(（=＝+＋−-]/u.test(last)))return mark;
+   if(period){
+    if(/^\p{Nd}+[%％]/u.test(right))return mark;
+    if(/^(?:csv|tsv|txt|html?|pdf|epub|json|xml|jpe?g|png|gif|svg|webp|zip|xlsx?|docx?|pptx?)(?![\p{Script=Latin}\p{Nd}_])/iu.test(right))return mark;
+    if(/[.．]/u.test(last)||/[.．]/u.test(next))return mark;
+    // Printed section numbering, e.g. "2. 観察", keeps its identifying separator.
+    if(/(?:^|\n)[\t 　]*\p{Nd}{1,4}$/u.test(source.slice(0,at)))return mark;
+    // Page references, taxonomic ranks and author abbreviations, including a final dotted initial.
+    if(/(?:^|[^\p{Script=Latin}])(?:pp?|vol|no|fig|etc|cf|ca|spp?|subsp|ssp|var|f|sect|gen|syn|approx|dr|mr|mrs|ms|prof|vs|al|thunb|linn|franch|cav|lam|sieb|zucc|maxim|benth|wall|dc|ait)$/iu.test(left))return mark;
+    if(/(?:^|[^\p{Script=Latin}])(?:L|R[.．]\s*Br)$/u.test(left))return mark;
+    if(/(?:\p{Script=Latin}[.．])+\p{Script=Latin}$/u.test(left))return mark;
+    if(/(?:^|[^\p{Script=Latin}])[A-ZＡ-Ｚ]$/u.test(left)&&latin.test(right.trimStart()[0]||''))return mark;
+   }
+   const prev=left.replace(/[\s」』）)］\]】〉》”’]+$/u,'').slice(-1);
+   const following=right.replace(/^[\s「『（(［\[【〈《“‘]+/u,'')[0]||'';
+   if(japanese.test(prev)||japanese.test(following))return period?'。':'、';
+   if(addresses[addressIndex]?.[0]===at+1&&japanese.test(left))return period?'。':'、';
+   if(latin.test(prev)&&latin.test(following))return mark;
+   // A Japanese clause may end with a quoted term, a measurement or a numeral.
+   // A nearby Japanese character behind the final token distinguishes this from English prose.
+   const tail=left.replace(/[\s」』）)］\]】〉》”’]+$/u,'');
+   if(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ー][\t 　]*[\p{Nd}\p{Script=Latin}%％℃°µμ㎜㎝㎞㎡㎥～〜~./．-]+(?:[\t 　]+(?:mm|cm|km|m|kg|mg|g|ml|l|ha|Hz|°C))?$/iu.test(tail))return period?'。':'、';
+   if(japanese.test(left)&&/[」』）)］\]】〉》]$/u.test(left.trimEnd()))return period?'。':'、';
+   if(japanese.test(left)&&/\p{Nd}(?:[.,，．][\t 　]*\p{Nd}+)*[\t 　]*(?:mm|cm|km|m|kg|mg|g|ml|ha|%|％|℃)?$/iu.test(left)&&!latin.test(following))return period?'。':'、';
+   return mark;
+  });
+ }
  function displayText(source){
-  return source.replaceAll('?','？');
+  return japanesePunctuation(source).replaceAll('?','？');
  }
  function* uprightRanges(text,before='',after=''){
   const context=before+text+after;
@@ -570,12 +615,12 @@ const verticalReaderSymbols=(()=>{
   }
   return result;
  }
- return {displayText,standaloneDigitAt,uprightRanges,count,inspect};
+ return {japanesePunctuation,displayText,standaloneDigitAt,uprightRanges,count,inspect};
 })();
 function setVerticalText(element,source,part={}){
  const before=part.before||'',after=part.after||'';
  verticalReaderEdges.set(element,{before,after});
- const text=verticalReaderSymbols.displayText(source);
+ const text=part.displayText??verticalReaderSymbols.displayText(source);
  let fragment=null,offset=0;
  for(const {start,end} of verticalReaderSymbols.uprightRanges(text,before,after)){
   if(!fragment)fragment=document.createDocumentFragment();
@@ -619,7 +664,7 @@ verticalReaderEdges.set(el,{before:p.before||'',after:p.after||''});
 spans.sort((x,y)=>x.at-y.at||y.base.length-x.base.length);
 function writeRange(node,start,end){
  const before=((p.before||'')+p.text.slice(0,start)).slice(-3),after=(p.text.slice(end)+(p.after||'')).slice(0,3);
- setVerticalText(node,p.text.slice(start,end),{before,after});
+ setVerticalText(node,p.text.slice(start,end),{before,after,displayText:p.displayText.slice(start,end)});
 }
 function plain(start,end){
  if(start>=end)return;
@@ -662,11 +707,19 @@ function joinLogicalContinuations(source){
     sourceRanges:[{start:0,end:b.units.length,scan:b.scan,sourceBlock:b.sourceBlock}]});
   }
  }
+ // Normalize each joined paragraph before measuring or slicing a page.
+ // All substitutions retain the original source offsets used by bookmarks and ruby.
+ for(const block of logical){
+  const display=verticalReaderSymbols.displayText(block.text);
+  if(display===block.text)continue;
+  block.sourceUnits=block.units;
+  block.units=split(display);
+ }
  return logical;
 }
 function textPart(b,off,n){
  const first=b.sourceRanges?.find(r=>r.end>off);
- return {type:b.type,semanticType:b.semanticType,scan:first?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
+ return {type:b.type,semanticType:b.semanticType,scan:first?.scan||b.scan,text:(b.sourceUnits||b.units).slice(off,off+n).join(''),displayText:b.units.slice(off,off+n).join(''),
   before:b.units.slice(Math.max(0,off-3),off).join('').slice(-3),after:b.units.slice(off+n,off+n+3).join('').slice(0,3),
   continued:off>0,
   // Offsets are grapheme indices within the ORIGINAL registered source block.
@@ -753,11 +806,12 @@ function paginateBlocks(group,start){
  flush();return out;
 }
 function paintCaption(el,value,f,offset){
+ const display=f.displayCaption.slice(offset,offset+value.length);
  const rr=(f?.captionGlosses||[]).filter(g=>g.at>=offset&&g.at+g.base.length<=offset+value.length).sort((a,b)=>a.at-b.at);
- if(!rr.length){el.textContent=value;return;}
+ if(!rr.length){el.textContent=display;return;}
  let at=0;const frag=document.createDocumentFragment();for(const g of rr){const k=g.at-offset;if(k<at||value.slice(k,k+g.base.length)!==g.base)continue;
- frag.append(document.createTextNode(value.slice(at,k)));const rb=document.createElement('ruby'),rt=document.createElement('rt');rb.append(document.createTextNode(g.base));rt.textContent=g.reading;rb.append(rt);frag.append(rb);at=k+g.base.length;}
- frag.append(document.createTextNode(value.slice(at)));el.replaceChildren(frag);
+ frag.append(document.createTextNode(display.slice(at,k)));const rb=document.createElement('ruby'),rt=document.createElement('rt');rb.append(document.createTextNode(display.slice(k,k+g.base.length)));rt.textContent=g.reading;rb.append(rt);frag.append(rb);at=k+g.base.length;}
+ frag.append(document.createTextNode(display.slice(at)));el.replaceChildren(frag);
 }
 function sectionOf(scan){
  const list=(sourceBook.toc||[]).filter(item=>item.kind==='chapter'&&item.targetScan<=scan);
@@ -767,9 +821,10 @@ function tocElement(p,measuring=false){
  const frag=document.createDocumentFragment(),h=document.createElement('h2');h.className='toc-header';h.textContent=p.first?'目次':'目次（続き）';frag.append(h);
  for(const item of p.rows){
   const row=document.createElement('button');row.type='button';row.className='toc-row level-'+(item.kind==='part'?0:item.kind==='chapter'?1:2);
-  const name=document.createElement('span');name.className='toc-name';name.textContent=item.text;
+  const name=document.createElement('span');name.className='toc-name';
+  const label=verticalReaderSymbols.japanesePunctuation(item.text);name.textContent=label;
   let tail=0;const glosses=(book.tocGlosses||[]).filter(g=>g.scan===p.scan&&item.text.includes(g.base)).sort((a,b)=>item.text.indexOf(a.base)-item.text.indexOf(b.base));
-  if(glosses.length){name.replaceChildren();for(const g of glosses){const i=item.text.indexOf(g.base,tail);if(i<0)continue;name.append(item.text.slice(tail,i));const ruby=document.createElement('ruby'),rt=document.createElement('rt');ruby.append(g.base);rt.textContent=g.reading;ruby.append(rt);name.append(ruby);tail=i+g.base.length;}name.append(item.text.slice(tail));}
+  if(glosses.length){name.replaceChildren();for(const g of glosses){const i=item.text.indexOf(g.base,tail);if(i<0)continue;name.append(label.slice(tail,i));const ruby=document.createElement('ruby'),rt=document.createElement('rt');ruby.append(label.slice(i,i+g.base.length));rt.textContent=g.reading;ruby.append(rt);name.append(ruby);tail=i+g.base.length;}name.append(label.slice(tail));}
   const num=document.createElement('span');num.className='toc-number';num.textContent=String(item.page??'');row.append(name,num);frag.append(row);
   if(!measuring)row.addEventListener('click',()=>{
    if(embedded&&host?.session){parent.postMessage({wh1bridge:1,type:'navigateScan',session:host.session,segment:host.segment,scan:item.targetScan,heading:item.text},host.origin);return;}
@@ -796,7 +851,7 @@ function paginateContents(item,at){
 function fillFigureLabels(container,f){
  const set=(r,s)=>{const n=container.querySelector('[data-role="'+r+'"]');if(n.textContent!==s)n.textContent=s};
  const type=f.title.includes('地図')?'地図':f.title.includes('年表')?'年表':'図版';
- set('kicker',type+' ＋ 説明｜原本'+f.scan+'枚目');set('title',f.title);set('label',f.alt||f.title);
+ set('kicker',type+' ＋ 説明｜原本'+f.scan+'枚目');set('title',verticalReaderSymbols.japanesePunctuation(f.title));set('label',verticalReaderSymbols.japanesePunctuation(f.alt||f.title));
  set('caption-label',type==='地図'?'図題・凡例':type==='年表'?'年表の文字':'この図の説明');
  container.querySelector('[data-role="empty"]').hidden=!!f.caption;
  container.querySelector('.figure-bundle-caption-label').hidden=!f.caption;
@@ -812,6 +867,7 @@ function captionFits(value,f,off){
 
 function paginateOneFigure(i,start){
  const f=figures[i],out=[];let at=start;
+ f.displayCaption=verticalReaderSymbols.japanesePunctuation(f.caption);
  fillFigureLabels($('measure-figure'),f);
  if(!f.units.length)return [{kind:'image',figure:i,caption:'',start,end:start+1,subpage:1,scan:f.scan}];
  let off=0,count=0;
@@ -988,7 +1044,7 @@ function render(){
  }else if(p.kind==='toc')$('contents').replaceChildren(tocElement(p));
  else setFigure(p,asset);
  $('page-major').textContent=(index+1)+' / '+pages.length;
- const description=p.kind==='text'?[sectionOf(scan),'本文'].filter(Boolean).join(' '):p.kind==='image'?'図版｜'+figures[p.figure].title:p.kind==='toc'?'目次':p.title;
+ const description=p.kind==='text'?[verticalReaderSymbols.japanesePunctuation(sectionOf(scan)),'本文'].filter(Boolean).join(' '):p.kind==='image'?'図版｜'+verticalReaderSymbols.japanesePunctuation(figures[p.figure].title):p.kind==='toc'?'目次':p.title;
  $('page-description').textContent=description;
  $('page-origin').textContent=' ｜ 原本 '+scan+' / '+book.totalScans;
  $('page-minor').title=$('page-minor').textContent;
@@ -1003,14 +1059,14 @@ function menuRefresh(){
  if(mode==='image'){
   figures.forEach((f,i)=>{
    const btn=document.createElement('button');btn.type='button';btn.className='menu-item';
-   btn.textContent=(i+1)+'．'+f.title;
+   btn.textContent=(i+1)+'．'+verticalReaderSymbols.japanesePunctuation(f.title);
    btn.addEventListener('click',()=>{gotoPage(pages.findIndex(p=>p.figure===i));closeDialogs()});list.append(btn);
   });
  }else if(mode==='text'){
   let offset=0;
   blocks.forEach(b=>{if(b.type==='heading'){
    const target=offset,btn=document.createElement('button');btn.type='button';
-   btn.className='menu-item';btn.textContent=b.text;
+   btn.className='menu-item';btn.textContent=verticalReaderSymbols.japanesePunctuation(b.text);
    btn.addEventListener('click',()=>{gotoPage(pageAt(target));closeDialogs()});list.append(btn);
   }offset+=b.units.length});
  }else{
@@ -1018,7 +1074,7 @@ function menuRefresh(){
    const p=pages.findIndex(p=>p.scan===item.targetScan||(p.parts||[]).some(part=>(part.sourceSpans||[]).some(s=>s.scan===item.targetScan)));
    if(p<0)continue;
    const button=document.createElement('button');button.type='button';button.className='menu-item book-jump';
-   button.textContent=item.text+'　'+item.page;button.addEventListener('click',()=>{gotoPage(p);closeDialogs()});list.append(button);
+   button.textContent=verticalReaderSymbols.japanesePunctuation(item.text)+'　'+item.page;button.addEventListener('click',()=>{gotoPage(p);closeDialogs()});list.append(button);
   }
   for(const original of book.originals||[]){
    const scan=Number(original.scan);

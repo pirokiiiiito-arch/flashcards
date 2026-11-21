@@ -149,9 +149,54 @@ const verticalReaderSymbols=(()=>{
  const wave=new Set(['~','～','〜','∼']);
  const attaches=/^[\p{M}\u200c\u200d\u{1f3fb}-\u{1f3ff}\u{e0020}-\u{e007f}]/u;
  const isSymbol=/[0-9\p{P}\p{S}ーｰ]/u;
- // The reading edition uses one fullwidth upright question mark for each source question.
+ const japanese=/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ー]/u;
+ const digit=/\p{Nd}/u;
+ const latin=/\p{Script=Latin}/u;
+ // Protect address components (including separators in query strings) as one token.
+ // Japanese prose can follow a URL without a space; its final punctuation is outside the address.
+ const address=/(?:https?:\/\/|ftp:\/\/|www\.)[A-Z0-9%._~:/?@!$&'*+,;=#()-]+|[A-Z0-9_%+.-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+ function japanesePunctuation(source){
+  if(!/[,，.．]/u.test(source)||!japanese.test(source))return source;
+  if(/^[\s　]*(?:学名|英名)[\s　:：]*[\p{Script=Latin}][^\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]*$/u.test(source))return source;
+  const addresses=Array.from(source.matchAll(address),m=>[m.index,m.index+m[0].replace(/[.,]+$/u,'').length]);
+  let addressIndex=0;
+  return source.replace(/[,，.．]/gu,(mark,at)=>{
+   while(addressIndex<addresses.length&&addresses[addressIndex][1]<=at)addressIndex++;
+   if(addressIndex<addresses.length&&addresses[addressIndex][0]<=at)return mark;
+   const period=mark==='.'||mark==='．';
+   const left=source.slice(Math.max(0,at-96),at),right=source.slice(at+1,at+97);
+   const last=left.slice(-1),next=right[0]||'';
+   // Decimal numbers, grouped numbers, numbered page lists and decimal fractions such as ".5".
+   if(digit.test(last)&&digit.test(right.trimStart()[0]||''))return mark;
+   if(period&&digit.test(next)&&(!last||/[\s(（=＝+＋−-]/u.test(last)))return mark;
+   if(period){
+    if(/^\p{Nd}+[%％]/u.test(right))return mark;
+    if(/^(?:csv|tsv|txt|html?|pdf|epub|json|xml|jpe?g|png|gif|svg|webp|zip|xlsx?|docx?|pptx?)(?![\p{Script=Latin}\p{Nd}_])/iu.test(right))return mark;
+    if(/[.．]/u.test(last)||/[.．]/u.test(next))return mark;
+    // Printed section numbering, e.g. "2. 観察", keeps its identifying separator.
+    if(/(?:^|\n)[\t 　]*\p{Nd}{1,4}$/u.test(source.slice(0,at)))return mark;
+    // Page references, taxonomic ranks and author abbreviations, including a final dotted initial.
+    if(/(?:^|[^\p{Script=Latin}])(?:pp?|vol|no|fig|etc|cf|ca|spp?|subsp|ssp|var|f|sect|gen|syn|approx|dr|mr|mrs|ms|prof|vs|al|thunb|linn|franch|cav|lam|sieb|zucc|maxim|benth|wall|dc|ait)$/iu.test(left))return mark;
+    if(/(?:^|[^\p{Script=Latin}])(?:L|R[.．]\s*Br)$/u.test(left))return mark;
+    if(/(?:\p{Script=Latin}[.．])+\p{Script=Latin}$/u.test(left))return mark;
+    if(/(?:^|[^\p{Script=Latin}])[A-ZＡ-Ｚ]$/u.test(left)&&latin.test(right.trimStart()[0]||''))return mark;
+   }
+   const prev=left.replace(/[\s」』）)］\]】〉》”’]+$/u,'').slice(-1);
+   const following=right.replace(/^[\s「『（(［\[【〈《“‘]+/u,'')[0]||'';
+   if(japanese.test(prev)||japanese.test(following))return period?'。':'、';
+   if(addresses[addressIndex]?.[0]===at+1&&japanese.test(left))return period?'。':'、';
+   if(latin.test(prev)&&latin.test(following))return mark;
+   // A Japanese clause may end with a quoted term, a measurement or a numeral.
+   // A nearby Japanese character behind the final token distinguishes this from English prose.
+   const tail=left.replace(/[\s」』）)］\]】〉》”’]+$/u,'');
+   if(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}々〆ー][\t 　]*[\p{Nd}\p{Script=Latin}%％℃°µμ㎜㎝㎞㎡㎥～〜~./．-]+(?:[\t 　]+(?:mm|cm|km|m|kg|mg|g|ml|l|ha|Hz|°C))?$/iu.test(tail))return period?'。':'、';
+   if(japanese.test(left)&&/[」』）)］\]】〉》]$/u.test(left.trimEnd()))return period?'。':'、';
+   if(japanese.test(left)&&/\p{Nd}(?:[.,，．][\t 　]*\p{Nd}+)*[\t 　]*(?:mm|cm|km|m|kg|mg|g|ml|ha|%|％|℃)?$/iu.test(left)&&!latin.test(following))return period?'。':'、';
+   return mark;
+  });
+ }
  function displayText(source){
-  return source.replaceAll('?','？');
+  return japanesePunctuation(source).replaceAll('?','？');
  }
  function* uprightRanges(text,before='',after=''){
   const context=before+text+after;
@@ -214,12 +259,12 @@ const verticalReaderSymbols=(()=>{
   }
   return result;
  }
- return {displayText,standaloneDigitAt,uprightRanges,count,inspect};
+ return {japanesePunctuation,displayText,standaloneDigitAt,uprightRanges,count,inspect};
 })();
 function setVerticalText(element,source,part={}){
  const before=part.before||'',after=part.after||'';
  verticalReaderEdges.set(element,{before,after});
- const text=verticalReaderSymbols.displayText(source);
+ const text=part.displayText??verticalReaderSymbols.displayText(source);
  let fragment=null,offset=0;
  for(const {start,end} of verticalReaderSymbols.uprightRanges(text,before,after)){
   if(!fragment)fragment=document.createDocumentFragment();
@@ -272,11 +317,19 @@ function joinLogicalContinuations(source){
     sourceRanges:[{start:0,end:b.units.length,scan:b.scan,sourceBlock:b.sourceBlock}]});
   }
  }
+ // Normalize each joined paragraph before measuring or slicing a page.
+ // All substitutions retain the original source offsets used by bookmarks and ruby.
+ for(const block of logical){
+  const display=verticalReaderSymbols.displayText(block.text);
+  if(display===block.text)continue;
+  block.sourceUnits=block.units;
+  block.units=split(display);
+ }
  return logical;
 }
 function textPart(b,off,n){
  const first=b.sourceRanges?.find(r=>r.end>off);
- return {type:b.type,scan:first?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
+ return {type:b.type,scan:first?.scan||b.scan,text:(b.sourceUnits||b.units).slice(off,off+n).join(''),displayText:b.units.slice(off,off+n).join(''),
   before:b.units.slice(Math.max(0,off-3),off).join('').slice(-3),after:b.units.slice(off+n,off+n+3).join('').slice(0,3),
   continued:off>0,
   // Offsets are grapheme indices within the ORIGINAL registered source block.
@@ -363,16 +416,17 @@ function paginateBlocks(group,start){
 function captionFits(value){measureCaption.textContent=value;return fitsInk(measureCaption)}
 function paginateOneFigure(i,start){
  const f=figures[i],out=[];let at=start;
- $('measure-caption-label').textContent=f.title;
+ const displayUnits=split(verticalReaderSymbols.japanesePunctuation(f.caption));
+ $('measure-caption-label').textContent=verticalReaderSymbols.japanesePunctuation(f.title);
  if(!f.units.length)return [{kind:'image',figure:i,caption:'',start,end:start+1,subpage:1,scan:f.scan}];
  let off=0,count=0;
  while(off<f.units.length){
   const remain=f.units.length-off;let lo=0,hi=remain;
   while(lo<hi){const mid=Math.ceil((lo+hi)/2);
-   if(captionFits(f.units.slice(off,off+mid).join('')))lo=mid;else hi=mid-1;
+   if(captionFits(displayUnits.slice(off,off+mid).join('')))lo=mid;else hi=mid-1;
   }
   if(lo===0)throw Error('図版の説明文を表示する領域が不足しています');
-  count++;out.push({kind:'image',figure:i,caption:f.units.slice(off,off+lo).join(''),
+  count++;out.push({kind:'image',figure:i,caption:f.units.slice(off,off+lo).join(''),displayCaption:displayUnits.slice(off,off+lo).join(''),
    start:at,end:at+lo,subpage:count,scan:f.scan});
   at+=lo;off+=lo;
  }
@@ -444,8 +498,8 @@ function setFigure(p,image){
   $('figure-placeholder').hidden=!!image;
   activeFigure=p.figure;activeSrc=src;
  }
- $('figure-caption-label').textContent=f.title;
- caption.textContent=p.caption;
+ $('figure-caption-label').textContent=verticalReaderSymbols.japanesePunctuation(f.title);
+ caption.textContent=p.displayCaption||'';
  $('figure-stage').classList.toggle('no-caption',!f.caption);
 }
 function updatePageButtons(target){
@@ -524,14 +578,14 @@ function menuRefresh(){
  if(mode==='image'){
   figures.forEach((f,i)=>{
    const btn=document.createElement('button');btn.type='button';btn.className='menu-item';
-   btn.textContent=(i+1)+'．'+f.title;
+   btn.textContent=(i+1)+'．'+verticalReaderSymbols.japanesePunctuation(f.title);
    btn.addEventListener('click',()=>{gotoPage(pages.findIndex(p=>p.figure===i));closeDialogs()});list.append(btn);
   });
  }else if(mode==='text'){
   let offset=0;
   blocks.forEach(b=>{if(b.type==='heading'){
    const target=offset,btn=document.createElement('button');btn.type='button';
-   btn.className='menu-item';btn.textContent=b.text;
+   btn.className='menu-item';btn.textContent=verticalReaderSymbols.japanesePunctuation(b.text);
    btn.addEventListener('click',()=>{gotoPage(pageAt(target));closeDialogs()});list.append(btn);
   }offset+=b.units.length});
  }else{

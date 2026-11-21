@@ -65,3 +65,25 @@ test('embedded source counts do not infer orientation at a scan boundary',()=>{
   assert.equal(report.sourceHalfwidthDigits,2);assert.equal(report.upright,0);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
+
+test('a page fragment uses the complete joined paragraph and keeps the original scan offsets',()=>{
+ const split=s=>Array.from(new Intl.Segmenter('ja',{granularity:'grapheme'}).segment(s),v=>v.segment);
+ const symbols=require('../templates/reader/v2/vertical-symbols.js');
+ const files=[path.join(dir,'standard.js'),path.join(dir,'novel.js'),path.join(dir,'../../../reader/library/wh3-format.html')];
+ for(const file of files){
+  const code=fs.readFileSync(file,'utf8');
+  checkEngine(code);
+  const from=code.indexOf('function joinLogicalContinuations(');
+  const end=code.indexOf('\n}',code.indexOf('function textPart(',from))+2;
+  const [join,part]=new Function('split','verticalReaderSymbols',code.slice(from,end)+';return [joinLogicalContinuations,textPart]')(split,symbols);
+  const first='葉を測る，幅は2.',second='5cm．別の葉は青い.';
+  const inputs=[first,second].map((text,i)=>({type:'body',semanticType:'body',text,
+   units:split(text),scan:10+i,sourceBlock:i,sourceJoined:i>0}));
+  const [b]=join(inputs);
+  const fragments=inputs.map((input,i)=>part(b,i?split(first).length:0,split(input.text).length));
+  assert.deepEqual(fragments.map(x=>x.text),[first,second]);
+  assert.deepEqual(fragments.map(x=>x.displayText),['葉を測る、幅は2.','5cm。別の葉は青い。']);
+  assert.deepEqual(fragments.map(x=>x.sourceSpans[0].scan),[10,11]);
+  assert.deepEqual(inputs.map(x=>x.units.join('')),[first,second]);
+ }
+});

@@ -11,8 +11,8 @@ function code(from,to){
  return engine.slice(a,b);
 }
 const bootstrap=new Function('book','mode','split',code('const sourceKind=','const main=')+'\nreturn {blocks,figures,flow};');
-const helpers=new Function(code('function joinLogicalContinuations(', 'function protectedPageBoundary(')+
- '\nreturn {joinLogicalContinuations,textPart};')();
+const helpers=new Function('verticalReaderSymbols','split',code('function joinLogicalContinuations(', 'function protectedPageBoundary(')+
+ '\nreturn {joinLogicalContinuations,textPart};')(require('../templates/reader/v2/vertical-symbols.js'),split);
 const {joinLogicalContinuations,textPart}=helpers;
 const protectedPageBoundary=new Function(code('function protectedPageBoundary(', 'function paginateBlocks(')+
  '\nreturn protectedPageBoundary;')();
