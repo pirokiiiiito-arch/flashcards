@@ -28,6 +28,24 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='d3ad5065bc6e3f5f951c0d5286ed9096a658953b'){
+    // Restore the last byte-pinned host, then run the earlier frozen-reader checks.
+    const lines=data.toString('utf8').split('\n');
+    for(const [at,count,...prior] of [
+      [1333,1],
+      [1266,1,"  const text=bookZip.wh3Flow?await bookZip.wh3Flow.archive(index,false):await bookZip.readText(s.part);if(token!==loadToken)return;"],
+      [771,1,"    const [layout,archive]=await Promise.all([wh3Layout(),book.wh3Flow.archive(index,false)]);"],
+      [739,10,"    if(counts.length&&counts[index]!==d.totalPages){fail();return;}"],
+      [704,1],
+      [564,5,"  if(!image||image.hidden||!image.complete||!image.naturalWidth)throw Error('図版未表示');","  await image.decode();"],
+      [423,14],
+      [388,1],
+      [381,1," async function archive(index,measuring){"]
+    ])lines.splice(at,count,...prior);
+    const previous=Buffer.from(lines.join('\n'));
+    if(blobSHA(previous)!=='9a27e180ffb00e7fa9704cc2446a2f2ea2042809')throw Error('SHELF_SECTION_TURN_REVERSE_CHECK_FAILED');
+    data=previous;
+  }
   if(blobSHA(data)==='9a27e180ffb00e7fa9704cc2446a2f2ea2042809'){
     data=Buffer.from(data.toString('utf8').replace('common-punctuation-20261122-9','common-retained-turn-20261122-8'));
   }

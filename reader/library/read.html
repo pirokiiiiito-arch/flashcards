@@ -379,13 +379,14 @@ async function wh3ReadingFlow(book,manifest){
   if(hit&&offset>=0&&offset<hit.item.units)return {...saved,segment:hit.segment,key:'wh3v2.'+(hit.item.start+offset)};
   return {...saved,segment:Math.max(0,sections.findIndex(s=>contains(s,saved.scan))),key:''};
  }
- async function archive(index,measuring){
+ async function archive(index,measuring,streamOriginals=false){
   const section=sections[index],range=[section.start,section.end],selected=[];
   for(const n of scanOrder.filter(n=>contains(section,n))){
    const p=pages.get(n);
    // Text-only pages use the host's on-demand original viewer. Do not allocate
    // the original images of an entire uninterrupted chapter up front.
    if(measuring||!legacy&&!portraits.has(n)&&!p.figures.length){selected.push(p);continue;}
+   if(streamOriginals){selected.push({...p,original:'',archiveOriginal:true});continue;}
    const blob=await book.imageBlob(manifest.originalScans[n].path);
    const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});
    selected.push({...p,original:src});
@@ -420,6 +421,20 @@ async function wh3Layout(){
   return body;
  }).catch(error=>{wh3Template=null;throw error;});
  return wh3Template;
+}
+async function wh3DisplayArchive(book,index){
+ const layout=await wh3Layout();
+ return book.wh3Flow.archive(index,false,layout.includes('<!--WH3_SOURCE_BLOB_V1-->'));
+}
+async function sendSectionOriginal(event,book,section){
+ const port=event.ports?.[0],scan=event.data.scan;
+ if(!port)return;
+ try{
+  if(!Number.isSafeInteger(scan)||scan<section.start||scan>section.end)throw Error('原本番号が範囲外です');
+  const blob=await book.imageBlob(book.wh3Flow.manifest.originalScans[scan].path);
+  port.postMessage(blob);
+ }catch{port.postMessage(null);}
+ finally{port.close();}
 }
 function wh3Progress(){
  if(!wh3State||!wh3Counts)return;
@@ -547,8 +562,11 @@ function sectionPaneBridge(segment,session,segments,structured){
   const id=shown.currentKind==='image'?'figure-image':shown.currentKind==='portrait'?'portrait-image':'';
   if(!id)return;
   const image=document.getElementById(id);
-  if(!image||image.hidden||!image.complete||!image.naturalWidth)throw Error('図版未表示');
-  await image.decode();
+  // The structured renderer mounts its prepared Image only after load. WebKit
+  // may reject decode() on a successfully displayed SVG crop on a second call.
+  const rect=image?.getBoundingClientRect();
+  if(!image||image.hidden||!image.complete||!image.naturalWidth||!image.naturalHeight||
+     !(rect.width>0&&rect.height>0))throw Error('図版未表示');
  }
  window.addEventListener('message',async event=>{
   const d=event.data;
@@ -684,6 +702,7 @@ function turnSection(direction,repeat){
    pane.contentWindow.postMessage({type:'reader-viewport-v8',session,seq:++sequence,scale:window.visualViewport?.scale||1},'*');return;
   }
   if(d.wh1bridge!==1||d.segment!==index)return;
+  if(structured&&d.type==='sectionOriginal'&&d.session===session){void sendSectionOriginal(event,book,segment);return;}
   if(d.type==='sectionUnsupported'&&d.session===session&&!structured){useLegacyLoader();return;}
   if(d.type==='prepare'){
    try{
@@ -718,7 +737,16 @@ function turnSection(direction,repeat){
      await new Promise(resolve=>setTimeout(resolve,50));counts=progress();
     }
     if(!current())return;
-    if(counts.length&&counts[index]!==d.totalPages){fail();return;}
+    if(counts.length&&counts[index]!==d.totalPages){
+     const measured=wh3Counts;
+     if(!structured||!matchesViewport()||measured?.book!==book||measured.counts!==counts||
+        measured.width!==Math.round(bounds.width)||measured.height!==Math.round(bounds.height)||
+        measured.font!==d.size||!Number.isSafeInteger(d.totalPages)||d.totalPages<1){fail();return;}
+     // The mounted destination has finished layout at the current dimensions.
+     // Use that observed count just as we use the active pane's observed count.
+     counts[index]=d.totalPages;
+     try{localStorage.setItem(measured.key,JSON.stringify(counts));}catch(_){}
+    }
     const total=counts.length?counts.reduce((sum,n)=>sum+n,0):totalScans;
     const page=counts.length?counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1):target.scan;
     const label=page+' / '+total;
@@ -741,7 +769,7 @@ function turnSection(direction,repeat){
   try{
    let rendered;
    if(structured){
-    const [layout,archive]=await Promise.all([wh3Layout(),book.wh3Flow.archive(index,false)]);
+    const [layout,archive]=await Promise.all([wh3Layout(),wh3DisplayArchive(book,index)]);
     if(!current())return;
     rendered=wh3FrameDocument(layout,archive,{origin:location.origin,session,segment:index,font:size});
    }else{
@@ -1236,7 +1264,7 @@ async function openSegment(index,destination={}){
  const token=++loadToken,s=SEGMENTS[index];pendingDest=destinationForScan(destination);pendingLoaded=false;
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
-  const text=bookZip.wh3Flow?await bookZip.wh3Flow.archive(index,false):await bookZip.readText(s.part);if(token!==loadToken)return;
+  const text=bookZip.wh3Flow?await wh3DisplayArchive(bookZip,index):await bookZip.readText(s.part);if(token!==loadToken)return;
   const supportsTurn=!!bookZip.wh3Flow||archiveHasPageControls(text);
   inputSession=nativeBookInput()||supportsTurn?crypto.randomUUID():'';
   viewportSerial=0;
@@ -1303,6 +1331,7 @@ window.addEventListener('message',e=>{
  const d=e.data;
  if(d.type==='bookStart'){goToBookStart();return;}
  if(d.segment!==activeSegment)return;
+ if(d.type==='sectionOriginal'&&bookZip?.wh3Flow&&inputSession&&d.session===inputSession){void sendSectionOriginal(e,bookZip,SEGMENTS[activeSegment]);return;}
  if(d.type==='sectionTurn'&&inputSession&&d.session===inputSession)turnSection(d.direction,d.repeat);
  else if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);

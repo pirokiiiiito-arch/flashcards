@@ -248,21 +248,65 @@ html.wh3-picture #reader-main::before,html.wh3-picture #reader-main::after{
 
 <!--WH3_PRIVATE_STRUCTURE-->
 <!--WH3_PRIVATE_DATA-->
+<!--WH3_SOURCE_BLOB_V1-->
 <script>
 const sourceBook=JSON.parse(document.getElementById('bookdata').textContent);
-const originals=[], entries=[], cropUrls=[];
+const originals=[], entries=[], cropUrls=new Map();
 // The historical WH3 files can also be opened directly outside the bookshelf.
 const standaloneWh3=!sourceBook.presentation&&sourceBook.bookId==='wh3';
 const frontScans=new Set(sourceBook.presentation?.portraitScans||(standaloneWh3?[1,2,3,7]:[]));
 const scanTotal=sourceBook.presentation?.totalScans??(standaloneWh3?260:sourceBook.range[1]);
 const statusLabel=sourceBook.presentation?.statusLabel??(standaloneWh3?'確認版':sourceBook.status||'');
 document.title=sourceBook.title||'読書';document.getElementById('wh3-status').textContent=statusLabel;
+const pendingOriginals=new Map();
+function requestSectionOriginal(scan){
+ if(pendingOriginals.has(scan))return pendingOriginals.get(scan);
+ const host=window.__readerHost;
+ const result=new Promise((resolve,reject)=>{
+  const channel=new MessageChannel();
+  function finish(blob){
+   clearTimeout(timer);channel.port1.close();
+   if(blob instanceof Blob&&blob.size)resolve(blob);
+   else reject(Error('原本画像を読み込めません'));
+  }
+  const timer=setTimeout(()=>finish(null),45000);
+  channel.port1.onmessage=e=>finish(e.data);
+  channel.port1.onmessageerror=()=>finish(null);
+  parent.postMessage({wh1bridge:1,type:'sectionOriginal',session:host.session,segment:host.segment,scan},
+   host.origin,[channel.port2]);
+ }).finally(()=>pendingOriginals.delete(scan));
+ pendingOriginals.set(scan,result);return result;
+}
+function cropSvg(page,box,source){
+ const [x,y,w,h]=box;
+ const head='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="'+[x,y,w,h].join(' ')+'" width="'+w+'" height="'+h+'"><image width="'+page.width+'" height="'+page.height+'" xlink:href="';
+ return new Blob([head,source,'"/></svg>'],{type:'image/svg+xml'});
+}
+async function loadSectionFigure(page,box){
+ const original=await requestSectionOriginal(page.scan);
+ const [x,y,w,h]=box;
+ if(!x&&!y&&w===page.width&&h===page.height)return original;
+ // An SVG used as an image must embed its raster. Convert just this scan.
+ const source=await new Promise((resolve,reject)=>{
+  const reader=new FileReader();reader.onload=()=>resolve(reader.result);
+  reader.onerror=()=>reject(reader.error);reader.readAsDataURL(original);
+ });
+ return cropSvg(page,box,source);
+}
 function sourceCrop(page,box){
  if(window.__readerHost?.measureOnly)return null;
  const [x,y,w,h]=box;
  if(x===0&&y===0&&w===page.width&&h===page.height)return page.original;
- const svg='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="'+[x,y,w,h].join(' ')+'" width="'+w+'" height="'+h+'"><image width="'+page.width+'" height="'+page.height+'" xlink:href="'+page.original+'"/></svg>';
- const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));cropUrls.push(url);return url;
+ let url=cropUrls.get(box);
+ if(url)cropUrls.delete(box);
+ else url=URL.createObjectURL(cropSvg(page,box,page.original));
+ cropUrls.set(box,url);
+ // The renderer requests the visible picture and its two neighbouring screens.
+ if(cropUrls.size>3){
+  const oldest=cropUrls.keys().next().value;
+  URL.revokeObjectURL(cropUrls.get(oldest));cropUrls.delete(oldest);
+ }
+ return url;
 }
 // Original scans may split a single title into its number, name or multiple printed lines.
 function withHeadingContinuations(page,blocks){
@@ -281,7 +325,8 @@ function withHeadingContinuations(page,blocks){
 }
 function imageEntry(page,f){
  const title=f.display_title||f.uiLabel||'図版';
- return {kind:'image',id:f.id,scan:page.scan,title,alt:title,src:sourceCrop(page,f.bbox),captionGlosses:f.captionGlosses||[],
+ const load=page.archiveOriginal?()=>loadSectionFigure(page,f.bbox):null;
+ return {kind:'image',id:f.id,scan:page.scan,title,alt:title,get src(){return load||sourceCrop(page,f.bbox);},captionGlosses:f.captionGlosses||[],
   caption:f.caption||f.externalCaption?.text||'',deferUntilContinuation:f.deferUntilContinuation===true};
 }
 // Older editions stored detached inset prose as notes to keep the main narrative continuous.
@@ -314,7 +359,7 @@ function readingBlocks(page){
 // Scans 252–257 are a reverse-photographed index; its approved reading order is recorded in the source edition.
 const orderedScans=standaloneWh3?[...sourceBook.pages].sort((a,b)=>{const order=n=>n>=252&&n<=257?509-n:n;return order(a.scan)-order(b.scan)}):sourceBook.pages;
 for(const page of orderedScans){
- const scan=page.scan;originals.push({scan,src:page.original});
+ const scan=page.scan;originals.push({scan,src:page.archiveOriginal?()=>requestSectionOriginal(scan):page.original});
  if(frontScans.has(scan)||page.pageType==='portrait'||(standaloneWh3||sourceBook.presentation?.legacyReferencePages)&&page.pageType==='reference'&&!page.blocks.length&&page.figures.length===1){
   entries.push({kind:'portrait',scan,title:page.figures[0]?.uiLabel||'扉'});continue;
  }
@@ -404,7 +449,7 @@ if(mode==='mixed'){
    if(!Number.isInteger(scan)||scan<1)throw Error('画像の原本番号が不正です');
    const f={id:String(entry.id||'figure-'+(figures.length+1)),
      title:String(entry.title||'原本 '+scan),alt:String(entry.alt||entry.title||'原本画像'),
-     scan,captionGlosses:entry.captionGlosses||[],source:entry.src||null,caption:String(entry.caption||''),
+     scan,captionGlosses:entry.captionGlosses||[],get source(){return entry.src||null;},caption:String(entry.caption||''),
      units:split(entry.caption||''),ownedURL:null};
    figures.push(f);flow.push({kind:'image',figure:figures.length-1,
      // Explicitly source-reviewed figure may follow a continued paragraph.
@@ -967,10 +1012,19 @@ function prepareArtwork(key,src){
    };
    image.onerror=()=>finish(true);
   });
-  image.decoding='async';image.src=src;
+  image.decoding='async';
+  if(typeof src==='function'){
+   src().then(blob=>{
+    if(asset.evicted){image.onerror?.();return;}
+    asset.url=URL.createObjectURL(blob);image.src=asset.url;
+   }).catch(()=>image.onerror?.());
+  }else image.src=src;
  }
  artworkCache.set(key,asset);
- if(artworkCache.size>3)artworkCache.delete(artworkCache.keys().next().value);
+ if(artworkCache.size>3){
+  const oldest=artworkCache.keys().next().value,old=artworkCache.get(oldest);
+  old.evicted=true;if(old.url)URL.revokeObjectURL(old.url);artworkCache.delete(oldest);
+ }
  return asset;
 }
 function pageArtwork(p){

@@ -308,7 +308,7 @@ test('WH3 mounts the WH1 layout with the same private source in every section, i
  assert.ok(shown.includes("type:'navigateScan'")&&shown.includes('heading:item.text'));
 });
 
-test('a Presidents section turn keeps the current page until the destination and global counter have painted',async()=>{
+function retainedTurnFixture(){
  const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
  const bridge=html.split('// BEGIN bookshelf retained turn\n')[1].split('// END bookshelf retained turn')[0];
  const listeners=new Map(),revoked=[],states=[],notices=[];
@@ -340,6 +340,11 @@ test('a Presidents section turn keeps the current page until the destination and
  async function send(pane,type,extra={}){
   const handler=listeners.get('message');await handler({source:pane.contentWindow,data:{wh1bridge:1,segment:1,type,...extra}});
  }
+ return {context,first,send,flush,listeners,revoked,states,notices};
+}
+
+test('a Presidents section turn keeps the current page until the destination and global counter have painted',async()=>{
+ const {context,first,send,flush,listeners,revoked,states,notices}=retainedTurnFixture();
  context.turnSection(1,false);await flush();
  const cancelled=first.behind;
  assert.equal(first.removed,undefined);
@@ -388,6 +393,41 @@ test('a Presidents section turn keeps the current page until the destination and
  assert.equal(listeners.size,0);
 });
 
+test('only the mounted target at the measured viewport can correct a stale structured page count',async()=>{
+ for(const measuredHeight of [630,570]){
+  const {context,first,send,flush,states,notices}=retainedTurnFixture();
+  const stored=new Map();
+  context.bookZip.wh3Flow={archive:async()=>''};
+  context.wh3Layout=async()=>'';context.wh3DisplayArchive=async()=>'';context.wh3FrameDocument=()=>'<body></body>';
+  context.location={origin:'https://books.example'};
+  context.localStorage={setItem:(key,value)=>stored.set(key,value)};
+  context.wh3Counts={book:context.bookZip,key:'stored-counts',width:390,height:measuredHeight,font:20,counts:[72,78]};
+  try{
+   context.turnSection(1,false);await flush();
+   const next=first.behind;
+   await send(next,'state',{pageCount:80,pageIndex:0});
+   const {session}=next.messages.at(-1);
+   const originals=[];context.sendSectionOriginal=event=>originals.push(event.data.scan);
+   await send(first,'sectionOriginal',{session,scan:21});
+   await send(next,'sectionOriginal',{session:'previous',scan:21});
+   await send(next,'sectionOriginal',{session,segment:0,scan:21});
+   assert.deepEqual(originals,[],'ignored messages must not look up an original');
+   await send(next,'sectionOriginal',{session,scan:21});assert.deepEqual(originals,[21]);
+   await send(next,'sectionTarget',{session,key:'wh3v2.0',pageIndex:0,totalPages:80,size:20,scan:21});
+   if(measuredHeight===630){
+    assert.equal(next.messages.at(-2).label,'73 / 152');
+    assert.equal(next.messages.at(-1).action,'sectionPaint');
+    assert.deepEqual(JSON.parse(stored.get('stored-counts')),[72,80]);
+    assert.equal(notices.length,0);
+   }else{
+    assert.equal(stored.size,0,'a different viewport must not overwrite the count');
+    assert.ok(next.removed);assert.equal(notices.length,1);
+   }
+   assert.equal(states.length,0,'verification never swaps an unpainted target');
+  }finally{context.cancelSectionTurn();}
+ }
+});
+
 test('Presidents controls share one ordered series of button, swipe and keyboard page turns',()=>{
  const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
  const source=html.slice(html.indexOf('function sectionPaneBridge('),html.indexOf('function sectionPaneDocument('));
@@ -408,14 +448,16 @@ test('Presidents controls share one ordered series of button, swipe and keyboard
  assert.deepEqual(steps,[-1,1]);
 });
 
-test('structured section targets wait for decoded artwork and painted whole-book progress',async()=>{
+test('structured section targets wait for the painted SVG and counter even when decoding the mounted SVG rejects',async()=>{
  const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
  const source=html.slice(html.indexOf('function sectionPaneBridge('),html.indexOf('function sectionPaneDocument('));
  const sent=[],parent={postMessage:d=>sent.push(d)},counter={dataset:{global:'4 / 6'}};
- let receive,index=0,decodeDone;
- const image={hidden:false,complete:true,naturalWidth:32,decode:()=>new Promise(resolve=>{decodeDone=resolve;})};
+ let receive,index=0,paintPending=true;
+ const box={width:32,height:42};
+ const image={src:'blob:cropped-svg',hidden:false,complete:true,naturalWidth:32,naturalHeight:42,
+  getBoundingClientRect:()=>box,decode:async()=>{throw Error('SVG loaded but a second decode is unavailable');}};
  const win={
-  StandardReader:{inspect:()=>({pages:3,index,font:22,scan:31,originalReady:true,currentKind:'image'}),
+  StandardReader:{inspect:()=>({pages:3,index,font:22,scan:31,originalReady:true,currentKind:'image',paintPending}),
    pageManifest:()=>[{start:0},{start:8},{start:12}],gotoPage:n=>{index=n;}},
   addEventListener:(_,fn)=>{receive=fn;}
  };
@@ -426,7 +468,7 @@ test('structured section targets wait for decoded artwork and painted whole-book
  const wait=()=>new Promise(resolve=>setImmediate(resolve));
  const first=command('sectionTarget',{direction:-1});await wait();
  assert.equal(index,2);assert.deepEqual(sent,[]);
- decodeDone();await first;
+ paintPending=false;await first;
  const target=sent.at(-1);
  assert.equal(target.type,'sectionTarget');assert.equal(target.key,'wh3v2.12');
  assert.equal(target.scan,31);assert.equal(target.size,22);
@@ -438,8 +480,12 @@ test('structured section targets wait for decoded artwork and painted whole-book
  assert.equal(win.shelfSectionBoundary(1),true);
  assert.equal(win.shelfSectionBoundary(-1),true);
  assert.deepEqual(sent.slice(-2).map(m=>[m.type,m.direction,m.repeat]),[['sectionTurn',1,false],['sectionTurn',-1,true]]);
- image.naturalWidth=0;
- await command('sectionTarget',{direction:-1});assert.equal(sent.at(-1).type,'sectionError');
+ async function expectBrokenImage(){
+  await command('sectionTarget',{direction:-1});assert.equal(sent.at(-1).type,'sectionError');
+ }
+ image.naturalWidth=0;await expectBrokenImage();image.naturalWidth=32;
+ image.complete=false;await expectBrokenImage();image.complete=true;
+ box.height=0;await expectBrokenImage();
 });
 
 test('unknown legacy archives keep their native loader while known WH1 controls opt in independently of book ID',()=>{
