@@ -228,7 +228,7 @@ window.visualViewport?.addEventListener('scroll',syncReaderViewport);
 window.addEventListener('pageshow',syncReaderViewport);
 window.addEventListener('resize',syncReaderViewport);
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='wh1-figure-20261122-2';
+const wh3LayoutVersion='wh1-aside-20261122-3';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){

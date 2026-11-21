@@ -30,7 +30,7 @@ function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.tes
 function priorNativeInputReader(data){
   data=priorShelfShell(data);
   let blob=blobSHA(data);
-  if(blob==='159505170aa3e8be559267505866a87fd79f543a'||blob==='22069835a57b00724a0a481a734275ae0bf2cd38'){
+  if(['159505170aa3e8be559267505866a87fd79f543a','22069835a57b00724a0a481a734275ae0bf2cd38','b68d4c34ddf0d3dbaf1e6645336fba3983301a17'].includes(blob)){
     const prior=data.toString('utf8')
       .replace(/\/\/ BEGIN WH3 reference presentation[\s\S]*?\/\/ END WH3 reference presentation\n/,'')
       .replace(/  let rendered;\n  if\(usesWh3StandardInput\(\)&&text\.includes\([\s\S]*?  const content=new Blob\(\[rendered\],\{type:'text\/html'\}\);/,

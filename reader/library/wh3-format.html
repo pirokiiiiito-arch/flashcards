@@ -259,6 +259,33 @@ function imageEntry(page,f){
  return {kind:'image',id:f.id,scan:page.scan,title,alt:title,src:sourceCrop(page,f.bbox),captionGlosses:f.captionGlosses||[],
   caption:f.caption||f.externalCaption?.text||'',deferUntilContinuation:f.deferUntilContinuation===true};
 }
+// Older editions stored detached inset prose as notes to keep the main narrative continuous.
+// Recover only the prose following an identified inset heading; quoted extracts end before the credit.
+function readingBlocks(page){
+ const headingKey=value=>value.normalize('NFKC').replace(/\s+/gu,'');
+ const titles=new Set((page.sourceHeadingInventory||[])
+  .filter(h=>['inset','boxed-heading','boxed_heading'].includes(h.kind)).map(h=>headingKey(h.text)));
+ if(!titles.size)return page.blocks;
+ const regions=page.sourceTextRegions||[];
+ const insetHeadingRegions=new Set(regions.filter(r=>r.kind==='heading'&&titles.has(headingKey(r.text))).map(r=>r.id));
+ const proseRegions=new Set(regions.filter(r=>r.kind==='body'||r.kind==='note').map(r=>r.id));
+ let inInset=false,first=false,quoteDepth=null;
+ return page.blocks.map(block=>{
+  if(block.type==='heading'){
+   inInset=titles.has(headingKey(block.text))||!!block.sourceRegions?.some(id=>insetHeadingRegions.has(id));
+   first=inInset;quoteDepth=null;return block;
+  }
+  if(!inInset||block.type!=='note'||!block.sourceRegions?.length||!block.sourceRegions.every(id=>proseRegions.has(id))){
+   inInset=false;return block;
+  }
+  if(first){if(block.text.trimStart().startsWith('「'))quoteDepth=0;first=false;}
+  if(quoteDepth!==null){
+   for(const ch of block.text){if(ch==='「')quoteDepth++;else if(ch==='」')quoteDepth--;}
+   if(quoteDepth<=0)inInset=false;
+  }
+  return block.readingRole?block:{...block,readingRole:'aside'};
+ });
+}
 // Scans 252–257 are a reverse-photographed index; its approved reading order is recorded in the source edition.
 const orderedScans=[...sourceBook.pages].sort((a,b)=>{const order=n=>n>=252&&n<=257?509-n:n;return order(a.scan)-order(b.scan)});
 for(const page of orderedScans){
@@ -267,7 +294,7 @@ for(const page of orderedScans){
   entries.push({kind:'portrait',scan,title:page.figures[0]?.uiLabel||'扉'});continue;
  }
  if(page.toc_entries.length)entries.push({kind:'contents',scan,rows:page.toc_entries});
- if(page.blocks.length)entries.push({kind:'text',scan,blocks:page.blocks});
+ if(page.blocks.length)entries.push({kind:'text',scan,blocks:readingBlocks(page)});
  for(const f of page.figures){
   const [x,y,w,h]=f.bbox;
   // A facsimile of a typeset index/credits page is already available from 原本.
@@ -275,8 +302,7 @@ for(const page of orderedScans){
   entries.push(imageEntry(page,f));
  }
 }
-const lookup=new Map();for(const pg of sourceBook.pages){pg.blocks.forEach((b,i)=>lookup.set(b,pg.scan+'/'+i));}
-const flat=entries.flatMap(e=>e.kind==='text'?e.blocks.map(b=>({kind:'text',scan:e.scan,blocks:[b],blockKey:lookup.get(b)})):[e]);
+const flat=entries.flatMap(e=>e.kind==='text'?e.blocks.map((b,i)=>({kind:'text',scan:e.scan,blocks:[b],blockKey:e.scan+'/'+i})):[e]);
 const nodes=new Map(flat.filter(e=>e.blockKey).map(e=>[e.blockKey,e]));const follows=new Map(),incoming=new Set();
 for(const j of sourceBook.continuations||[]){const a=j.from.join('/'),b=j.to.join('/');if(nodes.has(a)&&nodes.has(b)){follows.set(a,b);incoming.add(b);}}
 const ordered=[],emitted=new Set();
@@ -311,9 +337,9 @@ for(const id of required)if(!$(id))throw Error('必要な表示要素があり�
 const mode=book.kind,bookId=String(book.id||'standard-'+mode),key='standard-reader-v2:'+bookId;
 const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
 const split=x=>segmenter?Array.from(segmenter.segment(String(x||'')),v=>v.segment):Array.from(String(x||''));
-// Source roles are distinct from the visual type: notes and TOC entries render
-// with the old body styling but are NEVER eligible to join narrative prose.
+// Inset articles use the selected body size but remain outside main-text joins.
 const sourceKind=b=>b.type==='heading'?'heading':
+ b.readingRole==='aside'?'aside':
  b.type==='toc'?'toc':
  (b.type==='note'||b.type==='footnote'||b.type==='caption')?'note':'body';
 let blocks=(Array.isArray(book.blocks)?book.blocks:[]).filter(b=>b&&typeof b.text==='string'&&b.text.length)
@@ -508,7 +534,8 @@ function partNode(p){
  if(p.type==='heading'){el.dataset.headingId=id;el.dataset.sourceHeadingId=id;el.dataset.headingFrom=String(first.sourceStart);el.dataset.headingTo=String(first.sourceEnd);}
  else el.dataset.bodyId=id;}
  el.className=p.type==='heading'?'section-heading':('paragraph'+(p.continued?' continued':''));
- if(p.semanticType==='note')el.classList.add('note-text');
+ if(p.semanticType==='aside')el.classList.add('aside-body');
+ else if(p.semanticType==='note')el.classList.add('note-text');
  const spans=[];let segmentOffset=0;
 for(const part of p.sourceSpans||[]){
  const b=book.runtimeBlocks?.[part.sourceBlock];if(!b)continue;
