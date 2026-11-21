@@ -491,6 +491,160 @@ async function turnWh3Section(index,direction){
 }
 // END WH3 retained turn
 // END WH3 reference presentation
+// BEGIN Presidents retained turn
+// The archived reader owns all page controls. Keep their order while the next
+// archive is opening behind the current, opaque page.
+function presidentsPaneBridge(segment,session,segments){
+ const send=(type,extra={})=>parent.postMessage({wh1bridge:1,type,segment,session,...extra},'*');
+ const step=shiftPage;
+ let waiting=false,sealed=false;
+ shiftPage=function(direction){
+  if(sealed)return;
+  const crossing=direction<0?segment>0&&currentPage===0:segment+1<segments&&currentPage===pages.length-1;
+  if(!waiting&&!crossing){step(direction);return;}
+  send('presidentsTurn',{direction,repeat:waiting});waiting=true;
+ };
+ const paint=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+ window.addEventListener('message',async event=>{
+  const d=event.data;
+  if(event.source!==parent||!d||d.wh1bridge!==1||d.session!==session)return;
+  if(d.action==='presidentsResume'){
+   sealed=false;waiting=false;
+   for(const direction of d.directions||[])shiftPage(direction);
+  }else if(d.action==='presidentsSeal'){
+   sealed=true;send('presidentsSealed');
+  }else if(d.action==='presidentsTarget'){
+   try{
+    const reader=window.WH1BookReader;
+    while(!reader.inspect().originalReady)await paint();
+    await document.fonts?.ready;
+    const state=reader.inspect();
+    reader.gotoPage(d.direction<0?state.pages-1:0);
+    await Promise.all(Array.from(document.querySelectorAll('#reader-page img'),img=>img.decode()));
+    const shown=reader.inspect();
+    send('presidentsTarget',{key:pages[currentPage].key,pageIndex:shown.index,totalPages:shown.pages,scan:shown.scan,size:fontPx});
+   }catch(_){send('presidentsError');}
+  }else if(d.action==='presidentsPaint'){
+   await paint();await paint();
+   const shown=window.WH1BookReader.inspect();
+   if(pages[currentPage]?.key===d.key&&shown.pages===d.totalPages&&shown.index===d.pageIndex)send('presidentsPainted');
+   else send('presidentsError');
+  }
+ });
+}
+function presidentsPaneDocument(html,index,session){
+ const script='<script>('+presidentsPaneBridge.toString()+')('+[index,JSON.stringify(session),SEGMENTS.length].join(',')+');<\/script>';
+ return html.replace('</body>',()=>script+'</body>');
+}
+async function segmentAssets(book,segment,current){
+ const assets=[];
+ for(const [name,meta] of Object.entries(segment.assets)){
+  if(!current())return null;
+  const bytes=await book.readBytes(meta.path);
+  assets.push({name,mime:meta.mime,data:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)});
+ }
+ return current()?assets:null;
+}
+const presidentsTurnNotice='分冊を開けませんでした。もう一度ページを送ってください。';
+let presidentsTurn=null;
+function cancelPresidentsTurn(){presidentsTurn?.cancel();}
+function turnPresidentsSection(direction,repeat){
+ if(direction!==1&&direction!==-1)return;
+ if(presidentsTurn){
+  if(!presidentsTurn.queue.length&&direction===-presidentsTurn.direction){cancelPresidentsTurn();return;}
+  presidentsTurn.queue.push(direction);return;
+ }
+ const index=activeSegment+direction;
+ if(repeat||index<0||index>=SEGMENTS.length){
+  issueChild('presidentsResume',{session:inputSession,directions:repeat?[direction]:[]});return;
+ }
+ const previous=$('reader'),book=bookZip,segment=SEGMENTS[index],previousURL=frameURL;
+ const previousSession=inputSession,session=crypto.randomUUID(),size=currentState.size,oldKey=currentState.key;
+ const bounds=previous.getBoundingClientRect(),pane=previous.cloneNode(false);
+ const token=++loadToken,queue=[];
+ let url='',target=null,requested=false,sequence=0,readyToSwap=false,restoreFocus=false;
+ const current=()=>presidentsTurn===job&&loadToken===token&&bookZip===book;
+ const post=(action,extra={})=>pane.contentWindow.postMessage({wh1bridge:1,action,session,...extra},'*');
+ const matchesViewport=()=>{
+  const rect=previous.getBoundingClientRect();
+  return Math.abs(bounds.width-rect.width)<1&&Math.abs(bounds.height-rect.height)<1;
+ };
+ function cleanup(){
+  clearTimeout(timer);window.removeEventListener('message',message);window.removeEventListener('resize',checkViewport);
+  presidentsTurn=null;
+ }
+ function cancel(){
+  cleanup();pane.remove();if(url)URL.revokeObjectURL(url);
+  previous.inert=false;
+  previous.contentWindow?.postMessage({wh1bridge:1,action:'presidentsResume',session:previousSession},'*');
+ }
+ function checkViewport(){if(!matchesViewport())cancel();}
+ function fail(){
+  if(!current())return;
+  cancel();showReaderNotice(presidentsTurnNotice,true,9000);
+ }
+ async function message(event){
+  if(!current())return;
+  const d=event.data;
+  if(!d)return;
+  if(event.source===previous.contentWindow&&d.wh1bridge===1&&d.type==='presidentsSealed'&&d.segment===activeSegment&&d.session===previousSession&&readyToSwap){
+   if(!matchesViewport()||size!==currentState.size||oldKey!==currentState.key){cancel();return;}
+   cleanup();
+   pane.style.cssText=previous.style.cssText;pane.removeAttribute('aria-hidden');previous.remove();pane.id='reader';
+   frameURL=url;activeSegment=index;inputSession=session;viewportSerial=sequence;pendingDest=null;pendingLoaded=true;
+   if(restoreFocus)pane.focus({preventScroll:true});
+   if($('storageMessage').textContent===presidentsTurnNotice)$('storageBanner').hidden=true;
+   URL.revokeObjectURL(previousURL);syncReaderViewport();handleChildState(target);
+   if(queue.length)post('presidentsResume',{directions:queue});
+   return;
+  }
+  if(event.source!==pane.contentWindow)return;
+  if(d.type==='reader-ready-v8'&&d.session===session){
+   pane.contentWindow.postMessage({type:'reader-viewport-v8',session,seq:++sequence,scale:window.visualViewport?.scale||1},'*');return;
+  }
+  if(d.wh1bridge!==1||d.segment!==index)return;
+  if(d.type==='prepare'){
+   try{
+    const assets=await segmentAssets(book,segment,current);
+    if(assets)pane.contentWindow.postMessage({wh1bridge:1,action:'loadAssets',session,size,assets},'*',assets.map(a=>a.data));
+   }catch(_){fail();}
+  }else if(d.type==='state'&&!requested&&d.totalPages>0){
+   requested=true;post('presidentsTarget',{direction});
+  }else if(d.session===session&&d.type==='presidentsTarget'){
+   if(!d.key||d.pageIndex!==(direction<0?d.totalPages-1:0)||size!==d.size){fail();return;}
+   target=d;
+   const counts=wh1ExactPager?.getStatus().counts;
+   if(counts&&counts[index]===d.totalPages){
+    const total=counts.reduce((sum,n)=>sum+n,0),page=counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1);
+    post('globalProgress',{label:page+' / '+total,ratio:page/total,scan:d.scan,maxScans:totalScans});
+   }
+   post('presidentsPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages});
+  }else if(d.session===session&&d.type==='presidentsPainted'&&target){
+   readyToSwap=true;
+   // All preceding input messages from this sender arrive before its acknowledgement.
+   restoreFocus=document.activeElement===previous;
+   previous.inert=true;previous.contentWindow.postMessage({wh1bridge:1,action:'presidentsSeal',session:previousSession},'*');
+  }else if(d.session===session&&d.type==='presidentsError')fail();
+ }
+ const job={direction,queue,cancel,oldKey,size};
+ presidentsTurn=job;
+ const timer=setTimeout(fail,45000);
+ window.addEventListener('resize',checkViewport);
+ window.addEventListener('message',message);
+ (async()=>{
+  try{
+   const html=await book.readText(segment.part);
+   if(!current())return;
+   const decorated=window.WH1ExactPager?.decorate?window.WH1ExactPager.decorate(html):html;
+   const rendered=presidentsPaneDocument(decorateOtherBookReading(decorated),index,session);
+   url=URL.createObjectURL(new Blob([rendered],{type:'text/html'}));
+   pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');
+   Object.assign(pane.style,{position:'fixed',left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px',border:'0',display:'block',background:'var(--paper)',pointerEvents:'none'});
+   pane.src=url;previous.before(pane);
+  }catch(_){fail();}
+ })();
+}
+// END Presidents retained turn
 function fillManifest(m,flow){
  if(!m||m.schema!==1||!Array.isArray(m.range)||m.range[0]!==1||!Number.isInteger(m.range[1])||m.range[1]<1||m.range[1]>15000||!Array.isArray(m.segments)||m.segments.length<1||m.segments.length>1000)throw Error('統合読書ZIPの構成情報が正しくありません');
  for(let i=0;i<m.segments.length;i++){
@@ -587,9 +741,12 @@ function setStorageState(message,{warn=false,show=true}={}){
  storageState=message;
  $('offlineState').textContent=message;
  $('menuStorageStatus').textContent=message;
- if(show){$('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;
-  if(storageNoticeTimer)clearTimeout(storageNoticeTimer);
-  if(message.includes('保存が完了')||message.includes('保存済み'))storageNoticeTimer=setTimeout(()=>{$('storageBanner').hidden=true;},9000);}
+ if(show)showReaderNotice(message,warn,message.includes('保存が完了')||message.includes('保存済み')?9000:0);
+}
+function showReaderNotice(message,warn,duration){
+ $('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;
+ clearTimeout(storageNoticeTimer);
+ if(duration)storageNoticeTimer=setTimeout(()=>{$('storageBanner').hidden=true;},duration);
 }
 function storageErrorText(err){
  const code=String(err?.name||'');
@@ -693,7 +850,7 @@ async function loadBook(file,shouldSave=true){
  }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
 }
 function positionText(){const s=bookZip?.wh3Flow?manifest.segments.find(x=>currentState.scan>=x.start&&currentState.scan<=x.end):SEGMENTS[currentState.segment];return s?`スキャン ${currentState.scan} / ${totalScans}　｜　区間 ${s.start}〜${s.end}　｜　文字 ${currentState.size}px`: '全巻';}
-function showMenu(){if(!bookZip)return;$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
+function showMenu(){if(!bookZip)return;cancelPresidentsTurn();$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}
 function closeMenu(){$('menuOverlay').hidden=true;}
 function segmentForScan(scan){const i=SEGMENTS.findIndex(s=>scan>=s.start&&scan<=s.end);return i<0?0:i;}
 // 原本画像ページでは、元の各区間読書HTMLにscan番号属性がない場合がある。
@@ -872,6 +1029,7 @@ header .topline .pill{min-width:0;overflow:hidden;text-overflow:ellipsis}`;
 
 async function openSegment(index,destination={}){
  if(!bookZip||index<0||index>=SEGMENTS.length)return;
+ cancelPresidentsTurn();
  if(bookZip.readingFlow)({index,destination}=bookZip.readingFlow.locate(index,destination));
  const token=++loadToken,s=SEGMENTS[index];pendingDest=destinationForScan(destination);pendingLoaded=false;
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
@@ -886,6 +1044,7 @@ async function openSegment(index,destination={}){
   }else{
    const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
    rendered=attachStandardHost(decorateOtherBookReading(decorated));
+   if(manifest?.bookId==='us-presidents-south'&&usesPresidentsTemplate())rendered=presidentsPaneDocument(rendered,index,inputSession);
   }
   const content=new Blob([rendered],{type:'text/html'});
   if(frameURL) URL.revokeObjectURL(frameURL);
@@ -895,13 +1054,9 @@ async function openSegment(index,destination={}){
 }
 async function handlePrepare(index){
  const token=loadToken;if(index!==activeSegment||!bookZip)return;
- const s=SEGMENTS[index],assets=[];
  try{
-  for(const [name,meta] of Object.entries(s.assets)) {
-   if(token!==loadToken)return;
-   const bytes=await bookZip.readBytes(meta.path);assets.push({name,mime:meta.mime,data:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)});
-  }
-  if(token!==loadToken)return;
+  const assets=await segmentAssets(bookZip,SEGMENTS[index],()=>token===loadToken);
+  if(!assets)return;
   $('reader').contentWindow.postMessage({wh1bridge:1,action:'loadAssets',assets,size:currentState.size,session:inputSession},'*',assets.map(a=>a.data));
  }catch(e){if(token===loadToken){clearBusy();$('setup').hidden=false;setHint('画像の照合・展開に失敗: '+(e.message||String(e)));}}
 }
@@ -916,6 +1071,7 @@ const wh1ExactPager=window.WH1ExactPager?.create({
 });
 
 function handleChildState(d){
+ if(presidentsTurn&&(d.key!==presidentsTurn.oldKey||d.size!==presidentsTurn.size))cancelPresidentsTurn();
  if(!pendingLoaded){
   pendingLoaded=true;
   if(pendingDest && Object.keys(pendingDest).length){$('reader').contentWindow.postMessage({wh1bridge:1,action:'goto',destination:pendingDest},'*');pendingDest=null;return;}
@@ -943,7 +1099,8 @@ window.addEventListener('message',e=>{
  const d=e.data;
  if(d.type==='bookStart'){goToBookStart();return;}
  if(d.segment!==activeSegment)return;
- if(d.type==='prepare')handlePrepare(d.segment);
+ if(d.type==='presidentsTurn'&&d.session===inputSession&&usesPresidentsTemplate())turnPresidentsSection(d.direction,d.repeat);
+ else if(d.type==='prepare')handlePrepare(d.segment);
  else if(d.type==='state')handleChildState(d);
  else if(d.type==='boundary'){
   const next=activeSegment+d.direction;
@@ -963,8 +1120,9 @@ window.addEventListener('message',e=>{
  else if(d.type==='menu')showMenu();
  else if(d.type==='original')openOriginal(scanFromPageKey(currentState.key)||d.scan);
 });
-function issueChild(action,extra={}){if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}
+function issueChild(action,extra={}){if(action==='goto')cancelPresidentsTurn();if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}
 async function openOriginal(scan){
+ cancelPresidentsTurn();
  const n=Math.max(1,Math.min(totalScans,Number(scan)||currentState.scan));if(!bookZip)return;
  const entry=manifest.originalScans[String(n)];if(!entry)return;
  setBusy('原本スキャンを開いています…');

@@ -307,3 +307,101 @@ test('WH3 mounts the WH1 layout with the same private source in every section, i
  assert.ok(shown.includes("send('original',{scan:position()})"));
  assert.ok(shown.includes("type:'navigateScan'")&&shown.includes('heading:item.text'));
 });
+
+test('a Presidents section turn keeps the current page until the destination and global counter have painted',async()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const bridge=html.split('// BEGIN Presidents retained turn\n')[1].split('// END Presidents retained turn')[0];
+ const listeners=new Map(),revoked=[],states=[],notices=[];
+ class Pane{
+  constructor(name){
+   this.name=name;this.messages=[];this.style={cssText:'visible'};this.contentWindow={postMessage:d=>this.messages.push(d)};
+  }
+  cloneNode(){const pane=new Pane('candidate');this.candidate=pane;return pane;}
+  removeAttribute(){} setAttribute(){} focus(){this.focused=true;}
+  getBoundingClientRect(){return {left:0,top:40,width:390,height:630};}
+  before(pane){this.behind=pane;}
+  remove(){this.removed=true;}
+ }
+ const first=new Pane('active'),storageMessage={textContent:''},storageBanner={hidden:true};
+ const context=vm.createContext({
+  window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:(type,fn)=>{if(listeners.get(type)===fn)listeners.delete(type);}},
+  document:{activeElement:first},crypto:crypto.webcrypto,Blob,setTimeout,clearTimeout,
+  URL:{createObjectURL:()=>'blob:candidate',revokeObjectURL:id=>revoked.push(id)},
+  bookZip:{readText:async()=>'<body></body>',readBytes:async()=>new Uint8Array([3,5])},
+  SEGMENTS:[{part:'a',assets:{}},{part:'b',assets:{image:{path:'p',mime:'image/jpeg'}}}],
+  currentState:{size:20,key:'last'},loadToken:0,frameURL:'blob:previous',inputSession:'A',
+  activeSegment:0,viewportSerial:0,pendingLoaded:true,pendingDest:null,totalScans:40,
+  $:id=>({reader:first,storageMessage,storageBanner})[id],decorateOtherBookReading:x=>x,
+  wh1ExactPager:{getStatus:()=>({counts:[72,80]})},syncReaderViewport(){},
+  handleChildState:d=>states.push(d),showReaderNotice:text=>notices.push(text)
+ });
+ vm.runInContext(bridge,context);
+ const flush=()=>new Promise(resolve=>setImmediate(resolve));
+ async function send(pane,type,extra={}){
+  const handler=listeners.get('message');await handler({source:pane.contentWindow,data:{wh1bridge:1,segment:1,type,...extra}});
+ }
+ context.turnPresidentsSection(1,false);await flush();
+ const cancelled=first.behind;
+ assert.equal(first.removed,undefined);
+ context.turnPresidentsSection(-1,true);
+ assert.equal(cancelled.removed,true);
+ assert.deepEqual(states,[]);
+ assert.equal(first.messages.at(-1).action,'presidentsResume');
+ assert.equal(first.inert,false);
+
+ context.turnPresidentsSection(1,false);await flush();
+ const next=first.behind;
+ await send(cancelled,'prepare');
+ assert.equal(next.messages.length,0,'discarded iframe cannot start an asset load');
+ await send(next,'prepare');
+ assert.equal(next.messages[0].action,'loadAssets');
+ assert.deepEqual([...new Uint8Array(next.messages[0].assets[0].data)],[3,5]);
+ const session=next.messages[0].session;
+ await send(next,'state',{totalPages:80,pageIndex:0});
+ assert.equal(next.messages.at(-1).action,'presidentsTarget');
+ await send(next,'presidentsTarget',{session,key:'first',pageIndex:0,totalPages:80,size:20,scan:21});
+ const [progress,paint]=next.messages.slice(-2);
+ assert.equal(progress.label,'73 / 152');
+ assert.equal(progress.scan,21);
+ assert.equal(paint.action,'presidentsPaint');
+ assert.deepEqual(states,[]);
+ await send(next,'presidentsPainted',{session:'stale'});
+ assert.equal(first.inert,false);
+ context.turnPresidentsSection(1,true);
+ await send(next,'presidentsPainted',{session});
+ assert.equal(first.inert,true);
+ assert.equal(first.removed,undefined);
+ assert.equal(first.messages.at(-1).action,'presidentsSeal');
+ await send(first,'presidentsSealed',{segment:0,session:'stale'});
+ assert.deepEqual(states,[]);
+ await send(first,'presidentsSealed',{segment:0,session:'A'});
+ assert.equal(states[0].key,'first');
+ assert.equal(first.removed,true);
+ assert.equal(next.id,'reader');
+ assert.equal(next.focused,true);
+ assert.equal(next.messages.at(-1).action,'presidentsResume');
+ assert.deepEqual([...next.messages.at(-1).directions],[1]);
+ assert.ok(revoked.includes('blob:previous'));
+ assert.deepEqual(notices,[]);
+ assert.equal(listeners.size,0);
+});
+
+test('Presidents controls share one ordered series of button, swipe and keyboard page turns',()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const source=html.slice(html.indexOf('function presidentsPaneBridge('),html.indexOf('function presidentsPaneDocument('));
+ const events=[],steps=[];
+ let receive;
+ const parent={postMessage:message=>events.push(message)},c=vm.createContext({
+  window:{addEventListener:(_,fn)=>{receive=fn;}},parent,pages:[{},{},{}],currentPage:2,
+  shiftPage:direction=>steps.push(direction)
+ });
+ vm.runInContext(source+"\npresidentsPaneBridge(0,'session',2);",c);
+ c.shiftPage(1);c.shiftPage(-1);
+ assert.deepEqual(events.map(d=>[d.direction,d.repeat]),[[1,false],[-1,true]]);
+ assert.deepEqual(steps,[]);
+ c.currentPage=1;
+ receive({source:parent,data:{wh1bridge:1,action:'presidentsResume',session:'wrong'}});
+ c.shiftPage(-1);assert.deepEqual(steps,[]);
+ receive({source:parent,data:{wh1bridge:1,action:'presidentsResume',session:'session',directions:[-1,1]}});
+ assert.deepEqual(steps,[-1,1]);
+});

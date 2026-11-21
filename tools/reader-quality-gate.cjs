@@ -28,6 +28,22 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='86af1c58518dfcd31c8200f3829c750d78efc23d'){
+    const previous=data.toString('utf8')
+      .replace(/\/\/ BEGIN Presidents retained turn\n[\s\S]*?\/\/ END Presidents retained turn\n/,'')
+      .replace(" if(show)showReaderNotice(message,warn,message.includes('保存が完了')||message.includes('保存済み')?9000:0);\n}\nfunction showReaderNotice(message,warn,duration){\n $('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;\n clearTimeout(storageNoticeTimer);\n if(duration)storageNoticeTimer=setTimeout(()=>{$('storageBanner').hidden=true;},duration);\n"," if(show){$('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;\n  if(storageNoticeTimer)clearTimeout(storageNoticeTimer);\n  if(message.includes('保存が完了')||message.includes('保存済み'))storageNoticeTimer=setTimeout(()=>{$('storageBanner').hidden=true;},9000);}\n")
+      .replace("function showMenu(){if(!bookZip)return;cancelPresidentsTurn();$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}\n","function showMenu(){if(!bookZip)return;$('menuOverlay').hidden=false;$('menuSummary').textContent=positionText();$('partChoice').value=String(bookZip.wh3Flow?manifest.segments.findIndex(x=>currentState.scan>=x.start&&currentState.scan<=x.end):Math.max(0,activeSegment));$('scanNumber').value=String(currentState.scan);}\n")
+      .replace(" if(!bookZip||index<0||index>=SEGMENTS.length)return;\n cancelPresidentsTurn();\n"," if(!bookZip||index<0||index>=SEGMENTS.length)return;\n")
+      .replace("   if(manifest?.bookId==='us-presidents-south'&&usesPresidentsTemplate())rendered=presidentsPaneDocument(rendered,index,inputSession);\n","")
+      .replace(" const token=loadToken;if(index!==activeSegment||!bookZip)return;\n"," const token=loadToken;if(index!==activeSegment||!bookZip)return;\n const s=SEGMENTS[index],assets=[];\n")
+      .replace("  const assets=await segmentAssets(bookZip,SEGMENTS[index],()=>token===loadToken);\n  if(!assets)return;\n","  for(const [name,meta] of Object.entries(s.assets)) {\n   if(token!==loadToken)return;\n   const bytes=await bookZip.readBytes(meta.path);assets.push({name,mime:meta.mime,data:bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)});\n  }\n  if(token!==loadToken)return;\n")
+      .replace(" if(presidentsTurn&&(d.key!==presidentsTurn.oldKey||d.size!==presidentsTurn.size))cancelPresidentsTurn();\n","")
+      .replace(" if(d.type==='presidentsTurn'&&d.session===inputSession&&usesPresidentsTemplate())turnPresidentsSection(d.direction,d.repeat);\n else if(d.type==='prepare')handlePrepare(d.segment);\n"," if(d.type==='prepare')handlePrepare(d.segment);\n")
+      .replace("function issueChild(action,extra={}){if(action==='goto')cancelPresidentsTurn();if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}\n","function issueChild(action,extra={}){if($('reader').contentWindow)$('reader').contentWindow.postMessage({wh1bridge:1,action,...extra},'*');}\n")
+      .replace("async function openOriginal(scan){\n cancelPresidentsTurn();\n","async function openOriginal(scan){\n");
+    if(blobSHA(previous)!=='bf7d17add718dfb56f5968cf1985de7b23cd45fa')throw Error('PRESIDENTS_RETAINED_TURN_REVERSE_CHECK_FAILED');
+    data=Buffer.from(previous);
+  }
   if(blobSHA(data)==='bf7d17add718dfb56f5968cf1985de7b23cd45fa'){
     const previous=data.toString('utf8')
       .replace(/\/\/ BEGIN WH3 continuous scan layout[\s\S]*?\/\/ END WH3 continuous scan layout\n/,'')
