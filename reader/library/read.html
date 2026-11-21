@@ -350,7 +350,7 @@ function fillManifest(m){
    if(!heading.text||heading.text.length>110)continue;
    const btn=document.createElement('button');btn.className='tocButton';
    const lbl=document.createElement('small');lbl.textContent=heading.scan+'枚目';btn.append(lbl,document.createTextNode(heading.text));
-   btn.onclick=()=>{closeMenu();openSegment(i,{scan:heading.scan});};toc.append(btn);
+   btn.onclick=()=>{closeMenu();openSegment(i,usesPresidentsTemplate()?{scan:heading.scan,heading:heading.text}:{scan:heading.scan});};toc.append(btn);
   }
  }
 }
@@ -774,7 +774,7 @@ window.addEventListener('message',e=>{
  else if(d.type==='navigateScan'&&nativeBookInput()&&inputSession&&d.session===inputSession){
   if(!Number.isInteger(d.scan)||d.scan<1||d.scan>totalScans)return;
   const target=segmentForScan(d.scan),destination={scan:d.scan,view:d.view==='figure'?'figure':'text'};
-  if(usesWh3StandardInput()&&typeof d.heading==='string')destination.heading=d.heading.slice(0,240);
+  if((usesWh3StandardInput()||usesPresidentsTemplate())&&typeof d.heading==='string')destination.heading=d.heading.slice(0,240);
   if(target===activeSegment)issueChild('goto',{destination});
   else openSegment(target,destination).catch(err=>console.warn('目次からの移動に失敗しました',err));
  }
