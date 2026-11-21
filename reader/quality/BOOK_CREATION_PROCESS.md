@@ -51,6 +51,8 @@ node tools/reader-source-pages.cjs PRIVATE/manifest.json --request PRIVATE/reque
 
 ## 小説用の会話文レイアウト（ナイン・ストーリーズ以後の小説向け）
 
+縦書き本文・見出しの疑問符は、原稿の半角 `?` と全角 `？` をそれぞれ保ち、どちらも正立させる。改ページの測定にも同じ組版を使い、文字サイズを変えて両方の向きを確認する。
+
 原本で作品・章の開始と確認した見出しは新しい読書ページの先頭に置き、収まる冒頭本文はその左列に続ける。分冊と統合後の HTML は、文字サイズ変更後も各作品の先頭を実表示で確認する。小説の確定時は原本で確認した作品・章を領域台帳の heading に登録し、同じ HTML の既存の DOM 観測（heading_dom_probe.js）が記録した全ページ・24条件のファイルを display.headingObservations に指定する。採用済み previewDisplay.observations も利用できる。複数の異なる文字欄が一つの見出し領域を参照する場合は headingField に見出し本文の欄を指定する。
 
 小説で日本語の会話文を扱う場合は、歴史書の通常文章テンプレートとは別に `templates/reader/v2/novel.html`、`novel-dialogue.js`、`novel.js`、`novel.css` を参照する。これは現行60項目の追加・緩和ではない。WH1基準の明朝体20px・line-height 1.50・縦書き右から左・上下バー・原本保全・位置保存は共通。

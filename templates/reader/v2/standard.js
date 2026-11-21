@@ -127,10 +127,29 @@ function syncMeasure(){
  measureSheet.style.width=r.width+'px';measureSheet.style.height=r.height+'px';
 }
 function fit(el){return el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1}
+// Both forms of the question mark stand upright in Japanese vertical text.
+function setVerticalText(element, text){
+ if(!/[?？]/u.test(text)){
+  element.textContent=text;
+  return;
+ }
+ const fragment=document.createDocumentFragment();
+ for(const piece of text.split(/([?？])/u)){
+  if(piece==='?'||piece==='？'){
+   const mark=document.createElement('span');
+   mark.style.textOrientation='upright';
+   mark.textContent=piece;
+   fragment.append(mark);
+  }else if(piece){
+   fragment.append(document.createTextNode(piece));
+  }
+ }
+ element.replaceChildren(fragment);
+}
 function partNode(p){
  const el=document.createElement(p.type==='heading'?'h2':'span');
  el.className=p.type==='heading'?'section-heading':('paragraph'+(p.continued?' continued':''));
- el.textContent=p.text;return el;
+ setVerticalText(el,p.text);return el;
 }
 function fitsParts(existing,additional){
  const fragment=document.createDocumentFragment();

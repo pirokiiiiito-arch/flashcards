@@ -8,14 +8,16 @@ async function test(){
  const template=path.join(__dirname,'../templates/reader/v2');
  const book={id:'synthetic-sections',kind:'text',title:'検査用短編',blocks:[
   {type:'body',scan:20,text:'前の話がここで終わる。'},
-  {type:'heading',scan:21,text:'朝の駅'},{type:'body',scan:21,text:'鳥が鳴いた。'},
-  {type:'heading',scan:22,text:'夕方の駅'},{type:'body',scan:22,text:'灯りが消えた。'}]};
+  {type:'heading',scan:21,text:'朝の駅？'},{type:'body',scan:21,text:'何の声?'},
+  {type:'heading',scan:22,text:'夕方の駅'},{type:'body',scan:22,text:'本当に?　A1はどこ？'}]};
  const html=fs.readFileSync(path.join(template,'novel.html'),'utf8');
  const file=path.join(root,'sample.html'),profile=path.join(root,'profile');
- const sample=html.replace(/window\.READER_BOOK\s*=\s*\{[\s\S]*?\};<\/script>/,()=> 'window.READER_BOOK='+JSON.stringify(book)+';</script>');
- assert.notEqual(sample,html);
+ const insertBook=html=>html.replace(/window\.READER_BOOK\s*=\s*\{[\s\S]*?\};<\/script>/,()=> 'window.READER_BOOK='+JSON.stringify(book)+';</script>');
+ const sample=insertBook(html);assert.notEqual(sample,html);
+ const standardTemplate=fs.readFileSync(path.join(template,'text.html'),'utf8'),standardFile=path.join(root,'standard.html');
+ const standard=insertBook(standardTemplate);assert.notEqual(standard,standardTemplate);fs.writeFileSync(standardFile,standard);
  fs.writeFileSync(file,sample);
- for(const asset of ['standard.css','novel.css','novel-dialogue.js','novel.js'])fs.copyFileSync(path.join(template,asset),path.join(root,asset));
+ for(const asset of ['standard.css','standard.js','novel.css','novel-dialogue.js','novel.js'])fs.copyFileSync(path.join(template,asset),path.join(root,asset));
  const binary=process.env.CHROME_BIN||['/usr/bin/google-chrome','/usr/bin/chromium'].find(fs.existsSync);
  assert.ok(binary,'Chrome or Chromium is required');
  const browser=spawn(binary,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking',
@@ -47,13 +49,38 @@ async function test(){
     await evaluate(frames);
     const state=await evaluate('NovelReader.inspect()');
     assert.equal(state.font,font);assert.equal(state.pages,3);assert.ok(state.textIntegrity&&!state.warning);
-    for(const [index,expected] of [[0,['前の話がここで終わる。']],[1,['朝の駅','鳥が鳴いた。']],[2,['夕方の駅','灯りが消えた。']]]){
-     const dom=await evaluate(`(()=>{NovelReader.gotoPage(${index});return [...document.querySelector('#text-flow').children].map(n=>({tag:n.tagName,text:n.textContent,visible:n.getBoundingClientRect().width>0}));})()`);
+    for(const [index,expected] of [[0,['前の話がここで終わる。']],[1,['朝の駅？','何の声?']],[2,['夕方の駅','本当に?　A1はどこ？']]]){
+     const dom=await evaluate(`(()=>{NovelReader.gotoPage(${index});return [...document.querySelector('#text-flow').children].map(n=>({tag:n.tagName,text:n.textContent,visible:n.getBoundingClientRect().width>0,orientation:getComputedStyle(n).textOrientation,
+      upright:[...n.querySelectorAll('span')].filter(s=>getComputedStyle(s).textOrientation==='upright'&&s.getBoundingClientRect().width>0).map(s=>s.textContent)}));})()`);
      assert.deepEqual(dom.map(n=>n.text),expected);assert.ok(dom.every(n=>n.visible));if(index)assert.equal(dom[0].tag,'H2');
+     for(const n of dom){
+      assert.equal(n.orientation,'mixed');
+      assert.deepEqual(n.upright,n.text.match(/[?？]/gu)||[]);
+     }
     }
    }
   }
-  console.log('24 Chromium viewport/font combinations passed; 48 section starts and all source text verified');
+  await send('Page.navigate',{url:pathToFileURL(standardFile).href});
+  let standardReady=false;
+  for(let i=0;i<100&&!standardReady;i++){
+   standardReady=await evaluate('!!(window.StandardReader && StandardReader.inspect().pages)');
+   if(!standardReady)await sleep(50);
+  }
+  assert.ok(standardReady,'Standard template must finish initial pagination');
+  const standardMarks=await evaluate(`(()=>{
+   const flow=document.querySelector('#text-flow'),observed=[],state=StandardReader.inspect();
+   for(let n=0;n<state.pages;n++){
+    StandardReader.gotoPage(n);
+    for(const mark of flow.querySelectorAll('span[style]')){
+     if(getComputedStyle(mark).textOrientation==='upright'&&mark.getBoundingClientRect().width>0)observed.push(mark.textContent);
+    }
+   }
+   return {observed,ok:state.textIntegrity&&!state.warning};
+  })()`);
+  assert.ok(standardMarks.ok);
+  assert.deepEqual(standardMarks.observed,book.blocks.flatMap(b=>b.text.match(/[?？]/gu)||[]));
+  console.log('Standard template preserved characters and rendered halfwidth/fullwidth questions upright');
+  console.log('24 Chromium viewport/font combinations passed; 48 section starts and upright halfwidth/fullwidth questions verified');
  }finally{if(ws)ws.close();browser.kill();await ended;fs.rmSync(root,{recursive:true,force:true});}
 }
 test().catch(error=>{console.error(error);process.exitCode=1;});
