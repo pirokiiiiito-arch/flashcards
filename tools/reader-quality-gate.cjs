@@ -28,6 +28,18 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==="8a8404cd07ee7889f8c133003826f133ee051c69"){
+    // Inverse line edits against the exact reviewed host. Reapply legacy checks to the recovered bytes.
+    const lines=data.toString('utf8').split('\n');
+    for(const [at,count,...prior] of [
+      [806,1," if(duration)storageNoticeTimer=setTimeout(()=>{$('storageBanner').hidden=true;},duration);"],
+      [802,3," $('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;"],
+      [794,4," $('offlineState').textContent=message;"]
+    ])lines.splice(at,count,...prior);
+    const previous=Buffer.from(lines.join('\n'));
+    if(blobSHA(previous)!=="8dfcf88bbf51a0535ab05630903aa404e336e9ce")throw Error('STRUCTURED_SHELF_HOST_REVERSE_CHECK_FAILED');
+    data=previous;
+  }
   if(blobSHA(data)==="8dfcf88bbf51a0535ab05630903aa404e336e9ce"){
     // Inverse line edits against the exact reviewed host. Reapply legacy checks to the recovered bytes.
     const lines=data.toString('utf8').split('\n');

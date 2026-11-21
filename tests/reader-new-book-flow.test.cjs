@@ -82,3 +82,25 @@ test('a reviewed cross-file join cannot target a heading or refer to a different
   sources[1].bookId='some-other-title';
   await assert.rejects(plan(book,manifest),/分冊/);
 });
+
+test('a late offline result or notice timer can finish after a standalone book replaces the host', () => {
+  const start = host.indexOf('function setStorageState(');
+  const end = host.indexOf('function storageErrorText(', start);
+  const elements = Object.fromEntries(['offlineState', 'menuStorageStatus', 'storageBanner', 'storageMessage']
+    .map(id => [id, {classList: {toggle() {}}}]));
+  let timeout;
+  const notices = new Function('$', 'clearTimeout', 'setTimeout',
+    'let storageState, storageNoticeTimer;' + host.slice(start, end) +
+    'return {setStorageState, showReaderNotice, getState: () => storageState};'
+  )(id => elements[id], () => {}, fn => { timeout = fn; return 1; });
+  notices.setStorageState('保存済み');
+  const banner = elements.storageBanner;
+  assert.equal(elements.offlineState.textContent, '保存済み');
+  assert.equal(banner.hidden, false);
+  for (const id of Object.keys(elements)) delete elements[id];
+  timeout();
+  assert.equal(banner.hidden, true);
+  notices.setStorageState('オフライン設定を確認できません', {warn: true, show: false});
+  assert.equal(notices.getState(), 'オフライン設定を確認できません');
+  notices.showReaderNotice('遅延した通知', true, 9000);
+});

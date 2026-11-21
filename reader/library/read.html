@@ -792,14 +792,19 @@ const OFFLINE_CHUNK_SIZE = 4 * 1024 * 1024;
 let storageState = '端末保存状態：未確認', savingPromise = null, storageNoticeTimer=null;
 function setStorageState(message,{warn=false,show=true}={}){
  storageState=message;
- $('offlineState').textContent=message;
+ // A standalone book replaces the host document before offline setup can finish.
+ const status=$('offlineState');
+ if(!status)return;
+ status.textContent=message;
  $('menuStorageStatus').textContent=message;
  if(show)showReaderNotice(message,warn,message.includes('保存が完了')||message.includes('保存済み')?9000:0);
 }
 function showReaderNotice(message,warn,duration){
- $('storageMessage').textContent=message;$('storageBanner').classList.toggle('warning',warn);$('storageBanner').hidden=false;
+ const banner=$('storageBanner');
+ if(!banner)return;
+ $('storageMessage').textContent=message;banner.classList.toggle('warning',warn);banner.hidden=false;
  clearTimeout(storageNoticeTimer);
- if(duration)storageNoticeTimer=setTimeout(()=>{$('storageBanner').hidden=true;},duration);
+ if(duration)storageNoticeTimer=setTimeout(()=>{banner.hidden=true;},duration);
 }
 function storageErrorText(err){
  const code=String(err?.name||'');
