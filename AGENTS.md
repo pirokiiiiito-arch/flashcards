@@ -16,6 +16,9 @@ Google Drive 保存、Chrome公開、ファイルリンクの提示、既存版�
 
 統合を依頼された場合は、同じ私有 `request.json` を使い、`tools/reader-merge-work.py` の `stage`（確定入力の選定）と `merge`（4工程の統合出力）を順に実行する。配布済み実行版の照合方法とコマンドは [統合手順](reader/quality/BOOK_CREATION_PROCESS.md#workでの統合) に従う。
 
+統合保留時には、同じ依頼の工程台帳に登録済みでSHAが一致する候補を使う。正しい候補が一つなら入口がそのまま選定・統合を実行する。複数候補の採用判断や変更済み入力の承認は採用記録で確認する。合格済み原稿を作り直さない。
+採用済みの制作再開entryがある書籍は、両コマンドに `--entry PRIVATE/current-work.json --expected-entry-sha256 ENTRY_SHA` を付ける。ENTRY_SHAは選定記録の外部固定値を使う。統合が保留になったらWorkは結果の `nextAction` と `diagnostics` の該当箇所を処理する。個別ファイルの読み取り照合結果は `inputAudit` に出る。依頼範囲内の前提が整った作業は `nextProductionTask` と `readyTasks` を参照し、同じターンで着手して実際の証拠を記録する。原本・根拠・権限を必要とする判断は制作の既存手順に従う。依頼・入力・環境が変わるまで同一失敗の統合を反復しない。継続できる作業が尽きた時に、不足している資料または判断を具体的に伝える。
+
 1. 常にこのリポジトリの現行 AGENTS.md と
    `reader/quality/work-ledger.json`（書籍ID・ページ範囲・SHA・未解決不具合）
    および該当する**非公開**の原本台帳・校正履歴・証拠を取得してから着手。

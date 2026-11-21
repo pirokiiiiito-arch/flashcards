@@ -304,4 +304,7 @@ python3 tools/reader-merge-work.py --runtime runtime merge --request PRIVATE/req
 
 `source_page_start/end` には図版専用ページ・白紙を含む分冊の連続した物理範囲を登録できる。`nontext_pages` は本文のないページと理由、`source_scan_ids` と分冊の `scans` は収録する原本全件を指定する。旧形式の本文範囲も、収録原本・非本文分類を照合して受け付ける。旧選定一覧に依頼の記録がない場合は、校正済み入力を保持して選定から再実行する。
 
+統合保留時には、同じ依頼の工程台帳に登録済みでSHAが一致する候補を使う。正しい候補が一つなら入口がそのまま選定・統合を実行する。複数候補の採用判断や変更済み入力の承認は採用記録で確認する。合格済み原稿を作り直さない。
+採用済みの制作再開entryがある書籍は、両コマンドに `--entry PRIVATE/current-work.json --expected-entry-sha256 ENTRY_SHA` を付ける。ENTRY_SHAは選定記録の外部固定値を使う。統合が保留になったらWorkは結果の `nextAction` と `diagnostics` の該当箇所を処理する。個別ファイルの読み取り照合結果は `inputAudit` に出る。依頼範囲内の前提が整った作業は `nextProductionTask` と `readyTasks` を参照し、同じターンで着手して実際の証拠を記録する。原本・根拠・権限を必要とする判断は制作の既存手順に従う。依頼・入力・環境が変わるまで同一失敗の統合を反復しない。継続できる作業が尽きた時に、不足している資料または判断を具体的に伝える。
+
 統合報告の `requested_scope` に依頼の書籍ID・原本範囲・SHAが残る。4工程の合格後に必要な表示・配布検査は従来どおり実施する。Workの再開時は、採用した実行版・工程台帳・引継記録を一組で復元する。
