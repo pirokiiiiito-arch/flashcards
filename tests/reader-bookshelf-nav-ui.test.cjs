@@ -236,3 +236,42 @@ test('symbol shelf layout is installed inside the hydrated segment before pagina
  assert.equal(decorate(wrapper),wrapper);
  assert.equal(nav.output.hidden,true);
 });
+
+test('a saved WH3 segment gets a host before its reader starts and only the current frame can request zoom',async()=>{
+ const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const viewport=html.slice(html.indexOf("let inputSession="),html.indexOf('function fillManifest'));
+ const open=html.slice(html.indexOf('async function openSegment('),html.indexOf('async function handlePrepare'));
+ const listenerStart=html.indexOf(" if(e.source!==$('reader').contentWindow||!e.data)return;");
+ const listener=html.slice(listenerStart,html.indexOf(' if(e.data.wh1bridge!==1)return;',listenerStart));
+ const messages=[],frame={contentWindow:{postMessage:m=>messages.push(m)}};
+ const segment='<html><head></head><body><main id="reader-main"></main></body></html>';
+ let blob;
+ const origin='https://shelf.example',viewportAPI={scale:1,addEventListener(){}};
+ const c=vm.createContext({
+  manifest:{bookId:'wh3',template_profile:'world_history_1'},
+  window:{visualViewport:viewportAPI,addEventListener(){}},location:{origin},
+  $:()=>frame,SEGMENTS:[{start:1,end:20,part:'a'},{start:21,end:40,part:'b'}],
+  bookZip:{readText:async()=>segment},loadToken:0,
+  destinationForScan:d=>d,setBusy(){},decorateOtherBookReading:x=>x,
+  Blob,crypto:crypto.webcrypto,URL:{createObjectURL:b=>{blob=b;return 'blob:test';},revokeObjectURL(){}}
+ });
+ vm.runInContext("let frameURL='',activeSegment=-1,pendingDest=null,pendingLoaded=false;\n"+
+  viewport+open+'\nfunction message(e){'+listener+'}',c);
+ async function boot(i){
+  await c.openSegment(i);const doc=await blob.text(),script=doc.match(/<script>(window\.__readerHost=[\s\S]*?)<\/script>/);
+  assert.ok(script && doc.indexOf(script[0])<doc.indexOf('</head>'),'standard JS reads the identity during startup');
+  assert.match(doc,/body\.zoomed #reader-main\{overscroll-behavior:auto\}/);
+  const win={};vm.runInNewContext(script[1],{window:win});return win.__readerHost;
+ }
+ const ready=(session,source=frame.contentWindow)=>c.message({source,data:{type:'reader-ready-v8',session}});
+ const first=await boot(0);assert.equal(first.origin,origin);assert.ok(first.session);
+ ready(first.session,{});ready('unknown');assert.equal(messages.length,0);
+ ready(first.session);assert.equal(messages[0].scale,1);
+ const second=await boot(1);assert.notEqual(second.session,first.session);
+ ready(first.session);assert.equal(messages.length,1);
+ viewportAPI.scale=2;ready(second.session);assert.equal(messages[1].session,second.session);assert.equal(messages[1].scale,2);
+ for(const manifest of [{bookId:'other',template_profile:'world_history_1'},{bookId:'wh3',template_profile:'novel'},
+                       {bookId:'castle',readerInteractions:'native-pinch-toc-v1'}]){
+  c.manifest=manifest;await c.openSegment(0);assert.equal(await blob.text(),segment);
+ }
+});

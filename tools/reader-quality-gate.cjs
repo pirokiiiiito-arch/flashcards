@@ -27,8 +27,10 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
-  if(blobSHA(data)!=='f5551144e7f37d6f6587d71bd81694db75328cec')return data;
+  const blob=blobSHA(data);
+  if(blob!=='f5551144e7f37d6f6587d71bd81694db75328cec'&&blob!=='c42490874b5e54dea08a524655d4f5632005e71d')return data;
     const prior=data.toString('utf8')
+      .replace('attachStandardHost(decorateOtherBookReading(decorated))','decorateOtherBookReading(decorated)')
       .replace('html:not(.native-book-input),html:not(.native-book-input) body,html:not(.native-book-input) body *{touch-action:', 'html,body,body *{touch-action:')
       .replace(/let inputSession='',viewportSerial=0;[\s\S]*?(?=function fillManifest\(m\)\{)/,'')
       .replace(" document.documentElement.classList.toggle('native-book-input',nativeBookInput());\n",'')

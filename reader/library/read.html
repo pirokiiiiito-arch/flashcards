@@ -205,7 +205,18 @@ function pickedArchive(fileList){
  return joined;
 }
 let inputSession='',viewportSerial=0;
-function nativeBookInput(){return manifest?.readerInteractions==='native-pinch-toc-v1';}
+function usesWh3StandardInput(){
+ return manifest?.bookId==='wh3'&&manifest.template_profile==='world_history_1';
+}
+function nativeBookInput(){return manifest?.readerInteractions==='native-pinch-toc-v1'||usesWh3StandardInput();}
+function attachStandardHost(html){
+ if(!usesWh3StandardInput())return html;
+ // StandardReader reads its host once at startup, before the archived segment bridge runs.
+ const host=JSON.stringify({origin:location.origin,session:inputSession});
+ // Only at browser zoom, allow a pan over the sheet to reach the outer viewport.
+ const zoomStyle='<style>body.zoomed #reader-main{overscroll-behavior:auto}</style>';
+ return html.replace(/<head\b[^>]*>/i,head=>head+zoomStyle+'<script>window.__readerHost=Object.freeze('+host+');<\/script>');
+}
 function syncReaderViewport(){
  if(!nativeBookInput()||!inputSession)return;
  const scale=Number(window.visualViewport?.scale||1);
@@ -579,11 +590,11 @@ async function openSegment(index,destination={}){
  setBusy(`${s.start}〜${s.end}枚目を読み込み中…`);
  try{
   const text=await bookZip.readText(s.part);if(token!==loadToken)return;
-  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
-  const content=new Blob([decorateOtherBookReading(decorated)],{type:'text/html'});
-  if(frameURL) URL.revokeObjectURL(frameURL);
   inputSession=nativeBookInput()?crypto.randomUUID():'';
   viewportSerial=0;
+  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
+  const content=new Blob([attachStandardHost(decorateOtherBookReading(decorated))],{type:'text/html'});
+  if(frameURL) URL.revokeObjectURL(frameURL);
   frameURL=URL.createObjectURL(content);activeSegment=index;
   $('reader').src=frameURL;
  }catch(err){if(token===loadToken){clearBusy();setHint('読書区間の読み込みに失敗しました: '+(err.message||String(err)));$('setup').hidden=false;}throw err;}
@@ -628,6 +639,9 @@ window.addEventListener('message',e=>{
  if(e.source!==$('reader').contentWindow||!e.data)return;
  if(nativeBookInput()&&inputSession&&e.data.session===inputSession&&e.data.type==='reader-ready-v8'){
   syncReaderViewport();return;
+ }
+ if(usesWh3StandardInput()&&inputSession&&e.data.session===inputSession&&e.data.type==='reader-back-to-shelf-v1'){
+  location.href='./';return;
  }
  if(e.data.wh1bridge!==1)return;
  const d=e.data;
