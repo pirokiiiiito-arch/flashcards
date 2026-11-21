@@ -14,9 +14,9 @@
     status:'画面全体ピンチ拡大v3／OCR独立校正継続中',totalBytes:126760402,parts:[]};
   const NINE_STORIES = {id:'nine-stories',title:'ナイン・ストーリーズ',sortTitle:'ないんすとーりーず',
     subtitle:'全286枚・統合確認版',scans:286,status:'本文校正中',parts:[]};
-  const nineStoriesOnline = 'https://nine-stories-reader-286.magneticcherry8.chatgpt.site';
   const $ = id => document.getElementById(id);
   let books=[PREVIEW,UK_PREVIEW,NINE_STORIES], savedIds=new Set(), selected=null, accessToken=null, expiry=0, pendingDownload=null;
+  let connectForBook=null;
   let tokenClient=null, connected=false, isRefreshing=false;
   const num = new Intl.NumberFormat('ja-JP');
   // Sort visible book titles by Japanese reading, independent of Drive/catalog insertion order.
@@ -45,7 +45,7 @@
   function openSheet(prefix) {$(prefix+'Backdrop').hidden=false;$(prefix+'Panel').hidden=false;document.body.style.overflow='hidden';}
   function closeSheet(prefix) {$(prefix+'Backdrop').hidden=true;$(prefix+'Panel').hidden=true;document.body.style.overflow='';}
   function openSettings() { $('clientId').value=localStorage.getItem(CLIENT_KEY)||SHARED_CLIENT_ID||''; openSheet('settings'); }
-  function closeSettings() {closeSheet('settings');}
+  function closeSettings() {connectForBook=null;closeSheet('settings');}
   function normalizeTitle(filename) {
     let base=filename.replace(/\.zip$/i,'').replace(/\.part\d+$/i,'');
     base=base.replace(/[_ ]?(?:全\d+枚)?[_ ]?(?:統合書籍データ|一冊統合(?:完成)?版)$/,'');
@@ -104,31 +104,27 @@
   }
   async function showBook(book){selected=book; $('detailTitle').textContent=book.title;
     $('detailSub').textContent=[book.subtitle||'',book.totalBytes?nice(book.totalBytes):'',book.status||''].filter(Boolean).join(' ／ ');
-    const local=savedIds.has(book.id);
-    $('detailStatus').textContent=local?'この端末に保存されています。通信なしで開けます。':book.parts.length?'Google Driveから初回だけ書籍データを保存します。':'Google Drive連携後に読み込めます。';
-    $('primaryBookAction').textContent=local?'続きを読む':book.parts.length?'Google Driveから保存して読む':'Google Driveを接続する';
+    const local=savedIds.has(book.id),signedIn=tokenValid();
+    const unavailable=!local&&signedIn&&!book.parts.length;
+    $('detailStatus').textContent=local?'この端末に保存されています。通信なしで開けます。':signedIn?'Google Driveから初回だけ書籍データを保存します。':'Google Driveに接続すると、この端末に保存して読めます。';
+    $('primaryBookAction').textContent=local?'続きを読む':signedIn?'Google Driveから保存して読む':'Google Driveを接続する';
     const update=await hasNewEdition(book);
     if(selected!==book)return;
     if(update){
       $('detailStatus').textContent='修正版を保存すると、前回の読書位置から再開できます。';
       $('primaryBookAction').textContent='修正版を保存して読む';
     }
-    if(book.id===NINE_STORIES.id&&!local&&!tokenValid()){
-      $('detailStatus').textContent='確認版を開けます。Google Driveに接続すると、この端末にも保存できます。';
-      $('primaryBookAction').textContent='統合確認版を読む';
-    }
+    if(unavailable)$('detailStatus').textContent='Google Driveに書籍データが見つかりません。本棚に戻って「更新」を押してください。';
     $('removeBook').hidden=!local || book.id==='wh1' && !(await LibraryDB.getMeta('wh1'));
-    $('downloadProgress').hidden=true; $('primaryBookAction').disabled=false;openSheet('book');
+    $('downloadProgress').hidden=true; $('primaryBookAction').disabled=unavailable;openSheet('book');
   }
   async function primaryAction(){if(!selected)return;
     const book=selected,update=book.editionUpdate&&await hasNewEdition(book);
     if(book!==selected||pendingDownload)return;
     if(update){await download(book);return;}
     if(savedIds.has(selected.id)){location.href=readerHref(selected);return;}
-    if(selected.id===NINE_STORIES.id&&!tokenValid()){location.href=nineStoriesOnline;return;}
-    if(!selected.parts.length){closeSheet('book');openSettings();say('Googleアカウントへの接続が必要です');return;}
-    if(!tokenValid()){closeSheet('book');openSettings();say('先にGoogle Driveと接続してください');return;}
-    await download(selected);
+    if(!tokenValid()){connectForBook=book.id;closeSheet('book');openSettings();return;}
+    if(book.parts.length)await download(book);
   }
   function readerHref(book){if(book.id==='uk-interiors')return `../british-interiors/full/?id=${encodeURIComponent(book.id)}&v=uk-wh1-text-geometry-v1-20261115`;return window.WH1ReaderRouting?.href(book)||`./read.html?id=${encodeURIComponent(book.id)}`;}
   async function deleteLocal(){if(!selected)return;
@@ -173,8 +169,12 @@
         tokenClient.requestAccessToken({prompt:accessToken?'':'consent'});
       });
       accessToken=result.access_token;expiry=Date.now()+Math.max(30,Number(result.expires_in||3600)-60)*1000;
+      const bookId=connectForBook;
       closeSettings();setCloud('Google Driveに接続済み','書籍データは非公開のままです',true);
-      await refreshCloud();
+      if(await refreshCloud()&&bookId&&selected?.id===bookId&&$('bookPanel').hidden&&$('settingsPanel').hidden){
+        const refreshed=books.find(book=>book.id===bookId);
+        if(refreshed)await showBook(refreshed);
+      }
     }catch(e){setCloud('Google Driveと未接続',e.message||'接続できません');say('Google連携: '+(e.message||String(e)));}
   }
   async function driveRequest(url,signal=null){if(!tokenValid())throw new Error('Google Driveに再接続してください');
@@ -236,6 +236,7 @@
       if(!books.some(x=>x.id===NINE_STORIES.id))books.push(NINE_STORIES);
       // The shelf renderer applies the same title order for cloud, offline and search results.
       await refreshSaved();setCloud('Google Driveに接続済み',`${books.length}冊の書籍を同期しました`,true);
+      return true;
     }catch(e){setCloud('同期できませんでした',e.message||'再接続をお試しください');say('同期エラー: '+(e.message||String(e)));}
     finally{isRefreshing=false;$('refreshButton').disabled=false;}
   }

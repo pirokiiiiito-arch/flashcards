@@ -126,7 +126,7 @@ test('manual unsaved import and other saved books keep their existing flows', as
 });
 
 test('both actual bookshelf saved-open and completed-download paths use routing with the same ID', async () => {
-  for (const book of [{id: 'wh1', title: '世界の歴史1'}, {id: 'g_existing', title: '世界の歴史１'}, {id: 'g_other', title: '世界の歴史2'}]) {
+  for (const book of [{id: 'wh1', title: '世界の歴史1'}, {id: 'g_existing', title: '世界の歴史１'}, {id: 'g_other', title: '世界の歴史2'}, {id:'nine-stories',title:'ナイン・ストーリーズ'}]) {
     const nodes = new Map(), actions = [];
     const $ = id => {if (!nodes.has(id)) nodes.set(id, {style: {}}); return nodes.get(id);};
     const selected = {...book, parts: [{id: 'fixture_file', size: 4}], totalBytes: 4};
@@ -149,6 +149,49 @@ test('both actual bookshelf saved-open and completed-download paths use routing 
     assert.equal(location.href, routing.href(book));
     assert.deepEqual(actions, ['commit', 'verified']);
   }
+});
+
+test('Nine Stories returns to the same book after connecting, then uses the common device download', async () => {
+  const fixture={id:'nine-stories',title:'ナイン・ストーリーズ',parts:[]};
+  const indexed={...fixture,parts:[{id:'fixture12345678',size:4}],totalBytes:4};
+  const nodes=new Map(),downloads=[];
+  const $=id=>{
+    if(!nodes.has(id))nodes.set(id,{value:'',style:{},hidden:true});
+    return nodes.get(id);
+  };
+  const google={accounts:{oauth2:{initTokenClient:options=>({
+    requestAccessToken(){options.callback({access_token:'fixture',expires_in:3600});}
+  })}}};
+  const c={$,google,window:{google},document:{body:{style:{}}},savedIds:new Set(),pendingDownload:null,
+    location:{href:'shelf'},selected:null,connectForBook:null,books:[],isRefreshing:false,
+    tokenClient:null,accessToken:null,expiry:0,SCOPES:'fixture',CLIENT_KEY:'client',SHARED_CLIENT_ID:'fixture',clientIdPattern:/^fixture$/,
+    localStorage:{getItem:()=>null,setItem(){}},nice:String,say(){},setCloud(){},
+    PREVIEW:{id:'wh1'},UK_PREVIEW:{id:'uk-interiors'},NINE_STORIES:fixture,
+    listFolder:async()=>[{name:'bookshelf.json',id:'index'}],
+    driveRequest:async()=>({json:async()=>({schema:1,books:[indexed]})}),discoveredBooks:()=>[],safeBook:b=>b,
+    refreshSaved:async()=>{},download:async book=>downloads.push(book)};
+  vm.createContext(c);
+  vm.runInContext([
+    between(app,'function openSheet(','function normalizeTitle('),
+    between(app,'async function hasNewEdition(','function readerHref('),
+    between(app,'const tokenValid=','async function fetchPrivateCover('),
+    between(app,'async function googleSignIn()','async function driveRequest('),
+    between(app,'async function refreshCloud()','async function assertZip(')
+  ].join('\n'),c);
+  await c.showBook(fixture);
+  assert.equal($('primaryBookAction').textContent,'Google Driveを接続する');
+  await c.primaryAction();
+  assert.equal($('settingsPanel').hidden,false);
+  assert.equal(c.location.href,'shelf');
+  await c.googleSignIn();
+  assert.equal($('settingsPanel').hidden,true);
+  assert.equal($('bookPanel').hidden,false);
+  assert.equal(c.selected,indexed);
+  assert.equal($('primaryBookAction').textContent,'Google Driveから保存して読む');
+  assert.deepEqual(downloads,[]);
+  await c.primaryAction();
+  assert.deepEqual(downloads,[indexed]);
+  assert.equal(c.location.href,'shelf');
 });
 
 test('versioned shelf helper/app and fresh service-worker updates leave generic reader storage contracts intact', () => {

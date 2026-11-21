@@ -20,7 +20,7 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
 });
 // Narrow, byte-exact admission for the independently reviewed bookshelf title-order UI.
-const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976','ef6bedffc87bfe7038121a19e43fb496c65837b8','206460fae3840f4aec53707ad6ef2afc9903d304','6a8ab86575d7a6b77eecd1450043d9e0b49daa00','5b19a109330eaf43f8cf0ea469297ae716618094']);
+const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976','ef6bedffc87bfe7038121a19e43fb496c65837b8','206460fae3840f4aec53707ad6ef2afc9903d304','6a8ab86575d7a6b77eecd1450043d9e0b49daa00','5b19a109330eaf43f8cf0ea469297ae716618094','53a8097dff6490590949dee8d6fa33942443e6d9']);
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
@@ -157,7 +157,8 @@ function validate(root=ROOT){
      data.includes(Buffer.from('app.js?v=bookshelf-uk-near-full-text-cut-v1-20261115'))||
      data.includes(Buffer.from('app.js?v=bookshelf-uk-wh1-text-geometry-v1-20261115'))||
      data.includes(Buffer.from('app.js?v=bookshelf-nine-stories-286-20261121'))||
-     data.includes(Buffer.from('app.js?v=bookshelf-reader-input-20261121')));
+     data.includes(Buffer.from('app.js?v=bookshelf-reader-input-20261121'))||
+     data.includes(Buffer.from('app.js?v=bookshelf-device-save-20261121')));
   // Admit only the exact 2026-11-15 public presentation layer for the shared shelf.
   // Inverse-transform its layout-only additions and verify the untouched
   // historical engine's original frozen Git blob byte-for-byte.

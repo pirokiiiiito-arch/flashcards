@@ -63,9 +63,9 @@ const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'da1d4510563c447cd33b64e3e0e0acea86db84ef',
- 'reader/library/index.html':'5b19a109330eaf43f8cf0ea469297ae716618094',
- 'reader/library/sw.js':'0f4434269b2202eac61e5693ded771afe6fe5f1b'
+ 'reader/library/app.js':'03b46c5f12b7f48d92c1172736861f096f216a61',
+ 'reader/library/index.html':'53a8097dff6490590949dee8d6fa33942443e6d9',
+ 'reader/library/sw.js':'48f01a4f0f4b2b0fde475b0e29029b3681e8f140'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -451,7 +451,9 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('app.js?v=bookshelf-nine-stories-286-20261121')&&app.includes("id:'nine-stories'");
   const inputUpdate=index.includes('app.js?v=bookshelf-reader-input-20261121')&&
     sw.includes('private-bookshelf-shell-v22-reader-input-20261121')&&sw.includes('app.js?v=bookshelf-reader-input-20261121');
-  if(inputUpdate){
+  const deviceSave=index.includes('app.js?v=bookshelf-device-save-20261121')&&
+    sw.includes('private-bookshelf-shell-v23-device-save-20261121')&&sw.includes('app.js?v=bookshelf-device-save-20261121');
+  if(inputUpdate||deviceSave){
    const storagePath='reader/library/storage.js',source=fs.readFileSync(safe(root,storagePath));
    const blob=crypto.createHash('sha1').update('blob '+source.length+String.fromCharCode(0)).update(source).digest('hex');
    demand(blob==='5f8cb8637eee1d09363962c24830e02d1b5c556f'&&hex(policy.baseline.files[storagePath]),'BOOKSHELF_EDITION_STORAGE_BYTES_NOT_REVIEWED');
@@ -463,7 +465,7 @@ function admittedBookshelfNavUI(root,policy){
   }
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry||nineStoriesEntry||inputUpdate),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry||nineStoriesEntry||inputUpdate||deviceSave),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }
