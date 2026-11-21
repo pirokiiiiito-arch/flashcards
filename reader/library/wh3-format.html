@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>世界の歴史3</title>
+<style>
+
+:root{
+  --size:20px;--lh:1.50;--one-column:30px;
+  --paper:#fffdf7;--ink:#273034;--muted:#718084;--accent:#925341;
+  --background:#ecefeb;--rule:#d8ded9
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;height:100%;width:100%;touch-action:manipulation}
+body{margin:0;width:100%;min-height:0;height:100svh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:2px solid #2f8190;outline-offset:3px}
+.toolbar{flex:0 0 auto;padding:calc(5px + env(safe-area-inset-top)) 11px 5px;background:#f8f9f5;border-bottom:1px solid #d9ded8}
+.toolbar-line{display:flex;max-width:520px;margin:auto;justify-content:space-between;align-items:center;gap:10px}
+.brand{min-width:0;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.brand strong{font-size:16px;font-weight:700;letter-spacing:.02em;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.brand small{font-size:10px;color:#69777b;letter-spacing:0}
+.head-actions{display:flex;align-items:center;gap:7px}
+.nav-button,.size-button{border:1px solid #d5ded9;background:white;border-radius:10px;min-height:42px;padding:7px 10px;white-space:nowrap}
+.nav-button{font-size:13px}
+.font-control{display:flex;align-items:center;gap:2px;border:1px solid #d5ded9;border-radius:11px;background:#fff;padding:2px}
+.size-button{border:0;min-height:39px;background:transparent;border-radius:8px;padding:5px 10px;font-size:17px;font-weight:600}
+.size-button:disabled{color:#adb6b6;cursor:default}
+#current-size{font-size:12px;min-width:40px;text-align:center;font-variant-numeric:tabular-nums;color:#53676d}
+.reader-main{flex:1;min-height:0;width:100%;display:flex;align-items:stretch;justify-content:center;padding:0;overflow:hidden;overscroll-behavior:contain;touch-action:pan-x pinch-zoom}
+.sheet{position:relative;flex:1 1 auto;width:100%;max-width:520px;height:100%;min-height:0;background:var(--paper);border:0;border-radius:0;padding:10px 12px;box-shadow:none;overflow:hidden}
+.reading-stage{position:relative;width:100%;height:100%;min-height:0}
+.text-flow{writing-mode:vertical-rl;text-orientation:mixed;width:calc(100% - var(--one-column));height:100%;margin-left:auto;overflow:hidden;font-size:var(--size);line-height:var(--lh);font-family:'Hiragino Mincho ProN','Yu Mincho','Noto Serif CJK JP',serif;color:#263039;letter-spacing:0;line-break:strict;word-break:normal;overflow-wrap:anywhere;white-space:normal}
+.text-flow p,.text-flow h2{padding:0;border:0;white-space:normal;overflow-wrap:anywhere;line-height:inherit}
+.text-flow p{font-size:1em;margin:0 0 .72em 0;text-indent:1em;font-weight:400}
+.text-flow p.continued{text-indent:0}
+.text-flow h2{font-size:1.12em;color:var(--accent);font-weight:700;letter-spacing:0;text-indent:0;margin:0 0 .82em 0}
+.text-flow .separator{font-size:.9em;margin:0 0 1em 0;text-indent:0;letter-spacing:.25em}
+.text-flow .signature{font-size:.95em;margin:0 0 1em 0;text-indent:0}
+.text-flow .aside-body{background:#fbf8f0;border-right:2px solid #b9a28b;padding-right:.3em;text-indent:0}
+.text-flow .note-text{font-size:.84em;line-height:1.5;color:#5e6465;text-indent:0;font-weight:400}
+.portrait-sheet{width:100%;height:100%;display:flex;justify-content:center;align-items:center;flex-direction:column;gap:0;min-height:0;margin:0}
+.portrait-sheet img{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;object-position:center;background:white}
+.page-inset-note{color:var(--muted);font-size:12px;text-align:center}
+.figure-sheet{gap:10px;justify-content:center}
+.figure-sheet img{height:80%;max-height:80%;width:100%;max-width:100%;object-fit:contain}
+.figure-sheet figcaption{font-size:13px;line-height:1.6;color:#46575b;text-align:left;margin:0;max-height:24%;overflow:auto;word-break:normal}
+.toc-flow{height:100%;overflow:auto;overscroll-behavior:contain}
+.toc-header{font-family:'Hiragino Mincho ProN','Yu Mincho',serif;color:var(--accent);font-size:22px;font-weight:700;margin:4px 2px 15px}
+.toc-row{display:flex;gap:12px;border-bottom:1px solid #ebeae1;align-items:baseline;line-height:1.45;padding:8px 3px;font-size:14px}
+.toc-row .toc-name{flex:1;min-width:0}
+.toc-row .toc-number{color:#68757a;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.toc-row.level-0{font-weight:700;color:#554f48}
+.toc-row.level-1{font-weight:600;padding-left:11px}
+.toc-row.level-2{padding-left:24px;font-size:13px}
+.loading{display:flex;align-items:center;justify-content:center;height:100%;font-size:14px;color:#64716e}
+.measuring-sheet{position:fixed!important;left:-20000px!important;top:-20000px!important;visibility:hidden!important;pointer-events:none!important;max-height:none!important}
+.reader-footer{flex:0 0 auto;padding:2px 12px calc(4px + env(safe-area-inset-bottom));background:#f8f9f5;border-top:1px solid #e1e5df}
+.progress-line{height:2px;background:#e3e6e1;max-width:520px;margin:0 auto 5px}
+#progress-fill{height:100%;width:0;background:#8c6c5d;transition:width .15s}
+.footer-inner{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:520px;margin:auto}
+.page-nav{min-width:72px;min-height:40px;border:1px solid #d8dfd8;background:white;border-radius:9px;padding:6px 9px;font-size:14px}
+.page-nav:disabled{opacity:.35;cursor:default}
+.location-indicator{text-align:center;font-size:12px;color:#5b6b6d;min-width:88px;font-variant-numeric:tabular-nums}
+.location-indicator strong{display:block;font-size:13px;color:#2c3538;font-weight:650}
+.location-indicator small{font-size:10px;color:#7d8583}
+.menu-overlay{position:fixed;inset:0;z-index:100;background:#18232470;display:flex;align-items:flex-end;justify-content:center;padding:0 0 env(safe-area-inset-bottom)}
+.menu-overlay[hidden]{display:none}
+.menu{background:#fafbf7;color:#223034;border-radius:18px 18px 0 0;width:min(100%,520px);padding:18px;box-shadow:0 -10px 35px #0f1c1b22}
+.menu-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.menu-title strong{font-size:16px}
+.menu-close{background:white;border:1px solid #dde1db;border-radius:8px;min-width:40px;min-height:40px}
+.menu button.menu-item{display:block;text-align:left;background:white;border:1px solid #e4e8e4;border-radius:11px;width:100%;padding:12px 15px;margin:7px 0;font-size:15px}
+.menu-detail{font-size:11px;color:#6c7976;padding:7px 0 0;line-height:1.6}
+@media(min-width:700px){.reader-main{background:#e9eeea;padding:10px 0}.sheet{max-width:560px;border:1px solid #e4e6de;box-shadow:0 2px 15px #45534a12}}
+@media(max-height:620px){.toolbar{padding-top:calc(2px + env(safe-area-inset-top));padding-bottom:2px}.reader-footer{padding-bottom:calc(2px + env(safe-area-inset-bottom))}.sheet{padding:6px 9px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* 図＋図題＋説明を一体化して本文から明確に区別する */
+.figure-bundle{width:100%;height:100%;display:flex;flex-direction:column;gap:6px;border:1px solid #deded4;border-radius:13px;background:#fffefb;padding:9px 10px;overflow:hidden}
+.figure-bundle-header{display:flex;flex-direction:column;gap:3px;flex:0 0 auto;min-height:0}
+.figure-bundle-kicker{font-size:11px;line-height:1.2;color:#995644;font-weight:700;letter-spacing:.06em}
+.figure-bundle-title{font-weight:700;font-size:clamp(14px,calc(var(--size)*.77),19px);line-height:1.32;color:#273034;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.figure-bundle-tabs{display:flex;flex-wrap:wrap;gap:6px;flex:0 0 auto}
+.figure-bundle-tabs button{border:1px solid #d1d6ce;color:#3a5655;background:#f8faf6;border-radius:7px;font-size:12px;line-height:1.2;padding:5px 8px;min-height:28px}
+.figure-bundle-tabs button[aria-pressed="true"]{color:white;background:#355e60;border-color:#355e60}
+.figure-bundle-art{width:100%;height:41%;flex:0 0 41%;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;background:white;border-radius:6px}
+.figure-bundle-art img{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center}
+.figure-bundle-figlabel{font-size:11px;line-height:1.25;text-align:center;color:#607071;flex:0 0 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.figure-bundle-explanation{border-top:1px solid #e1e5de;padding-top:7px;display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;overflow:hidden}
+.figure-bundle-caption-label{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;line-height:1.25;color:#83513e;font-weight:700}
+.figure-bundle-caption-content{display:block;white-space:inherit}
+.figure-bundle-caption-text{font-family:'Hiragino Mincho ProN','Yu Mincho','Noto Serif CJK JP',serif;font-size:clamp(15px,calc(var(--size)*.84),25px);line-height:1.48;letter-spacing:0;overflow:hidden;overflow-wrap:anywhere;white-space:pre-wrap;word-break:normal;flex:1 1 auto;min-height:0;color:#263039}
+.figure-bundle-no-desc .figure-bundle-art{flex:1 1 auto;height:auto}
+.figure-bundle-no-desc .figure-bundle-explanation{flex:0 0 auto;min-height:0}
+.figure-bundle-empty{font-size:12px;color:#687273;line-height:1.5}
+.figure-bundle-image-sequence{font-size:11px;color:#7b8885;flex:0 0 auto}
+@media(max-height:620px){.figure-bundle-art{height:36%;flex-basis:36%}.figure-bundle{padding:6px 8px;gap:4px}.figure-bundle-explanation{padding-top:5px;gap:2px}.figure-bundle-tabs button{padding:3px 6px;min-height:25px}}
+
+
+#first{font-size:12px;min-height:40px;padding:6px 8px;white-space:nowrap}
+@media(max-width:520px){
+.toolbar-line{flex-wrap:wrap!important;column-gap:4px!important;row-gap:4px!important}
+.toolbar-line .brand{flex:1 1 100%!important;width:100%!important;min-width:0!important}
+.toolbar-line .brand strong{font-size:15px!important}
+.toolbar-line .brand small{display:none!important}
+.toolbar-line .head-actions{display:flex!important;width:100%!important;min-width:0!important;justify-content:space-between!important;gap:4px!important}
+.toolbar-line .head-actions .nav-button{min-height:36px!important;padding:5px 6px!important;font-size:12px!important}
+.toolbar-line .head-actions .font-control{padding:0!important;gap:0!important;flex-shrink:0!important}
+.toolbar-line .head-actions .size-button{min-height:34px!important;padding:3px 6px!important;font-size:16px!important}
+.toolbar-line .head-actions #current-size{min-width:34px!important;font-size:11px!important}}
+@media(max-width:350px){
+.toolbar-line .head-actions .nav-button{padding:5px 4px!important;font-size:11px!important}
+.toolbar-line .head-actions .size-button{padding:3px 5px!important}
+.toolbar-line .head-actions #current-size{min-width:30px!important}}
+
+/* Only figure pages in the audited WH1 source-scan range 11-30. */
+.figure-bundle.wh1-audited-figure{box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;writing-mode:horizontal-tb!important;direction:ltr!important;text-indent:0!important;width:100%!important;max-width:100%!important;min-width:0!important;height:100%!important;min-height:0!important;margin:0!important;padding:10px 16px!important;gap:6px!important;transform:none!important;overflow:hidden!important}
+.wh1-audited-figure>*{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;direction:ltr!important;writing-mode:horizontal-tb!important;margin-left:0!important;margin-right:0!important;transform:none!important}
+.wh1-audited-figure .figure-bundle-header{width:100%!important;padding:0!important;flex:0 0 auto!important}
+.wh1-audited-figure .figure-bundle-title{display:block!important;-webkit-line-clamp:unset!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;text-indent:0!important}
+.wh1-audited-figure .figure-bundle-art{width:100%!important;height:36%!important;flex:0 0 36%!important;min-height:0!important;padding:0!important}
+.wh1-audited-figure .figure-bundle-art img{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important}
+.wh1-audited-figure .figure-bundle-figlabel{flex:0 0 auto!important;white-space:normal!important;text-overflow:clip!important;overflow:visible!important;overflow-wrap:anywhere!important;line-height:1.3!important}
+.wh1-audited-figure .figure-bundle-explanation{box-sizing:border-box!important;width:100%!important;flex:1 1 0%!important;min-height:0!important;margin:0!important;padding:6px 0 0!important;overflow:hidden!important;gap:4px!important}
+.wh1-audited-figure .figure-bundle-caption-label{min-height:14px!important;flex:0 0 auto!important;width:100%!important;gap:5px!important}
+.wh1-audited-figure .figure-bundle-image-sequence{white-space:nowrap!important}
+.wh1-audited-figure .figure-bundle-caption-text{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;flex:1 1 0%!important;min-height:0!important;padding:5px 5px 8px!important;margin:0!important;overflow:hidden!important;writing-mode:horizontal-tb!important;direction:ltr!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;word-break:normal!important;line-break:strict!important;text-indent:0!important}
+.wh1-audited-figure .figure-bundle-caption-content{display:block!important;box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;padding:0!important;text-indent:0!important;transform:none!important;white-space:inherit!important;writing-mode:horizontal-tb!important;direction:ltr!important}
+.wh1-audited-figure.wh1-compact .figure-bundle-art{height:24%!important;flex-basis:24%!important}
+@media(max-height:560px){.figure-bundle.wh1-audited-figure{padding:6px 12px!important;gap:4px!important}.wh1-audited-figure .figure-bundle-art{height:30%!important;flex-basis:30%!important}.wh1-audited-figure.wh1-compact .figure-bundle-art{height:20%!important;flex-basis:20%!important}}
+[hidden]{display:none!important}
+.shelf-strip{min-height:44px;display:flex;justify-content:space-between;align-items:center;padding:3px 12px;gap:10px;background:#faf9f4;border-bottom:1px solid #d6ddd8}
+.shelf-link{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:6px 12px;border:1px solid #bccbc5;border-radius:9px;background:white;color:#25474c;text-decoration:none;font:600 14px/1.2 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;white-space:nowrap}
+#shelf-status{font-size:10px;color:#5c726f}
+html.bookshelf-segment .shelf-strip{display:none}
+.reader-main{touch-action:pan-x pinch-zoom;overscroll-behavior:contain}
+body.zoomed .reader-main{touch-action:pan-x pan-y pinch-zoom;overscroll-behavior:auto}
+.text-flow ruby{ruby-position:over}
+.text-flow rt,.toc-name rt,.caption-flow rt{font-size:.5em;line-height:1}
+.text-flow:has(ruby){overflow:visible}
+.text-flow .tcy,.text-combine-upright{text-combine-upright:all}
+#first{font-size:12px;min-height:40px;padding:6px 8px}
+#page-major{position:relative;white-space:nowrap;min-width:14ch;font-variant-numeric:tabular-nums}
+#page-major[data-global]{color:transparent}
+#page-major[data-global]::after{content:attr(data-global);position:absolute;inset:0;color:var(--ink);text-align:center}
+#progress-fill{width:var(--book-progress,var(--local-progress,0%))}
+.toc-flow{touch-action:pan-x pinch-zoom}
+body.zoomed .toc-flow{touch-action:pan-x pan-y pinch-zoom;overscroll-behavior:auto}
+.toc-row{width:100%;background:transparent;color:inherit;border:0;border-bottom:1px solid #ebeae1;text-align:left;font-family:inherit}
+.menu{max-height:90dvh;overflow:auto}
+.original-overlay{position:fixed;inset:0;z-index:100;background:#171e20;display:flex;flex-direction:column;align-items:center}
+.original-toolbar{width:100%;max-width:1000px;display:flex;justify-content:space-between;align-items:center;padding:4px 10px;color:white}
+.original-toolbar button{min-width:44px;min-height:40px;border:1px solid #829495;border-radius:8px;background:#f7faf8;color:#15343a}
+.original-viewer{flex:1;min-height:0;width:100%;display:grid;place-items:center}
+.original-viewer img{display:block;width:100%;height:100%;min-height:0;object-fit:contain}
+#transcript{background:#fffdf7;color:#273034;max-height:35%;overflow:auto;width:100%;padding:3px 12px}
+#transcript-text{white-space:pre-wrap;font:16px/1.6 serif}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.footer-inner .location-indicator{min-width:0;max-width:calc(100% - 164px);overflow:hidden}
+#page-minor{white-space:nowrap;display:block;overflow:hidden;text-overflow:ellipsis}
+
+#wh3-status{font-size:10px;font-weight:500;letter-spacing:0;margin-left:8px;vertical-align:middle;color:#5c726f}
+
+.figure-bundle.wh1-audited-figure[hidden]{display:none!important}
+</style></head><body>
+<nav class="shelf-strip"><a class="shelf-link" href="https://pirokiiiiito-arch.github.io/flashcards/reader/library/">◀ 本棚へ</a><output id="shelf-status"></output></nav>
+<header class="toolbar"><div class="toolbar-line">
+ <div class="brand"><strong><span id="book-title"></span><span id="wh3-status">確認版</span></strong></div>
+ <div class="head-actions">
+  <button type="button" class="nav-button" id="original">原本</button>
+  <button type="button" class="nav-button" id="first">最初へ</button>
+  <button type="button" class="nav-button" id="all">全巻</button>
+  <div class="font-control" aria-label="本文文字サイズ"><button type="button" class="size-button" id="smaller" aria-label="文字を小さく">A−</button><output id="current-size">20px</output><button type="button" class="size-button" id="larger" aria-label="文字を大きく">A＋</button></div>
+ </div>
+</div></header>
+<main class="reader-main" id="reader-main"><article class="sheet" id="sheet" aria-label="読書ページ"><div class="reading-stage" id="reader-page">
+ <div class="text-flow" id="text-flow" hidden></div>
+ <figure class="portrait-sheet" id="portrait" hidden><img id="portrait-image" alt=""></figure>
+ <div class="toc-flow" id="contents" hidden></div>
+ <section class="figure-bundle wh1-audited-figure" id="figure-stage" hidden>
+ <div class="figure-bundle-header"><div class="figure-bundle-kicker" data-role="kicker"></div><div class="figure-bundle-title" data-role="title"></div></div>
+ <div class="figure-bundle-tabs" data-role="tabs" hidden></div>
+ <div class="figure-bundle-art"><img id="figure-image" alt=""><span id="figure-placeholder" hidden></span></div>
+ <div class="figure-bundle-figlabel" data-role="label"></div>
+ <div class="figure-bundle-explanation"><div class="figure-bundle-caption-label" id="figure-caption-label"><span data-role="caption-label"></span><span class="figure-bundle-image-sequence" data-role="sequence"></span></div>
+ <div class="figure-bundle-caption-text caption-flow"><span class="figure-bundle-caption-content" id="figure-caption"></span></div><div class="figure-bundle-empty" data-role="empty" hidden>原本にこの図の独立した説明文はありません。</div></div>
+</section>
+
+</div></article></main>
+<footer class="reader-footer"><div class="progress-line"><div id="progress-fill"></div></div><div class="footer-inner">
+ <button type="button" class="page-nav" id="prev">前へ</button>
+ <div class="location-indicator" role="status"><strong id="page-major">―</strong><small id="page-minor"></small></div>
+ <button type="button" class="page-nav" id="next">次へ</button>
+</div></footer>
+<div class="sheet measuring-sheet" id="measure-sheet" aria-hidden="true"><div class="reading-stage"><div class="text-flow" id="measure-text" hidden></div><div class="toc-flow" id="measure-toc" hidden></div><section class="figure-bundle wh1-audited-figure" id="measure-figure" hidden>
+ <div class="figure-bundle-header"><div class="figure-bundle-kicker" data-role="kicker"></div><div class="figure-bundle-title" data-role="title"></div></div>
+ <div class="figure-bundle-tabs" data-role="tabs" hidden></div>
+ <div class="figure-bundle-art"><img id="measure-figure-image" alt=""><span id="measure-figure-placeholder" hidden></span></div>
+ <div class="figure-bundle-figlabel" data-role="label"></div>
+ <div class="figure-bundle-explanation"><div class="figure-bundle-caption-label" id="measure-caption-label"><span data-role="caption-label"></span><span class="figure-bundle-image-sequence" data-role="sequence"></span></div>
+ <div class="figure-bundle-caption-text caption-flow"><span class="figure-bundle-caption-content" id="measure-caption"></span></div><div class="figure-bundle-empty" data-role="empty" hidden>原本にこの図の独立した説明文はありません。</div></div>
+</section>
+</div></div>
+<div class="menu-overlay" id="menu-backdrop" hidden><section class="menu" role="dialog" aria-modal="true" aria-label="全巻目次"><div class="menu-title"><strong>全巻目次</strong><button type="button" class="menu-close" id="menu-close">閉じる</button></div><div id="menu-items"></div></section></div>
+<div class="original-overlay" id="original-backdrop" hidden><section class="original-toolbar"><strong id="original-title">原本</strong><button type="button" id="original-close">閉じる</button></section><div class="original-viewer"><img id="original-image" alt="原本スキャン"></div><details id="transcript" hidden><summary>原本の文字を読む</summary><div id="transcript-text"></div></details></div>
+
+<!--WH3_PRIVATE_STRUCTURE-->
+<!--WH3_PRIVATE_DATA-->
+<script>
+const sourceBook=JSON.parse(document.getElementById('bookdata').textContent);
+const originals=[], entries=[], cropUrls=[];
+const frontScans=new Set([1,2,3,7]);
+function sourceCrop(page,box){
+ if(window.__readerHost?.measureOnly)return null;
+ const [x,y,w,h]=box;
+ if(x===0&&y===0&&w===page.width&&h===page.height)return page.original;
+ const svg='<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="'+[x,y,w,h].join(' ')+'" width="'+w+'" height="'+h+'"><image width="'+page.width+'" height="'+page.height+'" xlink:href="'+page.original+'"/></svg>';
+ const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));cropUrls.push(url);return url;
+}
+function imageEntry(page,f){
+ const title=f.display_title||f.uiLabel||'図版';
+ return {kind:'image',id:f.id,scan:page.scan,title,alt:title,src:sourceCrop(page,f.bbox),captionGlosses:f.captionGlosses||[],
+  caption:f.caption||f.externalCaption?.text||'',deferUntilContinuation:f.deferUntilContinuation===true};
+}
+// Scans 252–257 are a reverse-photographed index; its approved reading order is recorded in the source edition.
+const orderedScans=[...sourceBook.pages].sort((a,b)=>{const order=n=>n>=252&&n<=257?509-n:n;return order(a.scan)-order(b.scan)});
+for(const page of orderedScans){
+ const scan=page.scan;originals.push({scan,src:page.original});
+ if(frontScans.has(scan)||page.pageType==='reference'&&!page.blocks.length&&page.figures.length===1){
+  entries.push({kind:'portrait',scan,title:page.figures[0]?.uiLabel||'扉'});continue;
+ }
+ if(page.toc_entries.length)entries.push({kind:'contents',scan,rows:page.toc_entries});
+ if(page.blocks.length)entries.push({kind:'text',scan,blocks:page.blocks});
+ for(const f of page.figures){
+  const [x,y,w,h]=f.bbox;
+  // A facsimile of a typeset index/credits page is already available from 原本.
+  if(page.pageType==='reference'&&page.blocks.length&&x===0&&y===0&&w===page.width&&h===page.height)continue;
+  entries.push(imageEntry(page,f));
+ }
+}
+const lookup=new Map();for(const pg of sourceBook.pages){pg.blocks.forEach((b,i)=>lookup.set(b,pg.scan+'/'+i));}
+const flat=entries.flatMap(e=>e.kind==='text'?e.blocks.map(b=>({kind:'text',scan:e.scan,blocks:[b],blockKey:lookup.get(b)})):[e]);
+const nodes=new Map(flat.filter(e=>e.blockKey).map(e=>[e.blockKey,e]));const follows=new Map(),incoming=new Set();
+for(const j of sourceBook.continuations||[]){const a=j.from.join('/'),b=j.to.join('/');if(nodes.has(a)&&nodes.has(b)){follows.set(a,b);incoming.add(b);}}
+const ordered=[],emitted=new Set();
+for(const first of flat){
+ if(first.blockKey&&incoming.has(first.blockKey))continue;
+ ordered.push(first);let key=first.blockKey;
+ while(key&&follows.has(key)){
+  key=follows.get(key);if(emitted.has(key))throw Error('本文接続の重複');emitted.add(key);
+  const next=nodes.get(key);ordered.push({...next,blocks:[{...next.blocks[0],joinPrevious:true}]});
+ }
+}
+if(ordered.length!==flat.length)throw Error('読書項目数の不一致');
+const runtimeBlocks=ordered.flatMap(e=>e.kind==='text'?e.blocks:[]);
+
+window.READER_BOOK={id:'wh3-'+sourceBook.range.join('-'),kind:'mixed',title:sourceBook.title,status:'校正中・原本 '+sourceBook.range.join('–'),totalScans:260,originals:originals.sort((a,b)=>a.scan-b.scan),entries:ordered,runtimeBlocks,glosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope!=='toc')),tocGlosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope==='toc')),localSections:sourceBook.toc.filter(t=>t.targetScan>=sourceBook.range[0]&&t.targetScan<=sourceBook.range[1])};
+window.addEventListener('pagehide',e=>{if(!e.persisted)cropUrls.forEach(u=>URL.revokeObjectURL(u));});
+
+</script>
+<script>
+/* WH1-based standard reader v2 — shared text, original-image and mixed-page engine.
+   Public template code only: never embed a user's private original or OCR. */
+(()=>{'use strict';
+const book=window.READER_BOOK;
+if(!book||!['text','image','mixed'].includes(book.kind))throw Error('READER_BOOK.kind は text / image / mixed のいずれかが必要です');
+const $=id=>document.getElementById(id);
+const required=['sheet','measure-sheet','text-flow','measure-text','figure-stage','measure-figure',
+'figure-image','figure-placeholder','figure-caption','measure-caption','figure-caption-label',
+'measure-caption-label','original','first','all','smaller','larger','current-size',
+'prev','next','page-major','page-minor','progress-fill','book-title','shelf-status',
+'menu-backdrop','menu-items','menu-close','original-backdrop','original-close','original-image'];
+for(const id of required)if(!$(id))throw Error('必要な表示要素がありません: '+id);
+const mode=book.kind,bookId=String(book.id||'standard-'+mode),key='standard-reader-v2:'+bookId;
+const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
+const split=x=>segmenter?Array.from(segmenter.segment(String(x||'')),v=>v.segment):Array.from(String(x||''));
+// Source roles are distinct from the visual type: notes and TOC entries render
+// with the old body styling but are NEVER eligible to join narrative prose.
+const sourceKind=b=>b.type==='heading'?'heading':
+ b.type==='toc'?'toc':
+ (b.type==='note'||b.type==='footnote'||b.type==='caption')?'note':'body';
+let blocks=(Array.isArray(book.blocks)?book.blocks:[]).filter(b=>b&&typeof b.text==='string'&&b.text.length)
+ .map((b,i)=>({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
+   text:b.text,scan:Number(b.scan)||1,units:split(b.text),
+   sourceBlock:i,sourceJoined:b.joinPrevious===true}));
+let figures=(Array.isArray(book.figures)?book.figures:[]).map((f,i)=>({
+ id:String(f.id||'figure-'+(i+1)),title:String(f.title||'図版 '+(i+1)),
+ alt:String(f.alt||f.title||'原本画像'),scan:Number(f.scan)||1,
+ source:f.src||null,caption:String(f.caption||''),units:split(f.caption||''),ownedURL:null
+}));
+const flow=[];
+if(mode==='mixed'){
+ blocks=[];figures=[];
+ const entries=Array.isArray(book.entries)?book.entries:[];
+ if(!entries.length)throw Error('mixedモードには原本順のentriesが必要です');
+ for(const entry of entries){
+  if(entry?.kind==='portrait'||entry?.kind==='contents'){flow.push(entry);continue;}
+  if(entry?.kind==='text'){
+   const group=Array.isArray(entry.blocks)?entry.blocks:[entry];
+   for(const b of group){
+    if(!b||typeof b.text!=='string'||!b.text.length)continue;
+    const scan=Number(b.scan||entry.scan);
+    if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
+    blocks.push({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
+      text:b.text,scan,units:split(b.text),sourceBlock:blocks.length,
+      sourceJoined:b.joinPrevious===true});
+    flow.push({kind:'text',block:blocks.length-1});
+   }
+  }else if(entry?.kind==='image'){
+   const scan=Number(entry.scan);
+   if(!Number.isInteger(scan)||scan<1)throw Error('画像の原本番号が不正です');
+   const f={id:String(entry.id||'figure-'+(figures.length+1)),
+     title:String(entry.title||'原本 '+scan),alt:String(entry.alt||entry.title||'原本画像'),
+     scan,captionGlosses:entry.captionGlosses||[],source:entry.src||null,caption:String(entry.caption||''),
+     units:split(entry.caption||''),ownedURL:null};
+   figures.push(f);flow.push({kind:'image',figure:figures.length-1,
+     // Explicitly source-reviewed figure may follow a continued paragraph.
+     deferUntilContinuation:entry.deferUntilContinuation===true});
+  }else if(entry?.kind==='break'){
+   // A logical paragraph boundary with no printed content.
+   flow.push({kind:'break'});
+  }else throw Error('mixedモードの項目種別が不正です');
+ }
+}else if(mode==='text'){
+ blocks.forEach((_,i)=>flow.push({kind:'text',block:i}));
+}else figures.forEach((_,i)=>flow.push({kind:'image',figure:i}));
+const main=$('reader-main'),sheet=$('sheet'),measureSheet=$('measure-sheet');
+const textFlow=$('text-flow'),measureText=$('measure-text'),caption=$('figure-caption'),measureCaption=$('measure-caption');
+const host=window.__readerHost||null,embedded=window.parent!==window;
+let hostScale=1,hostKnown=!embedded||host?.measureOnly===true,hostSeq=-1;
+let font=20,pages=[],index=0,activeFigure=-1,activeSrc=null,sourceURL=null,rebuildFrame=0,touch=null,warning='';
+function validHostPosition(v){return v&&v.schema==='standard-reader-position-v2'&&v.bookId===bookId&&
+ Number.isSafeInteger(v.point)&&v.point>=0&&v.point<10000000&&
+ Number.isInteger(v.font)&&v.font>=16&&v.font<=30&&v.font%2===0;}
+function readStored(){try{
+ const p=JSON.parse(localStorage.getItem(key)||'null');return validHostPosition(p)?p:null;
+}catch(_){return null;}}
+const initialPosition=validHostPosition(host?.initialPosition)?host.initialPosition:readStored();
+if(initialPosition)font=initialPosition.font;
+if(host&&Number.isInteger(host.font)&&host.font>=16&&host.font<=30&&host.font%2===0)font=host.font;
+if(embedded&&host)document.documentElement.classList.add('bookshelf-segment');
+function postHost(type,body={}){
+ if(!embedded||typeof host?.session!=='string'||!host.session||!host.origin)return;
+ try{parent.postMessage({type,session:host.session,...body},host.origin)}catch(_){}
+}
+function receiveHost(e){
+ const m=e.data;
+ if(!embedded||!host||e.source!==parent||e.origin!==host.origin||
+   !m||m.session!==host.session||m.type!=='reader-viewport-v8')return;
+ if(!Number.isSafeInteger(m.seq)||m.seq<=hostSeq||typeof m.scale!=='number'||
+   !Number.isFinite(m.scale)||m.scale<.5||m.scale>10)return;
+ hostSeq=m.seq;hostScale=m.scale;hostKnown=true;reflectZoom();
+}
+window.addEventListener('message',receiveHost);
+document.documentElement.style.setProperty('--size',font+'px');document.documentElement.style.setProperty('--one-column',font*1.5+'px');
+$('current-size').textContent=font+'px';
+$('book-title').textContent=String(book.title||'標準読書テンプレート');
+$('shelf-status').textContent=String(book.status||'見本・原本未登録');
+$('text-flow').hidden=mode==='image';$('measure-text').hidden=mode==='image';
+$('figure-stage').hidden=mode!=='image';$('measure-figure').hidden=mode!=='image';
+function readPoint(){const p=readStored()||initialPosition;return Math.max(0,Number(p?.point)||0)}
+function persist(){
+ const p=pages[index],v={schema:'standard-reader-position-v2',bookId,
+   point:p?.start||0,scan:p?.scan||1,font,updatedAt:Date.now()};
+ if(host?.measureOnly)return;try{localStorage.setItem(key,JSON.stringify(v))}catch(_){}
+ postHost('reader-position-v1',{position:v});
+}
+// Range client rectangles detect visual column ends that scrollHeight misses.
+function fitsInk(el){
+ if(el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1)return false;
+ const bound=el.getBoundingClientRect(),cs=getComputedStyle(el);
+ const bottom=bound.bottom-(parseFloat(cs.paddingBottom)||0);
+ const top=el.classList.contains('caption-flow')?bound.top:bound.top+(parseFloat(cs.paddingTop)||0);
+ const left=bound.left+(parseFloat(cs.paddingLeft)||0);
+ const right=el.classList.contains('text-flow')?measureSheet.getBoundingClientRect().right:bound.right-(parseFloat(cs.paddingRight)||0);
+ const range=document.createRange(),walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+ let node;
+ while((node=walker.nextNode())){
+  if(!node.nodeValue?.length)continue;
+  range.selectNodeContents(node);
+  for(const r of range.getClientRects()){
+   if(r.width<=0||r.height<=0)continue;
+   if(r.left<left-.5||r.right>right+.5||r.top<top-.5||r.bottom>bottom+.5)return false;
+  }
+ }
+ return true;
+}
+function syncMeasure(){
+ const r=sheet.getBoundingClientRect();
+ if(r.width<80||r.height<80)throw Error('表示領域が小さすぎます');
+ measureSheet.style.width=r.width+'px';measureSheet.style.height=r.height+'px';
+}
+function fit(el){return el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1}
+// BEGIN reader vertical symbols
+const verticalReaderSymbols=(()=>{
+ // UAX #50 mixed layout supplies native vertical glyphs for the rest of the text.
+ const upright=/[!?！？‼⁇⁈⁉‽¡¿#＃%％‰‱&＆@＠*＊※〒§¶†‡©®™℗°℃℉№／/\\＼\u2190-\u21ff\u25a0-\u25ff\u2605\u2606\u27f0-\u27ff\u2900-\u297f\ufe10-\ufe19\ufe30-\ufe48]|\p{Sc}|\p{Sm}/gu;
+ const wave=new Set(['~','～','〜','∼']);
+ const attaches=/^[\p{M}\u200c\u200d\u{1f3fb}-\u{1f3ff}\u{e0020}-\u{e007f}]/u;
+ const isSymbol=/[\p{P}\p{S}ーｰ]/u;
+ // The reading edition uses one fullwidth upright question mark for each source question.
+ function displayText(source){
+  return source.replaceAll('?','？');
+ }
+ function* uprightRanges(text){
+  for(const match of text.matchAll(upright)){
+   const start=match.index, end=start+match[0].length;
+   // Keep keycaps, variation sequences, combining marks and ZWJ emoji intact.
+   if(wave.has(match[0])||text[start-1]==='\u200d'||attaches.test(text.slice(end,end+2)))continue;
+   yield {start,end};
+  }
+ }
+ function count(text){
+  const counts={upright:0,native:0};
+  for(const character of text)if(isSymbol.test(character))counts.native++;
+  for(const range of uprightRanges(text)){counts.upright++;counts.native--;}
+  return counts;
+ }
+ // Run against a visible vertical text flow or its measurement copy.
+ function inspect(flow){
+  const doc=flow.ownerDocument, view=doc.defaultView;
+  const walker=doc.createTreeWalker(flow,4);
+  const result={upright:0,native:0,halfwidthQuestions:0,fullwidthQuestions:0,mismatches:0,examples:[]};
+  let node;
+  while((node=walker.nextNode())){
+   const parent=node.parentElement, style=view.getComputedStyle(parent);
+   if(!isSymbol.test(node.data)||style.textCombineUpright==='all')continue;
+   if(style.writingMode==='horizontal-tb'&&parent.closest('[data-horizontal],.figure-caption,rt'))continue;
+   const starts=new Set(Array.from(uprightRanges(node.data),r=>r.start));
+   let offset=0;
+   for(const ch of node.data){
+    if(isSymbol.test(ch)){
+     const kind=starts.has(offset)?'upright':'native';
+     const expected=kind==='upright'?'upright':'mixed';
+     result[kind]++;
+     if(ch==='?')result.halfwidthQuestions++;
+     if(ch==='？')result.fullwidthQuestions++;
+     if(ch==='?'||!style.writingMode.startsWith('vertical')||style.textOrientation!==expected){
+      result.mismatches++;
+      if(result.examples.length<12)result.examples.push({codePoint:ch.codePointAt(0),expectedCharacter:ch==='?'?'？':ch,expected,actual:style.textOrientation,writingMode:style.writingMode});
+     }
+    }
+    offset+=ch.length;
+   }
+  }
+  return result;
+ }
+ return {displayText,uprightRanges,count,inspect};
+})();
+function setVerticalText(element,source){
+ const text=verticalReaderSymbols.displayText(source);
+ let fragment=null,offset=0;
+ for(const {start,end} of verticalReaderSymbols.uprightRanges(text)){
+  if(!fragment)fragment=document.createDocumentFragment();
+  if(start>offset)fragment.append(document.createTextNode(text.slice(offset,start)));
+  const mark=document.createElement('span');
+  mark.style.textOrientation='upright';
+  mark.textContent=text.slice(start,end);
+  fragment.append(mark);
+  offset=end;
+ }
+ if(!fragment){element.textContent=text;return;}
+ if(offset<text.length)fragment.append(document.createTextNode(text.slice(offset)));
+ element.replaceChildren(fragment);
+}
+if(typeof window==='object')window.ReaderVerticalSymbols=verticalReaderSymbols;
+// END reader vertical symbols
+function partNode(p){
+ const el=document.createElement(p.type==='heading'?'h2':'p'); el.dataset.sourceSpans=JSON.stringify(p.sourceSpans||[]);
+ if(p.sourceSpans?.length){const first=p.sourceSpans[0],id='wh3-'+String(first.scan).padStart(3,'0')+'-'+first.sourceBlock;
+ if(p.type==='heading'){el.dataset.headingId=id;el.dataset.sourceHeadingId=id;el.dataset.headingFrom=String(first.sourceStart);el.dataset.headingTo=String(first.sourceEnd);}
+ else el.dataset.bodyId=id;}
+ el.className=p.type==='heading'?'section-heading':('paragraph'+(p.continued?' continued':''));
+ if(p.semanticType==='note')el.classList.add('note-text');
+ const spans=[];let segmentOffset=0;
+for(const part of p.sourceSpans||[]){
+ const b=book.runtimeBlocks?.[part.sourceBlock];if(!b)continue;
+ const chars=Array.from(b.text),a=chars.slice(0,part.sourceStart).join('').length,z=chars.slice(0,part.sourceEnd).join('').length;
+ for(const mark of b.emphasis||[]){const left=Math.max(mark[0],a),right=Math.min(mark[1],z);if(right>left)spans.push({at:segmentOffset+left-a,base:b.text.slice(left,right),bold:true});}
+ for(const g of b.glosses||[]){if(g.at>=a&&g.at+g.base.length<=z)spans.push({at:segmentOffset+g.at-a,base:g.base,rt:g.reading});}
+ segmentOffset+=z-a;
+}
+if(p.semanticType==='toc')for(const g of book.tocGlosses||[]){const i=p.text.indexOf(g.base);if(g.scan===p.scan&&i>=0)spans.push({at:i,base:g.base,rt:g.reading});}
+if(!spans.length){setVerticalText(el,p.text);return el;}
+spans.sort((x,y)=>x.at-y.at||y.base.length-x.base.length);
+function plain(s){if(!s)return;const temp=document.createElement('span');setVerticalText(temp,s);el.append(...temp.childNodes);}
+let last=0;
+for(const g of spans){if(g.at<last||p.text.slice(g.at,g.at+g.base.length)!==g.base)continue;plain(p.text.slice(last,g.at));
+ if(g.bold){const strong=document.createElement('strong');setVerticalText(strong,g.base);el.append(strong);last=g.at+g.base.length;continue;}
+ const ru=document.createElement('ruby'),rt=document.createElement('rt');ru.append(document.createTextNode(g.base));rt.textContent=g.rt;ru.append(rt);el.append(ru);last=g.at+g.base.length;}
+plain(p.text.slice(last));return el;
+
+}
+function fitsParts(existing,additional){
+ const fragment=document.createDocumentFragment();
+ for(const p of existing)fragment.append(partNode(p));
+ if(additional)fragment.append(partNode(additional));
+ measureText.replaceChildren(fragment);return fitsInk(measureText);
+}
+// G4-02 / G4-04: source-scan pages are not forced reader-page boundaries.
+// Only source-verified joinPrevious:true on a following BODY may join with a
+// prior BODY in an uninterrupted logical text run. Never infer this from scan
+// numbers, and never silently accept a blocked explicit continuation.
+function joinLogicalContinuations(source){
+ const logical=[];
+ for(const b of source){
+  const prior=logical[logical.length-1];
+  if(b.sourceJoined){
+   if(!prior||b.semanticType!=='body'||prior.semanticType!=='body')
+    throw Error('G402_SOURCE_CONTINUATION_BARRIER scan='+b.scan);
+   const start=prior.units.length;
+   prior.text+=b.text;
+   prior.units.push(...b.units);
+   prior.sourceRanges.push({start,end:prior.units.length,scan:b.scan,sourceBlock:b.sourceBlock});
+  }else{
+   logical.push({...b,units:b.units.slice(),
+    sourceRanges:[{start:0,end:b.units.length,scan:b.scan,sourceBlock:b.sourceBlock}]});
+  }
+ }
+ return logical;
+}
+function textPart(b,off,n){
+ const first=b.sourceRanges?.find(r=>r.end>off);
+ return {type:b.type,semanticType:b.semanticType,scan:first?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
+  continued:off>0,
+  // Offsets are grapheme indices within the ORIGINAL registered source block.
+  sourceSpans:(b.sourceRanges||[]).filter(r=>r.end>off&&r.start<off+n).map(r=>({
+   scan:r.scan,sourceBlock:r.sourceBlock,
+   sourceStart:Math.max(0,off-r.start),sourceEnd:Math.min(r.end,off+n)-r.start
+  }))};
+}
+function protectedPageBoundary(units,point){
+ if(point<=0||point>=units.length)return false;
+ const left=units.slice(Math.max(0,point-14),point).join('');
+ const right=units.slice(point,Math.min(units.length,point+14)).join('');
+ if(/^(?:、|。|！|？|!|\?|」|』|）|\))/.test(right))return true;
+ if(/(?:「|『|（|\()$/.test(left))return true;
+ if(/(?:いずれ|それぞれ|どちら)$/.test(left)&&/^も/.test(right))return true;
+ if(/[0-9０-９]$/.test(left)&&/^(?:年|月|日|時|分|秒|円|冊|個|頁|ページ|％|%|cm|kg|㎝|㎏)/.test(right))return true;
+ return false;
+}
+function paginateBlocks(group,start){
+ group=joinLogicalContinuations(group);
+ const out=[];let current=[],at=start,begin=start;
+ const flush=()=>{if(!current.length)return;
+  out.push({kind:'text',parts:current,start:begin,end:at,scan:current[0].scan});
+  current=[];begin=at;
+ };
+ for(const b of group){
+  let off=0;
+  while(off<b.units.length){
+   const remaining=b.units.length-off,whole=textPart(b,off,remaining);
+   if(b.semanticType==='toc'&&current.length&&!fitsParts(current,whole)&&fitsParts([],whole))flush();
+   if(fitsParts(current,whole)){current.push(whole);off+=remaining;at+=remaining;continue}
+   let lo=0,hi=remaining;
+   while(lo<hi){const mid=Math.ceil((lo+hi)/2);
+    if(fitsParts(current,textPart(b,off,mid)))lo=mid;else hi=mid-1;
+   }
+   if(current.length&&(lo<6||(b.type==='heading'&&lo<remaining))){flush();continue;}
+   if(lo===0){if(current.length){flush();continue}
+    throw Error('文字サイズに対して本文領域が不足しています');
+   }
+   // Do not split a single Japanese grapheme. Prefer an in-range punctuation
+   // boundary; this is not a substitute for original-source G4-04 review.
+   if(lo<remaining){
+    const min=Math.max(1,lo-8);
+    for(let n=lo;n>=min;n--){
+     if(/[。！？!?、」』）)]/.test(b.units[off+n-1]||'')&&
+        !protectedPageBoundary(b.units,off+n)&&
+        fitsParts(current,textPart(b,off,n))){lo=n;break}
+    }
+    // Preserve known source-side Japanese compounds and number+unit pairs
+    // by carrying the entire unit to the next page whenever it still fits.
+    while(lo>0&&(protectedPageBoundary(b.units,off+lo)||!fitsParts(current,textPart(b,off,lo))))lo--;
+    if(lo===0&&current.length){flush();continue;}
+    if(lo===0||protectedPageBoundary(b.units,off+lo))
+     throw Error('句読点・単位を安全に組版できません。原本と画面寸法を確認してください');
+   }
+   current.push(textPart(b,off,lo));off+=lo;at+=lo;flush();
+  }
+ }
+ flush();return out;
+}
+function paintCaption(el,value,f,offset){
+ const rr=(f?.captionGlosses||[]).filter(g=>g.at>=offset&&g.at+g.base.length<=offset+value.length).sort((a,b)=>a.at-b.at);
+ if(!rr.length){el.textContent=value;return;}
+ let at=0;const frag=document.createDocumentFragment();for(const g of rr){const k=g.at-offset;if(k<at||value.slice(k,k+g.base.length)!==g.base)continue;
+ frag.append(document.createTextNode(value.slice(at,k)));const rb=document.createElement('ruby'),rt=document.createElement('rt');rb.append(document.createTextNode(g.base));rt.textContent=g.reading;rb.append(rt);frag.append(rb);at=k+g.base.length;}
+ frag.append(document.createTextNode(value.slice(at)));el.replaceChildren(frag);
+}
+function sectionOf(scan){
+ const list=(sourceBook.toc||[]).filter(item=>item.kind==='chapter'&&item.targetScan<=scan);
+ return list.length?list[list.length-1].text.replace(/^第[一二三四五六七八九十百0-9０-９]+章[　 ]*/,''):'';
+}
+function tocElement(p,measuring=false){
+ const frag=document.createDocumentFragment(),h=document.createElement('h2');h.className='toc-header';h.textContent=p.first?'目次':'目次（続き）';frag.append(h);
+ for(const item of p.rows){
+  const row=document.createElement('button');row.type='button';row.className='toc-row level-'+(item.kind==='part'?0:item.kind==='chapter'?1:2);
+  const name=document.createElement('span');name.className='toc-name';name.textContent=item.text;
+  let tail=0;const glosses=(book.tocGlosses||[]).filter(g=>g.scan===p.scan&&item.text.includes(g.base)).sort((a,b)=>item.text.indexOf(a.base)-item.text.indexOf(b.base));
+  if(glosses.length){name.replaceChildren();for(const g of glosses){const i=item.text.indexOf(g.base,tail);if(i<0)continue;name.append(item.text.slice(tail,i));const ruby=document.createElement('ruby'),rt=document.createElement('rt');ruby.append(g.base);rt.textContent=g.reading;ruby.append(rt);name.append(ruby);tail=i+g.base.length;}name.append(item.text.slice(tail));}
+  const num=document.createElement('span');num.className='toc-number';num.textContent=String(item.page??'');row.append(name,num);frag.append(row);
+  if(!measuring)row.addEventListener('click',()=>{
+   if(embedded&&host?.session){parent.postMessage({wh1bridge:1,type:'navigateScan',session:host.session,segment:(sourceBook.range[0]-1)/20,scan:item.targetScan,heading:item.text},host.origin);return;}
+   const i=pages.findIndex(p=>p.scan===item.targetScan||p.parts?.some(q=>q.sourceSpans?.some(s=>s.scan===item.targetScan)));
+   if(i>=0)gotoPage(i);else window.open('https://pirokiiiiito-arch.github.io/flashcards/reader/library/read.html?id=wh3&scan='+item.targetScan,'_blank','noopener');
+  });
+ }
+ return frag;
+}
+function paginateContents(item,at){
+ const box=$('measure-toc'),result=[];box.hidden=false;
+ let pos=0;
+ while(pos<item.rows.length){
+  let count=0;const first=item.scan===sourceBook.toc[0]?.sourceScan&&pos===0;
+  while(pos+count<item.rows.length&&count<12){
+   box.replaceChildren(tocElement({first,scan:item.scan,rows:item.rows.slice(pos,pos+count+1)},true));
+   if(count&&box.scrollHeight>box.clientHeight+1)break;count++;
+  }
+  const rows=item.rows.slice(pos,pos+count);
+  result.push({kind:'toc',scan:item.scan,rows,first,start:at,end:at+count});at+=count;pos+=count;
+ }
+ box.hidden=true;return result;
+}
+function fillFigureLabels(container,f,p){
+ const set=(r,s)=>{const n=container.querySelector('[data-role="'+r+'"]');if(n.textContent!==s)n.textContent=s};
+ const type=f.title.includes('地図')?'地図':f.title.includes('年表')?'年表':'図版';
+ set('kicker',type+' ＋ 説明｜原本'+f.scan+'枚目');set('title',f.title);set('label',f.alt||f.title);
+ set('caption-label',type==='地図'?'図題・凡例':type==='年表'?'年表の文字':'この図の説明');
+ set('sequence',p?.captionCount?(p.subpage+' / '+p.captionCount):'1 / 1');
+ container.querySelector('[data-role="empty"]').hidden=!!f.caption;
+ container.querySelector('.figure-bundle-caption-label').hidden=!f.caption;
+ container.querySelector('.figure-bundle-caption-text').hidden=!f.caption;
+ container.classList.toggle('figure-bundle-no-desc',!f.caption);
+}
+function captionFits(value,f,off){
+ paintCaption(measureCaption,value,f,off);
+ const box=measureCaption.parentElement,rect=box.getBoundingClientRect(),content=measureCaption.getBoundingClientRect();
+ return box.clientHeight>10&&content.bottom<=rect.bottom-5&&content.right<=rect.right+1&&box.scrollWidth<=box.clientWidth+1;
+}
+
+
+function paginateOneFigure(i,start){
+ const f=figures[i],out=[];let at=start;
+ fillFigureLabels($('measure-figure'),f,null);
+ if(!f.units.length)return [{kind:'image',figure:i,caption:'',start,end:start+1,subpage:1,scan:f.scan}];
+ let off=0,count=0;
+ while(off<f.units.length){
+  const remain=f.units.length-off;let lo=0,hi=remain;
+  while(lo<hi){const mid=Math.ceil((lo+hi)/2);
+   if(captionFits(f.units.slice(off,off+mid).join(''),f,f.units.slice(0,off).join('').length))lo=mid;else hi=mid-1;
+  }
+  if(lo===0)throw Error('図版の説明文を表示する領域が不足しています');
+  count++;out.push({kind:'image',figure:i,capOffset:f.units.slice(0,off).join('').length,caption:f.units.slice(off,off+lo).join(''),
+   start:at,end:at+lo,subpage:count,scan:f.scan});
+  at+=lo;off+=lo;
+ }
+ for(const p of out)p.captionCount=out.length;return out;
+}
+function paginateAll(){
+ const out=[];let at=0,pending=[],deferredFigures=[],joinedAfterDeferred=false;
+ const flush=()=>{
+  if(!pending.length)return;
+  measureText.hidden=false;$('measure-figure').hidden=true;
+  const part=paginateBlocks(pending,at);out.push(...part);
+  if(part.length)at=part[part.length-1].end;
+  pending=[];
+ };
+ const emitFigure=item=>{
+  measureText.hidden=true;$('measure-figure').hidden=false;
+  const part=paginateOneFigure(item.figure,at);out.push(...part);
+  if(part.length)at=part[part.length-1].end;
+ };
+ // A source-reviewed figure that physically interrupts an unfinished
+ // sentence is retained, but displayed AFTER its next logical paragraph.
+ // Without an explicit confirmed continuation this is an error, not a
+ // silently omitted image or a broken continuation.
+ const releaseDeferred=()=>{
+  if(!deferredFigures.length)return;
+  if(!joinedAfterDeferred)throw Error('G402_DEFERRED_IMAGE_WITHOUT_CONTINUATION');
+  flush();
+  for(const item of deferredFigures)emitFigure(item);
+  deferredFigures=[];joinedAfterDeferred=false;
+ };
+ for(const item of flow){
+  if(item.kind==='text'){
+   const b=blocks[item.block];
+   if(deferredFigures.length){
+    if(b.sourceJoined&&b.semanticType==='body')joinedAfterDeferred=true;
+    else releaseDeferred();
+   }
+   pending.push(b);continue;
+  }
+  if(item.kind==='image'&&item.deferUntilContinuation){
+   if(!pending.length||pending[pending.length-1].semanticType!=='body')
+    throw Error('G402_DEFERRED_IMAGE_NO_PRECEDING_PROSE');
+   deferredFigures.push(item);continue;
+  }
+  releaseDeferred();flush();
+  if(item.kind==='break')continue;
+  if(item.kind==='portrait'){out.push({...item,start:at,end:at+1});at++;continue;}
+  if(item.kind==='contents'){
+   measureText.hidden=true;$('measure-figure').hidden=true;
+   const part=paginateContents(item,at);out.push(...part);if(part.length)at=part.at(-1).end;continue;
+  }
+  emitFigure(item);
+ }
+ releaseDeferred();flush();return out;
+}
+function pageAt(point){
+ let result=0;
+ for(let i=0;i<pages.length;i++)if(pages[i].start<=point)result=i;else break;
+ return result;
+}
+let selectedOriginal=null;
+function currentSource(){
+ if(selectedOriginal)return selectedOriginal.src;
+ const p=pages[index];if(!p)return null;
+ 
+ const originals=Array.isArray(book.originals)?book.originals:[];
+ return sourceURL||originals.find(x=>Number(x.scan)===Number(p.scan))?.src||null;
+}
+function setFigure(p){
+ const f=figures[p.figure],src=f.ownedURL||f.source||null,img=$('figure-image');
+ if(p.figure!==activeFigure||activeSrc!==src){
+  if(src){img.src=src;img.hidden=false;$('figure-placeholder').hidden=true}
+  else{img.removeAttribute('src');img.hidden=true;$('figure-placeholder').hidden=false}
+  img.alt=f.alt;activeFigure=p.figure;activeSrc=src;
+ }
+ fillFigureLabels($('figure-stage'),f,p);
+ paintCaption(caption,p.caption,f,p.capOffset||0);
+ $('figure-stage').classList.toggle('no-caption',!f.caption);
+}
+function render(){
+ const p=pages[index];
+ if(!p){
+  $('page-major').textContent='0 / 0';$('page-minor').textContent='読書データ未登録';
+  $('progress-fill').style.width='0%';$('prev').disabled=true;$('next').disabled=true;
+  $('original').disabled=true;return;
+ }
+ const scan=selectedOriginal?.scan||p.scan;
+ const show=id=>$(id).hidden=false;
+ textFlow.hidden=true;$('portrait').hidden=true;$('contents').hidden=true;$('figure-stage').hidden=true;
+ if(p.kind==='text'){
+  const frag=document.createDocumentFragment();for(const part of p.parts)frag.append(partNode(part));
+  textFlow.replaceChildren(frag);show('text-flow');
+ }else if(p.kind==='portrait'){
+  const el=$('portrait-image'),src=currentSource();if(src&&el.getAttribute('src')!==src)el.src=src;
+  el.alt=p.title;show('portrait');
+ }else if(p.kind==='toc'){$('contents').replaceChildren(tocElement(p));show('contents');}
+ else{setFigure(p);show('figure-stage');}
+ $('page-major').textContent=(index+1)+' / '+pages.length;
+ const description=p.kind==='text'?[sectionOf(scan),'本文'].filter(Boolean).join(' '):p.kind==='image'?'図版｜'+figures[p.figure].title:p.kind==='toc'?'目次':p.title;
+ $('page-minor').textContent=description+' ｜ 原本 '+scan+' / '+book.totalScans;$('page-minor').title=$('page-minor').textContent;
+ $('progress-fill').style.setProperty('--local-progress',100*(index+1)/pages.length+'%');
+ $('prev').disabled=index===0;$('next').disabled=index>=pages.length-1;
+ $('original').disabled=!currentSource();persist();
+}
+function gotoPage(n){if(!pages.length)return;const k=Math.max(0,Math.min(n,pages.length-1));if(k!==index){selectedOriginal=null;index=k;render()}}
+function menuRefresh(){
+ const list=$('menu-items');list.replaceChildren();
+ if(mode==='image'){
+  figures.forEach((f,i)=>{
+   const btn=document.createElement('button');btn.type='button';btn.className='menu-item';
+   btn.textContent=(i+1)+'．'+f.title;
+   btn.addEventListener('click',()=>{gotoPage(pages.findIndex(p=>p.figure===i));closeDialogs()});list.append(btn);
+  });
+ }else if(mode==='text'){
+  let offset=0;
+  blocks.forEach(b=>{if(b.type==='heading'){
+   const target=offset,btn=document.createElement('button');btn.type='button';
+   btn.className='menu-item';btn.textContent=b.text;
+   btn.addEventListener('click',()=>{gotoPage(pageAt(target));closeDialogs()});list.append(btn);
+  }offset+=b.units.length});
+ }else{
+  for(const item of book.localSections||[]){
+   const p=pages.findIndex(p=>p.scan===item.targetScan||(p.parts||[]).some(part=>(part.sourceSpans||[]).some(s=>s.scan===item.targetScan)));
+   if(p<0)continue;
+   const button=document.createElement('button');button.type='button';button.className='menu-item book-jump';
+   button.textContent=item.text+'　'+item.page;button.addEventListener('click',()=>{gotoPage(p);closeDialogs()});list.append(button);
+  }
+  for(const original of book.originals||[]){
+   const scan=Number(original.scan);
+   let i=pages.findIndex(p=>p.scan===scan);
+   if(i<0)i=pages.findIndex(p=>p.parts?.some(part=>part.sourceSpans?.some(s=>s.scan===scan)));
+   if(i<0)continue;
+   const btn=document.createElement('button');btn.type='button';btn.className='menu-item';
+   btn.dataset.originScan=String(scan);btn.textContent='原本 '+scan+(pages[i].kind==='image'?'・画像':'・本文');
+   btn.addEventListener('click',()=>{
+    gotoPage(i);selectedOriginal=original;render();closeDialogs();
+   });
+   list.append(btn);
+  }
+ }
+}
+function rebuild(){
+ try{
+  const point=pages[index]?.start??readPoint();
+  syncMeasure();
+  pages=paginateAll();
+  index=pageAt(point);warning='';
+  if(host?.measureOnly){postHost('wh3-measured',{count:pages.length,font});return;}
+  render();menuRefresh();
+ }catch(e){
+  warning=String(e?.message||e);if(host?.measureOnly)postHost('wh3-measured',{error:warning});$('shelf-status').textContent='組版要確認';
+  $('page-minor').textContent=warning;console.error('Reader layout:',e);
+ }
+}
+function zoomed(){return (embedded&&!hostKnown)||Math.max(Number(window.visualViewport?.scale||1),hostScale)>1.04}
+function schedule(){
+ if(rebuildFrame)cancelAnimationFrame(rebuildFrame);
+ rebuildFrame=requestAnimationFrame(()=>{rebuildFrame=0;if(!zoomed())rebuild()});
+}
+function changeFont(d){
+ const n=Math.max(16,Math.min(30,font+d));
+ if(n===font)return;font=n;
+ document.documentElement.style.setProperty('--size',font+'px');document.documentElement.style.setProperty('--one-column',font*1.5+'px');
+ $('current-size').textContent=font+'px';
+ $('smaller').disabled=font<=16;$('larger').disabled=font>=30;
+ schedule();
+}
+function closeDialogs(){$('menu-backdrop').hidden=true;$('original-backdrop').hidden=true}
+$('prev').addEventListener('click',()=>gotoPage(index-1));
+$('next').addEventListener('click',()=>gotoPage(index+1));
+$('first').addEventListener('click',()=>gotoPage(0));
+$('smaller').addEventListener('click',()=>changeFont(-2));
+$('larger').addEventListener('click',()=>changeFont(2));
+$('all').addEventListener('click',()=>{$('menu-backdrop').hidden=false});
+$('menu-close').addEventListener('click',closeDialogs);
+$('original-close').addEventListener('click',closeDialogs);
+for(const id of ['menu-backdrop','original-backdrop'])$(id).addEventListener('click',e=>{if(e.target===$(id))closeDialogs()});
+$('original').addEventListener('click',()=>{
+ const src=currentSource();if(!src)return;
+ const scan=selectedOriginal?.scan||pages[index].scan;
+ const raw=sourceBook.pages.find(p=>p.scan===scan);
+ $('original-title').textContent='原本スキャン '+scan+' / '+book.totalScans;
+ const transcript=frontScans.has(scan)?(raw?.blocks||[]).map(b=>b.text).join('\n'):'';
+ $('transcript').open=false;$('transcript').hidden=!transcript;$('transcript-text').textContent=transcript;
+ $('original-image').src=src;$('original-backdrop').hidden=false;
+});
+function fileURL(file){
+ if(!file||!['image/jpeg','image/png','image/webp'].includes(file.type))
+  throw Error('JPEG・PNG・WebPを選択してください');
+ return URL.createObjectURL(file);
+}
+if($('figure-file'))$('figure-file').addEventListener('change',()=>{
+ try{
+  const file=$('figure-file').files?.[0];if(!file||!pages[index])return;
+  const f=figures[pages[index].figure];
+  if(f.ownedURL)URL.revokeObjectURL(f.ownedURL);
+  f.ownedURL=fileURL(file);activeSrc=null;render();
+ }catch(e){alert(String(e.message||e))}
+});
+if($('source-file'))$('source-file').addEventListener('change',()=>{
+ try{
+  const file=$('source-file').files?.[0];if(!file)return;
+  if(sourceURL)URL.revokeObjectURL(sourceURL);
+  sourceURL=fileURL(file);$('original').disabled=!currentSource();
+ }catch(e){alert(String(e.message||e))}
+});
+function reflectZoom(){document.body.classList.toggle('zoomed',zoomed());if(zoomed())touch=null;}
+main.addEventListener('touchstart',e=>{
+ if(e.touches.length!==1||zoomed()){touch=null;return}
+ const t=e.touches[0];touch={x:t.clientX,y:t.clientY};
+},{passive:true});
+main.addEventListener('touchmove',e=>{if(e.touches.length!==1)touch=null},{passive:true});
+main.addEventListener('touchend',e=>{
+ if(!touch||zoomed()||e.changedTouches.length!==1){touch=null;return}
+ const t=e.changedTouches[0],dy=t.clientY-touch.y,dx=t.clientX-touch.x;touch=null;
+ if(Math.abs(dy)>45&&Math.abs(dy)>1.3*Math.abs(dx)){
+  // Each completed touch sequence advances exactly one reading page.
+  e.preventDefault();gotoPage(index+(dy<0?1:-1));
+ }
+},{passive:false});
+main.addEventListener('touchcancel',()=>{touch=null},{passive:true});
+window.addEventListener('keydown',e=>{
+ if(!$('menu-backdrop').hidden||!$('original-backdrop').hidden){
+  if(e.key==='Escape')closeDialogs();return;
+ }
+ if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault();gotoPage(index+1)}
+ if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();gotoPage(index-1)}
+});
+window.addEventListener('resize',schedule);
+if(window.visualViewport){
+ window.visualViewport.addEventListener('resize',()=>{reflectZoom();if(!zoomed())schedule()});
+ window.visualViewport.addEventListener('scroll',reflectZoom);
+}
+if(!host?.measureOnly&&window.ResizeObserver)new ResizeObserver(schedule).observe(sheet);
+document.querySelector('.shelf-link')?.addEventListener('click',e=>{
+ if(embedded&&host?.session){e.preventDefault();postHost('reader-back-to-shelf-v1')}
+});
+window.addEventListener('pagehide',()=>{
+ persist();if(sourceURL)URL.revokeObjectURL(sourceURL);
+ figures.forEach(f=>{if(f.ownedURL)URL.revokeObjectURL(f.ownedURL)});
+});
+$('smaller').disabled=font<=16;$('larger').disabled=font>=30;
+window.StandardReader=Object.freeze({version:'v2',kind:mode,bookId,inspect:()=>({
+ pages:pages.length,index,font,warning,originalReady:!!currentSource(),
+ zoomed:zoomed(),hostKnown,hostScale,
+ currentKind:pages[index]?.kind,scan:pages[index]?.scan,
+ textIntegrity:pages.filter(p=>p.kind==='text').flatMap(p=>p.parts.map(x=>x.text)).join('')===
+  blocks.map(b=>b.text).join('')
+}),pageManifest:()=>pages.map(p=>({kind:p.kind,scan:p.scan,start:p.start,end:p.end,figure:p.figure,caption:p.kind==='image'?p.caption:undefined,rows:p.rows,
+  sourceSpans:p.kind==='text'?p.parts.flatMap(x=>x.sourceSpans||[]):[]})),
+ gotoPage:n=>gotoPage(n)});
+reflectZoom();if(host?.measureOnly){document.fonts.ready.then(rebuild);return;}requestAnimationFrame(rebuild);
+if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>postHost('reader-ready-v8'));}
+})();
+</script>
+<script>
+// The private ZIP reader uses the bookshelf's existing wh1bridge message protocol.
+(()=>{
+ if(window.parent===window||location.protocol!=='blob:'||window.__readerHost?.measureOnly)return;
+ const segment=(sourceBook.range[0]-1)/20,firstScan=sourceBook.range[0],lastScan=sourceBook.range[1];
+ const $=id=>document.getElementById(id),api=window.StandardReader;
+ const send=(type,detail={})=>parent.postMessage({wh1bridge:1,type,segment,...detail},'*');
+ document.documentElement.classList.add('bookshelf-segment');
+ let selectedOrigin=null;
+ function position(){const d=api.inspect();if(selectedOrigin&&selectedOrigin.index!==d.index)selectedOrigin=null;return selectedOrigin?.scan||d.scan;}
+ function snapshot(){const d=api.inspect();if(!d.pages)return;const pg=api.pageManifest()[d.index];
+   send('state',{scan:position(),size:d.font,key:'wh3v2.'+pg.start,pageIndex:d.index,pageCount:d.pages,session:window.__readerHost?.session});
+   if(firstScan>1&&d.index===0)$('prev').disabled=false;
+   if(lastScan<260&&d.index===d.pages-1)$('next').disabled=false;
+ }
+ function capture(id,fn){$(id).addEventListener('click',e=>{if(fn()!==false){e.preventDefault();e.stopImmediatePropagation();}},true);}
+ capture('first',()=>send('bookStart'));capture('all',()=>send('menu'));
+ capture('original',()=>send('original',{scan:position()}));
+ function boundary(dir){const d=api.inspect();if(dir<0&&d.index===0&&firstScan>1||dir>0&&d.index===d.pages-1&&lastScan<260){send('boundary',{direction:dir});return true;}return false;}
+ capture('prev',()=>boundary(-1));capture('next',()=>boundary(1));
+ let touch=null;const main=$('reader-main');main.addEventListener('touchstart',e=>{touch=!api.inspect().zoomed&&e.touches.length===1?[e.touches[0].clientX,e.touches[0].clientY]:null;},{capture:true,passive:true});
+ main.addEventListener('touchcancel',()=>{touch=null;},{passive:true});
+ main.addEventListener('touchmove',e=>{if(e.touches.length!==1)touch=null;},{passive:true});
+ main.addEventListener('touchend',e=>{if(!touch||e.changedTouches.length!==1||api.inspect().zoomed)return;const dx=e.changedTouches[0].clientX-touch[0],dy=e.changedTouches[0].clientY-touch[1];touch=null;
+ if(Math.abs(dy)>45&&Math.abs(dy)>1.3*Math.abs(dx)&&boundary(dy<0?1:-1)){e.preventDefault();e.stopImmediatePropagation();}},{capture:true,passive:false});
+ function dest(o={}){const pages=api.pageManifest();let i=-1;if(o.mode==='first')i=0;else if(o.mode==='last')i=pages.length-1;
+  else if(/^wh3v2\.\d+$/.test(o.key||'')){const at=Number(o.key.slice(6));i=pages.findIndex(x=>x.start<=at&&x.end>at);}
+
+  if(i<0&&o.view==='text'&&typeof o.heading==='string'){
+   const normal=s=>s.normalize('NFKC').replace(/[\s　]/g,'');
+   const heading=normal(o.heading);
+   i=pages.findIndex(p=>p.sourceSpans.some(s=>s.scan===o.scan&&READER_BOOK.runtimeBlocks[s.sourceBlock]?.type==='heading'&&normal(READER_BOOK.runtimeBlocks[s.sourceBlock].text)===heading));
+   if(i<0)i=pages.findIndex(p=>p.kind==='text'&&p.sourceSpans.some(s=>s.scan===o.scan));
+  }
+  if(i<0&&Number.isInteger(o.scan)){i=pages.findIndex(p=>p.scan===o.scan);if(i<0)i=pages.findIndex(p=>p.sourceSpans?.some(s=>s.scan===o.scan));}
+  if(i>=0){api.gotoPage(i);selectedOrigin=Number.isInteger(o.scan)?{scan:o.scan,index:i}:null;}snapshot();}
+ addEventListener('message',e=>{if(e.source!==parent||e.data?.wh1bridge!==1)return;const d=e.data;
+  if(d.action==='wh3Progress'&&d.session===window.__readerHost?.session){
+   const out=$('page-major');out.dataset.global=d.label;out.setAttribute('aria-label',d.label);
+   if(Number.isFinite(d.ratio))$('progress-fill').style.setProperty('--book-progress',(100*d.ratio)+'%');return;
+  }
+  if(d.action==='goto')dest(d.destination);else if(d.action==='localToc')$('menu-backdrop').hidden=false;
+  else if(d.action==='loadAssets'&&Number.isFinite(d.size)){let current=api.inspect().font;for(let n=0;n<Math.min(8,Math.abs(current-d.size)/2);n++)$(current<d.size?'larger':'smaller').click();snapshot();}});
+ new MutationObserver(snapshot).observe($('page-major'),{childList:true,characterData:true,subtree:true});
+ requestAnimationFrame(()=>{snapshot();send('prepare');});
+})();
+
+</script></body></html>

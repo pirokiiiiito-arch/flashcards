@@ -227,6 +227,99 @@ window.visualViewport?.addEventListener('resize',syncReaderViewport);
 window.visualViewport?.addEventListener('scroll',syncReaderViewport);
 window.addEventListener('pageshow',syncReaderViewport);
 window.addEventListener('resize',syncReaderViewport);
+// BEGIN WH3 reference presentation
+const wh3LayoutVersion='wh1-reference-20261122-1';
+let wh3Template=null,wh3Counts=null,wh3State=null;
+function wh3FrameDocument(plain,archived,context){
+ for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
+  const start=archived.indexOf('<script type="application/json" id="'+id+'">');
+  const end=archived.indexOf('<\/script>',start);
+  if(start<0||end<0||!plain.includes(mark))throw Error('原本の構造データを読み込めません');
+  let tag=archived.slice(start,end+9);
+  if(context.measureOnly&&id==='bookdata')tag=tag.replace(/"original"\s*:\s*"data:image\/[^"]*"/g,'"original":""');
+  plain=plain.replace(mark,()=>tag);
+ }
+ const settings=JSON.stringify(context).replace(/</g,'\\u003c');
+ return plain.replace('<head>',()=>'<head><script>window.__readerHost=Object.freeze('+settings+');<\/script>');
+}
+async function wh3Layout(){
+ if(!wh3Template)wh3Template=fetch('./wh3-format.html').then(async response=>{
+  if(!response.ok)throw Error('読書テンプレートを取得できません');const body=await response.text();
+  if(!body.includes('<!--WH3_PRIVATE_DATA-->'))throw Error('読書テンプレートを確認できません');
+  return body;
+ }).catch(error=>{wh3Template=null;throw error;});
+ return wh3Template;
+}
+function wh3Progress(){
+ if(!wh3State||!wh3Counts)return;
+ const counts=wh3Counts.counts;
+ const ready=counts.every(n=>Number.isSafeInteger(n)&&n>0);
+ const total=ready?counts.reduce((a,b)=>a+b,0):0;
+ const index=ready?1+wh3State.pageIndex+counts.slice(0,activeSegment).reduce((a,b)=>a+b,0):0;
+ issueChild('wh3Progress',{session:inputSession,label:ready?(index+' / '+total):'全巻ページ数を計測中…',ratio:ready?index/total:null});
+}
+function wh3MeasureFrame(job,html,index){
+ const pane=document.createElement('iframe'),session=crypto.randomUUID();
+ pane.setAttribute('sandbox','allow-scripts');pane.setAttribute('aria-hidden','true');pane.tabIndex=-1;
+ Object.assign(pane.style,{position:'fixed',left:'0',top:'0',width:job.width+'px',height:job.height+'px',zIndex:'-2',opacity:'0',pointerEvents:'none',border:'0'});
+ const markup=wh3FrameDocument(job.layout,html,{font:job.font,origin:location.origin,session,measureOnly:true});
+ const url=URL.createObjectURL(new Blob([markup],{type:'text/html'}));
+ return new Promise((resolve,reject)=>{
+  let done=false;
+  function finish(n,error){
+   if(done)return;done=true;clearTimeout(timer);window.removeEventListener('message',receive);
+   pane.remove();URL.revokeObjectURL(url);job.cancel=null;
+   if(error)reject(error);else resolve(n);
+  }
+  function receive(e){
+   if(e.source!==pane.contentWindow||e.data?.session!==session||e.data.type!=='wh3-measured')return;
+   if(!Number.isSafeInteger(e.data.count)||e.data.count<1||e.data.font!==job.font)finish(0,Error(e.data.error||'ページ数の取得に失敗しました'));
+   else finish(e.data.count);
+  }
+  const timer=setTimeout(()=>finish(0,Error('ページ数の計測が完了しませんでした')),45000);
+  job.cancel=()=>finish(null);window.addEventListener('message',receive);
+  pane.src=url;document.body.append(pane);
+ });
+}
+async function wh3MeasureBook(job){
+ try{
+  job.layout=await wh3Layout();
+  for(let i=0;i<job.counts.length&&wh3Counts===job;i++){
+   if(job.counts[i])continue;
+   const archived=await job.book.readText(SEGMENTS[i].part);
+   if(wh3Counts!==job)return;
+   const count=await wh3MeasureFrame(job,archived,i);
+   if(wh3Counts!==job||!count)return;
+   job.counts[i]=count;
+  }
+  if(wh3Counts!==job)return;
+  try{localStorage.setItem(job.key,JSON.stringify(job.counts));}catch(_){}
+  wh3Progress();
+ }catch(error){
+  if(wh3Counts!==job)return;
+  console.warn('全巻のページ計測',error);
+  if(wh3State)issueChild('wh3Progress',{session:inputSession,label:(wh3State.pageIndex+1)+' / '+wh3State.pageCount+'（分冊）',ratio:null});
+  job.failed=true;
+ }
+}
+function wh3UpdateState(d){
+ if(!usesWh3StandardInput()||d.session!==inputSession||!Number.isInteger(d.pageIndex)||!Number.isInteger(d.pageCount)||d.pageIndex<0||d.pageIndex>=d.pageCount)return;
+ const rect=$('reader').getBoundingClientRect(),width=Math.round(rect.width),height=Math.round(rect.height),font=d.size;
+ const key='wh3-pages:'+wh3LayoutVersion+':'+width+'x'+height+':'+font+':'+SEGMENTS.map(s=>s.sha256||s.part).join('.');
+ // The shelf link stays visible above the same original-scan dialog used by WH1.
+ $('originalOverlay').style.paddingTop='calc(48px + env(safe-area-inset-top))';
+ const previous=wh3Counts;
+ wh3State=d;
+ if(previous?.key===key&&previous.book===bookZip&&(!previous.counts[activeSegment]||previous.counts[activeSegment]===d.pageCount)&&!previous.failed){
+  previous.counts[activeSegment]=d.pageCount;wh3Progress();return;
+ }
+ previous?.cancel?.();
+ let counts=Array(SEGMENTS.length).fill(null);
+ try{const saved=JSON.parse(localStorage.getItem(key));if(Array.isArray(saved)&&saved.length===counts.length&&saved.every(n=>Number.isSafeInteger(n)&&n>0)&&saved[activeSegment]===d.pageCount)counts=saved;}catch(_){}
+ counts[activeSegment]=d.pageCount;const job={key,book:bookZip,width,height,font,counts,cancel:null};wh3Counts=job;
+ wh3Progress();if(counts.some(n=>!n))void wh3MeasureBook(job);
+}
+// END WH3 reference presentation
 function fillManifest(m){
  if(!m||m.schema!==1||!Array.isArray(m.range)||m.range[0]!==1||!Number.isInteger(m.range[1])||m.range[1]<1||m.range[1]>15000||!Array.isArray(m.segments)||m.segments.length<1||m.segments.length>1000)throw Error('統合読書ZIPの構成情報が正しくありません');
  for(let i=0;i<m.segments.length;i++){
@@ -407,7 +500,12 @@ async function loadBook(file,shouldSave=true){
   if(shouldSave)void saveCurrentBook();
   else setStorageState('このiPhoneに保存した書籍を開きました。次回も自動で開きます。',{show:false});
   $('setup').hidden=true;$('reader').style.display='block';
-  currentState=restorePosition();await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});
+  currentState=restorePosition();
+  const requested=m.bookId==='wh3'&&m.template_profile==='world_history_1'?Number(new URLSearchParams(location.search).get('scan')):null;
+  if(Number.isInteger(requested)&&requested>=1&&requested<=totalScans){
+   await openSegment(segmentForScan(requested),{scan:requested});
+   const url=new URL(location.href);url.searchParams.delete('scan');history.replaceState(null,'',url);
+  }else await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});
  }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
 }
 function positionText(){const s=SEGMENTS[currentState.segment];return s?`スキャン ${currentState.scan} / ${totalScans}　｜　区間 ${s.start}〜${s.end}　｜　文字 ${currentState.size}px`: '全巻';}
@@ -596,8 +694,15 @@ async function openSegment(index,destination={}){
   const text=await bookZip.readText(s.part);if(token!==loadToken)return;
   inputSession=nativeBookInput()?crypto.randomUUID():'';
   viewportSerial=0;
-  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
-  const content=new Blob([attachStandardHost(decorateOtherBookReading(decorated))],{type:'text/html'});
+  let rendered;
+  if(usesWh3StandardInput()&&text.includes('<script type="application/json" id="bookdata">')){
+   const layout=await wh3Layout();if(token!==loadToken)return;
+   rendered=wh3FrameDocument(layout,text,{origin:location.origin,session:inputSession,font:currentState.size});
+  }else{
+   const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;
+   rendered=attachStandardHost(decorateOtherBookReading(decorated));
+  }
+  const content=new Blob([rendered],{type:'text/html'});
   if(frameURL) URL.revokeObjectURL(frameURL);
   frameURL=URL.createObjectURL(content);activeSegment=index;
   $('reader').src=frameURL;
@@ -630,6 +735,7 @@ function handleChildState(d){
   if(pendingDest && Object.keys(pendingDest).length){$('reader').contentWindow.postMessage({wh1bridge:1,action:'goto',destination:pendingDest},'*');pendingDest=null;return;}
  }
  currentState={segment:activeSegment,key:d.key||'',scan:resolveStateScan(d),size:d.size||20};savePosition();clearBusy();
+ wh3UpdateState(d);
  if(wh1ExactPager)wh1ExactPager.onState({...d,scan:currentState.scan});
  $('menuSummary').textContent=positionText();
 }
@@ -657,6 +763,7 @@ window.addEventListener('message',e=>{
  else if(d.type==='navigateScan'&&nativeBookInput()&&inputSession&&d.session===inputSession){
   if(!Number.isInteger(d.scan)||d.scan<1||d.scan>totalScans)return;
   const target=segmentForScan(d.scan),destination={scan:d.scan,view:d.view==='figure'?'figure':'text'};
+  if(usesWh3StandardInput()&&typeof d.heading==='string')destination.heading=d.heading.slice(0,240);
   if(target===activeSegment)issueChild('goto',{destination});
   else openSegment(target,destination).catch(err=>console.warn('目次からの移動に失敗しました',err));
  }

@@ -279,3 +279,31 @@ test('a saved WH3 segment gets a host before its reader starts and only the curr
 
 // The deployment already exercises this suite for every bookshelf revision.
 require('./reader-shelf-registration.test.cjs');
+
+test('WH3 mounts the WH1 layout with the same private source in every section, including saved archives',()=>{
+ const host=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const template=fs.readFileSync(path.join(root,'reader/library/wh3-format.html'),'utf8');
+ const mount=host.slice(host.indexOf('function wh3FrameDocument('),host.indexOf('async function wh3Layout('));
+ const render=vm.runInNewContext(mount+'\nwh3FrameDocument');
+ for(const token of ['<!--WH3_PRIVATE_STRUCTURE-->','<!--WH3_PRIVATE_DATA-->'])assert.equal(template.split(token).length,2);
+ assert.doesNotMatch(template,/data:image\/jpeg;base64,/);
+ function tag(id,value){return '<script type="application/json" id="'+id+'">'+JSON.stringify(value)+'</script>';}
+ const original='data:image/jpeg;base64,AAAA';
+ const title='書式を照合 $&';
+ const structure=tag('reader-verified-structure',{normalized:'$&'});
+ const book=tag('bookdata',{title,pages:[{original}]});
+ const saved='<html>'+structure+book+'</html>',options={origin:'https://example.test',session:'rendering',font:22};
+ const shown=render(template,saved,options);
+ assert.ok(shown.includes(structure)&&shown.includes(book));
+ assert.ok(shown.indexOf('window.__readerHost=')<shown.indexOf('const sourceBook=JSON.parse'));
+ const measure=render(template,saved,{...options,measureOnly:true});
+ assert.ok(measure.includes(tag('bookdata',{title,pages:[{original:''}]})));
+ assert.ok(!measure.includes(original));assert.throws(()=>render(template,book,options));
+ for(const selector of ['class="toolbar-line"','class="head-actions"','class="portrait-sheet"','class="toc-flow"','class="figure-bundle wh1-audited-figure"','class="text-flow"','class="footer-inner"']){
+  assert.ok(shown.includes(selector),selector);
+ }
+ assert.match(shown,/\.text-flow p\{font-size:1em;[^}]*text-indent:1em/);
+ assert.match(shown,/\.text-flow h2\{font-size:1\.12em;[^}]*margin:0 0 \.82em 0/);
+ assert.ok(shown.includes("send('original',{scan:position()})"));
+ assert.ok(shown.includes("type:'navigateScan'")&&shown.includes('heading:item.text'));
+});

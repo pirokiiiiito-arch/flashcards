@@ -29,7 +29,20 @@ function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.tes
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
   data=priorShelfShell(data);
-  const blob=blobSHA(data);
+  let blob=blobSHA(data);
+  if(blob==='159505170aa3e8be559267505866a87fd79f543a'){
+    const prior=data.toString('utf8')
+      .replace(/\/\/ BEGIN WH3 reference presentation[\s\S]*?\/\/ END WH3 reference presentation\n/,'')
+      .replace(/  let rendered;\n  if\(usesWh3StandardInput\(\)&&text\.includes\([\s\S]*?  const content=new Blob\(\[rendered\],\{type:'text\/html'\}\);/,
+        "  const decorated=window.WH1ExactPager?.decorate ? window.WH1ExactPager.decorate(text) : text;\n  const content=new Blob([attachStandardHost(decorateOtherBookReading(decorated))],{type:'text/html'});")
+      .replace("  if(usesWh3StandardInput()&&typeof d.heading==='string')destination.heading=d.heading.slice(0,240);\n",'')
+      .replace(" wh3UpdateState(d);\n",'')
+      .replace(/  currentState=restorePosition\(\);\n  const requested=[\s\S]*?  \}else await openSegment\(currentState\.segment,\{key:currentState\.key,scan:currentState\.scan\}\);/,
+        '  currentState=restorePosition();await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});');
+    data=Buffer.from(prior);blob=blobSHA(data);
+    if(blob!=='f6ffac1ed438959e7a5c55d9916432e3f213a0e2')throw Error('WH3_LAYOUT_REVERSE_CHECK_FAILED');
+    data=priorShelfShell(data);blob=blobSHA(data);
+  }
   if(blob!=='f5551144e7f37d6f6587d71bd81694db75328cec'&&blob!=='c42490874b5e54dea08a524655d4f5632005e71d')return data;
     const prior=data.toString('utf8')
       .replace('attachStandardHost(decorateOtherBookReading(decorated))','decorateOtherBookReading(decorated)')
