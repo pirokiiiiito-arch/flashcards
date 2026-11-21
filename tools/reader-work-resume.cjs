@@ -296,7 +296,7 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
     status:probe.status===0?'renderer_verified':'layout_review_required',browserVerified:false,detail};
    if(probe.status!==0){
     const task={id:'apply_vertical_symbol_rules',type:'layout',lane:'render',
-     reason:'縦書き記号の組版を原稿のエンジンに適用し、分冊と統合版を再生成して検査する。',
+     reason:'縦書きの読書画面で疑問符を全角の「？」に統一して正立させる。記号の組版を適用し、分冊と統合版の表示と改ページ計測を検査する。',
      blockedBy:[],recorded:false};
     queues.productionPending=[...queues.productionPending,task];
     if(!queues.adoptionRequired){

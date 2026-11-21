@@ -49,12 +49,15 @@ function checkFile(file){
  if(!embedded)return {renderer:'linked or inline template'};
  const data=JSON.parse(embedded[2]);
  if(!Array.isArray(data.pages))throw Error('embedded pages unavailable');
- let upright=0,native=0;
+ let upright=0,native=0,sourceHalfwidthQuestions=0,sourceFullwidthQuestions=0;
  for(const page of data.pages)for(const block of page.blocks||[]){
   if(typeof block.text!=='string')throw Error('missing source text on scan '+page.scan);
   const measured=count(block.text);upright+=measured.upright;native+=measured.native;
+  sourceHalfwidthQuestions+=(block.text.match(/\?/g)||[]).length;
+  sourceFullwidthQuestions+=(block.text.match(/？/g)||[]).length;
  }
- return {renderer:'embedded book',pages:data.pages.length,upright,native};
+ return {renderer:'embedded book',pages:data.pages.length,upright,native,sourceHalfwidthQuestions,sourceFullwidthQuestions,
+  expectedFullwidthQuestions:sourceHalfwidthQuestions+sourceFullwidthQuestions};
 }
 function main(args){
  const [command,...files]=args;

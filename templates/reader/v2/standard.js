@@ -134,6 +134,10 @@ const verticalReaderSymbols=(()=>{
  const wave=new Set(['~','～','〜','∼']);
  const attaches=/^[\p{M}\u200c\u200d\u{1f3fb}-\u{1f3ff}\u{e0020}-\u{e007f}]/u;
  const isSymbol=/[\p{P}\p{S}ーｰ]/u;
+ // The reading edition uses one fullwidth upright question mark for each source question.
+ function displayText(source){
+  return source.replaceAll('?','？');
+ }
  function* uprightRanges(text){
   for(const match of text.matchAll(upright)){
    const start=match.index, end=start+match[0].length;
@@ -152,7 +156,7 @@ const verticalReaderSymbols=(()=>{
  function inspect(flow){
   const doc=flow.ownerDocument, view=doc.defaultView;
   const walker=doc.createTreeWalker(flow,4);
-  const result={upright:0,native:0,mismatches:0,examples:[]};
+  const result={upright:0,native:0,halfwidthQuestions:0,fullwidthQuestions:0,mismatches:0,examples:[]};
   let node;
   while((node=walker.nextNode())){
    const parent=node.parentElement, style=view.getComputedStyle(parent);
@@ -165,9 +169,11 @@ const verticalReaderSymbols=(()=>{
      const kind=starts.has(offset)?'upright':'native';
      const expected=kind==='upright'?'upright':'mixed';
      result[kind]++;
-     if(!style.writingMode.startsWith('vertical')||style.textOrientation!==expected){
+     if(ch==='?')result.halfwidthQuestions++;
+     if(ch==='？')result.fullwidthQuestions++;
+     if(ch==='?'||!style.writingMode.startsWith('vertical')||style.textOrientation!==expected){
       result.mismatches++;
-      if(result.examples.length<12)result.examples.push({codePoint:ch.codePointAt(0),expected,actual:style.textOrientation,writingMode:style.writingMode});
+      if(result.examples.length<12)result.examples.push({codePoint:ch.codePointAt(0),expectedCharacter:ch==='?'?'？':ch,expected,actual:style.textOrientation,writingMode:style.writingMode});
      }
     }
     offset+=ch.length;
@@ -175,9 +181,10 @@ const verticalReaderSymbols=(()=>{
   }
   return result;
  }
- return {uprightRanges,count,inspect};
+ return {displayText,uprightRanges,count,inspect};
 })();
-function setVerticalText(element,text){
+function setVerticalText(element,source){
+ const text=verticalReaderSymbols.displayText(source);
  let fragment=null,offset=0;
  for(const {start,end} of verticalReaderSymbols.uprightRanges(text)){
   if(!fragment)fragment=document.createDocumentFragment();

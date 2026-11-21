@@ -1,9 +1,16 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {count,uprightRanges}=require('../templates/reader/v2/vertical-symbols.js');
+const {count,uprightRanges,displayText}=require('../templates/reader/v2/vertical-symbols.js');
 const {checkEngine,checkFile,syncEngine}=require('../tools/reader-vertical-symbols.cjs');
 const dir=path.join(__dirname,'../templates/reader/v2');
 const marked=text=>Array.from(uprightRanges(text),({start,end})=>text.slice(start,end)).join('');
+test('the reading edition widens only ASCII question marks, including adjacent marks',()=>{
+ const original='?本当??え？ 1!A…｜（※）#️⃣‼️';
+ const expected='？本当？？え？ 1!A…｜（※）#️⃣‼️';
+ assert.equal(displayText(original),expected);
+ assert.equal(displayText(expected),expected);
+ assert.equal(original[0],'?');
+});
 test('Japanese punctuation, long strokes and leaders use native vertical glyphs',()=>{
  const text='「」『』（）()［］【】。、・：；…‥ーーｰ―—‐-〜～~';
  assert.equal(marked(text),'');assert.deepEqual(count(text),{native:Array.from(text).length,upright:0});
