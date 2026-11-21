@@ -67,7 +67,10 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
   assert.ok(html.indexOf('id="bookshelfNav"')<html.indexOf('<iframe id="reader"'));
   assert.equal(new URL(href,'https://pirokiiiiito-arch.github.io/flashcards/'+p.replace(/(?:index|read)\.html$/,'')).pathname,'/flashcards/reader/library/');
   assert.ok(approved[p]);
-  const restored=html.replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
+  const frozenInput=p==='reader/library/read.html'
+    ?require('../tools/reader-quality-gate.cjs').priorNativeInputReader(Buffer.from(html)).toString('utf8'):html;
+  if(p==='reader/library/read.html')assert.equal(blobSHA(frozenInput),'b5a1ef12c9d19518212e5d14fceb43c1409d9a1a');
+  const restored=frozenInput.replace(/\n<style id="bookshelf-nav-ui-v1">[\s\S]*?<\/style>\n(?=<\/head>)/,'')
     .replace(/\n<nav id="bookshelfNav"[^>]*>[\s\S]*?<\/nav>(?=\n<iframe)/,'');
   // The 2026-11-15 mobile-layout addition is intentionally presentation-only.
   // Reverse it, then require the exact frozen engine bytes to match.
@@ -89,6 +92,14 @@ test('both shared WH1 and library hosts keep only a public return button',()=>{
     :restored;
   assert.equal(blobSHA(originalReader),registry.legacyFrozenEntries[p],'OCR/reader engine remains byte-identical to baseline');
  }
+});
+test('native input opt-in restores the approved host and rejects changed bridge bytes',()=>{
+ const original=fs.readFileSync(path.join(root,'reader/library/read.html'));
+ const {priorNativeInputReader}=require('../tools/reader-quality-gate.cjs');
+ assert.equal(blobSHA(priorNativeInputReader(original)),'b5a1ef12c9d19518212e5d14fceb43c1409d9a1a');
+ const changed=Buffer.from(original.toString('utf8').replace('d.session===inputSession','true'));
+ assert.notDeepEqual(changed,original);
+ assert.deepEqual(priorNativeInputReader(changed),changed);
 });
 test('furniture book has a visible first-page control in the full-width bookshelf navigation',()=>{
  const html=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');

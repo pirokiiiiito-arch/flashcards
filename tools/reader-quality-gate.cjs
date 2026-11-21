@@ -25,6 +25,21 @@ const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verifi
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
+// Restore only the exact opted-in public input shell before validating the frozen legacy engine.
+function priorNativeInputReader(data){
+  if(blobSHA(data)!=='f5551144e7f37d6f6587d71bd81694db75328cec')return data;
+    const prior=data.toString('utf8')
+      .replace('html:not(.native-book-input),html:not(.native-book-input) body,html:not(.native-book-input) body *{touch-action:', 'html,body,body *{touch-action:')
+      .replace(/let inputSession='',viewportSerial=0;[\s\S]*?(?=function fillManifest\(m\)\{)/,'')
+      .replace(" document.documentElement.classList.toggle('native-book-input',nativeBookInput());\n",'')
+      .replace("  inputSession=nativeBookInput()?crypto.randomUUID():'';\n  viewportSerial=0;\n",'')
+      .replace('assets,size:currentState.size,session:inputSession','assets,size:currentState.size')
+      .replace(/ if\(e\.source!==\$\('reader'\)\.contentWindow\|\|!e\.data\)return;\n if\(nativeBookInput\(\)[\s\S]*? if\(e\.data\.wh1bridge!==1\)return;/,
+        " if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1)return;")
+      .replace(/ else if\(d\.type==='navigateScan'&&nativeBookInput\(\)[\s\S]*?\n \}\n(?= else if\(d\.type==='menu')/,'');
+  if(blobSHA(prior)!=='b5a1ef12c9d19518212e5d14fceb43c1409d9a1a')throw Error('READER_INPUT_REVERSE_CHECK_FAILED');
+  return Buffer.from(prior);
+}
 function blobSHA(bytes){const b=Buffer.isBuffer(bytes)?bytes:Buffer.from(bytes);return crypto.createHash('sha1').update(Buffer.from('blob '+b.length+'\0')).update(b).digest('hex');}
 
 /* Exact public-only UI approval; already byte-pinned by release-control.
@@ -126,23 +141,7 @@ function validate(root=ROOT){
   if(seen.has(p))errors.push('DUPLICATE_ROUTE '+p);seen.add(p);
   if(!paths.includes(p)){errors.push('MISSING_LEGACY '+p);continue;}
   let data=fs.readFileSync(path.join(root,p));
-  // Admit the opt-in public input bridge only if reversing its edits reconstructs
-  // the previously inspected generic host. All older layout checks then run.
-  if(p==='reader/library/read.html'&&blobSHA(data)==='f5551144e7f37d6f6587d71bd81694db75328cec'){
-    const prior=data.toString('utf8')
-      .replace('html:not(.native-book-input),html:not(.native-book-input) body,html:not(.native-book-input) body *{touch-action:', 'html,body,body *{touch-action:')
-      .replace(/let inputSession='',viewportSerial=0;[\s\S]*?(?=function fillManifest\(m\)\{)/,'')
-      .replace(" document.documentElement.classList.toggle('native-book-input',nativeBookInput());\n",'')
-      .replace("  inputSession=nativeBookInput()?crypto.randomUUID():'';\n  viewportSerial=0;\n",'')
-      .replace('assets,size:currentState.size,session:inputSession','assets,size:currentState.size')
-      .replace(/ if\(e\.source!==\$\('reader'\)\.contentWindow\|\|!e\.data\)return;\n if\(nativeBookInput\(\)[\s\S]*? if\(e\.data\.wh1bridge!==1\)return;/,
-        " if(e.source!==$('reader').contentWindow||!e.data||e.data.wh1bridge!==1)return;")
-      .replace(/ else if\(d\.type==='navigateScan'&&nativeBookInput\(\)[\s\S]*?\n \}\n(?= else if\(d\.type==='menu')/,'');
-    if(blobSHA(prior)!=='b5a1ef12c9d19518212e5d14fceb43c1409d9a1a'){
-      errors.push('READER_INPUT_REVERSE_CHECK_FAILED '+p);continue;
-    }
-    data=Buffer.from(prior);
-  }
+  if(p==='reader/library/read.html')data=priorNativeInputReader(data);
   const actual=blobSHA(data),expectedHref=p==='reader/library/read.html'?'./':'../../library/';
   const uiPinned=BOOKSHELF_NAV_UI_BLOBS[p]===actual&&
     data.includes(Buffer.from('id="bookshelfNav"'))&&
@@ -260,4 +259,4 @@ if(require.main===module){
  if(r.errors&&r.errors.length)process.exitCode=1;
  else console.log('SCHEMA PASS ONLY (not OCR certification): '+r.paths+' routes, '+r.managed+' managed, '+r.legacy+' frozen legacy');
 }
-module.exports={validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};
+module.exports={priorNativeInputReader,validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};
