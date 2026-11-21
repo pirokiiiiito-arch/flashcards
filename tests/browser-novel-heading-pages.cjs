@@ -18,16 +18,24 @@ async function test(){
  const standard=insertBook(standardTemplate);assert.notEqual(standard,standardTemplate);fs.writeFileSync(standardFile,standard);
  fs.writeFileSync(file,sample);
  for(const asset of ['standard.css','standard.js','novel.css','novel-dialogue.js','novel.js'])fs.copyFileSync(path.join(template,asset),path.join(root,asset));
- const binary=process.env.CHROME_BIN||['/usr/bin/google-chrome','/usr/bin/chromium'].find(fs.existsSync);
+ const binary=process.env.CHROME_BIN||process.env.CHROME_PATH||['/usr/bin/google-chrome','/usr/bin/chromium'].find(fs.existsSync);
  assert.ok(binary,'Chrome or Chromium is required');
  const browser=spawn(binary,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking',
-  '--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
+  '--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:['ignore','ignore','pipe']});
+ let browserDiagnostics='';
+ browser.stderr.on('data',chunk=>{browserDiagnostics=(browserDiagnostics+chunk).slice(-1800);});
  const ended=once(browser,'exit');
  let ws;
  try{
   const portFile=path.join(profile,'DevToolsActivePort');
-  for(let i=0;!fs.existsSync(portFile)&&i<120;i++){assert.equal(browser.exitCode,null);await sleep(100);}
-  const port=fs.readFileSync(portFile,'utf8').split('\n')[0];
+  let port=0;
+  const startDeadline=Date.now()+45000;
+  while(Date.now()<startDeadline&&!port){
+   assert.equal(browser.exitCode,null,'Chrome exited during startup: '+browserDiagnostics);
+   if(fs.existsSync(portFile))port=Number(fs.readFileSync(portFile,'utf8').split('\n')[0]);
+   if(!port)await sleep(100);
+  }
+  assert.ok(port,'Chrome did not expose its debugging port: '+browserDiagnostics);
   const targets=await (await fetch('http://127.0.0.1:'+port+'/json/list')).json();
   ws=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);await once(ws,'open');
   const waiting=new Map();let id=0;
