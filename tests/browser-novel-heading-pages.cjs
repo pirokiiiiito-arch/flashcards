@@ -9,8 +9,8 @@ async function test(){
  const book={id:'synthetic-sections',kind:'text',title:'検査用短編',blocks:[
   {type:'body',scan:20,text:'前の話がここで終わる。'},
   {type:'heading',scan:21,text:'朝の駅?'},{type:'body',scan:21,text:'何の声?!！※（鳥）…ー'},
-  {type:'heading',scan:22,text:'夕方の駅'},{type:'body',scan:22,text:'A1→＋＝￥　どこ？、。'}]};
- const fixtureUpright=/[?？!！※→＋＝￥]/gu;
+  {type:'heading',scan:22,text:'第2章の駅'},{type:'body',scan:22,text:'A1→＋＝￥　1世紀、1660年、3.5、７冊？'}]};
+ const fixtureUpright=/[?？!！※→＋＝￥]|[12](?=章|世紀)/gu;
  const html=fs.readFileSync(path.join(template,'novel.html'),'utf8');
  const file=path.join(root,'sample.html'),profile=path.join(root,'profile');
  const insertBook=html=>html.replace(/window\.READER_BOOK\s*=\s*\{[\s\S]*?\};<\/script>/,()=> 'window.READER_BOOK='+JSON.stringify(book)+';</script>');
@@ -58,7 +58,7 @@ async function test(){
     await evaluate(frames);
     const state=await evaluate('NovelReader.inspect()');
     assert.equal(state.font,font);assert.equal(state.pages,3);assert.ok(state.textIntegrity&&!state.warning);
-    for(const [index,expected] of [[0,['前の話がここで終わる。']],[1,['朝の駅？','何の声？\u0021！※（鳥）…ー']],[2,['夕方の駅','A1→＋＝￥　どこ？、。']]]){
+    for(const [index,expected] of [[0,['前の話がここで終わる。']],[1,['朝の駅？','何の声？\u0021！※（鳥）…ー']],[2,['第2章の駅','A1→＋＝￥　1世紀、1660年、3.5、７冊？']]]){
      const dom=await evaluate(`(()=>{NovelReader.gotoPage(${index});return [...document.querySelector('#text-flow').children].map(n=>({tag:n.tagName,text:n.textContent,visible:n.getBoundingClientRect().width>0,orientation:getComputedStyle(n).textOrientation,
       upright:[...n.querySelectorAll('span')].filter(s=>getComputedStyle(s).textOrientation==='upright'&&s.getBoundingClientRect().width>0).map(s=>s.textContent)}));})()`);
      const actual=await evaluate(`(()=>{
@@ -71,7 +71,8 @@ async function test(){
      assert.equal(actual.measured.mismatches,0,JSON.stringify(actual.measured));
      assert.equal(actual.check.halfwidthQuestions+actual.measured.halfwidthQuestions,0);
      assert.equal(actual.check.fullwidthQuestions,expected.join('').split('？').length-1);
-     assert.equal(actual.check.upright,expected.join('').match(fixtureUpright)?.length||0);
+     assert.equal(actual.check.upright,expected.join('').match(/[?？!！※→＋＝￥]/gu)?.length||0);
+     assert.equal(actual.check.uprightDigits,(expected.join('').match(/[12](?=章|世紀)/g)||[]).length);
      assert.deepEqual(dom.map(n=>n.text),expected);assert.ok(dom.every(n=>n.visible));if(index)assert.equal(dom[0].tag,'H2');
      for(const n of dom){
       assert.equal(n.orientation,'mixed');
@@ -87,6 +88,15 @@ async function test(){
    mark.style.textOrientation=correct;return [wrong.mismatches,ReaderVerticalSymbols.inspect(flow).mismatches];
   })()`);
   assert.deepEqual(fault,[1,0],'a sideways symbol must be detected');
+  const wrongDigit=await evaluate(`(()=>{
+   const flow=document.getElementById('text-flow'),digit=[...flow.querySelectorAll('span')].find(n=>n.textContent==='2');
+   digit.style.textOrientation='mixed';const wrong=ReaderVerticalSymbols.inspect(flow);
+   digit.style.textOrientation='upright';digit.style.textCombineUpright='none';digit.style.webkitTextCombine='none';
+   const squeezed=ReaderVerticalSymbols.inspect(flow);
+   digit.style.textCombineUpright='all';digit.style.webkitTextCombine='horizontal';
+   return [wrong.mismatches,squeezed.mismatches,ReaderVerticalSymbols.inspect(flow).mismatches];
+  })()`);
+  assert.deepEqual(wrongDigit,[1,1,0],'detect a sideways digit and a missing one-character vertical box');
   const wrongWidth=await evaluate(`(()=>{
    const flow=document.getElementById('text-flow');
    const mark=[...flow.querySelectorAll('span')].find(n=>n.textContent==='？');
@@ -114,7 +124,7 @@ async function test(){
   assert.ok(standardMarks.ok);
   assert.deepEqual(standardMarks.observed,book.blocks.flatMap(b=>b.text.replaceAll('?','？').match(fixtureUpright)||[]));
   console.log('Standard template verified native and upright symbols and text integrity');
-  console.log('24 Chromium viewport/font combinations passed; 48 section starts, fullwidth questions, layout measurement, injected wrong width and rotation verified');
+  console.log('24 Chromium viewport/font combinations passed; 48 section starts, upright digits and question marks, unchanged numeric runs, measurement and rotation faults verified');
  }finally{if(ws)ws.close();browser.kill();await ended;fs.rmSync(root,{recursive:true,force:true,maxRetries:6,retryDelay:150});}
 }
 test().catch(error=>{console.error(error);process.exitCode=1;});

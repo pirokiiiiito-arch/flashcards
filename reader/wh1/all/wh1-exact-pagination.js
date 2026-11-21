@@ -165,8 +165,64 @@ function presidentsWordBreaks(){
  };
 }
 
+function standaloneDigitAt(text,index){
+ if(!/^[0-9]$/.test(text[index]||''))return false;
+ const previous=text[index-1]||'',next=text[index+1]||'';
+ const identifier=/[\p{Script=Latin}\p{Nd}_＿]/u;
+ if(identifier.test(previous)||identifier.test(next))return false;
+ if(previous==='\u200d'||/^[\p{M}\u200c\u200d]/u.test(text.slice(index+1,index+3)))return false;
+ // Keep decimals, grouped numbers, ratios, ranges and hyphenated identifiers in their original run.
+ const joiner=/[.,:/~‐‑‒–—−－〜～：／，．-]/u;
+ if(/[.．]/u.test(previous))return false;
+ if(joiner.test(previous)&&identifier.test(text[index-2]||''))return false;
+ if(joiner.test(next)&&identifier.test(text[index+2]||''))return false;
+ return true;
+}
+// The block is the complete source paragraph. A measurement probe can stop
+// after the first digit of a longer number, as can an old page bookmark.
+function makeUprightDigitWriter(isStandalone){
+ const byBlock=new WeakMap();
+ return function writeUprightDigits(element,block,start,text){
+  if(!block||typeof block.text!=='string'){element.textContent=text;return;}
+  let positions=byBlock.get(block);
+  if(!positions){
+   positions=[];
+   for(const match of block.text.matchAll(/[0-9]/g)){
+    if(isStandalone(block.text,match.index))positions.push(match.index);
+   }
+   byBlock.set(block,positions);
+  }
+  let fragment=null,cursor=0;
+  for(const position of positions){
+   const offset=position-start;
+   if(offset<0)continue;
+   if(offset>=text.length)break;
+   if(!fragment)fragment=document.createDocumentFragment();
+   if(offset>cursor)fragment.append(text.slice(cursor,offset));
+   const digit=document.createElement('span');
+   digit.className='single-upright-digit';digit.textContent=text[offset];
+   fragment.append(digit);cursor=offset+1;
+  }
+  if(!fragment){element.textContent=text;return;}
+  if(cursor<text.length)fragment.append(text.slice(cursor));
+  element.replaceChildren(fragment);
+ };
+}
+
+function prepareUprightDigits(html){
+ const builder=/function makePart\(p\)\{[\s\S]*?\n return e;\n\}/;
+ const probe='probe.textContent=remain.slice(0,mid)';
+ if(!html.includes(probe)||!builder.test(html))return html;
+ const writer='const writeUprightDigits=('+makeUprightDigitWriter.toString()+')('+standaloneDigitAt.toString()+');\n';
+ const css='<style id="single-upright-digit">.text-flow .single-upright-digit{text-orientation:upright;-webkit-text-combine:horizontal;text-combine-upright:all}</style>';
+ return html.replace(builder,fn=>writer+fn.replaceAll(',p.text)',')').replace(' return e;',' writeUprightDigits(e,blocks[p.block],p.offset,p.text);\n return e;'))
+  .replace(probe,'writeUprightDigits(probe,b,offset,remain.slice(0,mid))')
+  .replace('</head>',css+'</head>');
+}
+
 function preparePart(html){
  if(!presidentsKeyLine.test(html))return auditPart(html);
+ html=prepareUprightDigits(html);
  const loop='  let remain=b.text,offset=0;\n  while(remain.length){';
  const headingBreak="  if(b.type==='heading'&&parts.some(part=>part.type!=='heading'))flush();";
  if(!html.includes(headingBreak))html=html.replace(loop,headingBreak+'\n'+loop);
@@ -201,7 +257,7 @@ function create({getReader,getBook,getSegments,getManifest,getActiveSegment,getS
  const getBookKey=()=>{
   const book=getBook(),manifest=getManifest(),segments=getSegments();
   const revision=segments.map(s=>(s.source_sha256||s.part||'').slice(0,16)).join('-');
-  const layout=manifest?.bookId==='us-presidents-south'?'word-flow-v2:':'';
+  const layout=manifest?.bookId==='us-presidents-south'?'upright-digits-tcy-v3:':'';
   return (useExactPagination()?manifest.bookId+':'+layout:'')+`${REVISION}:${book?.blob?.size||0}:${manifest?.created||''}:${revision}`;
  };
  const exact=()=>useExactPagination()||(getManifest()?.range?.[0]===1&&getManifest()?.range?.[1]===274&&getSegments()?.length===14);

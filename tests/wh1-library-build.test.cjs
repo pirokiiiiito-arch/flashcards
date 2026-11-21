@@ -216,3 +216,56 @@ test('page cuts prefer punctuation and keep Japanese words, names, and English t
   assert.equal(child(decorate(document),"keepPunctuationWithPrevious('abcdefghij',5,6,'abcdefghij',0,true)"),6);
   assert.equal(cut('法律',2),2);
 });
+
+test('the archived reader and creation templates use the same standalone-digit classifier', () => {
+  const declaration = /function standaloneDigitAt\(text,index\)\{[\s\S]*?\n\}/;
+  const canonical = read('templates/reader/v2/vertical-symbols.js').match(declaration);
+  assert.ok(canonical);
+  assert.equal(source.match(declaration)?.[0],canonical[0]);
+});
+
+test('upright digits use source context in visible text, headings and partial measurement probes', () => {
+  class Element {
+    constructor(tag){this.tag=tag;this.nodes=[];}
+    set textContent(value){this.nodes=[value];}
+    get textContent(){return this.nodes.map(n=>typeof n==='string'?n:n.textContent).join('');}
+    append(...nodes){this.nodes.push(...nodes);}
+    replaceChildren(fragment){this.nodes=fragment.nodes;}
+  }
+  const document={createElement:tag=>new Element(tag),createDocumentFragment:()=>new Element('fragment')};
+  const text='第2章に3人。21世紀、3.5、2/7、5～8、ID-4、Ａ7、2016年、３人、0人、1️⃣。';
+  const fixture=`<html><head></head><body><script>
+const blocks=[{text:${JSON.stringify(text)}}];
+function node(tag,cls,str){const el=document.createElement(tag);if(str!==undefined)el.textContent=str;return el;}
+function makePart(p){
+ let e;
+ if(p.type==='heading'){e=node('h2','',p.text);}
+ else{e=node('p','',p.text);}
+ return e;
+}
+function sample(start,length,type,probeLength){
+ const b=blocks[0],offset=start,remain=b.text.slice(start,start+length),mid=probeLength;
+ const probe=makePart({block:0,offset,type,text:remain});
+ if(mid!==undefined){probe.textContent=remain.slice(0,mid);}
+ return [probe.tag,probe.textContent,probe.nodes.filter(n=>n.tag==='span').map(n=>[n.textContent,n.className])];
+}
+function save(p){
+ try{sessionStorage.setItem('us-presidents-south-1-20-page',p.key);}catch(e){}
+}
+</script></body></html>`;
+  const compiled=decorate(fixture);
+  // WebKit needs the full tate-chu-yoko cell for the ink at a column's leading edge.
+  assert.ok(compiled.includes('.text-flow .single-upright-digit{text-orientation:upright;-webkit-text-combine:horizontal;text-combine-upright:all}'));
+  const program=compiled.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const inner=vm.createContext({document});vm.runInContext(program,inner);
+  const sample=(...args)=>JSON.parse(vm.runInContext('JSON.stringify(sample('+args.map(x=>JSON.stringify(x)).join(',')+'))',inner));
+  const upright=v=>v.map(d=>[d,'single-upright-digit']);
+  const expected=upright(['2','3','0']);
+  assert.deepEqual(sample(0,text.length,'body'),['p',text,expected]);
+  assert.deepEqual(sample(0,text.length,'heading'),['h2',text,expected]);
+  const number=text.indexOf('21');
+  assert.deepEqual(sample(number,text.length-number,'body',1),['p','2',[]]);
+  assert.deepEqual(sample(number+1,1,'body'),['p','1',[]]);
+  assert.deepEqual(sample(0,text.length,'body',2),['p','第2',upright(['2'])]);
+  assert.doesNotMatch(decorate(fixture.replace('us-presidents-south','unrelated')),/single-upright-digit/);
+});
