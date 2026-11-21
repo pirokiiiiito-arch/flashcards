@@ -121,7 +121,7 @@
     $('downloadProgress').hidden=true; $('primaryBookAction').disabled=false;openSheet('book');
   }
   async function primaryAction(){if(!selected)return;
-    const book=selected,update=await hasNewEdition(book);
+    const book=selected,update=book.editionUpdate&&await hasNewEdition(book);
     if(book!==selected||pendingDownload)return;
     if(update){await download(book);return;}
     if(savedIds.has(selected.id)){location.href=readerHref(selected);return;}

@@ -63,7 +63,7 @@ const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'41e3e4875dc24776d8026fee733b1d7e4bbf3689',
+ 'reader/library/app.js':'da1d4510563c447cd33b64e3e0e0acea86db84ef',
  'reader/library/index.html':'5b19a109330eaf43f8cf0ea469297ae716618094',
  'reader/library/sw.js':'0f4434269b2202eac61e5693ded771afe6fe5f1b'
 });
