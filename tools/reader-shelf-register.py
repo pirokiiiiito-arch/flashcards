@@ -10,6 +10,7 @@ import zipfile
 from pathlib import Path
 
 from reader_shelf_probe import check, digest, measure
+from reader_shelf_pack import FLOW, pack, structured_sources
 
 BLOCK=4*1024*1024
 REGISTRY='reader/quality/shelf-registration.json'
@@ -115,6 +116,49 @@ def write_set(out,files):
             (ready/name).write_bytes(content)
         ready.rename(out)
 
+def edge_keys(edges):
+    return {(tuple(e['from']),tuple(e['to'])) for e in edges}
+
+
+def registration_flow(archive, m, ref, admitted):
+    """Classify the bytes that will be signed, before probing the actual saved-book reader."""
+    if m.get('bookId') is not None and not admitted:
+        check(m['bookId']==ref['bookId'], '本棚で検査する書籍のIDが違います')
+    segments = m.get('segments', [])
+    if len(segments) < 2:
+        flow=m.get('readingFlow', {})
+        if flow.get('format') == 'merged-template-flow-v1':
+            check(m.get('format') == 'standalone-reader-html-v1', '統合読書ファイルの形式が違います')
+            cursor=m['range'][0]
+            for a,b in flow['sourceRanges']:
+                check(a==cursor and a<=b<=m['range'][1], '統合読書ファイルの元分冊範囲が不正です')
+                cursor=b+1
+            check(not flow['sourceRanges'] or cursor==m['range'][1]+1, '統合読書ファイルに元分冊の欠落があります')
+            edges=flow['continuations']
+            if 'continuations' in ref:
+                check(edge_keys(edges)==edge_keys(ref['continuations']), '原本照合表と全巻テンプレートの接続が異なります')
+            return {'route':flow['format'], 'edges':edges, 'sourceRanges':flow['sourceRanges'],
+                    'breaks':[row for row in flow.get('boundaryReviews', []) if row.get('display_boundary')!='continue']}
+        if ref.get('continuations'):
+            return {'route':'merged-template-flow-v1','edges':ref['continuations'],'sourceRanges':[]}
+        return None
+    if admitted:
+        return None
+    if 'text' not in ref['modes'] and not m.get('readingFlow'):
+        return {'route': 'without-prose', 'edges': []}
+    if m.get('bookId') == 'us-presidents-south' and m.get('template_profile') == 'world_history_1':
+        return {'route': 'legacy-continuous', 'edges': []}
+    if ref['profile'] != 'world_history_1' or m.get('template_profile') != ref['profile']:
+        raise ValueError('分冊本文を共通 pack で全巻組版してから再登録してください')
+    with zipfile.ZipFile(archive) as z:
+        edges = structured_sources(m, z.read, independent_reviews=ref.get('boundaryReviews'))
+    if 'continuations' in ref:
+        expected = edge_keys(ref['continuations'])
+        actual = edge_keys(edges)
+        check(actual == expected, '原本照合表の分冊接続と登録する書籍の接続が一致しません')
+    return {'route': FLOW, 'edges': edges}
+
+
 def prepare(a):
     from subprocess import run
     site=a.site.resolve()
@@ -144,8 +188,12 @@ def prepare(a):
     check(not any(r['key']==key for r in ledger['pending']),'この本の先行登録の確定または取下げが必要です')
     ids=[b['id'] for b in catalog['books']]
     check(len(ids)==len(set(ids)),'本棚の書籍IDが重複しています')
-    batches,hits,hosts=measure(site,a.archive,book,m,ref,ranges,root,a.chromium)
-    detail={'batches':batches,'destinations':hits,'hostFiles':hosts,'sourceSha256':hashlib.sha256(ref_bytes).hexdigest(),'physicalIPhone':'not tested by this tool'}
+    admitted = any(row.get('key') == key and row.get('sha256') == full
+                   for row in [*ledger.get('existing', []), *ledger.get('editions', [])])
+    continuation = registration_flow(a.archive, m, ref, admitted)
+    batches,hits,hosts,joins=measure(site,a.archive,book,m,ref,ranges,root,a.chromium,continuation)
+
+    detail={'continuity':joins,'batches':batches,'destinations':hits,'hostFiles':hosts,'sourceSha256':hashlib.sha256(ref_bytes).hexdigest(),'physicalIPhone':'not tested by this tool'}
     report=digest(detail)
     evidence={'version':1,'archive':full,'source':detail['sourceSha256'],'host':digest(hosts),'report':report,'first':ref['range'][0],'last':ref['range'][1],'modes':sorted(ref['modes']),'singleScreen':bool(ref.get('singleScreen')),'batches':batches,'toc':{'kind':ref['toc']['kind'],'rows':len(ref['toc']['rows']),'landed':len(hits),'reference':digest(ref['toc']),'results':digest(hits)}}
     record={'key':key,'entry':identity(book),'bytes':book['totalBytes'],'sha256':full,'chunkRoot':root,'channel':a.channel,'evidence':evidence}
@@ -216,6 +264,10 @@ def finalize(a):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     sub=p.add_subparsers(dest='operation',required=True)
+    composer=sub.add_parser('pack',help='原本照合済みの分冊を本棚ZIPに組み立てる')
+    composer.add_argument('--manifest', required=True, type=Path)
+    composer.add_argument('--archive', required=True, type=Path)
+    composer.add_argument('--structure-reviews',type=Path,help='四工程の merged_bookdata.json または structure_reviews.json')
     q=sub.add_parser('prepare')
     f=sub.add_parser('finalize')
     c=sub.add_parser('catalog')
@@ -227,6 +279,9 @@ def main():
     q.add_argument('--handoff',type=Path)
     q.add_argument('--key',required=True,type=Path)
     a=p.parse_args()
+    if a.operation == 'pack':
+        pack(a.manifest, a.archive, a.structure_reviews)
+        return
     {'prepare':prepare,'catalog':catalog_candidate,'finalize':finalize}[a.operation](a)
 if __name__=='__main__':
     main()

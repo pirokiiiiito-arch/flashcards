@@ -227,6 +227,11 @@ jobs:
           node --test tests/reader-release-control.test.cjs tests/reader-quality-gate.test.cjs tests/reader-artifact-audit.test.cjs tests/world-symbols-repair.test.cjs tests/world-symbols-gesture-v5.test.cjs tests/world-symbols-layout-v6.test.cjs tests/world-symbols-initials-v7.test.cjs
           node tools/reader-release-control.cjs repo "$READER_AUDIT_ROOT"
           node --test tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs
+      - name: Verify cross-volume reading for newly packaged books
+        working-directory: ${{ runner.temp }}/reader-pages
+        run: |
+          node --test tests/reader-continuous-sections.test.cjs tests/reader-new-book-flow.test.cjs tests/reader-shelf-*.test.cjs
+          python3 -m unittest discover -s tests -p 'test_reader_shelf*.py'
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:

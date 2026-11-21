@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>世界の歴史3</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>読書</title>
 <style>
 
 :root{
@@ -205,7 +205,7 @@ html.wh3-picture #reader-main::before,html.wh3-picture #reader-main::after{
 </style></head><body>
 <nav class="shelf-strip"><a class="shelf-link" href="https://pirokiiiiito-arch.github.io/flashcards/reader/library/">◀ 本棚へ</a><output id="shelf-status"></output></nav>
 <header class="toolbar"><div class="toolbar-line">
- <div class="brand"><strong><span id="book-title"></span><span id="wh3-status">確認版</span></strong></div>
+ <div class="brand"><strong><span id="book-title"></span><span id="wh3-status"></span></strong></div>
  <div class="head-actions">
   <button type="button" class="nav-button" id="original">原本</button>
   <button type="button" class="nav-button" id="first">最初へ</button>
@@ -251,7 +251,12 @@ html.wh3-picture #reader-main::before,html.wh3-picture #reader-main::after{
 <script>
 const sourceBook=JSON.parse(document.getElementById('bookdata').textContent);
 const originals=[], entries=[], cropUrls=[];
-const frontScans=new Set([1,2,3,7]);
+// The historical WH3 files can also be opened directly outside the bookshelf.
+const standaloneWh3=!sourceBook.presentation&&sourceBook.bookId==='wh3';
+const frontScans=new Set(sourceBook.presentation?.portraitScans||(standaloneWh3?[1,2,3,7]:[]));
+const scanTotal=sourceBook.presentation?.totalScans??(standaloneWh3?260:sourceBook.range[1]);
+const statusLabel=sourceBook.presentation?.statusLabel??(standaloneWh3?'確認版':sourceBook.status||'');
+document.title=sourceBook.title||'読書';document.getElementById('wh3-status').textContent=statusLabel;
 function sourceCrop(page,box){
  if(window.__readerHost?.measureOnly)return null;
  const [x,y,w,h]=box;
@@ -307,24 +312,29 @@ function readingBlocks(page){
  });
 }
 // Scans 252–257 are a reverse-photographed index; its approved reading order is recorded in the source edition.
-const orderedScans=[...sourceBook.pages].sort((a,b)=>{const order=n=>n>=252&&n<=257?509-n:n;return order(a.scan)-order(b.scan)});
+const orderedScans=standaloneWh3?[...sourceBook.pages].sort((a,b)=>{const order=n=>n>=252&&n<=257?509-n:n;return order(a.scan)-order(b.scan)}):sourceBook.pages;
 for(const page of orderedScans){
  const scan=page.scan;originals.push({scan,src:page.original});
- if(frontScans.has(scan)||page.pageType==='reference'&&!page.blocks.length&&page.figures.length===1){
+ if(frontScans.has(scan)||page.pageType==='portrait'||(standaloneWh3||sourceBook.presentation?.legacyReferencePages)&&page.pageType==='reference'&&!page.blocks.length&&page.figures.length===1){
   entries.push({kind:'portrait',scan,title:page.figures[0]?.uiLabel||'扉'});continue;
  }
- if(page.toc_entries.length)entries.push({kind:'contents',scan,rows:page.toc_entries});
+ if(page.toc_entries?.length)entries.push({kind:'contents',scan,rows:page.toc_entries});
  if(page.blocks.length)entries.push({kind:'text',scan,blocks:withHeadingContinuations(page,readingBlocks(page))});
  for(const f of page.figures){
   const [x,y,w,h]=f.bbox;
   // A facsimile of a typeset index/credits page is already available from 原本.
-  if(page.pageType==='reference'&&page.blocks.length&&x===0&&y===0&&w===page.width&&h===page.height)continue;
+  if((standaloneWh3||sourceBook.presentation?.legacyReferencePages)&&page.pageType==='reference'&&page.blocks.length&&x===0&&y===0&&w===page.width&&h===page.height)continue;
   entries.push(imageEntry(page,f));
  }
 }
 const flat=entries.flatMap(e=>e.kind==='text'?e.blocks.map((b,i)=>({kind:'text',scan:e.scan,blocks:[b],blockKey:e.scan+'/'+i})):[e]);
 const nodes=new Map(flat.filter(e=>e.blockKey).map(e=>[e.blockKey,e]));const follows=new Map(),incoming=new Set();
 for(const j of sourceBook.continuations||[]){const a=j.from.join('/'),b=j.to.join('/');if(nodes.has(a)&&nodes.has(b)){follows.set(a,b);incoming.add(b);}}
+const orderIndex=new Map(flat.map((entry,index)=>[entry.blockKey||entry,index]));
+for(const [index,entry] of flat.entries()){
+ if(entry.kind==='image'&&entry.deferUntilContinuation&&Array.from(follows).some(([from,to])=>orderIndex.get(from)<index&&index<orderIndex.get(to)))
+  entry.deferUntilContinuation=false;
+}
 const ordered=[],emitted=new Set();
 for(const first of flat){
  if(first.blockKey&&incoming.has(first.blockKey))continue;
@@ -337,7 +347,7 @@ for(const first of flat){
 if(ordered.length!==flat.length)throw Error('読書項目数の不一致');
 const runtimeBlocks=ordered.flatMap(e=>e.kind==='text'?e.blocks:[]);
 
-window.READER_BOOK={id:'wh3-'+sourceBook.range.join('-'),kind:'mixed',title:sourceBook.title,status:'校正中・原本 '+sourceBook.range.join('–'),totalScans:260,originals:originals.sort((a,b)=>a.scan-b.scan),entries:ordered,runtimeBlocks,glosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope!=='toc')),tocGlosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope==='toc')),localSections:sourceBook.toc.filter(t=>t.targetScan>=sourceBook.range[0]&&t.targetScan<=sourceBook.range[1])};
+window.READER_BOOK={id:sourceBook.bookId+'-'+sourceBook.range.join('-'),kind:'mixed',title:sourceBook.title,status:[statusLabel,'原本 '+sourceBook.range.join('–')].filter(Boolean).join('・'),totalScans:scanTotal,originals:originals.sort((a,b)=>a.scan-b.scan),entries:ordered,runtimeBlocks,glosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope!=='toc')),tocGlosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope==='toc')),localSections:(sourceBook.toc||[]).filter(t=>t.targetScan>=sourceBook.range[0]&&t.targetScan<=sourceBook.range[1])};
 window.addEventListener('pagehide',e=>{if(!e.persisted)cropUrls.forEach(u=>URL.revokeObjectURL(u));});
 
 </script>
@@ -475,19 +485,35 @@ function syncMeasure(){
 }
 function fit(el){return el.scrollWidth<=el.clientWidth+1&&el.scrollHeight<=el.clientHeight+1}
 // BEGIN reader vertical symbols
+function standaloneDigitAt(text,index){
+ if(!/^[0-9]$/.test(text[index]||''))return false;
+ const previous=text[index-1]||'',next=text[index+1]||'';
+ const identifier=/[\p{Script=Latin}\p{Nd}_＿]/u;
+ if(identifier.test(previous)||identifier.test(next))return false;
+ if(previous==='\u200d'||/^[\p{M}\u200c\u200d]/u.test(text.slice(index+1,index+3)))return false;
+ // Keep decimals, grouped numbers, ratios, ranges and hyphenated identifiers in their original run.
+ const joiner=/[.,:/~‐‑‒–—−－〜～：／，．-]/u;
+ if(/[.．]/u.test(previous))return false;
+ if(joiner.test(previous)&&identifier.test(text[index-2]||''))return false;
+ if(joiner.test(next)&&identifier.test(text[index+2]||''))return false;
+ return true;
+}
+const verticalReaderEdges=new WeakMap();
 const verticalReaderSymbols=(()=>{
  // UAX #50 mixed layout supplies native vertical glyphs for the rest of the text.
- const upright=/[!?！？‼⁇⁈⁉‽¡¿#＃%％‰‱&＆@＠*＊※〒§¶†‡©®™℗°℃℉№／/\\＼\u2190-\u21ff\u25a0-\u25ff\u2605\u2606\u27f0-\u27ff\u2900-\u297f\ufe10-\ufe19\ufe30-\ufe48]|\p{Sc}|\p{Sm}/gu;
+ const upright=/[0-9!?！？‼⁇⁈⁉‽¡¿#＃%％‰‱&＆@＠*＊※〒§¶†‡©®™℗°℃℉№／/\\＼\u2190-\u21ff\u25a0-\u25ff\u2605\u2606\u27f0-\u27ff\u2900-\u297f\ufe10-\ufe19\ufe30-\ufe48]|\p{Sc}|\p{Sm}/gu;
  const wave=new Set(['~','～','〜','∼']);
  const attaches=/^[\p{M}\u200c\u200d\u{1f3fb}-\u{1f3ff}\u{e0020}-\u{e007f}]/u;
- const isSymbol=/[\p{P}\p{S}ーｰ]/u;
+ const isSymbol=/[0-9\p{P}\p{S}ーｰ]/u;
  // The reading edition uses one fullwidth upright question mark for each source question.
  function displayText(source){
   return source.replaceAll('?','？');
  }
- function* uprightRanges(text){
+ function* uprightRanges(text,before='',after=''){
+  const context=before+text+after;
   for(const match of text.matchAll(upright)){
    const start=match.index, end=start+match[0].length;
+   if(/[0-9]/.test(match[0])&&!standaloneDigitAt(context,before.length+start))continue;
    // Keep keycaps, variation sequences, combining marks and ZWJ emoji intact.
    if(wave.has(match[0])||text[start-1]==='\u200d'||attaches.test(text.slice(end,end+2)))continue;
    yield {start,end};
@@ -495,32 +521,48 @@ const verticalReaderSymbols=(()=>{
  }
  function count(text){
   const counts={upright:0,native:0};
-  for(const character of text)if(isSymbol.test(character))counts.native++;
-  for(const range of uprightRanges(text)){counts.upright++;counts.native--;}
+  // These are source symbol counts. A digit's orientation depends on joined paragraphs.
+  for(const ch of text)if(isSymbol.test(ch)&&!/[0-9]/.test(ch))counts.native++;
+  for(const range of uprightRanges(text)){
+   if(/[0-9]/.test(text[range.start]))continue;
+   counts.upright++;counts.native--;
+  }
   return counts;
  }
  // Run against a visible vertical text flow or its measurement copy.
  function inspect(flow){
   const doc=flow.ownerDocument, view=doc.defaultView;
   const walker=doc.createTreeWalker(flow,4);
-  const result={upright:0,native:0,halfwidthQuestions:0,fullwidthQuestions:0,mismatches:0,examples:[]};
+  const result={upright:0,native:0,uprightDigits:0,halfwidthQuestions:0,fullwidthQuestions:0,mismatches:0,examples:[]};
   let node;
   while((node=walker.nextNode())){
    const parent=node.parentElement, style=view.getComputedStyle(parent);
-   if(!isSymbol.test(node.data)||style.textCombineUpright==='all')continue;
+   const combined=style.textCombineUpright==='all'||style.webkitTextCombine==='horizontal';
+   if(!isSymbol.test(node.data)||(combined&&!/[0-9]/.test(node.data)))continue;
    if(style.writingMode==='horizontal-tb'&&parent.closest('[data-horizontal],.figure-caption,rt'))continue;
-   const starts=new Set(Array.from(uprightRanges(node.data),r=>r.start));
+   let scope=parent;
+   while(scope!==flow&&!verticalReaderEdges.has(scope))scope=scope.parentElement;
+   const edges=verticalReaderEdges.get(scope)||{before:'',after:''};
+   const range=doc.createRange();
+   range.selectNodeContents(scope);range.setEnd(node,0);
+   const point=range.toString().length,content=scope.textContent;
+   const before=(edges.before+content.slice(0,point)).slice(-3);
+   const after=(content.slice(point+node.length)+edges.after).slice(0,3);
+   const starts=new Set(Array.from(uprightRanges(node.data,before,after),r=>r.start));
    let offset=0;
    for(const ch of node.data){
     if(isSymbol.test(ch)){
      const kind=starts.has(offset)?'upright':'native';
      const expected=kind==='upright'?'upright':'mixed';
-     result[kind]++;
+     if(/[0-9]/.test(ch)){
+      if(kind==='upright')result.uprightDigits++;
+     }else result[kind]++;
      if(ch==='?')result.halfwidthQuestions++;
      if(ch==='？')result.fullwidthQuestions++;
-     if(ch==='?'||!style.writingMode.startsWith('vertical')||style.textOrientation!==expected){
+     const missingDigitCombine=kind==='upright'&&/[0-9]/.test(ch)&&!combined;
+     if(ch==='?'||!style.writingMode.startsWith('vertical')||style.textOrientation!==expected||missingDigitCombine){
       result.mismatches++;
-      if(result.examples.length<12)result.examples.push({codePoint:ch.codePointAt(0),expectedCharacter:ch==='?'?'？':ch,expected,actual:style.textOrientation,writingMode:style.writingMode});
+      if(result.examples.length<12)result.examples.push({codePoint:ch.codePointAt(0),expectedCharacter:ch==='?'?'？':ch,expected,actual:style.textOrientation,combined,writingMode:style.writingMode});
      }
     }
     offset+=ch.length;
@@ -528,16 +570,23 @@ const verticalReaderSymbols=(()=>{
   }
   return result;
  }
- return {displayText,uprightRanges,count,inspect};
+ return {displayText,standaloneDigitAt,uprightRanges,count,inspect};
 })();
-function setVerticalText(element,source){
+function setVerticalText(element,source,part={}){
+ const before=part.before||'',after=part.after||'';
+ verticalReaderEdges.set(element,{before,after});
  const text=verticalReaderSymbols.displayText(source);
  let fragment=null,offset=0;
- for(const {start,end} of verticalReaderSymbols.uprightRanges(text)){
+ for(const {start,end} of verticalReaderSymbols.uprightRanges(text,before,after)){
   if(!fragment)fragment=document.createDocumentFragment();
   if(start>offset)fragment.append(document.createTextNode(text.slice(offset,start)));
   const mark=document.createElement('span');
   mark.style.textOrientation='upright';
+  if(/[0-9]/.test(text[start])){
+   // Give a single halfwidth digit a full vertical character box at a column edge.
+   mark.style.textCombineUpright='all';
+   mark.style.webkitTextCombine='horizontal';
+  }
   mark.textContent=text.slice(start,end);
   fragment.append(mark);
   offset=end;
@@ -550,7 +599,7 @@ if(typeof window==='object')window.ReaderVerticalSymbols=verticalReaderSymbols;
 // END reader vertical symbols
 function partNode(p){
  const el=document.createElement(p.type==='heading'?'h2':'p'); el.dataset.sourceSpans=JSON.stringify(p.sourceSpans||[]);
- if(p.sourceSpans?.length){const first=p.sourceSpans[0],id='wh3-'+String(first.scan).padStart(3,'0')+'-'+first.sourceBlock;
+ if(p.sourceSpans?.length){const first=p.sourceSpans[0],id=sourceBook.bookId+'-'+String(first.scan).padStart(3,'0')+'-'+first.sourceBlock;
  if(p.type==='heading'){el.dataset.headingId=id;el.dataset.sourceHeadingId=id;el.dataset.headingFrom=String(first.sourceStart);el.dataset.headingTo=String(first.sourceEnd);}
  else el.dataset.bodyId=id;}
  el.className=p.type==='heading'?'section-heading':('paragraph'+(p.continued?' continued':''));
@@ -559,20 +608,32 @@ function partNode(p){
  const spans=[];let segmentOffset=0;
 for(const part of p.sourceSpans||[]){
  const b=book.runtimeBlocks?.[part.sourceBlock];if(!b)continue;
- const chars=Array.from(b.text),a=chars.slice(0,part.sourceStart).join('').length,z=chars.slice(0,part.sourceEnd).join('').length;
+ const chars=split(b.text),a=chars.slice(0,part.sourceStart).join('').length,z=chars.slice(0,part.sourceEnd).join('').length;
  for(const mark of b.emphasis||[]){const left=Math.max(mark[0],a),right=Math.min(mark[1],z);if(right>left)spans.push({at:segmentOffset+left-a,base:b.text.slice(left,right),bold:true});}
  for(const g of b.glosses||[]){if(g.at>=a&&g.at+g.base.length<=z)spans.push({at:segmentOffset+g.at-a,base:g.base,rt:g.reading});}
  segmentOffset+=z-a;
 }
 if(p.semanticType==='toc')for(const g of book.tocGlosses||[]){const i=p.text.indexOf(g.base);if(g.scan===p.scan&&i>=0)spans.push({at:i,base:g.base,rt:g.reading});}
-if(!spans.length){setVerticalText(el,p.text);return el;}
+if(!spans.length){setVerticalText(el,p.text,p);return el;}
+verticalReaderEdges.set(el,{before:p.before||'',after:p.after||''});
 spans.sort((x,y)=>x.at-y.at||y.base.length-x.base.length);
-function plain(s){if(!s)return;const temp=document.createElement('span');setVerticalText(temp,s);el.append(...temp.childNodes);}
+function writeRange(node,start,end){
+ const before=((p.before||'')+p.text.slice(0,start)).slice(-3),after=(p.text.slice(end)+(p.after||'')).slice(0,3);
+ setVerticalText(node,p.text.slice(start,end),{before,after});
+}
+function plain(start,end){
+ if(start>=end)return;
+ const temp=document.createElement('span');writeRange(temp,start,end);el.append(...temp.childNodes);
+}
 let last=0;
-for(const g of spans){if(g.at<last||p.text.slice(g.at,g.at+g.base.length)!==g.base)continue;plain(p.text.slice(last,g.at));
- if(g.bold){const strong=document.createElement('strong');setVerticalText(strong,g.base);el.append(strong);last=g.at+g.base.length;continue;}
- const ru=document.createElement('ruby'),rt=document.createElement('rt');ru.append(document.createTextNode(g.base));rt.textContent=g.rt;ru.append(rt);el.append(ru);last=g.at+g.base.length;}
-plain(p.text.slice(last));return el;
+for(const g of spans){
+ const end=g.at+g.base.length;if(g.at<last||p.text.slice(g.at,end)!==g.base)continue;
+ plain(last,g.at);
+ const node=document.createElement(g.bold?'strong':'ruby');writeRange(node,g.at,end);
+ if(!g.bold){const rt=document.createElement('rt');rt.textContent=g.rt;node.append(rt);}
+ el.append(node);last=end;
+}
+plain(last,p.text.length);return el;
 
 }
 function fitsParts(existing,additional){
@@ -606,6 +667,7 @@ function joinLogicalContinuations(source){
 function textPart(b,off,n){
  const first=b.sourceRanges?.find(r=>r.end>off);
  return {type:b.type,semanticType:b.semanticType,scan:first?.scan||b.scan,text:b.units.slice(off,off+n).join(''),
+  before:b.units.slice(Math.max(0,off-3),off).join('').slice(-3),after:b.units.slice(off+n,off+n+3).join('').slice(0,3),
   continued:off>0,
   // Offsets are grapheme indices within the ORIGINAL registered source block.
   sourceSpans:(b.sourceRanges||[]).filter(r=>r.end>off&&r.start<off+n).map(r=>({
@@ -710,9 +772,9 @@ function tocElement(p,measuring=false){
   if(glosses.length){name.replaceChildren();for(const g of glosses){const i=item.text.indexOf(g.base,tail);if(i<0)continue;name.append(item.text.slice(tail,i));const ruby=document.createElement('ruby'),rt=document.createElement('rt');ruby.append(g.base);rt.textContent=g.reading;ruby.append(rt);name.append(ruby);tail=i+g.base.length;}name.append(item.text.slice(tail));}
   const num=document.createElement('span');num.className='toc-number';num.textContent=String(item.page??'');row.append(name,num);frag.append(row);
   if(!measuring)row.addEventListener('click',()=>{
-   if(embedded&&host?.session){parent.postMessage({wh1bridge:1,type:'navigateScan',session:host.session,segment:(sourceBook.range[0]-1)/20,scan:item.targetScan,heading:item.text},host.origin);return;}
+   if(embedded&&host?.session){parent.postMessage({wh1bridge:1,type:'navigateScan',session:host.session,segment:host.segment,scan:item.targetScan,heading:item.text},host.origin);return;}
    const i=pages.findIndex(p=>p.scan===item.targetScan||p.parts?.some(q=>q.sourceSpans?.some(s=>s.scan===item.targetScan)));
-   if(i>=0)gotoPage(i);else window.open('https://pirokiiiiito-arch.github.io/flashcards/reader/library/read.html?id=wh3&scan='+item.targetScan,'_blank','noopener');
+   if(i>=0)gotoPage(i);else window.open('https://pirokiiiiito-arch.github.io/flashcards/reader/library/read.html?id='+encodeURIComponent(sourceBook.bookId)+'&scan='+item.targetScan,'_blank','noopener');
   });
  }
  return frag;
@@ -721,7 +783,7 @@ function paginateContents(item,at){
  const box=$('measure-toc'),result=[];box.hidden=false;
  let pos=0;
  while(pos<item.rows.length){
-  let count=0;const first=item.scan===sourceBook.toc[0]?.sourceScan&&pos===0;
+  let count=0;const first=item.scan===sourceBook.toc?.[0]?.sourceScan&&pos===0;
   while(pos+count<item.rows.length&&count<12){
    box.replaceChildren(tocElement({first,scan:item.scan,rows:item.rows.slice(pos,pos+count+1)},true));
    if(count&&box.scrollHeight>box.clientHeight+1)break;count++;
@@ -932,7 +994,7 @@ function render(){
  $('page-minor').title=$('page-minor').textContent;
  $('progress-fill').style.setProperty('--local-progress',100*(index+1)/pages.length+'%');
  $('prev').disabled=index===0;$('next').disabled=index>=pages.length-1;
- $('original').disabled=!currentSource();persist();
+ $('original').disabled=!currentSource()&&!(embedded&&host?.session);persist();
  pageArtwork(pages[index-1]);pageArtwork(pages[index+1]);
 }
 function gotoPage(n){if(!pages.length)return;const k=Math.max(0,Math.min(n,pages.length-1));if(k!==index){selectedOriginal=null;index=k;render()}}
@@ -1074,7 +1136,7 @@ window.addEventListener('pagehide',()=>{
 });
 $('smaller').disabled=font<=16;$('larger').disabled=font>=30;
 window.StandardReader=Object.freeze({version:'v2',kind:mode,bookId,inspect:()=>({
- pages:pages.length,index,font,warning,paintPending:!!pendingPaint,originalReady:!!currentSource(),
+ pages:pages.length,index,font,warning,paintPending:!!pendingPaint,originalReady:!!currentSource()||!!(embedded&&host?.session),
  zoomed:zoomed(),hostKnown,hostScale,
  currentKind:pages[index]?.kind,scan:pages[index]?.scan,
  textIntegrity:pages.filter(p=>p.kind==='text').flatMap(p=>p.parts.map(x=>x.text)).join('')===
@@ -1090,7 +1152,7 @@ if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>
 // The private ZIP reader uses the bookshelf's existing wh1bridge message protocol.
 (()=>{
  if(window.parent===window||location.protocol!=='blob:'||window.__readerHost?.measureOnly)return;
- const segment=window.__readerHost?.segment??(sourceBook.range[0]-1)/20,firstScan=sourceBook.range[0],lastScan=sourceBook.range[1];
+ const segment=window.__readerHost?.segment??0,firstScan=sourceBook.range[0],lastScan=sourceBook.range[1];
  const $=id=>document.getElementById(id),api=window.StandardReader;
  const send=(type,detail={})=>parent.postMessage({wh1bridge:1,type,segment,...detail},'*');
  document.documentElement.classList.add('bookshelf-segment');
@@ -1099,12 +1161,12 @@ if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>
  function snapshot(){const d=api.inspect();if(!d.pages||d.paintPending)return;const pg=api.pageManifest()[d.index];
    send('state',{scan:position(),size:d.font,key:'wh3v2.'+pg.start,pageIndex:d.index,pageCount:d.pages,session:window.__readerHost?.session});
    if(firstScan>1&&d.index===0)$('prev').disabled=false;
-   if(lastScan<260&&d.index===d.pages-1)$('next').disabled=false;
+   if(lastScan<scanTotal&&d.index===d.pages-1)$('next').disabled=false;
  }
  function capture(id,fn){$(id).addEventListener('click',e=>{if(fn()!==false){e.preventDefault();e.stopImmediatePropagation();}},true);}
  capture('first',()=>send('bookStart'));capture('all',()=>send('menu'));
  capture('original',()=>send('original',{scan:position()}));
- function boundary(dir){const d=api.inspect();if(dir<0&&d.index===0&&firstScan>1||dir>0&&d.index===d.pages-1&&lastScan<260){send('boundary',{direction:dir});return true;}return false;}
+ function boundary(dir){const d=api.inspect();if(dir<0&&d.index===0&&firstScan>1||dir>0&&d.index===d.pages-1&&lastScan<scanTotal){send('boundary',{direction:dir});return true;}return false;}
  capture('prev',()=>boundary(-1));capture('next',()=>boundary(1));
  let touch=null;const main=$('reader-main');main.addEventListener('touchstart',e=>{touch=!api.inspect().zoomed&&e.touches.length===1?[e.touches[0].clientX,e.touches[0].clientY]:null;},{capture:true,passive:true});
  main.addEventListener('touchcancel',()=>{touch=null;},{passive:true});

@@ -8,7 +8,6 @@ import threading
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 
-from playwright.sync_api import sync_playwright
 
 
 def check(condition, message):
@@ -86,9 +85,9 @@ class Reader:
         m=self.manifest
         segments=m.get('segments',[])
         if segments:
-            index=next(i for i,s in enumerate(segments) if s['start']<=scan<=s['end'])
             p.wait_for_function('typeof openSegment==="function"&&!!bookZip')
-            if self.part!=index:
+            index=p.evaluate('n=>segmentForScan(n)',scan)
+            if self.part!=index or p.evaluate('activeSegment')!=index:
                 p.evaluate('x=>openSegment(x[0],{scan:x[1]})',[index,scan])
                 self.part=index
             p.wait_for_function('i=>activeSegment===i&&pendingLoaded&&document.querySelector("#busy").hidden',arg=index)
@@ -180,6 +179,43 @@ class Reader:
             check(self.state()==(before,observed),'単画面でページが変わりました')
         return [mode,observed,initial,zoom,dx,dy,final,0,up,down]
 
+    def measure_continuity(self, plan):
+        if not plan or plan['route'] == 'without-prose':
+            return {'route': plan['route'] if plan else 'existing-or-whole'}
+        page = self.page
+        if plan['route'] == 'merged-template-flow-v1':
+            frame = self.open(self.manifest['range'][0])
+            return trace_template(frame, plan)
+        if plan['route'] == 'legacy-continuous':
+            check(page.evaluate('!!bookZip.readingFlow'), '既存の全巻組版処理が選択されていません')
+            return {'route': plan['route']}
+        check(page.evaluate('!!bookZip.wh3Flow'), '書籍が分冊ごとの表示になっています')
+        results = []
+        for edge in plan['edges']:
+            left, right = edge['from'], edge['to']
+            frame = self.open(left[0])
+            result = frame.evaluate("""([left,right])=>{
+                const pageList=StandardReader.pageManifest(), entries=READER_BOOK.entries.filter(e=>e.kind==='text');
+                const a=entries.findIndex(e=>e.blockKey===left.join('/')),b=entries.findIndex(e=>e.blockKey===right.join('/'));
+                if(a<0||b!==a+1||READER_BOOK.runtimeBlocks[b].joinPrevious!==true)return null;
+                const indexes=k=>pageList.map((p,i)=>p.sourceSpans.some(s=>s.sourceBlock===k)?i:-1).filter(i=>i>=0);
+                const previous=indexes(a).at(-1),next=indexes(b)[0];
+                if(!Number.isInteger(previous)||!Number.isInteger(next)||next<previous||next>previous+1)return null;
+                if(next>previous){
+                    const blocks=READER_BOOK.runtimeBlocks;let start=a,end=b;
+                    while(start>0&&blocks[start].joinPrevious)start--;
+                    while(end+1<blocks.length&&blocks[end+1].joinPrevious)end++;
+                    const part=blocks.slice(start,end+1),text=part.map(x=>x.text).join('');
+                    const at=blocks.slice(start,b).reduce((n,x)=>n+x.text.length,0);
+                    const words=new Intl.Segmenter('ja',{granularity:'word'});
+                    if(!Array.from(words.segment(text)).some(w=>w.index===at))return null;
+                }
+                return [previous,next];
+            }""", [left,right])
+            check(result is not None, f'分冊境界の本文をページ内／語境界で連続表示できません: {left} → {right}')
+            results.append({'from':left, 'to':right, 'pages':result})
+        return {'route':plan['route'],'joins':results}
+
     def toc(self):
         ref=self.ref['toc']
         wanted=ref['rows']
@@ -234,7 +270,67 @@ class Reader:
         return out
 
 
-def measure(site,archive,entry,manifest,reference,ranges,root,chromium):
+def trace_template(frame, plan):
+    """Follow every displayed span back to the contiguous source-entry stream, including dialogue."""
+    results = frame.evaluate("""plan=>{
+        const a=window.StandardReader||window.NovelReader, book=window.READER_BOOK;
+        if(!a||!book||!a.inspect().textIntegrity)throw Error('統合版の本文が表示と一致しません');
+        const text=book.kind==='text'?book.blocks:(book.entries||[]).filter(e=>e.kind==='text').flatMap(e=>e.blocks||[e]);
+        const keys=new Map(),refs=[],counts=new Map(),start=[],end=[],ranges=[];
+        const chars=new Intl.Segmenter('ja',{granularity:'grapheme'});
+        const words=new Intl.Segmenter('ja',{granularity:'word'});
+        for(const [i,e] of text.entries()){
+            const ord=counts.get(e.scan)||0;counts.set(e.scan,ord+1);
+            const ref=e.sourceRef||[e.scan,ord];
+            if(ref[0]!==e.scan||keys.has(ref.join('/')))throw Error('本文の原本番号が重複しています');
+            refs.push(ref.join('/'));
+            keys.set(ref.join('/'),i);
+            ranges.push(Array.from(chars.segment(e.text)).length);
+        }
+        let current=0,offset=0;
+        for(const [pageIndex,p] of a.pageManifest().entries())for(const s of p.sourceSpans||[]){
+            const n=s.sourceEnd-s.sourceStart;
+            if(n<=0||!text[current]||s.scan!==text[current].scan||offset+n>ranges[current])throw Error('読書画面と原本ブロックの順番・文字数が異なります');
+            if(offset===0)start[current]=pageIndex;
+            offset+=n;
+            if(offset===ranges[current]){end[current]=pageIndex;current++;offset=0;}
+        }
+        if(offset||current!==text.length)throw Error('統合版の本文が欠落しています');
+        const cuts=plan.sourceRanges.slice(1).map(v=>v[0]);
+        if(cuts.length){
+            const expected=new Set(plan.edges.map(e=>e.from.join('/')+'>'+e.to.join('/')));
+            for(const [i,e] of text.entries()){
+                if(!e.joinPrevious||!i)continue;
+                const l=text[i-1],r=e;
+                if(!cuts.some(n=>Math.min(l.scan,r.scan)<n&&Math.max(l.scan,r.scan)>=n))continue;
+                if(!expected.has(refs[i-1]+'>'+refs[i]))throw Error('原本で照合した分冊接続と表示指定が異なります');
+            }
+        }
+        for(const row of plan.breaks||[]){
+            const left=keys.get(row.from.join('/')),right=keys.get(row.to.join('/'));
+            if(left===undefined||right===undefined||(right===left+1&&text[right].joinPrevious))throw Error('原本で確認した段落の区切りと表示が異なります');
+        }
+        return plan.edges.map(e=>{
+            const left=keys.get(e.from.join('/')),right=keys.get(e.to.join('/'));
+            if(right===undefined||left===undefined||right!==left+1||!text[right].joinPrevious)throw Error('統合版の分冊接続が一致しません');
+            const delta=start[right]-end[left];
+            if(delta<0||delta>1)throw Error('分冊の続きに別の読書画面が挿入されています');
+            if(delta===1){
+                let head=left,tail=right;
+                while(head>0&&text[head].joinPrevious)head--;
+                while(tail+1<text.length&&text[tail+1].joinPrevious)tail++;
+                const full=text.slice(head,tail+1).map(x=>x.text).join('');
+                const at=text.slice(head,right).reduce((n,x)=>n+x.text.length,0);
+                if(!Array.from(words.segment(full)).some(w=>w.index===at))throw Error('分冊の境界で単語が切れています');
+            }
+            return {...e,pages:[end[left],start[right]]};
+        });
+    }""",plan)
+    return {'route':plan['route'], 'joins':results, 'sourceRanges':plan['sourceRanges']}
+
+
+def measure(site,archive,entry,manifest,reference,ranges,root,chromium,continuation=None):
+    from playwright.sync_api import sync_playwright
     class Handler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self):
             if self.path=='/__stage':
@@ -289,6 +385,9 @@ def measure(site,archive,entry,manifest,reference,ranges,root,chromium):
                 sample={'mode':default,'scan':start+(end-start)//2}
                 cases=[sample,*cases]
                 frame=reader.open(start)
+                if continuation and continuation['route']=='without-prose':
+                    text_pages=frame.evaluate('()=>{const a='+API+';return !!a?.pageManifest?.().some(p=>p.kind==="text")}')
+                    check(not text_pages, '本文があるため分冊境界の照合と全巻組版が必要です')
                 if not reader.ui.get('position'):
                     detected=frame.evaluate('()=>{const a='+API+';return [a.pageManifest().some(p=>p.kind==="image"),a.inspect().originalReady===true]}')
                     check(not detected[0] or 'figure' in modes,'書籍に図版があります。図版での検査が必要です')
@@ -303,10 +402,11 @@ def measure(site,archive,entry,manifest,reference,ranges,root,chromium):
                 batches.append([start,end,batch])
                 print(f'原本 {start}〜{end} 操作確認',flush=True)
             check(modes==observed,'原本にある画面種別のピンチ検査がそろっていません')
+            joins=reader.measure_continuity(continuation)
             dest=reader.toc()
             browser.close()
         check(shell in used,'配信対象の読書画面を取得できません')
-        return batches,dest,used
+        return batches,dest,used,joins
     finally:
         server.shutdown()
         thread.join()

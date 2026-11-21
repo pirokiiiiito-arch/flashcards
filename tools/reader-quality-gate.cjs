@@ -28,6 +28,60 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==="8dfcf88bbf51a0535ab05630903aa404e336e9ce"){
+    // Inverse line edits against the exact reviewed host. Reapply legacy checks to the recovered bytes.
+    const lines=data.toString('utf8').split('\n');
+    for(const [at,count,...prior] of [
+      [1243,1,"   if(usesWh3StandardInput()&&!Object.keys(s.assets).length)turnWh3Section(next,d.direction);"],
+      [974,1,"  const requested=m.bookId==='wh3'&&m.template_profile==='world_history_1'?Number(new URLSearchParams(location.search).get('scan')):null;"],
+      [968,1,"  if(m.bookId==='wh3'&&m.template_profile==='world_history_1')book.wh3Flow=await wh3ReadingFlow(book,m);"],
+      [787,1,"function restorePosition(){try{const raw=localStorage.getItem(POSITION_KEY)||(BOOK_ID==='wh1'?localStorage.getItem('WH1_UNIFIED_POSITION'):null);const p=JSON.parse(raw);if(p&&Number.isInteger(p.segment)&&p.segment>=0&&(p.segment<SEGMENTS.length||typeof manifest!=='undefined'&&manifest?.bookId==='wh3'&&p.segment<manifest.segments.length))return p;}catch(_){}return {segment:0,key:'',scan:1,size:20};}"],
+      [709,1," document.documentElement.classList.toggle('native-book-input',nativeBookInput());"],
+      [478,1," const key='wh3-pages:'+wh3LayoutVersion+':'+width+'x'+height+':'+font+':'+manifest.segments.map(s=>s.sha256||s.part).join('.');"],
+      [476,1," if(!usesWh3StandardInput()||d.session!==inputSession||!Number.isInteger(d.pageIndex)||!Number.isInteger(d.pageCount)||d.pageIndex<0||d.pageIndex>=d.pageCount)return;"],
+      [401,1,"const wh3LayoutVersion='wh1-continuous-20261122-6';"],
+      [397,1," return {sections,archive,bookmark,restore};"],
+      [392,1,"  const src={...books[0],range,pages:selected,continuations:joins.filter(e=>contains(section,e.from[0])&&contains(section,e.to[0]))};"],
+      [385,3,"   if(measuring){selected.push(p);continue;}"],
+      [383,1,"  for(let n=section.start;n<=section.end;n++){"],
+      [348,3,
+       "  if(n>=253&&n<=257||joins.some(e=>Math.min(e.from[0],e.to[0])<n&&Math.max(e.from[0],e.to[0])>=n))continue;",
+       "  const right=global.findIndex(item=>item.scan>=n);",
+       "  if(right<1||global.slice(right).some(item=>item.scan<n))continue;"],
+      [335,11],
+      [319,2],
+      [315,1,"   if(p.pageType==='reference'&&p.blocks.length&&!x&&!y&&w===p.width&&h===p.height)return;"],
+      [308,4,
+       " for(const p of [...pages.values()].sort((a,b)=>rank(a.scan)-rank(b.scan))){",
+       "  const n=p.scan,add=(id,kind,units)=>flat.push({id,kind,units,scan:n});",
+       "  if([1,2,3,7].includes(n)||p.pageType==='reference'&&!p.blocks.length&&p.figures.length===1){add('p/'+n,'portrait',1);continue;}",
+       "  if(p.toc_entries.length)add('t/'+n,'contents',p.toc_entries.length);"],
+      [292,15," const rank=n=>n>=252&&n<=257?509-n:n;"],
+      [246,36],
+      [240,2,
+       " for(const part of manifest.segments){",
+       "  const html=await book.readText(part.part);",
+       "  function field(id){",
+       "   const tag='<script type=\"application/json\" id=\"'+id+'\">',a=html.indexOf(tag),b=html.indexOf('</'+'script>',a);",
+       "   if(a<0||b<0)throw Error('分冊の構造を読み込めません');",
+       "   return html.slice(a+tag.length,b);",
+       "  }",
+       "  // Original image bytes stay in the verified ZIP. Only the visible section needs them.",
+       "  const src=JSON.parse(field('bookdata').replace(/\"original\"\\s*:\\s*\"data:image\\/[^\"]*\"/g,'\"original\":\"\"'));",
+       "  if(src.bookId!==manifest.bookId||src.range[0]!==part.start||src.range[1]!==part.end)throw Error('分冊の原本範囲が一致しません');",
+       "  proofs.push({range:src.range,model:JSON.parse(field('reader-verified-structure')).model});",
+       "  for(const p of src.pages){",
+       "   if(pages.has(p.scan)||p.scan<part.start||p.scan>part.end)throw Error('原本番号が重複しています');",
+       "   pages.set(p.scan,p);",
+       "  }",
+       "  for(const edge of src.continuations){"],
+      [236,2],
+      [211,1," return manifest?.bookId==='wh3'&&manifest.template_profile==='world_history_1';"]
+    ])lines.splice(at,count,...prior);
+    const previous=Buffer.from(lines.join('\n'));
+    if(blobSHA(previous)!=="e39e9b761c3bd5b4238ca5ba2dd13c786f2c67b1")throw Error('STRUCTURED_SHELF_HOST_REVERSE_CHECK_FAILED');
+    data=previous;
+  }
   if(blobSHA(data)==='e39e9b761c3bd5b4238ca5ba2dd13c786f2c67b1'){
     const previous=data.toString('utf8')
       .replace(/\/\/ BEGIN Nine Stories legacy epigraph layout\n[\s\S]*?\/\/ END Nine Stories legacy epigraph layout\n/,'')

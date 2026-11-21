@@ -48,6 +48,7 @@
 `standard.js` は、原本の印刷ページ境界で読書画面を強制的に区切らない。原本照合により後続の文章が前の本文から続くと確定したとき、**後続側**の本文ブロックへ `joinPrevious:true` を付ける。`paginateBlocks()` で組版候補を選ぶ**前**に、`joinLogicalContinuations()` が続きの本文を一つの論理テキストとして扱う。既存書籍の原本文字列を変更・推測補完したり、画像を再圧縮したりしない。
 
 - `kind:'text'` の `blocks` と、`kind:'mixed'` の `entries[].blocks` に対応。例：`{kind:'text',scan:20,blocks:[{type:'body',text:'前半'}]}` の次に `{kind:'text',scan:21,blocks:[{type:'body',text:'続き',joinPrevious:true}]}`。数値の連続から推測して連結してはいけない。
+- 新刊を本棚に登録する際は、原本で確定した接続を含む全分冊を `tools/reader-shelf-register.py pack` に渡す。本文と図版を扱う歴史書、小説のそれぞれについて、入力と実行例は[本棚登録の手順](../../../reader/quality/SHELF_REGISTRATION.md)を参照する。
 - 20枚ごとの制作分冊を本文の改ページ位置に使わない。原本照合済みの接続を全巻で適用してから、実際に収まる文字数で組版する。画面末では日本語の語境界と禁則を確認する。
 - 本文の章・節・小見出しは新しい読書ページの右端から始める。見出しに続く本文は同じページの左隣から組む。原本で一つの見出しを複数のブロックに分けた場合だけ、2行目以降の見出しブロックに `continuesHeading:true` を付ける。目次の項目・図題・柱・通常の段落は各々の表示規則に従う。
 - `type:'heading'`、`type:'toc'`、`type:'note'`、`type:'footnote'`、`type:'caption'` は本文の連結境界。これらは従来の表示書式を維持し、本文に無条件で埋め込まない。`kind:'break'` は表示ページを増やさない明示的な論理区切りで、連結を止める。

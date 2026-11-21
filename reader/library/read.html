@@ -209,7 +209,7 @@ function usesPresidentsTemplate(){
  return BOOK_ID==='us-presidents-south'&&manifest?.bookId===BOOK_ID&&manifest.template_profile==='world_history_1'&&manifest.canonicalTemplate==='wh1-0011-0030';
 }
 function usesWh3StandardInput(){
- return manifest?.bookId==='wh3'&&manifest.template_profile==='world_history_1';
+ return !!bookZip?.wh3Flow&&bookZip.wh3Flow.manifest===manifest||manifest?.bookId==='wh3'&&manifest.template_profile==='world_history_1';
 }
 function nativeBookInput(){return manifest?.readerInteractions==='native-pinch-toc-v1'||usesWh3StandardInput();}
 function attachStandardHost(html){
@@ -234,28 +234,52 @@ window.addEventListener('resize',syncReaderViewport);
 // A storage ZIP part is a source container. Only a natural reading-page boundary
 // may separate two display sections. Published files contain no private book data.
 async function wh3ReadingFlow(book,manifest){
+ const declared=manifest.readingFlow,legacy=!declared&&manifest.bookId==='wh3';
+ if(declared&&declared.format!=='structured-scan-flow-v1')throw Error('未対応の分冊本文形式です');
  const books=[],proofs=[],pages=new Map(),edges=new Map(),incoming=new Map();
  const pair=ref=>ref.join('/');
- for(const part of manifest.segments){
-  const html=await book.readText(part.part);
-  function field(id){
-   const tag='<script type="application/json" id="'+id+'">',a=html.indexOf(tag),b=html.indexOf('</'+'script>',a);
-   if(a<0||b<0)throw Error('分冊の構造を読み込めません');
-   return html.slice(a+tag.length,b);
-  }
-  // Original image bytes stay in the verified ZIP. Only the visible section needs them.
-  const src=JSON.parse(field('bookdata').replace(/"original"\s*:\s*"data:image\/[^"]*"/g,'"original":""'));
-  if(src.bookId!==manifest.bookId||src.range[0]!==part.start||src.range[1]!==part.end)throw Error('分冊の原本範囲が一致しません');
-  proofs.push({range:src.range,model:JSON.parse(field('reader-verified-structure')).model});
-  for(const p of src.pages){
-   if(pages.has(p.scan)||p.scan<part.start||p.scan>part.end)throw Error('原本番号が重複しています');
-   pages.set(p.scan,p);
-  }
-  for(const edge of src.continuations){
+ function registerEdge(edge){
+   if(![edge?.from,edge?.to].every(ref=>Array.isArray(ref)&&ref.length===2&&ref.every(Number.isInteger)))throw Error('原本の本文接続先が不正です');
    const from=pair(edge.from),to=pair(edge.to);
    if(edges.has(from)&&pair(edges.get(from).to)!==to||incoming.has(to)&&incoming.get(to)!==from)throw Error('原本の本文接続が一致しません');
    edges.set(from,edge);incoming.set(to,from);
   }
+ if(declared?.continuations!=null){
+  if(!Array.isArray(declared.continuations))throw Error('全巻の本文接続記録が不正です');
+  declared.continuations.forEach(registerEdge);
+ }
+ for(const part of manifest.segments){
+  const html=await book.readText(part.part);
+  function field(id){
+   // Index only the JSON script's opening tag; its payload can contain many MiB of image bytes.
+   const tag=new RegExp('<script\\b(?=[^>]*\\s+id=(["\\x27])'+id+'\\1)(?=[^>]*\\s+type=(["\\x27])application/json\\2)[^>]*>','i').exec(html);
+   if(!tag)return null;
+   const a=tag.index+tag[0].length,b=html.indexOf('</'+'script>',a);
+   if(b<0)throw Error('分冊の構造を読み込めません');
+   return html.slice(a,b);
+  }
+  const data=field('bookdata');
+  // Other legacy history formats keep their own reader. A declared or already
+  // recognized structured edition must never silently fall back partway through.
+  if(data===null&&!declared&&!books.length)return null;
+  if(data===null)throw Error('構造化された分冊本文がありません');
+  const src=JSON.parse(data.replace(/"original"\s*:\s*"data:image\/[^"]*"/g,'"original":""'));
+  const proof=field('reader-verified-structure');
+  if(!declared&&!legacy&&!books.length&&(!Array.isArray(src?.pages)||!Array.isArray(src?.continuations))&&proof===null)return null;
+  if(!proof||!Array.isArray(src.pages)||!Array.isArray(src.continuations))throw Error('分冊の原本・本文接続記録が不足しています');
+  if(src.bookId!==manifest.bookId||src.range?.[0]!==part.start||src.range?.[1]!==part.end)throw Error('分冊の原本範囲が一致しません');
+  const model=JSON.parse(proof).model;
+  if(!model||typeof model!=='object')throw Error('分冊の原本照合記録がありません');
+  proofs.push({range:src.range,model});
+  for(const p of src.pages){
+   if(pages.has(p.scan)||p.scan<part.start||p.scan>part.end)throw Error('原本番号が重複しています');
+   if(!Number.isInteger(p.scan)||!Array.isArray(p.blocks)||!Array.isArray(p.figures)||
+      p.blocks.some(b=>!b||!['body','heading','toc','note','footnote','caption'].includes(b.type)||typeof b.text!=='string'||!b.text.length)||
+      p.figures.some(f=>!f||!Array.isArray(f.bbox)||f.bbox.length!==4||!f.bbox.every(Number.isFinite))||
+      p.toc_entries!=null&&!Array.isArray(p.toc_entries))throw Error('原本の本文・図版・目次の構造が不正です');
+   pages.set(p.scan,p);
+  }
+  src.continuations.forEach(registerEdge);
   books.push(src);
  }
  const first=manifest.range[0],last=manifest.range[1];
@@ -266,19 +290,35 @@ async function wh3ReadingFlow(book,manifest){
  }
  const graphemes=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
  const length=s=>graphemes?Array.from(graphemes.segment(s)).length:Array.from(s).length;
- const rank=n=>n>=252&&n<=257?509-n:n;
+ // Original scan numbering belongs to the book. Only the old admitted WH3
+ // archive predates explicit portrait and reading-order metadata.
+ const naturalOrder=Array.from({length:last-first+1},(_,i)=>first+i);
+ const scanOrder=declared?.scanOrder??(legacy?naturalOrder.slice().sort((a,b)=>{
+  const rank=n=>n>=252&&n<=257?509-n:n;return rank(a)-rank(b);
+ }):naturalOrder);
+ const portraitList=declared?.portraitScans??(legacy?[1,2,3,7].filter(n=>pages.has(n)):[]);
+ if(!Array.isArray(scanOrder)||scanOrder.length!==naturalOrder.length||new Set(scanOrder).size!==scanOrder.length||
+    !scanOrder.every(n=>pages.has(n))||!Array.isArray(portraitList)||!portraitList.every(n=>pages.has(n)))throw Error('原本の表示順または扉の指定が不正です');
+ const portraits=new Set([...portraitList,...[...pages.values()].filter(p=>p.pageType==='portrait'||!p.blocks.length&&!p.figures.length&&!p.toc_entries?.length).map(p=>p.scan)]);
+ const contents=new Map();
+ for(const b of books)for(const row of b.toc||[]){const key=JSON.stringify(row);if(!contents.has(key))contents.set(key,row);}
+ if(!contents.size)for(const n of scanOrder)for(const row of pages.get(n).toc_entries||[])contents.set(JSON.stringify([n,row]),{...row,sourceScan:n});
+ const toc=[...contents.values()];
+ const presentation={totalScans:last,portraitScans:[...portraits],legacyReferencePages:legacy,statusLabel:legacy?'確認版':manifest.status||books[0].status||''};
  const flat=[];
- for(const p of [...pages.values()].sort((a,b)=>rank(a.scan)-rank(b.scan))){
-  const n=p.scan,add=(id,kind,units)=>flat.push({id,kind,units,scan:n});
-  if([1,2,3,7].includes(n)||p.pageType==='reference'&&!p.blocks.length&&p.figures.length===1){add('p/'+n,'portrait',1);continue;}
-  if(p.toc_entries.length)add('t/'+n,'contents',p.toc_entries.length);
+ for(const n of scanOrder){
+  const p=pages.get(n),add=(id,kind,units)=>flat.push({id,kind,units,scan:n});
+  if(portraits.has(n)||legacy&&p.pageType==='reference'&&!p.blocks.length&&p.figures.length===1){add('p/'+n,'portrait',1);continue;}
+  if(p.toc_entries?.length)add('t/'+n,'contents',p.toc_entries.length);
   p.blocks.forEach((b,i)=>add(n+'/'+i,b.type,length(b.text)));
   p.figures.forEach((f,i)=>{
    const [x,y,w,h]=f.bbox;
-   if(p.pageType==='reference'&&p.blocks.length&&!x&&!y&&w===p.width&&h===p.height)return;
+   if(legacy&&p.pageType==='reference'&&p.blocks.length&&!x&&!y&&w===p.width&&h===p.height)return;
    add('f/'+n+'/'+i,'figure',Math.max(1,length(f.caption||f.externalCaption?.text||'')));
   });
  }
+ const bodyIds=new Set(flat.filter(x=>x.kind==='body').map(x=>x.id));
+ for(const edge of joins)if(!bodyIds.has(pair(edge.from))||!bodyIds.has(pair(edge.to)))throw Error('本文接続先が読書本文に含まれていません');
  function ordered(items){
   const nodes=new Map(items.map(x=>[x.id,x])),result=[],seen=new Set();
   for(let item of items){
@@ -293,11 +333,22 @@ async function wh3ReadingFlow(book,manifest){
   return result;
  }
  const global=ordered(flat),hard=new Set(['portrait','figure','contents']);
+ // A cut is valid only if the ordered stream keeps every item on its side
+ // of the scan boundary and no verified edge crosses it.
+ const firstAt=[],lastAt=[],crossings=new Map();
+ global.forEach((item,index)=>{firstAt[item.scan]??=index;lastAt[item.scan]=index;});
+ for(const {from,to} of joins){
+  const left=Math.min(from[0],to[0])+1,right=Math.max(from[0],to[0])+1;
+  crossings.set(left,(crossings.get(left)||0)+1);crossings.set(right,(crossings.get(right)||0)-1);
+ }
+ let earliest=global.length;
+ for(let n=last;n>=first;n--){earliest=Math.min(earliest,firstAt[n]??global.length);firstAt[n]=earliest;}
+ let end=-1,open=0;
  const safe=[];
  for(let n=first+1;n<=last;n++){
-  if(n>=253&&n<=257||joins.some(e=>Math.min(e.from[0],e.to[0])<n&&Math.max(e.from[0],e.to[0])>=n))continue;
-  const right=global.findIndex(item=>item.scan>=n);
-  if(right<1||global.slice(right).some(item=>item.scan<n))continue;
+  end=Math.max(end,lastAt[n-1]??-1);open+=crossings.get(n)||0;
+  const right=firstAt[n];
+  if(open||end+1!==right||right<1||right>=global.length)continue;
   const before=global[right-1],after=global[right];
   if(hard.has(before.kind)||hard.has(after.kind)||after.kind==='heading'&&before.kind!=='heading')safe.push(n);
  }
@@ -330,23 +381,25 @@ async function wh3ReadingFlow(book,manifest){
  }
  async function archive(index,measuring){
   const section=sections[index],range=[section.start,section.end],selected=[];
-  for(let n=section.start;n<=section.end;n++){
+  for(const n of scanOrder.filter(n=>contains(section,n))){
    const p=pages.get(n);
-   if(measuring){selected.push(p);continue;}
+   // Text-only pages use the host's on-demand original viewer. Do not allocate
+   // the original images of an entire uninterrupted chapter up front.
+   if(measuring||!legacy&&!portraits.has(n)&&!p.figures.length){selected.push(p);continue;}
    const blob=await book.imageBlob(manifest.originalScans[n].path);
    const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});
    selected.push({...p,original:src});
   }
-  const src={...books[0],range,pages:selected,continuations:joins.filter(e=>contains(section,e.from[0])&&contains(section,e.to[0]))};
+  const src={...books[0],title:manifest.title||books[0].title,range,presentation,toc,pages:selected,continuations:joins.filter(e=>contains(section,e.from[0])&&contains(section,e.to[0]))};
   const evidence={range,sourceEditions:proofs.filter(v=>v.range[0]<=section.end&&v.range[1]>=section.start)};
   const tag=(id,value)=>'<script type="application/json" id="'+id+'">'+JSON.stringify(value).replace(/</g,'\\u003c')+'</'+'script>';
   return tag('reader-verified-structure',evidence)+tag('bookdata',src);
  }
- return {sections,archive,bookmark,restore};
+ return {manifest,sections,archive,bookmark,restore};
 }
 // END WH3 continuous scan layout
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='wh1-continuous-20261122-6';
+const wh3LayoutVersion='common-continuous-20261122-7';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
@@ -421,9 +474,9 @@ async function wh3MeasureBook(job){
  }
 }
 function wh3UpdateState(d){
- if(!usesWh3StandardInput()||d.session!==inputSession||!Number.isInteger(d.pageIndex)||!Number.isInteger(d.pageCount)||d.pageIndex<0||d.pageIndex>=d.pageCount)return;
+ if(!bookZip?.wh3Flow||d.session!==inputSession||!Number.isInteger(d.pageIndex)||!Number.isInteger(d.pageCount)||d.pageIndex<0||d.pageIndex>=d.pageCount)return;
  const rect=$('reader').getBoundingClientRect(),width=Math.round(rect.width),height=Math.round(rect.height),font=d.size;
- const key='wh3-pages:'+wh3LayoutVersion+':'+width+'x'+height+':'+font+':'+manifest.segments.map(s=>s.sha256||s.part).join('.');
+ const key='wh3-pages:'+manifest.bookId+':'+wh3LayoutVersion+':'+width+'x'+height+':'+font+':'+manifest.segments.map(s=>s.sha256||s.part).join('.');
  // The shelf link stays visible above the same original-scan dialog used by WH1.
  $('originalOverlay').style.paddingTop='calc(48px + env(safe-area-inset-top))';
  const previous=wh3Counts;
@@ -654,7 +707,7 @@ function fillManifest(m,flow){
  if(m.segments[0].start!==1||m.segments.at(-1).end!==m.range[1])throw Error('本の収録ページと目次が一致しません');
  for(let n=1;n<=m.range[1];n++)if(!m.originalScans?.[String(n)]?.path)throw Error('原本画像が不足しています：'+n);
  totalScans=m.range[1];bookTitle=String(m.title||bookTitle||'読書');manifest=m;SEGMENTS.splice(0,SEGMENTS.length,...(flow?.sections||m.segments));
- document.documentElement.classList.toggle('native-book-input',nativeBookInput());
+ document.documentElement.classList.toggle('native-book-input',!!flow||m.readerInteractions==='native-pinch-toc-v1'||m.bookId==='wh3'&&m.template_profile==='world_history_1');
  if(usesPresidentsTemplate()){
   $('reader').title=bookTitle+'｜全'+totalScans+'枚読書';
   $('originalOverlay').style.paddingTop=$('bookshelfNav').getBoundingClientRect().height+'px';
@@ -732,7 +785,7 @@ class ZipBook {
 }
 const POSITION_KEY='BOOK_POSITION_'+BOOK_ID;
 function savePosition(){try{localStorage.setItem(POSITION_KEY,JSON.stringify(currentState));}catch(_){}}
-function restorePosition(){try{const raw=localStorage.getItem(POSITION_KEY)||(BOOK_ID==='wh1'?localStorage.getItem('WH1_UNIFIED_POSITION'):null);const p=JSON.parse(raw);if(p&&Number.isInteger(p.segment)&&p.segment>=0&&(p.segment<SEGMENTS.length||typeof manifest!=='undefined'&&manifest?.bookId==='wh3'&&p.segment<manifest.segments.length))return p;}catch(_){}return {segment:0,key:'',scan:1,size:20};}
+function restorePosition(){try{const raw=localStorage.getItem(POSITION_KEY)||(BOOK_ID==='wh1'?localStorage.getItem('WH1_UNIFIED_POSITION'):null);const p=JSON.parse(raw);if(p&&Number.isInteger(p.segment)&&p.segment>=0&&(p.segment<SEGMENTS.length||typeof manifest!=='undefined'&&manifest?.template_profile==='world_history_1'&&p.segment<manifest.segments.length))return p;}catch(_){}return {segment:0,key:'',scan:1,size:20};}
 // Offline book storage: use small IndexedDB chunks rather than one huge 400 MB transaction.
 // Old v1 records remain readable so an already cached book does not require re-import.
 const OFFLINE_CHUNK_SIZE = 4 * 1024 * 1024;
@@ -913,13 +966,13 @@ async function loadBook(file,shouldSave=true){
   if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){
    book.readingFlow=await window.WH1ExactPager.continuousReading(book,m);
   }
-  if(m.bookId==='wh3'&&m.template_profile==='world_history_1')book.wh3Flow=await wh3ReadingFlow(book,m);
+  if(m.template_profile==='world_history_1'&&!book.readingFlow)book.wh3Flow=await wh3ReadingFlow(book,m);
   fillManifest(m,book.wh3Flow);bookZip=book;
   if(shouldSave)void saveCurrentBook();
   else setStorageState('このiPhoneに保存した書籍を開きました。次回も自動で開きます。',{show:false});
   $('setup').hidden=true;$('reader').style.display='block';
   currentState=restorePosition();if(book.wh3Flow)currentState=book.wh3Flow.restore(currentState);
-  const requested=m.bookId==='wh3'&&m.template_profile==='world_history_1'?Number(new URLSearchParams(location.search).get('scan')):null;
+  const requested=book.wh3Flow?Number(new URLSearchParams(location.search).get('scan')):null;
   if(Number.isInteger(requested)&&requested>=1&&requested<=totalScans){
    const url=new URL(location.href);
    const destination={scan:requested};
@@ -1188,7 +1241,7 @@ window.addEventListener('message',e=>{
   const next=activeSegment+d.direction;
   if(next>=0&&next<SEGMENTS.length){
    const s=SEGMENTS[next];
-   if(usesWh3StandardInput()&&!Object.keys(s.assets).length)turnWh3Section(next,d.direction);
+   if(bookZip.wh3Flow&&!Object.keys(s.assets).length)turnWh3Section(next,d.direction);
    else openSegment(next,d.direction<0?{mode:'last'}:{mode:'first',scan:s.start});
   }
  }

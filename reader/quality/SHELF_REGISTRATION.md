@@ -2,6 +2,24 @@
 
 確認版と通常版の新規登録、続きの統合、差し替えに同じ入口を使う。読書用ZIP・原本資料・DriveファイルID・書誌の実データ・署名用の秘密鍵は非公開で扱う。登録台帳 `reader/quality/shelf-registration.json` には内容の指紋、実測値、署名を保存する。
 
+## 20枚分冊から読書用ZIPを作る
+
+新規書籍と差し替えには、Driveの仮置き前に共通の `pack` を使う。分冊は制作と保管の単位として維持する。読書画面では全巻にわたる本文の接続を先に確定し、画面幅と文字サイズに合わせて改ページする。
+
+```bash
+python tools/reader-shelf-register.py pack \
+  --manifest private/manifest.json --archive private/book.zip
+```
+
+私有の目録には `schema: 1`、`bookId`、`title`、`template_profile`、`range: [1, 最終原本番号]` を指定する。各分冊は `segments` の `start`、`end`、`part` で元のファイルに対応づける。すべてのファイルパスは目録を置いたフォルダからの相対パス。原本を別ファイルに保管している場合、`originalScans` の原本番号ごとに `path` と記録済みであれば `sha256` を指定する。
+
+- 歴史書の分冊に `bookdata.pages` と `reader-verified-structure` がある場合、`pack` は本文・図版・目次と原本番号を保持し、`structured-scan-flow-v1` の目録を作る。扉は `pageType: "portrait"` または `readingFlow.portraitScans`、原本に固有の並べ替えは `readingFlow.scanOrder` に全巻の順番で記録する。
+- 通常の標準テンプレート・小説テンプレートは、各分冊の `window.READER_BOOK` に入っているリテラルJSON、同じ形式の `script#bookdata`、またはJSONファイルを直接読める。`kind` は `text`、`mixed`、`image`。選択したテンプレートの本文・見出し・図版を全巻の順番で組み、同じエンジンで開く自己完結HTMLとして梱包する。全巻の読書HTMLがすでにある場合には `entry` に指定できる。
+- 歴史書・小説ともに、四工程で統合した原稿では `mergeReport` に `merged/merge_report.json` を指定する。同じフォルダの `merged_bookdata.json` と `reader_logical_stream.json` を統合記録のSHAと照合し、確定した境界判断を利用する。目録の横に `merge_report.json` があるときは自動で見つける。図版・注記・目次など配置を保存する本には、照合済みの読書分冊も渡す。
+- 確認済みの本文接続は分冊の `continuations` または目録の `readingFlow.continuations` に `{"from":[20,3],"to":[21,0]}` のように記録する。番号は原本番号と、その原本での0始まりの本文ブロック番号。通常テンプレートの連続する本文では、確認済みの `joinPrevious: true` も使用できる。図版・注記が途中にある接続は両方の原本位置で示す。
+- 前後に本文のある分冊境界には原本で照合した接続、または明示した段落・会話・見出しなどの区切りを用意する。既存の四工程の境界台帳は `--structure-reviews private/merged_bookdata.json` でも読み込める。段落などが続かない場合も、`source_review_status: "verified"`、`display_boundary`、実際の `left_suffix`・`right_prefix`、左右の本文ID（または `from`・`to`）を照合する。必要な判断が見つからない場合は該当する原本番号が表示される。画像だけの本では本文接続の指定は不要。
+- `prepare` はDriveから読み戻した実物を本棚で開く。分冊間で続く本文が実際の読書順で隣り合い、画面をまたぐ場合は語の境界にあることを検査する。原本から独立に作った区間越え接続一覧を原本照合表の `continuations` に含めると、省略・余分な接続も照合できる。結果は私有の `verification.json` の `continuity` に保存する。新規登録の前に、通常版と確認版それぞれの登録・校正手順を続ける。
+
 ## 制作から本棚まで
 
 1. いつもの20枚単位の制作と校正を進め、書籍の実体をDriveの非公開の仮置き先に用意する。原本から作った目次照合表、今回の書誌、Driveの現行本棚一覧を用意する。各分割ファイルを同じDrive IDから読み直し、順に `01.bin`、`02.bin` と保存する。読戻し記録 `parts.json` は各ファイルの `index`（1から）、`id`、`bytes`、`sha256` を持つ配列とする。
