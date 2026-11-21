@@ -81,6 +81,6 @@ async function test(){
   assert.deepEqual(standardMarks.observed,book.blocks.flatMap(b=>b.text.match(/[?？]/gu)||[]));
   console.log('Standard template preserved characters and rendered halfwidth/fullwidth questions upright');
   console.log('24 Chromium viewport/font combinations passed; 48 section starts and upright halfwidth/fullwidth questions verified');
- }finally{if(ws)ws.close();browser.kill();await ended;fs.rmSync(root,{recursive:true,force:true});}
+ }finally{if(ws)ws.close();browser.kill();await ended;fs.rmSync(root,{recursive:true,force:true,maxRetries:6,retryDelay:150});}
 }
 test().catch(error=>{console.error(error);process.exitCode=1;});
