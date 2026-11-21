@@ -43,6 +43,10 @@ on:
       - 'tests/reader-source-pipeline-gate.test.cjs'
       - 'tools/reader-source-pages.cjs'
       - 'templates/reader/v2/novel.js'
+      - 'templates/reader/v2/standard.js'
+      - 'templates/reader/v2/vertical-symbols.js'
+      - 'tools/reader-vertical-symbols.cjs'
+      - 'tests/reader-vertical-symbols.test.cjs'
       - 'tests/browser-novel-heading-pages.cjs'
       - 'tests/reader-source-pages.test.cjs'
       - 'tests/reader-handoff-check.test.cjs'
@@ -103,6 +107,10 @@ on:
       - 'tests/reader-source-pipeline-gate.test.cjs'
       - 'tools/reader-source-pages.cjs'
       - 'templates/reader/v2/novel.js'
+      - 'templates/reader/v2/standard.js'
+      - 'templates/reader/v2/vertical-symbols.js'
+      - 'tools/reader-vertical-symbols.cjs'
+      - 'tests/reader-vertical-symbols.test.cjs'
       - 'tests/browser-novel-heading-pages.cjs'
       - 'tests/reader-source-pages.test.cjs'
       - 'tests/reader-handoff-check.test.cjs'
@@ -152,7 +160,7 @@ jobs:
           node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
           node tools/reader-work-ledger-validate.cjs
           node --check tools/reader-private-pipeline.cjs
-          node --test tests/reader-source-pipeline-gate.test.cjs tests/reader-source-pages.test.cjs
+          node --test tests/reader-source-pipeline-gate.test.cjs tests/reader-source-pages.test.cjs tests/reader-vertical-symbols.test.cjs
           node --test tests/reader-book-preflight.test.cjs tests/reader-evidence-gate.test.cjs tests/reader-verify-pages.test.cjs tests/reader-handoff-check.test.cjs tests/reader-nine-stories-safe-loader-v2.test.cjs
           node --check tools/reader-evidence-gate.cjs
           node --check tools/reader-verify-pages.cjs

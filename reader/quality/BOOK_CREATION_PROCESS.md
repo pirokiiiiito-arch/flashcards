@@ -51,7 +51,7 @@ node tools/reader-source-pages.cjs PRIVATE/manifest.json --request PRIVATE/reque
 
 ## 小説用の会話文レイアウト（ナイン・ストーリーズ以後の小説向け）
 
-縦書き本文・見出しの疑問符は、原稿の半角 `?` と全角 `？` をそれぞれ保ち、どちらも正立させる。改ページの測定にも同じ組版を使い、文字サイズを変えて両方の向きを確認する。
+縦書き本文・見出し・目次は、[縦書き記号の組版と検査](VERTICAL_SYMBOLS.md) を適用する。半角・全角の疑問符と感嘆符は正立させ、括弧・句読点・長音には縦組字形を使う。既存エンジンを再利用するときは生成前に `reader-vertical-symbols.cjs apply` を実行し、全分冊と統合HTMLに `check` を実行する。
 
 原本で作品・章の開始と確認した見出しは新しい読書ページの先頭に置き、収まる冒頭本文はその左列に続ける。分冊と統合後の HTML は、文字サイズ変更後も各作品の先頭を実表示で確認する。小説の確定時は原本で確認した作品・章を領域台帳の heading に登録し、同じ HTML の既存の DOM 観測（heading_dom_probe.js）が記録した全ページ・24条件のファイルを display.headingObservations に指定する。採用済み previewDisplay.observations も利用できる。複数の異なる文字欄が一つの見出し領域を参照する場合は headingField に見出し本文の欄を指定する。
 
