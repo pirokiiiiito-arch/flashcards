@@ -154,11 +154,49 @@ body.zoomed .toc-flow{touch-action:pan-x pan-y pinch-zoom;overscroll-behavior:au
 #transcript-text{white-space:pre-wrap;font:16px/1.6 serif}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .footer-inner .location-indicator{min-width:0;max-width:calc(100% - 164px);overflow:hidden}
-#page-minor{white-space:nowrap;display:block;overflow:hidden;text-overflow:ellipsis}
+#page-minor{display:flex;justify-content:center;align-items:baseline;overflow:hidden;white-space:nowrap}
 
 #wh3-status{font-size:10px;font-weight:500;letter-spacing:0;margin-left:8px;vertical-align:middle;color:#5c726f}
 
 .figure-bundle.wh1-audited-figure[hidden]{display:none!important}
+/* A vertical-text clipping layer must never cover horizontal picture pages. */
+html.wh3-picture,html.wh3-picture body,
+html.wh3-picture #reader-main,html.wh3-picture #sheet,
+html.wh3-picture #figure-page{
+ clip:auto!important;clip-path:none!important;-webkit-clip-path:none!important;
+ mask-image:none!important;-webkit-mask-image:none!important;
+ text-indent:0!important;writing-mode:horizontal-tb!important;direction:ltr!important;
+}
+html.wh3-picture #figure-page{
+ box-sizing:border-box!important;position:relative!important;left:0!important;right:auto!important;
+ top:0!important;width:100%!important;max-width:100%!important;min-width:0!important;
+ height:100%!important;margin:0!important;padding:0!important;
+ transform:translateZ(0)!important;isolation:isolate!important;
+}
+html.wh3-picture #sheet::before,html.wh3-picture #sheet::after,
+html.wh3-picture #figure-page::before,html.wh3-picture #figure-page::after,
+html.wh3-picture #reader-main::before,html.wh3-picture #reader-main::after{
+ content:none!important;display:none!important;
+}
+.figure-bundle[data-wh1-viewport="8"]{
+ box-sizing:border-box!important;min-width:0!important;width:100%!important;max-width:100%!important;
+ margin-left:0!important;margin-right:0!important;text-indent:0!important;
+ clip:auto!important;clip-path:none!important;-webkit-clip-path:none!important;
+ mask-image:none!important;-webkit-mask-image:none!important;
+ writing-mode:horizontal-tb!important;direction:ltr!important;transform:translateZ(0)!important;
+}
+.figure-bundle[data-wh1-viewport="8"] .figure-bundle-header,
+.figure-bundle[data-wh1-viewport="8"] .figure-bundle-explanation,
+.figure-bundle[data-wh1-viewport="8"] .figure-bundle-caption-text,
+.figure-bundle[data-wh1-viewport="8"] .figure-bundle-caption-content{
+ min-width:0!important;max-width:100%!important;text-indent:0!important;
+ clip:auto!important;clip-path:none!important;-webkit-clip-path:none!important;
+ mask-image:none!important;-webkit-mask-image:none!important;
+ writing-mode:horizontal-tb!important;direction:ltr!important;
+}
+
+#page-description{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#page-origin{flex:none;white-space:pre}
 </style></head><body>
 <nav class="shelf-strip"><a class="shelf-link" href="https://pirokiiiiito-arch.github.io/flashcards/reader/library/">◀ 本棚へ</a><output id="shelf-status"></output></nav>
 <header class="toolbar"><div class="toolbar-line">
@@ -174,7 +212,9 @@ body.zoomed .toc-flow{touch-action:pan-x pan-y pinch-zoom;overscroll-behavior:au
  <div class="text-flow" id="text-flow" hidden></div>
  <figure class="portrait-sheet" id="portrait" hidden><img id="portrait-image" alt=""></figure>
  <div class="toc-flow" id="contents" hidden></div>
- <section class="figure-bundle wh1-audited-figure" id="figure-stage" hidden>
+</div>
+<div class="reading-stage" id="figure-page" hidden>
+ <section class="figure-bundle wh1-audited-figure" id="figure-stage" data-wh1-viewport="8" hidden>
  <div class="figure-bundle-header"><div class="figure-bundle-kicker" data-role="kicker"></div><div class="figure-bundle-title" data-role="title"></div></div>
  <div class="figure-bundle-tabs" data-role="tabs" hidden></div>
  <div class="figure-bundle-art"><img id="figure-image" alt=""><span id="figure-placeholder" hidden></span></div>
@@ -186,7 +226,7 @@ body.zoomed .toc-flow{touch-action:pan-x pan-y pinch-zoom;overscroll-behavior:au
 </div></article></main>
 <footer class="reader-footer"><div class="progress-line"><div id="progress-fill"></div></div><div class="footer-inner">
  <button type="button" class="page-nav" id="prev">前へ</button>
- <div class="location-indicator" role="status"><strong id="page-major">―</strong><small id="page-minor"></small></div>
+ <div class="location-indicator" role="status"><strong id="page-major">―</strong><small id="page-minor"><span id="page-description"></span><span id="page-origin"></span></small></div>
  <button type="button" class="page-nav" id="next">次へ</button>
 </div></footer>
 <div class="sheet measuring-sheet" id="measure-sheet" aria-hidden="true"><div class="reading-stage"><div class="text-flow" id="measure-text" hidden></div><div class="toc-flow" id="measure-toc" hidden></div><section class="figure-bundle wh1-audited-figure" id="measure-figure" hidden>
@@ -731,24 +771,33 @@ function setFigure(p){
 function render(){
  const p=pages[index];
  if(!p){
-  $('page-major').textContent='0 / 0';$('page-minor').textContent='読書データ未登録';
+  $('page-major').textContent='0 / 0';$('page-description').textContent='読書データ未登録';$('page-origin').textContent='';$('page-minor').title='読書データ未登録';
   $('progress-fill').style.width='0%';$('prev').disabled=true;$('next').disabled=true;
   $('original').disabled=true;return;
  }
  const scan=selectedOriginal?.scan||p.scan;
- const show=id=>$(id).hidden=false;
- textFlow.hidden=true;$('portrait').hidden=true;$('contents').hidden=true;$('figure-stage').hidden=true;
+ // Figures never share the paint surface that clips the leftmost vertical text column.
+ const picture=p.kind==='image',figurePage=$('figure-page'),entering=picture&&figurePage.hidden;
+ document.documentElement.classList.toggle('wh3-picture',picture);
+ $('reader-page').hidden=picture;figurePage.hidden=!picture;
+ textFlow.hidden=p.kind!=='text';$('portrait').hidden=p.kind!=='portrait';$('contents').hidden=p.kind!=='toc';
+ $('figure-stage').hidden=!picture;
+ if(entering&&!zoomed()){
+  for(const element of [main,sheet,figurePage])if(element.scrollLeft!==0)element.scrollLeft=0;
+ }
  if(p.kind==='text'){
   const frag=document.createDocumentFragment();for(const part of p.parts)frag.append(partNode(part));
-  textFlow.replaceChildren(frag);show('text-flow');
+  textFlow.replaceChildren(frag);
  }else if(p.kind==='portrait'){
   const el=$('portrait-image'),src=currentSource();if(src&&el.getAttribute('src')!==src)el.src=src;
-  el.alt=p.title;show('portrait');
- }else if(p.kind==='toc'){$('contents').replaceChildren(tocElement(p));show('contents');}
- else{setFigure(p);show('figure-stage');}
+  el.alt=p.title;
+ }else if(p.kind==='toc')$('contents').replaceChildren(tocElement(p));
+ else setFigure(p);
  $('page-major').textContent=(index+1)+' / '+pages.length;
  const description=p.kind==='text'?[sectionOf(scan),'本文'].filter(Boolean).join(' '):p.kind==='image'?'図版｜'+figures[p.figure].title:p.kind==='toc'?'目次':p.title;
- $('page-minor').textContent=description+' ｜ 原本 '+scan+' / '+book.totalScans;$('page-minor').title=$('page-minor').textContent;
+ $('page-description').textContent=description;
+ $('page-origin').textContent=' ｜ 原本 '+scan+' / '+book.totalScans;
+ $('page-minor').title=$('page-minor').textContent;
  $('progress-fill').style.setProperty('--local-progress',100*(index+1)/pages.length+'%');
  $('prev').disabled=index===0;$('next').disabled=index>=pages.length-1;
  $('original').disabled=!currentSource();persist();
@@ -800,7 +849,7 @@ function rebuild(){
   render();menuRefresh();
  }catch(e){
   warning=String(e?.message||e);if(host?.measureOnly)postHost('wh3-measured',{error:warning});$('shelf-status').textContent='組版要確認';
-  $('page-minor').textContent=warning;console.error('Reader layout:',e);
+  $('page-description').textContent=warning;$('page-origin').textContent='';$('page-minor').title=warning;console.error('Reader layout:',e);
  }
 }
 function zoomed(){return (embedded&&!hostKnown)||Math.max(Number(window.visualViewport?.scale||1),hostScale)>1.04}
@@ -932,6 +981,7 @@ if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>
  function dest(o={}){const pages=api.pageManifest();let i=-1;if(o.mode==='first')i=0;else if(o.mode==='last')i=pages.length-1;
   else if(/^wh3v2\.\d+$/.test(o.key||'')){const at=Number(o.key.slice(6));i=pages.findIndex(x=>x.start<=at&&x.end>at);}
 
+  if(i<0&&o.view==='figure'&&Number.isInteger(o.scan))i=pages.findIndex(p=>p.kind==='image'&&p.scan===o.scan);
   if(i<0&&o.view==='text'&&typeof o.heading==='string'){
    const normal=s=>s.normalize('NFKC').replace(/[\s　]/g,'');
    const heading=normal(o.heading);

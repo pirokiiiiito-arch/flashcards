@@ -228,7 +228,7 @@ window.visualViewport?.addEventListener('scroll',syncReaderViewport);
 window.addEventListener('pageshow',syncReaderViewport);
 window.addEventListener('resize',syncReaderViewport);
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='wh1-reference-20261122-1';
+const wh3LayoutVersion='wh1-figure-20261122-2';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
@@ -243,7 +243,7 @@ function wh3FrameDocument(plain,archived,context){
  return plain.replace('<head>',()=>'<head><script>window.__readerHost=Object.freeze('+settings+');<\/script>');
 }
 async function wh3Layout(){
- if(!wh3Template)wh3Template=fetch('./wh3-format.html').then(async response=>{
+ if(!wh3Template)wh3Template=fetch('./wh3-format.html?v='+wh3LayoutVersion,{cache:'no-cache'}).then(async response=>{
   if(!response.ok)throw Error('読書テンプレートを取得できません');const body=await response.text();
   if(!body.includes('<!--WH3_PRIVATE_DATA-->'))throw Error('読書テンプレートを確認できません');
   return body;
@@ -503,8 +503,11 @@ async function loadBook(file,shouldSave=true){
   currentState=restorePosition();
   const requested=m.bookId==='wh3'&&m.template_profile==='world_history_1'?Number(new URLSearchParams(location.search).get('scan')):null;
   if(Number.isInteger(requested)&&requested>=1&&requested<=totalScans){
-   await openSegment(segmentForScan(requested),{scan:requested});
-   const url=new URL(location.href);url.searchParams.delete('scan');history.replaceState(null,'',url);
+   const url=new URL(location.href);
+   const destination={scan:requested};
+   if(url.searchParams.get('view')==='figure')destination.view='figure';
+   await openSegment(segmentForScan(requested),destination);
+   url.searchParams.delete('scan');url.searchParams.delete('view');history.replaceState(null,'',url);
   }else await openSegment(currentState.segment,{key:currentState.key,scan:currentState.scan});
  }catch(err){clearBusy();$('setup').hidden=false;setHint('読み込みエラー: '+(err.message||String(err)));throw err;}
 }

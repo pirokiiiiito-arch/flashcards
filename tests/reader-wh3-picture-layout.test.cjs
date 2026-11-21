@@ -1,0 +1,66 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+const vm = require('node:vm');
+
+const root = process.env.READER_AUDIT_ROOT || path.join(__dirname, '..');
+const html = fs.readFileSync(path.join(root, 'reader/library/wh3-format.html'), 'utf8');
+const render = html.slice(html.indexOf('function render(){'), html.indexOf('function gotoPage('));
+
+test('horizontal figure pages own a full-width surface outside the clipped vertical-text stage', () => {
+  const display = html.slice(html.indexOf('<main '), html.indexOf('</main>'));
+  assert.match(display, /id="text-flow"[\s\S]*?id="contents" hidden><\/div>\s*<\/div>\s*<div class="reading-stage" id="figure-page" hidden>\s*<section[^>]+id="figure-stage"[^>]+data-wh1-viewport="8"/);
+  assert.match(html, /html\.wh3-picture #figure-page\{\s*box-sizing:border-box!important;[\s\S]*?width:100%!important;[\s\S]*?isolation:isolate!important;/);
+  assert.match(html, /html\.wh3-picture #figure-page\{\s*clip:auto!important;clip-path:none!important;/);
+});
+
+test('turning between vertical text and figure explanations swaps surfaces and preserves the active image', () => {
+  const ids = new Map();
+  function el(id) {
+    if (!ids.has(id)) ids.set(id, {hidden: false, scrollLeft: 24, style: {setProperty() {}}, replaceChildren() {}});
+    return ids.get(id);
+  }
+  el('figure-page').hidden = true;
+  const classes = new Map();
+  const captions = [];
+  const env = {
+    $: el, main: el('reader-main'), sheet: el('sheet'), textFlow: el('text-flow'),
+    document: {
+      documentElement: {classList: {toggle: (name, value) => classes.set(name, value)}},
+      createDocumentFragment: () => ({append() {}})
+    },
+    index: 0, pages: [
+      {kind: 'text', scan: 11, parts: []}, {kind: 'image', scan: 11, figure: 0, caption: 'a'},
+      {kind: 'image', scan: 11, figure: 0, caption: 'b'}
+    ],
+    selectedOriginal: null, book: {totalScans: 260}, figures: [{title: 'Long figure title'}],
+    zoomed: () => false, setFigure: p => captions.push(p.caption),
+    sectionOf: () => '', persist() {}, currentSource: () => true
+  };
+  const context = vm.createContext(env);
+  vm.runInContext(render, context);
+  const turn = index => { env.index = index; vm.runInContext('render()', context); };
+  turn(0);
+  assert.equal(el('reader-page').hidden, false);
+  assert.equal(el('figure-page').hidden, true);
+  turn(1);
+  assert.equal(classes.get('wh3-picture'), true);
+  assert.equal(el('reader-page').hidden, true);
+  assert.equal(el('figure-page').hidden, false);
+  assert.equal(el('figure-stage').hidden, false);
+  for (const id of ['reader-main', 'sheet', 'figure-page']) assert.equal(el(id).scrollLeft, 0);
+  assert.equal(el('page-origin').textContent.trim(), '｜ 原本 11 / 260');
+  Object.defineProperty(el('figure-page'), 'hidden', {
+    get: () => false, set: hidden => assert.equal(hidden, false, 'continuation must keep the picture surface mounted'),
+    configurable: true
+  });
+  turn(2);
+  assert.deepEqual(captions, ['a', 'b']);
+  delete el('figure-page').hidden;
+  turn(0);
+  assert.equal(classes.get('wh3-picture'), false);
+  assert.equal(el('reader-page').hidden, false);
+  assert.equal(el('figure-page').hidden, true);
+});
