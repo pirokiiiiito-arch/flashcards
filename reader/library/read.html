@@ -403,6 +403,105 @@ function destinationForScan(destination={}){
 // non-wh-reading-parity-20261115: presentation only, for other bookshelf books.
 // Never modify original scans, OCR source, pagination state or import files.
 function decorateOtherBookReading(html){
+ // BEGIN symbol dictionary bookshelf layout
+ const isSymbolBook=typeof manifest!=='undefined' && manifest?.bookId==='sekai-symbol-jiten-528-review';
+ const templateTag=/(<script type="application\/json" id="segment-template">)([\s\S]*?)(<\/script>)/;
+ const symbolTemplate=isSymbolBook && templateTag.exec(html);
+ const status=typeof document!=='undefined' && document.getElementById('symbolSegmentStatus');
+ if(status)status.hidden=true;
+ if(symbolTemplate){
+  // The archived bootstrap rewrites the iframe after loading images. Apply the layout
+  // inside its template so the first pagination pass measures the final reading area.
+  const css=`/* Use the WH1 toolbar, footer and sheet dimensions for both the displayed page and its measuring box. */
+:root{--symbol-bar-pad:5px;--symbol-foot-pad:4px;--symbol-sheet-pad:10px 12px}
+@media(max-height:620px){:root{--symbol-bar-pad:2px;--symbol-foot-pad:2px;--symbol-sheet-pad:6px 9px}}
+.app{height:100%!important;max-height:100%!important;padding-top:0!important}
+nav.shelf-strip,.toolbar .shelf-row,header.top #status{display:none!important}
+div.app>header.top,header.toolbar{
+ box-sizing:border-box;display:grid!important;grid-template-columns:minmax(0,auto) minmax(0,1fr);
+ align-items:center;gap:10px;flex:0 0 auto!important;margin:0!important;
+ padding:calc(var(--symbol-bar-pad) + env(safe-area-inset-top)) 11px var(--symbol-bar-pad)!important;
+ border:0!important;border-bottom:1px solid #d9ded8!important
+}
+header.toolbar>.controls{display:contents!important}
+header .topline,header .book-title,header .controls>h1{
+ font:700 15px/normal -apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',system-ui,sans-serif!important;
+ height:auto!important;min-height:0!important;margin:0!important;padding:0!important;white-space:nowrap;overflow:hidden
+}
+header .topline .brand{font:inherit!important}
+header.top>.toolbar,header.toolbar .button-row{
+ box-sizing:border-box;display:flex!important;align-items:center;flex-wrap:nowrap!important;
+ height:45px!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;
+ min-width:0;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none
+}
+@media(max-width:520px){
+ div.app>header.top,header.toolbar{grid-template-columns:minmax(0,1fr);row-gap:4px}
+ header.top>.toolbar,header.toolbar .button-row{height:36px!important}
+ header.toolbar .button-row .font-control{padding:0!important;gap:0!important}
+ header.toolbar .button-row .size-button{min-height:34px!important}
+ header.toolbar .button-row>.nav-button{min-height:36px!important}
+}
+footer.footer,footer.reader-footer{
+ box-sizing:border-box;flex:0 0 auto!important;border:0!important;border-top:1px solid #e1e5df!important;
+ height:calc(50px + var(--symbol-foot-pad) + env(safe-area-inset-bottom))!important;min-height:0!important;
+ padding:2px 12px calc(var(--symbol-foot-pad) + env(safe-area-inset-bottom))!important
+}
+.content,.content.reader-main,.reader-main{padding:0!important}
+.reading-card,.reading-card.sheet,#sheet,#measuring-sheet{
+ box-sizing:border-box;padding:var(--symbol-sheet-pad)!important;border:0!important
+}
+.reading-card .reading-head{display:none!important}
+.reading-content{padding:0!important}
+.vertical-text:not(.heading):not(.caption):not(.toc)>.reader-paragraph{margin:0 0 .72em 0}
+@media(min-width:700px){
+ .content,.content.reader-main,.reader-main{padding:10px 0!important}
+ .reading-card,.reading-card.sheet,#sheet,#measuring-sheet{border:1px solid #e4e6de!important}
+}
+header .topline{flex-wrap:nowrap!important;min-width:0}
+header .topline .pill{min-width:0;overflow:hidden;text-overflow:ellipsis}`;
+  function connectSegment(ticket){
+   // Saved offsets may fall inside a newly reflowed page, including figure captions.
+   window.addEventListener('message',event=>{
+    const data=event.data,dest=data?.destination;
+    if(event.source!==parent || data?.wh1bridge!==1 || data.action!=='goto' || !dest?.key)return;
+    const match=/^(text|ill):(\d+):(\d+)$/.exec(dest.key);
+    if(!match || typeof pages==='undefined' || !Array.isArray(pages) || pages.some(p=>p.key===dest.key))return;
+    const block=Number(match[2]),offset=Number(match[3]);
+    const contains=(start,length)=>start<=offset && offset<start+length;
+    const page=match[1]==='text'
+      ? pages.find(p=>p.type==='text' && p.parts.some(a=>a.block===block && contains(a.offset,a.text.length)))
+      : pages.find(p=>p.type==='illustration' && p.key.startsWith('ill:'+block+':') && contains(p.partOffset,p.description.length));
+    if(page)dest.key=page.key;
+   },true);
+   window.addEventListener('DOMContentLoaded',()=>{
+    const value=document.querySelector('#status, .shelf-row span');
+    if(!value)return;
+    const send=()=>parent.postMessage({kind:'symbol-reading-status',ticket,text:value.textContent.trim().slice(0,160)},'*');
+    new MutationObserver(send).observe(value,{childList:true,characterData:true,subtree:true});
+    send();
+   },{once:true});
+  }
+  if(!status){
+   const output=document.createElement('output');
+   output.id='symbolSegmentStatus';output.hidden=true;
+   output.style.cssText='margin-left:auto;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#52635f;background:white;border:1px solid #a6b8ad;border-radius:6px;padding:5px 7px;font:10px/1.3 system-ui,sans-serif';
+   $('bookshelfNav').append(output);
+   window.addEventListener('message',event=>{
+    const data=event.data;
+    if(event.source!==$('reader').contentWindow || manifest?.bookId!=='sekai-symbol-jiten-528-review' ||
+       data?.kind!=='symbol-reading-status' || data.ticket!==loadToken || typeof data.text!=='string')return;
+    output.textContent=data.text.slice(0,160);
+    output.hidden=!output.textContent;
+   });
+  }
+  const template=JSON.parse(symbolTemplate[2]);
+  const bridge='<scr'+'ipt>('+connectSegment.toString()+')('+loadToken+');<'+'/script>';
+  const insertion='<style id="symbol-wh1-column-layout">'+css+'</style>'+bridge;
+  const rendered=template.replace('</head>',()=>insertion+'</head>');
+  const encoded=JSON.stringify(rendered).replace(/</g,'\\u003c');
+  return html.replace(templateTag,()=>symbolTemplate[1]+encoded+symbolTemplate[3]);
+ }
+ // END symbol dictionary bookshelf layout
  if(BOOK_ID==='wh1'||/wh2-parent-viewport-receiver-v6|wh2-wh1-parity-ui/.test(html))return html;
  if(!html.includes('</head>')||!html.includes('</body>'))return html;
  const style=`<style id="bookshelf-other-books-wh1-layout">

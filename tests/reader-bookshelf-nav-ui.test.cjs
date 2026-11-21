@@ -198,3 +198,30 @@ test('WH2 header and unified swipe remain exclusive to recognized private WH2 so
  assert.match(html, /wh2-wh1-font-control/,'top bar groups font controls like WH1');
  assert.match(html, /matchedMeasure/,'reader height is derived from the current page geometry');
 });
+
+test('symbol shelf layout is installed inside the hydrated segment before pagination',()=>{
+ const host=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const source=host.match(/function decorateOtherBookReading\(html\)\{[\s\S]*?\n\}(?=\n\nasync function openSegment)/)[0];
+ const frame={},nav={append(node){this.output=node;}},events={};
+ const document={getElementById:id=>id==='symbolSegmentStatus'?nav.output:null,createElement:()=>({style:{}})};
+ const context={manifest:{bookId:'sekai-symbol-jiten-528-review'},loadToken:7,document,
+  window:{addEventListener:(name,fn)=>{events[name]=fn;}},$:id=>id==='reader'?{contentWindow:frame}:nav};
+ const decorate=vm.runInNewContext('('+source+')',context);
+ const page='<html><head></head><body><nav class="shelf-strip"><a class="shelf-link">本棚へ</a></nav><p>テスト</p></body></html>';
+ const open='<script type="application/json" id="segment-template">',close='</script>';
+ const wrapper='<html><head></head><body>'+open+JSON.stringify(page).replace(/</g,'\\u003c')+close+'</body></html>';
+ const result=decorate(wrapper),start=result.indexOf(open)+open.length;
+ const rendered=JSON.parse(result.slice(start,result.indexOf(close,start)));
+ assert.ok(rendered.includes('<style id="symbol-wh1-column-layout">'));
+ assert.ok(rendered.includes('nav.shelf-strip,.toolbar .shelf-row'));
+ assert.equal(rendered.slice(rendered.indexOf('</head>')),page.slice(page.indexOf('</head>')));
+ assert.ok(!result.slice(0,start).includes('symbol-wh1-column-layout'));
+ const status={kind:'symbol-reading-status',ticket:7,text:'確認'};
+ events.message({source:{},data:status});events.message({source:frame,data:{...status,ticket:6}});
+ assert.equal(nav.output.hidden,true);
+ events.message({source:frame,data:status});
+ assert.equal(nav.output.textContent,'確認');assert.equal(nav.output.hidden,false);
+ context.manifest={bookId:'different'};context.BOOK_ID='wh1';
+ assert.equal(decorate(wrapper),wrapper);
+ assert.equal(nav.output.hidden,true);
+});

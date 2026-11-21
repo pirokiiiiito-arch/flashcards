@@ -145,8 +145,10 @@ function validate(root=ROOT){
   // Inverse-transform its layout-only additions and verify the untouched
   // historical engine's original frozen Git blob byte-for-byte.
   let parityPinned=false;
-  if(p==='reader/library/read.html'&&['f681ad2b69a35be8854cb905c0cee212c7e6be64','48efbe38606ec1591290264b7d81ca9704d296b4'].includes(actual)){
-    const prior=data.toString('utf8').replace(/\n  \/\/ BEGIN verified standalone bookshelf edition[\s\S]*?\n  \/\/ END verified standalone bookshelf edition/,'');
+  if(p==='reader/library/read.html'&&['f681ad2b69a35be8854cb905c0cee212c7e6be64','48efbe38606ec1591290264b7d81ca9704d296b4','b5a1ef12c9d19518212e5d14fceb43c1409d9a1a'].includes(actual)){
+    const beforeSymbol=data.toString('utf8').replace(/\n \/\/ BEGIN symbol dictionary bookshelf layout[\s\S]*?\n \/\/ END symbol dictionary bookshelf layout/,'');
+    if(actual==='b5a1ef12c9d19518212e5d14fceb43c1409d9a1a'&&blobSHA(Buffer.from(beforeSymbol))!=='48efbe38606ec1591290264b7d81ca9704d296b4')errors.push('SYMBOL_LAYOUT_REVERSE_CHECK_FAILED '+p);
+    const prior=beforeSymbol.replace(/\n  \/\/ BEGIN verified standalone bookshelf edition[\s\S]*?\n  \/\/ END verified standalone bookshelf edition/,'');
     if(blobSHA(Buffer.from(prior))!=='f681ad2b69a35be8854cb905c0cee212c7e6be64')errors.push('STANDALONE_SHELF_REVERSE_CHECK_FAILED '+p);
     const original=prior
       .replace("\n // Furniture's imported reader has its own toolbar; keep this control on the public bookshelf host.\n $('goToBookStart').hidden=!/洋家具の歴史と様式/.test(bookTitle);",'')
