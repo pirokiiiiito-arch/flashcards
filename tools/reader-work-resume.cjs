@@ -287,6 +287,25 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
     if(!queues.nextAction)queues.nextAction=task;
    }
   }
+  let verticalSymbols=null;
+  const symbolChecker='integration/vertical-symbols/tools/reader-vertical-symbols.cjs';
+  if(own(active.data.sha256,symbolChecker)){
+   const probe=spawnSync(process.execPath,[within(runtime,symbolChecker,'vertical symbol checker'),'check',artifact.file],{encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
+   const detail=probe.error?.message||probe.stderr.trim()||'';
+   verticalSymbols={checkId:'G7-02',artifactSha256:artifact.sha256,
+    status:probe.status===0?'renderer_verified':'layout_review_required',browserVerified:false,detail};
+   if(probe.status!==0){
+    const task={id:'apply_vertical_symbol_rules',type:'layout',lane:'render',
+     reason:'縦書き記号の組版を原稿のエンジンに適用し、分冊と統合版を再生成して検査する。',
+     blockedBy:[],recorded:false};
+    queues.productionPending=[...queues.productionPending,task];
+    if(!queues.adoptionRequired){
+     queues.readyTasks=[...queues.readyTasks,task];
+     if(queues.queues)queues.queues={...queues.queues,render:[...(queues.queues.render||[]),task]};
+     if(!queues.nextAction)queues.nextAction=task;
+    }
+   }
+  }
   return {...base,status:'resume_consistent',entrySha256:expectedEntrySha256,bookId:entry.bookId,
    scanRange:entry.scanRange,profile:entry.profile,surface,requestedScope,
    adoptedArtifact:{path:entry.adoptedArtifact.path,sha256:artifact.sha256,bytes:artifact.bytes.length},
@@ -300,7 +319,7 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
     reason:'Nested source/review records remain private. Restore the entire quality workspace, then verify this selected entry again.'},
     publicRepositoryCode:'Restore exact repository bytes listed in toolchain; do not put repository code into the private archive.',
     selectionPolicy:'Only this entry selects current state; retained/history files are evidence, never fallback entry points.'},
-   ...queues,sourceReview,repairPlan:repair,
+   ...queues,sourceReview,verticalSymbols,repairPlan:repair,
    checks:{selectedWorkflow:true,activeRelease:true,formalHandoff:true,commonSixtyIds:true,
     adoptedArtifactBothSides:true,toolDependenciesPinned:chain.dependencyCount,filesRechecked:tracked.size},
    warnings:[...new Set([...base.warnings,...(repair.warnings||[]),

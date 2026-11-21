@@ -13,7 +13,7 @@
 
 ## Workでの実行
 
-新しい共通テンプレートは本文を組むたびに自動適用する。既存の v2 系エンジンから分冊を再制作する場合は、次を実行する。運用ZIPの `integration/vertical-symbols/` からも同じコマンドを利用できる。
+新しい共通テンプレートは本文を組むたびに自動適用する。既存の v2 系エンジンから分冊を再制作する場合は、次を実行する。運用ZIPの `workflow_guard_v9_2/integration/vertical-symbols/` からも同じコマンドを利用できる。
 
 ```sh
 node tools/reader-vertical-symbols.cjs apply private-novel-engine.js
@@ -24,6 +24,8 @@ node tools/reader-vertical-symbols.cjs apply private-novel-engine.js
 ```sh
 node tools/reader-vertical-symbols.cjs check 分冊/*.html 統合確認版.html
 ```
+
+Workで再開すると、採用済みHTMLを検査し、旧式の読書画面には記号の修正作業を追加する。原本校正など並行できる作業は継続する。新しい共通ルールで最終検査や完成判定に進む際には、登録した読書HTMLを自動で再検査する。
 
 画面幅320・390・430px、文字サイズ16～30pxで表示と改ページを確認する。プレビューの縦書き画面では `ReaderVerticalSymbols.inspect(document.getElementById('text-flow'))` で表示中の実測結果を得る。`mismatches` があるときは、文字コード、期待した向き、実際のCSS、対象ページを記録する。計測用の `measure-text` にも同じ検査を使える。書式・原本の文字列・見出しの改ページ・左端のはみ出しはそれぞれ確認する。
 
