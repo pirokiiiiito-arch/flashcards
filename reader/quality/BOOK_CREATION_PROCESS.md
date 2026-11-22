@@ -360,6 +360,6 @@ node tools/reader-ruby-coverage.cjs --artifact private/book.html --inventory pri
 
 目視記録には `scan`、`sourceSha256`、`visualReview`（原本全体を調べたとき `complete`、一部なら `partial`）、`method`（実際に読んだ範囲と方法）、`annotations`、`corrections`、`candidates`、`unresolved` を記す。`annotations` は修正前本文の `blockId/start/end`、印刷された `base/reading/sourceBox` と必要な `side: "left"` を持つ。親文字の訂正は `blockId/start/end/old/new/sourceBox`。訂正範囲の内部で読みが分かれるときは元の対応を残し、`finalStart/finalEnd` で訂正後の範囲を指定できる。各候補は `index/status/reason` を持ち、`status` は `ruby`、`non-ruby`、`duplicate`、`unresolved` のいずれか。元の検出枠と調整後の読みが重ならない場合は、確認した `rubyBoxes` を明示して対応づける。
 
-通常版の納品・公開前検査では private manifest の `rubyCoverageInventory` に台帳の相対 `path` と `sha256` を指定する。同じHTMLで全原本の確認、全候補の判定、原本で見つけた読みと統合後の全登録箇所の一致を確認する。確認版は未確認の枚数と候補を開示して部分成果を保管できる。全巻照合済みと表示する確認版では private manifest と本棚の原本照合表に `rubyCoverageClaim: "complete"` を記し、同じ全巻検査の結果を本棚登録の `--handoff` に渡す。表示テストは登録済みの文字や位置を調べる工程で、原本の目視判定は制作担当者の確認記録に基づく。
+通常版の納品・公開前検査では private manifest の `rubyCoverageInventory` に台帳の相対 `path` と `sha256` を指定する。同じHTMLで全原本の確認、全候補の判定、原本で見つけた読みと統合後の全登録箇所の一致を確認する。確認版は未確認の枚数と候補を開示して部分成果を保管できる。全巻照合済みと表示する確認版では private manifest と本棚の原本照合表に `rubyCoverageClaim: "complete"` を記し、本棚の非公開準備では `--ruby-inventory` で元の台帳を指定し、梱包済みHTMLそのもので検査を再実行する。分冊HTMLの場合は各分冊用の台帳を順番に指定する。これで実測したふりがなの照合状況と、確認版の納品に必要な版指定の承認は別々に記録する。表示テストは登録済みの文字や位置を調べる工程で、原本の目視判定は制作担当者の確認記録に基づく。
 
 原本だけを読むページで横書きの読みが文字の上や下に印刷されている場合も、原画像のまま表示する。目視記録に `imageOnly: true` と `imageOnlyReadings`（親文字、読み、印刷位置、側）を持たせ、表示用本文のルビとは別に数える。本文の一段全体が欠落していた場合は、`insertBlocks` に元の画像矩形、新しい本文ブロック、その直前または直後の既存ブロックIDを記録して突き合わせる。

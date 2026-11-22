@@ -212,6 +212,27 @@ def turn_summary(report, ranges):
     return {'version':1, 'report':digest(report), 'boundaries':edges, 'sectionCount':count, 'sections':sections}
 
 
+def measure_source_ruby(archive, manifest, html_hashes, inventories, book_id):
+    # Check the privately staged bytes independently of a preview handoff.
+    from subprocess import run
+    ruby_reports=[]
+    parts=manifest.get('segments') or [{'start':manifest['range'][0],'end':manifest['range'][1],'part':manifest.get('entry') or manifest.get('engine')}]
+    check(len(parts)==len(inventories)==len(html_hashes),'収録HTMLごとに対応する原本ルビ台帳を指定してください')
+    with zipfile.ZipFile(archive) as source, tempfile.TemporaryDirectory() as tmp:
+        local_html=Path(tmp)/'edition.html'; output=Path(tmp)/'coverage.json'
+        for part,expected,inventory in zip(parts,html_hashes,inventories):
+            local_html.write_bytes(source.read(part['part']))
+            check(sha(local_html)==expected,'検査中に読書HTMLが変わりました')
+            run(['node',str(Path(__file__).with_name('reader-ruby-coverage.cjs')),'--artifact',str(local_html),
+                 '--inventory',str(inventory),'--out',str(output)],check=True)
+            coverage=read(output)
+            check(coverage.get('bookId')==book_id and coverage.get('range')==[part['start'],part['end']]
+                  and coverage.get('artifactSha256')==expected and coverage.get('status')=='complete',
+                  '全原本のルビ照合と収納HTMLが一致しません')
+            ruby_reports.append(digest(coverage))
+    return ruby_reports
+
+
 def prepare(a):
     from subprocess import run
     site=a.site.resolve()
@@ -229,26 +250,29 @@ def prepare(a):
     m,ranges,htmls=inspect_archive(a.archive,ref)
     full,root=parts_fingerprint(book,a.readback)
     check(a.archive.stat().st_size==book['totalBytes'] and sha(a.archive)==full,'検査対象のZIPとDriveの同一ID読戻しが違います')
-    full_ruby_claim = ref.get('rubyCoverageClaim') == 'complete'
-    ruby_reports = []
-    if a.channel=='release' or full_ruby_claim:
-        check(a.handoff,'通常版または全巻ふりがな確認済みの登録には、今回のHTMLで実行した納品判定が必要です')
+    claim=ref.get('rubyCoverageClaim')
+    check(claim in (None,'partial','complete'),'ふりがな照合状態が不正です')
+    ruby_reports=[]
+    inventories=getattr(a,'ruby_inventory',None) or []
+    if inventories:
+        ruby_reports=measure_source_ruby(a.archive,m,htmls,inventories,book['id'])
+    if a.channel=='release':
+        check(a.handoff,'通常版には既存の正式な納品判定が必要です')
         reports=read(a.handoff)
         covered=set()
         for report in reports:
-            if a.channel=='release':
-                check(report.get('status')=='verified_release' and report.get('handoffAllowed') and report.get('canonical60Valid') and report.get('deviceVerified') and report.get('publicHttpVerified'),'通常版の既存検査が未完了です')
-            else:
-                check(report.get('handoffAllowed') and report.get('status') in ('verified_release','unverified_preview_only'),
-                      '全巻のふりがな照合を表示する確認版は、同じHTMLの納品判定を確認してください')
+            check(report.get('status')=='verified_release' and report.get('handoffAllowed') and report.get('canonical60Valid') and report.get('deviceVerified') and report.get('publicHttpVerified'),'通常版の既存検査が未完了です')
             coverage=report.get('rubyCoverage',{})
             check(coverage.get('schema')=='reader-ruby-coverage-v1' and coverage.get('status')=='complete'
                   and coverage.get('bookId')==book['id'] and coverage.get('artifactSha256')==report.get('artifactSha256')
                   and coverage.get('incomplete')==[] and coverage.get('errors')==[],
-                  '全原本と今回の読書版を照合したふりがな完了記録が必要です')
-            ruby_reports.append(digest(coverage))
+                  '今回の読書版の全原本ルビ照合記録が必要です')
+            if not inventories:
+                ruby_reports.append(digest(coverage))
             covered.add(report['artifactSha256'])
         check(full in covered or set(htmls).issubset(covered),'正式な納品判定がこの実体に対応していません')
+    if claim=='complete':
+        check(ruby_reports,'全原本の目視確認済みと記す版には原本照合台帳を --ruby-inventory で指定してください')
     key=textsha(book['id'])
     check(not any(r['key']==key for r in ledger['pending']),'この本の先行登録の確定または取下げが必要です')
     ids=[b['id'] for b in catalog['books']]
@@ -349,6 +373,7 @@ def main():
     q.add_argument('--channel',choices=['preview','release'],required=True)
     q.add_argument('--chromium',type=Path)
     q.add_argument('--handoff',type=Path)
+    q.add_argument('--ruby-inventory',action='append',type=Path,help='各収録HTMLに対応する私有の全原本ルビ照合台帳。分冊順に繰り返し指定できる。')
     q.add_argument('--key',required=True,type=Path)
     a=p.parse_args()
     if a.operation == 'pack':

@@ -45,6 +45,29 @@ class Pack(unittest.TestCase):
     def decision(self,kind):
         return {'source_review_status':'verified','display_boundary':kind,'left_body_id':'20','right_body_id':'21','left_suffix':'録20','right_prefix':'記録21'}
 
+    def test_private_whole_source_preparation_checks_zip_bytes_without_delivery_authorization(self):
+        source=hashlib.sha256(b'b').hexdigest()
+        page={'scan':1,'sha256':source,'blocks':[],'width':1,'height':1,'dataUrl':'data:image/png;base64,Yg=='}
+        book={'bookId':'sample','range':[1,1],'pages':[page]}
+        data=('<script id="bookdata" type="application/json">'+json.dumps(book)+'</script>').encode()
+        archive=self.root/'review.zip'
+        with zipfile.ZipFile(archive,'w') as out:
+            out.writestr('reader.html',data)
+        manifest={'range':[1,1],'entry':'reader.html'}
+        def ref(name,value):
+            blob=json.dumps(value).encode()
+            (self.root/name).write_bytes(blob)
+            return {'path':name,'sha256':hashlib.sha256(blob).hexdigest()}
+        review={'scan':1,'sourceSha256':source,'visualReview':'complete','method':'synthetic full blank-page inspection',
+                'annotations':[],'corrections':[],'candidates':[],'unresolved':[]}
+        record={'scan':1,'candidateSource':'visual-only','baseline':ref('before.json',page),'review':ref('check.json',review)}
+        inv=self.root/'inventory.json'
+        inv.write_text(json.dumps({'schema':'reader-ruby-inventory-v1','bookId':'sample','range':[1,1],'pages':[record]}))
+        html_sha=hashlib.sha256(data).hexdigest()
+        self.assertEqual(len(register.measure_source_ruby(archive,manifest,[html_sha],[inv],'sample')),1)
+        with self.assertRaisesRegex(ValueError,'読書HTML'):
+            register.measure_source_ruby(archive,manifest,['0'*64],[inv],'sample')
+
     def test_ruby_in_structured_pages_is_bound_to_the_packaged_original(self):
         self.parts[0]['continuations']=[self.edge]
         row=self.parts[0]['pages'][0]['blocks'][0]
