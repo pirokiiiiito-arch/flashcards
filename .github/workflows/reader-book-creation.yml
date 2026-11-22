@@ -9,6 +9,7 @@ on:
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
       - 'tools/reader-unified-handoff.cjs'
+      - 'tools/reader-ruby-coverage.cjs'
       - 'tools/reader-preview-consent.cjs'
       - 'tools/reader-scoped-review.cjs'
       - 'tests/reader-preview-consent.test.cjs'
@@ -36,6 +37,7 @@ on:
       - 'tools/reader-work-ledger-validate.cjs'
       - 'reader/quality/work-ledger.json'
       - 'tests/reader-unified-handoff.test.cjs'
+      - 'tests/reader-ruby-coverage.test.cjs'
       - 'tests/reader-work-ledger-validate.test.cjs'
       - 'tools/reader-source-preflight.py'
       - 'tools/reader-private-pipeline.cjs'
@@ -73,6 +75,7 @@ on:
       - 'tools/reader-book-preflight.cjs'
       - 'tools/reader-handoff-check.cjs'
       - 'tools/reader-unified-handoff.cjs'
+      - 'tools/reader-ruby-coverage.cjs'
       - 'tools/reader-preview-consent.cjs'
       - 'tools/reader-scoped-review.cjs'
       - 'tests/reader-preview-consent.test.cjs'
@@ -100,6 +103,7 @@ on:
       - 'tools/reader-work-ledger-validate.cjs'
       - 'reader/quality/work-ledger.json'
       - 'tests/reader-unified-handoff.test.cjs'
+      - 'tests/reader-ruby-coverage.test.cjs'
       - 'tests/reader-work-ledger-validate.test.cjs'
       - 'tools/reader-source-preflight.py'
       - 'tools/reader-private-pipeline.cjs'
@@ -157,7 +161,7 @@ jobs:
           node --check tools/reader-repair-finalize.cjs
           node --test tests/reader-repair-plan.test.cjs tests/reader-repair-multibook.test.cjs tests/reader-repair-state.test.cjs tests/reader-repair-finalize.test.cjs
           node --check tools/reader-work-ledger-validate.cjs
-          node --test tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
+          node --test tests/reader-ruby-coverage.test.cjs tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
           node tools/reader-work-ledger-validate.cjs
           node --check tools/reader-private-pipeline.cjs
           node --test tests/reader-source-pipeline-gate.test.cjs tests/reader-source-pages.test.cjs tests/reader-vertical-symbols.test.cjs

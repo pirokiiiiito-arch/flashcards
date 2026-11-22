@@ -14,6 +14,16 @@ function fixture(t,reading='正常な日本語の縦書き本文。'){
   {scan:41,sha256:'1'.repeat(64),blocks:[{text:reading}]},
   {scan:42,sha256:'2'.repeat(64),blocks:[{text:'次のページです。'}]}
  ]};
+ // Build actual source bytes and whole-page dispositions even when no OCR ruby is found.
+ const ref=(name,value)=>{const file=write(name,value);return {path:name,sha256:v.hash(fs.readFileSync(file))};};
+ const pages=book.pages.map(p=>{
+  const image=ref('source-'+p.scan+'.bin','synthetic original '+p.scan);
+  p.sha256=image.sha256;p.width=20;p.height=30;
+  return {scan:p.scan,image,candidateSource:'visual-only',baseline:ref('text-'+p.scan+'.json',p),
+   review:ref('review-'+p.scan+'.json',{scan:p.scan,sourceSha256:p.sha256,visualReview:'complete',
+    method:'Original examined across all columns including the white margins',annotations:[],corrections:[],candidates:[],unresolved:[]})};
+ });
+ const rubyCoverageInventory=ref('inventory.json',{schema:'reader-ruby-inventory-v1',bookId:book.bookId,range:book.range,pages});
  const artifact=write('artifact.html','<!doctype html><html lang="ja"><head></head><body>'+
    '<script id="embedded-data" type="application/json">'+JSON.stringify(book)+'</script></body></html>');
  const sha=v.hash(fs.readFileSync(artifact));
@@ -26,7 +36,7 @@ function fixture(t,reading='正常な日本語の縦書き本文。'){
   status:'source_ready_for_ocr',sourceArchiveSha256MatchesPinned:true,
   bookId:book.bookId,range:book.range,sourceArchiveSha256:BAR,
   rangeImages:book.pages.map(p=>({scan:p.scan,sha256:p.sha256}))});
- const manifest=write('manifest.json',{bookId:book.bookId,range:book.range,artifact:{sha256:sha}});
+ const manifest=write('manifest.json',{bookId:book.bookId,range:book.range,artifact:{sha256:sha},rubyCoverageInventory});
  const consent=write('consent.json',{schema:'reader-preview-consent-v1',
   bookId:book.bookId,range:book.range,artifactSha256:sha,
   confirmedByUser:true,acknowledgesUncorrectedOCR:true,
@@ -162,4 +172,11 @@ test('source-reviewed anomaly waivers must bind exact span, artifact, scan and s
  review.items[0].spanSha256='0'.repeat(64);f.write('ocr-review.json',review);
  const denied=inspect({...f.opts,mode:'normal'},{validate:f.fakeValidate});
  assert.equal(denied.handoffAllowed,false);assert.ok(denied.errors.includes('UNRESOLVED_OCR_ANOMALIES'));
+});
+
+test('whole-source proofreading requires a page inventory even with zero registered readings',t=>{
+ const f=fixture(t), manifest=JSON.parse(fs.readFileSync(f.opts.manifest));
+ delete manifest.rubyCoverageInventory;f.write('manifest.json',manifest);
+ const normal=inspect({...f.opts,mode:'normal'},{validate:f.fakeValidate});
+ assert.equal(normal.handoffAllowed,false);assert.ok(normal.errors.includes('WHOLE_SOURCE_RUBY_REVIEW_INCOMPLETE'));
 });

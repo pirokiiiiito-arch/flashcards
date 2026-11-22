@@ -183,6 +183,38 @@ class SourceRubyLayout(unittest.TestCase):
                 self.load(profile, build_book([block], 'text'))
                 self.assertNotIn(boundary, self.observe([block])['boundaries'])
 
+    def test_printed_readings_on_both_sides_share_the_base(self):
+        for profile in ('novel', 'standard'):
+            block = {'type': 'body', 'scan': 1, 'text': '青空物語。花山草木。'}
+            annotation(block, 0, 4, 'あおぞらものがたり')
+            annotation(block, 0, 2, 'せいくう')
+            block['ruby'][-1]['side'] = 'left'
+            annotation(block, 5, 8, 'はなやまくさ')
+            annotation(block, 6, 9, 'やまくさき')
+            block['ruby'][-1]['side'] = 'left'
+            self.load(profile, build_book([block], 'text'))
+            actual = self.page.locator('#text-flow').evaluate("""flow => {
+                const plain = flow.cloneNode(true);
+                plain.querySelectorAll('rt,rp').forEach(child => child.remove());
+                const readings = [...flow.querySelectorAll('rt')].map(rt => {
+                    const host = rt.parentNode, r = rt.getBoundingClientRect();
+                    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+                    const base = [];
+                    while (walker.nextNode()) {
+                        if (walker.currentNode.parentElement.closest('rt,rp')) continue;
+                        const range = document.createRange();
+                        range.selectNodeContents(walker.currentNode);
+                        base.push(...range.getClientRects());
+                    }
+                    const center = (Math.min(...base.map(x=>x.left))+Math.max(...base.map(x=>x.right)))/2;
+                    return [rt.textContent, r.width > 0 && r.height > 0,
+                            (r.left+r.right)/2 < center ? 'left':'right'];
+                });
+                return [plain.textContent, readings];
+            }""")
+            self.assertEqual(actual[0], block['text'])
+            self.assertCountEqual(actual[1], [[a['reading'], True, a.get('side','right')] for a in block['ruby']])
+
     def test_stale_offsets_rejected(self):
         for profile in ('standard', 'novel'):
             with self.subTest(profile=profile):

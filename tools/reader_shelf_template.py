@@ -216,13 +216,15 @@ def validate_source_ruby(block, original_sha):
     rubies = block['ruby']
     if not isinstance(rubies, list) or rubies and block['type'] not in ('body', 'dialogue', 'heading'):
         raise ValueError('ルビは本文・会話・見出しの注記配列で指定してください')
-    previous_end = 0
+    ends = {'left': 0, 'right': 0}
+    previous_start = 0
     for ruby in rubies:
         if not isinstance(ruby, dict):
             raise ValueError('ルビに親文字・読み・原本位置が必要です')
+        side = ruby.get('side', 'right')
         start, end = ruby.get('start'), ruby.get('end')
         if (type(start) is not int or type(end) is not int
-                or not previous_end <= start < end <= len(block['text'])
+                or side not in ('left', 'right') or not max(ends[side], previous_start) <= start < end <= len(block['text'])
                 or ruby.get('base') != block['text'][start:end] or not ruby['base'].strip()):
             raise ValueError('ルビの親文字・範囲・順序が本文と一致しません')
         box = ruby.get('sourceBox')
@@ -234,7 +236,8 @@ def validate_source_ruby(block, original_sha):
                 or not isinstance(box, list) or len(box) != 4 or not all(type(n) is int for n in box)
                 or not (0 <= box[0] < box[2] and 0 <= box[1] < box[3])):
             raise ValueError('ルビの読み・原本番号・原本画像SHA・位置・確認状態を照合できません')
-        previous_end = end
+        previous_start = start
+        ends[side] = end
 
 
 def template_html(manifest, read_bytes):

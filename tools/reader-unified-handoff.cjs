@@ -7,6 +7,7 @@ const fs=require('node:fs'),path=require('node:path');
 const v=require('./reader-release-control.cjs');
 const phases=require('./reader-evidence-gate.cjs');
 const {RULES}=require('./reader-quality-gate.cjs');
+const rubyCoverage=require('./reader-ruby-coverage.cjs');
 const SHA=/^[a-f0-9]{64}$/;
 function load(file){return JSON.parse(fs.readFileSync(file,'utf8'));}
 function same(a,b){return JSON.stringify(a)===JSON.stringify(b);}
@@ -204,6 +205,22 @@ function inspect(opts,inject={}){
  let privateManifest;
  try{privateManifest=load(opts.manifest);}catch(_){errors.push('PRIVATE_MANIFEST_REQUIRED');}
  if(privateManifest){
+  const ref=privateManifest.rubyCoverageInventory;
+  report.rubyCoverage={status:'not_reviewed',totalPages:data.pages.length};
+  if(ref){
+   try{
+    const root=path.dirname(path.resolve(opts.manifest));
+    const coverage=rubyCoverage.audit(data,sha,v.safe(root,ref.path),ref.sha256);
+    if(!SHA.test(ref.sha256||''))throw Error('inventory hash required');
+    report.rubyCoverage=coverage;
+    if(coverage.errors.length)errors.push('RUBY_COVERAGE_EVIDENCE_INVALID');
+   }catch(e){errors.push('RUBY_COVERAGE_EVIDENCE_INVALID_'+e.message);}
+  }
+  if(report.rubyCoverage.status!=='complete'){
+   if(mode==='normal'||mode==='prepublication'||privateManifest.rubyCoverageClaim==='complete')
+    errors.push('WHOLE_SOURCE_RUBY_REVIEW_INCOMPLETE');
+   else warnings.push('RUBY_COVERAGE_INCOMPLETE_PREVIEW_ONLY');
+  }
   if(privateManifest.bookId!==data.bookId||!same(privateManifest.range,data.range)||
     privateManifest.artifact?.sha256!==sha)errors.push('PRIVATE_MANIFEST_ARTIFACT_OR_RANGE_MISMATCH');
   else{

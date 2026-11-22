@@ -343,3 +343,23 @@ python tools/reader-source-ruby.py apply --image 原本.jpg --page 本文.json -
 原本照合では、親文字・読み・原本枚番号・読みの画像範囲・原本画像のSHA-256を記録する。照合済みの読みは該当する本文ブロックの ruby 配列に入る。文字位置は各ブロック先頭からのUnicodeコードポイント数で、start を含み end を含まない。sourceBox は原画像左上を原点とする [左, 上, 右, 下]。同じ語が二度あれば、印刷された箇所にだけ付ける。校正で親文字やその位置が変わった箇所は再照合する。
 
 20枚分冊と統合版の双方で、縦書き本文の右側に読みが付き、改ページの際に親文字と読みが一緒に送られることを確認する。文字サイズ・画面幅を変えても読みが欠けず、しおりの位置と本文の文字数が保たれることを検査する。
+
+### 各原本の小字を全巻で確認する
+
+20枚ごとに、各原本の本文列の左右、欄外、見出し、注記を拡大して調べる。原本全体で調べた範囲と方法をその原本の画像指紋と結び付ける。候補が0件のページ、白紙、図版・扉も原本単位で記録する。OCRが数字・記号・空文字・傍点と読んだ枠、短い読み、複数語をまとめた枠も照合する。OCRにない印刷ルビは原本から追加する。左右に違う読みが並ぶ箇所は、それぞれの親文字、読み、矩形、印刷された側を保存する。本文のOCRが親文字を誤っている場合は原本の本文も訂正し、訂正前後と原本上の位置を残す。
+
+各原本ごとに、元の本文・原本に結び付いたOCR生データ・目視記録を SHA-256 で固定する。候補の番号はOCR生データに出てくる `block_rubi` の0始まりの順番。原本で確かめた読み、傍点等の除外、重複、未確定を、理由とともに全枠に記録する。複数語を含む枠は元の親文字ごとに読みを分ける。読み・親文字が判読できない箇所は未確定として記録し、次回は該当の原本・枠から再開する。
+
+統合後は実際に配布するHTMLと原本側の記録を比較する。
+
+~~~sh
+node tools/reader-ruby-coverage.cjs --artifact private/book.html --inventory private/coverage.json --out private/ruby-result.json
+~~~
+
+`coverage.json` は `schema: "reader-ruby-inventory-v1"`、`bookId`、`range`、`pages` を持つ。各行は `scan` と、`baseline`（修正前の原本単位の本文）、`ocr`（原本画像のSHA・寸法・検出行を含むOCR出力）、`review`（目視記録）を指定する。各参照は台帳のフォルダ内の相対 `path` とそのバイトの `sha256`。HTMLに原本が埋め込まれていない場合は同形式の `image` 参照を追加する。元から目視のみの制作では `candidateSource: "visual-only"` とし、使用した検出器があればその生データを保存する。
+
+目視記録には `scan`、`sourceSha256`、`visualReview`（原本全体を調べたとき `complete`、一部なら `partial`）、`method`（実際に読んだ範囲と方法）、`annotations`、`corrections`、`candidates`、`unresolved` を記す。`annotations` は修正前本文の `blockId/start/end`、印刷された `base/reading/sourceBox` と必要な `side: "left"` を持つ。親文字の訂正は `blockId/start/end/old/new/sourceBox`。訂正範囲の内部で読みが分かれるときは元の対応を残し、`finalStart/finalEnd` で訂正後の範囲を指定できる。各候補は `index/status/reason` を持ち、`status` は `ruby`、`non-ruby`、`duplicate`、`unresolved` のいずれか。元の検出枠と調整後の読みが重ならない場合は、確認した `rubyBoxes` を明示して対応づける。
+
+通常版の納品・公開前検査では private manifest の `rubyCoverageInventory` に台帳の相対 `path` と `sha256` を指定する。同じHTMLで全原本の確認、全候補の判定、原本で見つけた読みと統合後の全登録箇所の一致を確認する。確認版は未確認の枚数と候補を開示して部分成果を保管できる。全巻照合済みと表示する確認版では private manifest と本棚の原本照合表に `rubyCoverageClaim: "complete"` を記し、同じ全巻検査の結果を本棚登録の `--handoff` に渡す。表示テストは登録済みの文字や位置を調べる工程で、原本の目視判定は制作担当者の確認記録に基づく。
+
+原本だけを読むページで横書きの読みが文字の上や下に印刷されている場合も、原画像のまま表示する。目視記録に `imageOnly: true` と `imageOnlyReadings`（親文字、読み、印刷位置、側）を持たせ、表示用本文のルビとは別に数える。本文の一段全体が欠落していた場合は、`insertBlocks` に元の画像矩形、新しい本文ブロック、その直前または直後の既存ブロックIDを記録して突き合わせる。

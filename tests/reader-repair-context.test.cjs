@@ -25,6 +25,10 @@ function fixture(t,{blank=false,revision=''}={}){
   '<script id="reader-verified-structure">window.readerVerifiedStructure='+JSON.stringify({model})+';</script>'+revision);
  const m=pipe.init(html,bundle,book.bookId,put('loader.html','synthetic generic loader'),put('index.json',{'1':sourceSha}));
  const manifest=path.join(bundle,'manifest.json'),save=()=>put('bundle/manifest.json',m);
+ m.rubyCoverageInventory=ref('ruby-inventory.json',{schema:'reader-ruby-inventory-v1',bookId:book.bookId,range:book.range,pages:[{
+  scan:1,candidateSource:'visual-only',baseline:ref('ruby-before.json',book.pages[0]),
+  review:ref('ruby-review.json',{scan:1,sourceSha256:sourceSha,visualReview:'complete',method:'Synthetic whole-original inspection',
+   annotations:[],corrections:[],candidates:[],unresolved:[]})}]});
  m.genuineRawArchive=ref('genuine-raw.json',{synthetic:'separate original OCR fixture'});
  m.sourceDiscovery=ref('source-proof.json',{schema:'reader-source-preflight-v1',status:'source_ready_for_ocr',bookId:book.bookId,range:book.range,
   sourceArchiveSha256:v.hash('synthetic source archive'),sourceArchiveSha256MatchesPinned:true,folderListingComplete:true,

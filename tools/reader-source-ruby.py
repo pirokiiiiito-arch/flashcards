@@ -111,6 +111,8 @@ def checked_annotation(item, text, scan, digest, size):
     require(isinstance(item, dict) and item.get('reviewStatus') == 'verified', 'Only reviewed annotations can be attached.')
     require(item.get('sourceScan', scan) == scan and type(item.get('sourceScan', scan)) is int
             and item.get('sourceImageSha256', digest) == digest, 'Ruby refers to another scan.')
+    side = item.get('side', 'right')
+    require(side in ('left', 'right'), 'Unknown printed ruby side.')
     start, end = item['start'], item['end']
     require(type(start) is int and type(end) is int and 0 <= start < end <= len(text),
             'Invalid half-open code-point interval.')
@@ -121,7 +123,7 @@ def checked_annotation(item, text, scan, digest, size):
             'Missing or invalid printed reading.')
     require(valid_box(item.get('sourceBox'), size), 'A reading needs a box inside the original image.')
     return {'start': start, 'end': end, 'base': item['base'], 'reading': reading, 'sourceScan': scan,
-            'sourceImageSha256': digest, 'sourceBox': item['sourceBox'], 'reviewStatus': 'verified'}
+            'sourceImageSha256': digest, 'sourceBox': item['sourceBox'], 'reviewStatus': 'verified', **({'side': 'left'} if side == 'left' else {})}
 
 
 def apply_review(page, review, digest, size):
@@ -188,11 +190,15 @@ def apply_review(page, review, digest, size):
             checked_annotation(item, text, scan, digest, size)
             intervals.append(item)
         for annotation in new:
-            if not any(all(prior.get(k) == v for k, v in annotation.items()) for prior in intervals):
+            if not any(prior.get('side', 'right') == annotation.get('side', 'right') and
+                       all(prior.get(k) == v for k, v in annotation.items()) for prior in intervals):
                 intervals.append(annotation)
-        intervals.sort(key=lambda item: item['start'])
-        require(all(a['end'] <= b['start'] for a, b in zip(intervals, intervals[1:])),
-                'Reviewed ruby intervals overlap or contradict one another.')
+        intervals.sort(key=lambda item: (item['start'], -item['end'], item.get('side') == 'left'))
+        ends = {'left': 0, 'right': 0}
+        for item in intervals:
+            side = item.get('side', 'right')
+            require(ends[side] <= item['start'], 'Reviewed ruby intervals overlap on the same side.')
+            ends[side] = item['end']
         assembled.append({**block, 'ruby': intervals})
     return {**page, 'blocks': assembled}
 

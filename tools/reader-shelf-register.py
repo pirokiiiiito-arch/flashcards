@@ -229,12 +229,24 @@ def prepare(a):
     m,ranges,htmls=inspect_archive(a.archive,ref)
     full,root=parts_fingerprint(book,a.readback)
     check(a.archive.stat().st_size==book['totalBytes'] and sha(a.archive)==full,'検査対象のZIPとDriveの同一ID読戻しが違います')
-    if a.channel=='release':
-        check(a.handoff,'通常版には既存の正式な納品判定が必要です')
+    full_ruby_claim = ref.get('rubyCoverageClaim') == 'complete'
+    ruby_reports = []
+    if a.channel=='release' or full_ruby_claim:
+        check(a.handoff,'通常版または全巻ふりがな確認済みの登録には、今回のHTMLで実行した納品判定が必要です')
         reports=read(a.handoff)
         covered=set()
         for report in reports:
-            check(report.get('status')=='verified_release' and report.get('handoffAllowed') and report.get('canonical60Valid') and report.get('deviceVerified') and report.get('publicHttpVerified'),'通常版の既存検査が未完了です')
+            if a.channel=='release':
+                check(report.get('status')=='verified_release' and report.get('handoffAllowed') and report.get('canonical60Valid') and report.get('deviceVerified') and report.get('publicHttpVerified'),'通常版の既存検査が未完了です')
+            else:
+                check(report.get('handoffAllowed') and report.get('status') in ('verified_release','unverified_preview_only'),
+                      '全巻のふりがな照合を表示する確認版は、同じHTMLの納品判定を確認してください')
+            coverage=report.get('rubyCoverage',{})
+            check(coverage.get('schema')=='reader-ruby-coverage-v1' and coverage.get('status')=='complete'
+                  and coverage.get('bookId')==book['id'] and coverage.get('artifactSha256')==report.get('artifactSha256')
+                  and coverage.get('incomplete')==[] and coverage.get('errors')==[],
+                  '全原本と今回の読書版を照合したふりがな完了記録が必要です')
+            ruby_reports.append(digest(coverage))
             covered.add(report['artifactSha256'])
         check(full in covered or set(htmls).issubset(covered),'正式な納品判定がこの実体に対応していません')
     key=textsha(book['id'])
@@ -247,6 +259,8 @@ def prepare(a):
     batches,hits,hosts,joins,turns=measure(site,a.archive,book,m,ref,ranges,root,a.chromium,continuation)
 
     detail={'pageTurns':turns,'continuity':joins,'batches':batches,'destinations':hits,'hostFiles':hosts,'sourceSha256':hashlib.sha256(ref_bytes).hexdigest(),'physicalIPhone':'not tested by this tool'}
+    if ruby_reports:
+        detail['sourceRubyCoverage']={'status':'complete','reports':ruby_reports}
     report=digest(detail)
     evidence={'version':1,'archive':full,'source':detail['sourceSha256'],'host':digest(hosts),'report':report,'first':ref['range'][0],'last':ref['range'][1],'modes':sorted(ref['modes']),'singleScreen':bool(ref.get('singleScreen')),'batches':batches,'toc':{'kind':ref['toc']['kind'],'rows':len(ref['toc']['rows']),'landed':len(hits),'reference':digest(ref['toc']),'results':digest(hits)}}
     evidence['pageTurns']=turn_summary(turns,ranges)

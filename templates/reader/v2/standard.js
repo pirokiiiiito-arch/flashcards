@@ -67,6 +67,8 @@ const textFlow=$('text-flow'),measureText=$('measure-text'),caption=$('figure-ca
 // Reserve the outer half-column for the first printed reading, including the
 // off-screen measurement copy. Its ink may occupy this internal padding.
 const hasPrintedRuby=blocks.some(block=>block.ruby?.length);
+const hasLeftRuby=blocks.some(b=>b.ruby?.some(r=>r.side==='left')||b.annotationSource?.ruby?.some(r=>r.side==='left'));
+if(hasLeftRuby){for(const surface of [textFlow,measureText])surface.style.paddingLeft='0.55em';}
 if(hasPrintedRuby){
  for(const surface of [textFlow,measureText])surface.style.paddingRight='0.55em';
 }
@@ -114,7 +116,7 @@ function fitsInk(el){
  const bound=el.getBoundingClientRect(),cs=getComputedStyle(el);
  const bottom=bound.bottom-(parseFloat(cs.paddingBottom)||0);
  const top=bound.top+(parseFloat(cs.paddingTop)||0);
- const left=bound.left+(parseFloat(cs.paddingLeft)||0);
+ const left=bound.left+(hasLeftRuby&&el===measureText?0:parseFloat(cs.paddingLeft)||0);
  const right=bound.right-(hasPrintedRuby&&el===measureText?0:parseFloat(cs.paddingRight)||0);
  const range=document.createRange(),walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
  let node;
@@ -284,22 +286,23 @@ function sourceRubyFor(block,startUTF16=0,endUTF16=block.text.length,scan=block.
  });
  const startUnit=byUtf16.get(startUTF16),endUnit=byUtf16.get(endUTF16);
  if(startUnit===undefined||endUnit===undefined)throw Error('本文の区切りが文字の途中です');
- const spans=[];let last=0;
+ const spans=[],ends={left:0,right:0};let previousStart=0;
  for(const g of entries){
-  if(!g||g.reviewStatus!=='verified'||g.sourceScan!==scan||
+  const side=g?.side??'right';
+  if(!g||!['left','right'].includes(side)||g.reviewStatus!=='verified'||g.sourceScan!==scan||
      typeof g.sourceImageSha256!=='string'||!/^[a-f0-9]{64}$/.test(g.sourceImageSha256)||
      !Array.isArray(g.sourceBox)||g.sourceBox.length!==4||
      !g.sourceBox.every(n=>Number.isSafeInteger(n)&&n>=0)||
      g.sourceBox[0]>=g.sourceBox[2]||g.sourceBox[1]>=g.sourceBox[3]||
-     !Number.isSafeInteger(g.start)||!Number.isSafeInteger(g.end)||g.start<last||
+     !Number.isSafeInteger(g.start)||!Number.isSafeInteger(g.end)||g.start<previousStart||g.start<ends[side]||
      g.end<=g.start||!byPoint.has(g.start)||!byPoint.has(g.end)||
      points.slice(g.start,g.end).join('')!==g.base||typeof g.reading!=='string'||!g.reading.trim())
    throw Error('原本ルビの位置・親文字・確認記録が不正です。原本 '+scan);
-  last=g.end;
+  previousStart=g.start;ends[side]=g.end;
   const a=byPoint.get(g.start),z=byPoint.get(g.end);
   if(z<=startUnit||a>=endUnit)continue;
   if(a<startUnit||z>endUnit)throw Error('ルビの親文字が本文の区切りをまたいでいます。原本 '+scan);
-  spans.push({start:a-startUnit,end:z-startUnit,reading:g.reading});
+  spans.push({start:a-startUnit,end:z-startUnit,reading:g.reading,...(side==='left'?{side}: {})});
  }
  return spans.length?spans:undefined;
 }
@@ -312,30 +315,74 @@ function rubyShift(spans,by){
 function rubySlice(spans,off,n){
  return rubyShift(spans.filter(s=>s.start>=off&&s.end<=off+n),-off);
 }
+// Keep both sides of printed ruby tied to the same base text. Native ruby handles
+// nested groups; non-nesting overlaps share one grid so each base is written once.
+function writePrintedRuby(parent,spans,limit,writeBase){
+ const ordered=spans.slice().sort((a,b)=>a.start-b.start||b.end-a.end||(a.side==='left')-(b.side==='left'));
+ const makeRt=(span,rootStart)=>{
+  const rt=document.createElement('rt');
+  rt.textContent=span.reading;
+  rt.style.fontSize='0.5em';
+  rt.dataset.rubySide=span.side||'right';
+  rt.dataset.rubyStart=String(span.start-rootStart);rt.dataset.rubyEnd=String(span.end-rootStart);
+  return rt;
+ };
+ function native(target,lo,hi,entries){
+  let cursor=lo;
+  for(let i=0;i<entries.length;){
+   const span=entries[i++],children=[];
+   if(cursor<span.start)writeBase(target,cursor,span.start);
+   while(i<entries.length&&entries[i].start<span.end)children.push(entries[i++]);
+   const ruby=document.createElement('ruby');
+   ruby.style.webkitRubyPosition=span.side==='left'?'after':'before';
+   ruby.style.rubyPosition=span.side==='left'?'under':'over';
+   native(ruby,span.start,span.end,children);
+   ruby.append(makeRt(span,span.start));target.append(ruby);cursor=span.end;
+  }
+  if(cursor<hi)writeBase(target,cursor,hi);
+ }
+ function crossed(target,lo,hi,entries){
+  const cuts=[...new Set(entries.flatMap(r=>[r.start,r.end]))].sort((a,b)=>a-b);
+  const grid=document.createElement('ruby');
+  Object.assign(grid.style,{display:'inline-grid',verticalAlign:'middle',alignItems:'center',
+   gridTemplateColumns:'repeat('+(cuts.length-1)+',max-content)',gridTemplateRows:'0.55em 1em 0.55em'});
+  for(let i=0;i+1<cuts.length;i++){
+   const base=document.createElement('span');
+   base.style.gridArea='2 / '+(i+1);writeBase(base,cuts[i],cuts[i+1]);grid.append(base);
+  }
+  for(const s of entries){
+   const rt=makeRt(s,lo);Object.assign(rt.style,{display:'block',lineHeight:'1',textAlign:'center',
+    gridRow:s.side==='left'?'3':'1',gridColumn:(1+cuts.indexOf(s.start))+' / '+(1+cuts.indexOf(s.end))});
+   grid.append(rt);
+  }
+  target.append(grid);
+ }
+ let cursor=0;
+ for(let i=0;i<ordered.length;){
+  const lo=ordered[i].start;let hi=ordered[i].end;const group=[ordered[i++]];
+  while(i<ordered.length&&ordered[i].start<hi){hi=Math.max(hi,ordered[i].end);group.push(ordered[i++]);}
+  if(cursor<lo)writeBase(parent,cursor,lo);
+  const crossing=group.some((a,k)=>group.slice(k+1).some(b=>a.start<b.start&&b.start<a.end&&a.end<b.end));
+  if(crossing)crossed(parent,lo,hi,group);else native(parent,lo,hi,group);
+  cursor=hi;
+ }
+ if(cursor<limit)writeBase(parent,cursor,limit);
+}
 function setVerticalText(element,source,part={}){
  const before=part.before||'',after=part.after||'';
  verticalReaderEdges.set(element,{before,after});
  const text=part.displayText??verticalReaderSymbols.displayText(source);
  if(part.ruby?.length){
   const units=split(text),fragment=document.createDocumentFragment();
-  function run(start,end,annotation){
+  function writeBase(parent,start,end){
    if(start===end)return;
-   const node=document.createElement(annotation?'ruby':'span');
-   setVerticalText(node,units.slice(start,end).join(''),{
-    displayText:units.slice(start,end).join(''),
+   const node=document.createElement('span'),partText=units.slice(start,end).join('');
+   setVerticalText(node,partText,{displayText:partText,
     before:(before+units.slice(0,start).join('')).slice(-3),
-    after:(units.slice(end).join('')+after).slice(0,3)
-   });
-   if(annotation){
-    node.style.rubyPosition='over';node.style.webkitRubyPosition='before';
-    const rt=document.createElement('rt');rt.textContent=annotation.reading;
-    rt.style.fontSize='0.5em';node.append(rt);
-   }
-   fragment.append(node);
+    after:(units.slice(end).join('')+after).slice(0,3)});
+   parent.append(node);
   }
-  let start=0;
-  for(const r of part.ruby){run(start,r.start);run(r.start,r.end,r);start=r.end;}
-  run(start,units.length);element.replaceChildren(fragment);return;
+  writePrintedRuby(fragment,part.ruby,units.length,writeBase);element.replaceChildren(fragment);return;
  }
  let fragment=null,offset=0;
  for(const {start,end} of verticalReaderSymbols.uprightRanges(text,before,after)){

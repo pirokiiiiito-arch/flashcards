@@ -257,3 +257,5 @@ Where any evidence is missing, report `未検証` rather than `完了`.
 ## 原本に印刷された本文ルビ
 
 新規制作・追加分冊・統合・既存版の改修では、[共通制作手順の本文のふりがな](reader/quality/BOOK_CREATION_PROCESS.md#本文のふりがな)に従い、原本にある親文字と読みを位置付きで採録する。同じ漢字も出現ごとに読みを確認する。
+
+原本ふりがなの全巻照合では20枚単位の全原本について、OCR候補外を含む左右の小字と、短い読み・誤認・親文字の訂正を記録する。通常版と「全巻確認済み」を明示する確認版には、原本1枚ごとの判断と配布するHTMLを `tools/reader-ruby-coverage.cjs` で照合し、完了の根拠を同じ納品判定に含める。詳細は [各原本の小字を全巻で確認する](reader/quality/BOOK_CREATION_PROCESS.md#各原本の小字を全巻で確認する) を参照する。
