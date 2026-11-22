@@ -120,7 +120,19 @@ class Reader:
         scan=case.get('scan',start)
         mode=case['mode']
         f=self.open(scan)
-        if not self.ui.get('position'):
+        portrait = case.get('pageKind') == 'portrait'
+        if portrait:
+            check(mode == 'figure' and not self.ui.get('position'),
+                  '原本紙面の表示検査には標準読書画面の図版モードが必要です')
+            ix = f.evaluate('''scan => {
+                const reader = window.StandardReader || window.WH1BookReader;
+                const i = reader.pageManifest().findIndex(p => p.scan === scan && p.kind === 'portrait');
+                if (i >= 0) reader.gotoPage(i);
+                return i;
+            }''', scan)
+            check(ix >= 0, f'原本{scan}の通常の画像ページが見つかりません')
+            wait_painted(f, ix)
+        elif not self.ui.get('position'):
             ix=f.evaluate('''([lo,hi,scan,mode])=>{const a=window.StandardReader||window.NovelReader||window.WH1BookReader,pp=a.pageManifest();
              const candidates=pp.map((p,i)=>({p,i})).filter(({p,i})=>p.scan>=lo&&p.scan<=hi&&(mode==='figure'?p.kind==='image':mode==='text'?p.kind==='text':mode==='contents'&&window.WH1BookReader?p.kind==='contents':true));
              const right=candidates.filter(x=>x.p.scan===scan);let e=right.find(x=>x.i<pp.length-1)||right[0]||candidates.find(x=>x.i<pp.length-1)||candidates[0];if(!e)return -1;a.gotoPage(e.i);return e.i;}''',[start,end,scan,mode]);check(ix>=0,f'{start}-{end}: {mode} のページを特定できません')
@@ -132,6 +144,10 @@ class Reader:
         surface=self.page if mode=='original' and self.ui.get('originalFrame')=='parent' else f
         target=surface.locator(case.get('selector') or self.ui.get(mode+'Selector') or defaults[mode])
         target.wait_for(state='visible')
+        if portrait:
+            check(self.state()[1] == scan and target.evaluate(
+                "img => img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0"),
+                f'原本{scan}の通常の紙面画像が描画されていません')
         box=target.bounding_box()
         check(box and box['width']>0 and box['height']>0,'検査対象が画面にありません')
         x=max(125,min(265,box['x']+box['width']/2))

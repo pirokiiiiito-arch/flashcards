@@ -107,6 +107,34 @@ class TouchReader(unittest.TestCase):
         page.set_content(READER.replace('FIXTURE', json.dumps({'sources': sources, 'fault': fault})))
         return page, reader_for(sources[-1][-1]), ctx.new_cdp_session(page)
 
+    def test_portrait_figure_requires_the_selected_scan_and_a_decoded_image(self):
+        page, _, _ = self.fixture([[10], [11]])
+        page.evaluate("""async () => {
+            const img = document.createElement('img');
+            img.id = 'portrait-image';
+            img.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="navy"/></svg>';
+            img.style.cssText = 'position:fixed;left:20px;top:90px;width:300px;height:400px';
+            document.body.append(img);
+            await img.decode();
+            let index = 0;
+            const pages = [{kind:'text', scan:10}, {kind:'portrait', scan:11}];
+            window.StandardReader = {
+                inspect: () => ({pages:2, index, scan:pages[index].scan, paintPending:false}),
+                pageManifest: () => pages,
+                gotoPage: n => { index=n; img.hidden=n!==1; }
+            };
+        }""")
+        reader = Reader(page, {}, {})
+        case = {'mode': 'figure', 'pageKind': 'portrait', 'scan': 11, 'selector': '#portrait-image'}
+        reader.select(case, 10, 11)
+        self.assertEqual(reader.state(), (1, 11))
+        with self.assertRaisesRegex(ValueError, '原本10'):
+            reader.select({**case, 'scan': 10}, 10, 11)
+        with self.assertRaisesRegex(ValueError, '描画されていません'):
+            reader.select({**case, 'selector': '#sheet'}, 10, 11)
+        with self.assertRaisesRegex(ValueError, '図版モード'):
+            reader.select({**case, 'mode': 'original'}, 10, 11)
+
     def custom_ui(self, sources=None, corrupt_visible=False):
         # There is no page-manifest API. The gate must derive order and totals
         # from what this reader displays and use its real scan selector to visit references.
