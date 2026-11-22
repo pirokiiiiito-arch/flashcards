@@ -372,6 +372,29 @@ for(const page of orderedScans){
   entries.push(imageEntry(page,f));
  }
 }
+// Keep the source scan and stable block ID while displaying an explicitly placed inset as a unit.
+function placeAnchoredInsets(entries,sourceBlock){
+ const heads=entries.filter(item=>sourceBlock(item)?.displayAfterBody);
+ if(!heads.length)return entries;
+ const after=new Map(),displaced=new Set();
+ for(const head of heads){
+  const block=sourceBlock(head);
+  if(block.type!=='heading'||block.readingRole!=='aside-heading'||!Number.isInteger(block.insetIndex))throw Error('囲みの表示指定が不正です');
+  const target=entries.find(item=>sourceBlock(item)?.id===block.displayAfterBody);
+  // Isolated partial readers can lack the anchor scan. Keep their complete inset at its source.
+  if(!target)continue;
+  if(sourceBlock(target).type!=='body')throw Error('囲みの配置先は本文段落を指定してください');
+  const group=after.get(target)||[];
+  group.push(head);displaced.add(head);
+  for(let i=entries.indexOf(head)+1;i<entries.length;i++){
+   const item=entries[i],row=sourceBlock(item);
+   if(item.scan!==head.scan||row?.readingRole!=='aside'||row.insetIndex!==block.insetIndex)break;
+   group.push(item);displaced.add(item);
+  }
+  after.set(target,group);
+ }
+ return entries.flatMap(item=>displaced.has(item)?[]:[item,...(after.get(item)||[])]);
+}
 const flat=entries.flatMap(e=>e.kind==='text'?e.blocks.map((b,i)=>({kind:'text',scan:e.scan,blocks:[b],blockKey:e.scan+'/'+i})):[e]);
 const nodes=new Map(flat.filter(e=>e.blockKey).map(e=>[e.blockKey,e]));const follows=new Map(),incoming=new Set();
 for(const j of sourceBook.continuations||[]){const a=j.from.join('/'),b=j.to.join('/');if(nodes.has(a)&&nodes.has(b)){follows.set(a,b);incoming.add(b);}}
@@ -380,16 +403,17 @@ for(const [index,entry] of flat.entries()){
  if(entry.kind==='image'&&entry.deferUntilContinuation&&Array.from(follows).some(([from,to])=>orderIndex.get(from)<index&&index<orderIndex.get(to)))
   entry.deferUntilContinuation=false;
 }
-const ordered=[],emitted=new Set();
+const joined=[],emitted=new Set();
 for(const first of flat){
  if(first.blockKey&&incoming.has(first.blockKey))continue;
- ordered.push(first);let key=first.blockKey;
+ joined.push(first);let key=first.blockKey;
  while(key&&follows.has(key)){
   key=follows.get(key);if(emitted.has(key))throw Error('本文接続の重複');emitted.add(key);
-  const next=nodes.get(key);ordered.push({...next,blocks:[{...next.blocks[0],joinPrevious:true}]});
+  const next=nodes.get(key);joined.push({...next,blocks:[{...next.blocks[0],joinPrevious:true}]});
  }
 }
-if(ordered.length!==flat.length)throw Error('読書項目数の不一致');
+if(joined.length!==flat.length)throw Error('読書項目数の不一致');
+const ordered=placeAnchoredInsets(joined,item=>item.blocks?.[0]);
 const runtimeBlocks=ordered.flatMap(e=>e.kind==='text'?e.blocks:[]);
 
 window.READER_BOOK={id:sourceBook.bookId+'-'+sourceBook.range.join('-'),kind:'mixed',title:sourceBook.title,status:[statusLabel,'原本 '+sourceBook.range.join('–')].filter(Boolean).join('・'),totalScans:scanTotal,originals:originals.sort((a,b)=>a.scan-b.scan),entries:ordered,runtimeBlocks,glosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope!=='toc')),tocGlosses:sourceBook.pages.flatMap(p=>(p.ruby||[]).filter(g=>g.scope==='toc')),localSections:(sourceBook.toc||[]).filter(t=>t.targetScan>=sourceBook.range[0]&&t.targetScan<=sourceBook.range[1])};

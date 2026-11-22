@@ -28,6 +28,19 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='9481ff228b96671807a9e3e3a01af4fb62b2744f'){
+    // Restore the exact host before explicit inset placements were supported.
+    const lines=data.toString('utf8').split('\n');
+    for(const [at,count,...prior] of [
+      [425,1,"const wh3LayoutVersion='common-punctuation-20261122-10';"],
+      [357,1," const global=ordered(flat),hard=new Set(['portrait','figure','contents']);"],
+      [335,1,"  p.blocks.forEach((b,i)=>add(n+'/'+i,b.type,length(b.text)));"],
+      [332,1,"  const p=pages.get(n),add=(id,kind,units)=>flat.push({id,kind,units,scan:n});"],
+      [235,23]
+    ])lines.splice(at,count,...prior);
+    data=Buffer.from(lines.join('\n'));
+    if(blobSHA(data)!=='f8d583411afb5ba38ddb2f536ecb3f69711f7fd5')throw Error('SHELF_INSET_PLACEMENT_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='f8d583411afb5ba38ddb2f536ecb3f69711f7fd5'){
     // Verify the public pagination fix can reproduce its exact prior host.
     const lines=data.toString('utf8').split('\n');

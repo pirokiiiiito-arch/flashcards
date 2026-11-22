@@ -233,6 +233,29 @@ window.addEventListener('resize',syncReaderViewport);
 // BEGIN WH3 continuous scan layout
 // A storage ZIP part is a source container. Only a natural reading-page boundary
 // may separate two display sections. Published files contain no private book data.
+// Keep the source scan and stable block ID while displaying an explicitly placed inset as a unit.
+function placeAnchoredInsets(entries,sourceBlock){
+ const heads=entries.filter(item=>sourceBlock(item)?.displayAfterBody);
+ if(!heads.length)return entries;
+ const after=new Map(),displaced=new Set();
+ for(const head of heads){
+  const block=sourceBlock(head);
+  if(block.type!=='heading'||block.readingRole!=='aside-heading'||!Number.isInteger(block.insetIndex))throw Error('囲みの表示指定が不正です');
+  const target=entries.find(item=>sourceBlock(item)?.id===block.displayAfterBody);
+  // Isolated partial readers can lack the anchor scan. Keep their complete inset at its source.
+  if(!target)continue;
+  if(sourceBlock(target).type!=='body')throw Error('囲みの配置先は本文段落を指定してください');
+  const group=after.get(target)||[];
+  group.push(head);displaced.add(head);
+  for(let i=entries.indexOf(head)+1;i<entries.length;i++){
+   const item=entries[i],row=sourceBlock(item);
+   if(item.scan!==head.scan||row?.readingRole!=='aside'||row.insetIndex!==block.insetIndex)break;
+   group.push(item);displaced.add(item);
+  }
+  after.set(target,group);
+ }
+ return entries.flatMap(item=>displaced.has(item)?[]:[item,...(after.get(item)||[])]);
+}
 async function wh3ReadingFlow(book,manifest){
  const declared=manifest.readingFlow,legacy=!declared&&manifest.bookId==='wh3';
  if(declared&&declared.format!=='structured-scan-flow-v1')throw Error('未対応の分冊本文形式です');
@@ -307,10 +330,10 @@ async function wh3ReadingFlow(book,manifest){
  const presentation={totalScans:last,portraitScans:[...portraits],legacyReferencePages:legacy,statusLabel:legacy?'確認版':manifest.status||books[0].status||''};
  const flat=[];
  for(const n of scanOrder){
-  const p=pages.get(n),add=(id,kind,units)=>flat.push({id,kind,units,scan:n});
+  const p=pages.get(n),add=(id,kind,units,block)=>flat.push({id,kind,units,scan:n,block});
   if(portraits.has(n)||legacy&&p.pageType==='reference'&&!p.blocks.length&&p.figures.length===1){add('p/'+n,'portrait',1);continue;}
   if(p.toc_entries?.length)add('t/'+n,'contents',p.toc_entries.length);
-  p.blocks.forEach((b,i)=>add(n+'/'+i,b.type,length(b.text)));
+  p.blocks.forEach((b,i)=>add(n+'/'+i,b.type,length(b.text),b));
   p.figures.forEach((f,i)=>{
    const [x,y,w,h]=f.bbox;
    if(legacy&&p.pageType==='reference'&&p.blocks.length&&!x&&!y&&w===p.width&&h===p.height)return;
@@ -332,7 +355,7 @@ async function wh3ReadingFlow(book,manifest){
   if(result.length!==items.length)throw Error('本文の接続に欠落があります');
   return result;
  }
- const global=ordered(flat),hard=new Set(['portrait','figure','contents']);
+ const global=placeAnchoredInsets(ordered(flat),item=>item.block),hard=new Set(['portrait','figure','contents']);
  // A cut is valid only if the ordered stream keeps every item on its side
  // of the scan boundary and no verified edge crosses it.
  const firstAt=[],lastAt=[],crossings=new Map();
@@ -400,7 +423,7 @@ async function wh3ReadingFlow(book,manifest){
 }
 // END WH3 continuous scan layout
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='common-punctuation-20261122-10';
+const wh3LayoutVersion='source-inset-placement-20261123-11';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){

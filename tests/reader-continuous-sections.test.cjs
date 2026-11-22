@@ -46,3 +46,30 @@ for(const file of ['reader/library/wh3-format.html','templates/reader/v2/standar
   const term=Array.from('電気自動車を使う。');assert.equal(check(term,term.indexOf('気')),true);
  });
 }
+
+test('an explicitly anchored inset keeps its whole group and stable bookmarks after the reviewed body',async()=>{
+ const {book,manifest,pages}=source();
+ const sourcePage=pages.find(p=>p.scan===10),next=pages.find(p=>p.scan===11);
+ const title={id:'inset-a',type:'heading',readingRole:'aside-heading',insetIndex:0,displayAfterBody:'next-paragraph',text:'表の標題'};
+ const row={id:'inset-row',type:'note',readingRole:'aside',insetIndex:0,text:'表の最初の項目。'};
+ sourcePage.blocks.push(title,row);
+ next.blocks.push({id:'next-paragraph',type:'body',text:'独立した次の段落。'});
+ const flow=await factory(book,manifest);
+ const keys=['10/0','11/0','11/1','10/1','10/2'].map(id=>'wh3src:'+id+':0');
+ const positions=keys.map(key=>flow.restore({key,scan:10,segment:0,size:20}));
+ assert.equal(new Set(positions.map(p=>p.segment)).size,1);
+ const offsets=positions.map(p=>Number(p.key.split('.')[1]));
+ assert.deepEqual([...offsets].sort((a,b)=>a-b),offsets);
+ assert.deepEqual(positions.map(p=>flow.bookmark(p.segment,p.key)),keys);
+ const child=read('reader/library/wh3-format.html');
+ const section=s=>s.slice(s.indexOf('function placeAnchoredInsets('),s.indexOf('\n}',s.indexOf('function placeAnchoredInsets('))+2);
+ assert.equal(section(child),section(host));
+ assert.match(child,/const ordered=placeAnchoredInsets\(joined,item=>item\.blocks\?\.\[0\]\)/);
+ const place=new Function(section(child)+';return placeAnchoredInsets;')();
+ const pair=[{scan:10,block:title},{scan:10,block:row}];
+ const partial=place(pair,e=>e.block);
+ assert.deepEqual(partial,pair);
+ // With no explicit placement, even an identified inset keeps its existing order.
+ delete title.displayAfterBody;
+ assert.equal(place(pair,e=>e.block),pair);
+});
