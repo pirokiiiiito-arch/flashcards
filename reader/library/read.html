@@ -703,7 +703,7 @@ function bindWh1Counter(segment,session,maxScans){
 }
 function sectionPaneDocument(html,index,session,structured=false){
  const settings=JSON.stringify([index,session,SEGMENTS.length,structured]);
- const bound=manifest?.readingFlow?.format==='wh1-bound-source-v1'
+ const bound=typeof manifest!=='undefined'&&manifest?.readingFlow?.format==='wh1-bound-source-v1'
   ? '('+bindWh1Counter.toString()+')(...'+JSON.stringify([index,session,totalScans])+');' : '';
  const script='<script>'+bound+'('+sectionPaneBridge.toString()+')(...'+settings+');<\/script>';
  return html.replace('</body>',()=>script+'</body>');
@@ -928,7 +928,7 @@ function turnSection(direction,repeat,preparing=false){
     const total=counts.length?counts.reduce((sum,n)=>sum+n,0):totalScans;
     const page=counts.length?counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1):target.scan;
     const label=page+' / '+total;if(structured)labelCounts=wh3Counts;
-    const pagination=structured||manifest?.readingFlow?.format==='wh1-bound-source-v1'?{offset:page-1-d.pageIndex,total,count:d.totalPages,font:size,width:Math.round(bounds.width),height:Math.round(bounds.height)}:undefined;
+    const pagination=structured||(typeof manifest!=='undefined'&&manifest?.readingFlow?.format==='wh1-bound-source-v1')?{offset:page-1-d.pageIndex,total,count:d.totalPages,font:size,width:Math.round(bounds.width),height:Math.round(bounds.height)}:undefined;
     post(structured?'wh3Progress':'globalProgress',{label,ratio:page/total,scan:target.scan,maxScans:totalScans,pagination});
     post('sectionPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages,size,label});
    }catch(_){fail();}

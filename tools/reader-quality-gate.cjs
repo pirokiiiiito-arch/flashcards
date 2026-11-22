@@ -28,6 +28,22 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='dd68a0652339361786fb743e9527ff65d2d5c1a0'){
+    // Reverse the reviewed WH1 private-part binding, then verify the entire preceding host.
+    const lines=data.toString('utf8').split('\n');
+    const changes=[
+      [1587,1," if(BOOK_ID==='us-presidents-south'&&location.pathname.endsWith('/read.html')){"],
+      [1522,10],
+      [1239,9],
+      [930,1,"    const pagination=structured?{offset:page-1-d.pageIndex,total,count:d.totalPages,font:size,width:Math.round(bounds.width),height:Math.round(bounds.height)}:undefined;"],
+      [705,3," const script='<script>('+sectionPaneBridge.toString()+')(...'+settings+');<\\/script>';"],
+      [630,73],
+      [208,1," return BOOK_ID==='us-presidents-south'&&manifest?.bookId===BOOK_ID&&manifest.template_profile==='world_history_1'&&manifest.canonicalTemplate==='wh1-0011-0030';"]
+    ];
+    for(const [start,length,...before] of changes)lines.splice(start,length,...before);
+    data=Buffer.from(lines.join('\n'));
+    if(blobSHA(data)!=='67eed66cb19356cf6bc21779a73b79e9377b4e53')throw Error('WH1_BOUND_READER_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='67eed66cb19356cf6bc21779a73b79e9377b4e53'){
     data=Buffer.from(data.toString('utf8').replace('source-ruby-both-sides-20261123-14','source-ruby-20261123-13'));
     if(blobSHA(data)!=='801838d42701169fb00b2499104b1785482de88e')throw Error('SHELF_TWO_SIDED_RUBY_REVERSE_CHECK_FAILED');
