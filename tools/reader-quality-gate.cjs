@@ -28,6 +28,42 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='67973fcc50fb28fe192b4007fa4e43bd4196ac2a'){
+    // Restore the host before source-labelled sheets signalled their completed paint.
+    const lines=data.toString('utf8').split('\n');
+    const changes=[
+      [977,1],
+      [654,3," let displayed=null,pageList=null,version=0;"],
+      [650,0,"  const base=position.textContent.split(' ｜ 原本 ')[0];","  position.textContent=base+' ｜ 原本 '+p.scan+' / '+maxScans;"],
+      [648,1,"  const location=document.getElementById('location'),position=document.getElementById('position');"],
+      [641,4,"  const p=reader.inspect();"],
+      [634,6," let layout=null;"],
+      [551,2,"  index:currentPage,pages:pages.length,font:fontPx,originalReady:api?.inspect().originalReady??true"]
+    ];
+    for(const [at,count,...prior] of changes)lines.splice(at,count,...prior);
+    data=Buffer.from(lines.join('\n'));
+    if(blobSHA(data)!=='426a47f67a8d3c7f4902c32208cb0a0df1f7ef67')throw Error('WH1_COMMITTED_PAINT_REVERSE_CHECK_FAILED');
+  }
+  if(blobSHA(data)==='426a47f67a8d3c7f4902c32208cb0a0df1f7ef67'){
+    // Reverse the private WH1 sheet and figure cache, then check the previously verified host.
+    const lines=data.toString('utf8').split('\n');
+    const changes=[
+      [872,1,"   if(!structured)URL.revokeObjectURL(previousURL);"],
+      [868,1,"   retireSection(previous,previousSession,session,bounds,structured);pane.id='reader';pane.inert=false;"],
+      [862,1,"   if(structured){"],
+      [803,1],
+      [698,1],
+      [684,1,"   warm(artwork(pages[currentPage+1]));"],
+      [669,2,"  if(pageList!==pages){recent.clear();displayed=null;pageList=pages;}"],
+      [667,1,"  const ticket=++version,target=pages[currentPage],url=artwork(target),art=warm(url);"],
+      [661,1,"  decoded.set(url,record);"],
+      [656,1,"  let record=decoded.get(url);"],
+      [653,2," function warm(url){"]
+    ];
+    for(const [start,length,...before] of changes)lines.splice(start,length,...before);
+    data=Buffer.from(lines.join('\n'));
+    if(blobSHA(data)!=='dd68a0652339361786fb743e9527ff65d2d5c1a0')throw Error('WH1_RETAINED_SECTION_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='dd68a0652339361786fb743e9527ff65d2d5c1a0'){
     // Reverse the reviewed WH1 private-part binding, then verify the entire preceding host.
     const lines=data.toString('utf8').split('\n');

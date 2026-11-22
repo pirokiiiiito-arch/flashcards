@@ -549,7 +549,8 @@ function sectionPaneBridge(segment,session,segments,structured){
  }
  const localStep=structured?direction=>api.gotoPage(api.inspect().index+direction):shiftPage;
  const inspect=()=>structured?api.inspect():{
-  index:currentPage,pages:pages.length,font:fontPx,originalReady:api?.inspect().originalReady??true
+  index:currentPage,pages:pages.length,font:fontPx,originalReady:api?.inspect().originalReady??true,
+  paintPending:api?.inspect().paintPending??false
  };
  let waiting=false,sealed=false,sealRequested=false,retiring=false,touches=0;
  const pointers=new Set(),afterInput=()=>{
@@ -631,42 +632,52 @@ function sectionPaneBridge(segment,session,segments,structured){
 function bindWh1Counter(segment,session,maxScans){
  const reader=window.WH1BookReader;
  if(!reader||typeof showPage!=='function')return;
- let layout=null;
+ let layout=null,displayed=null,pageList=null,version=0;
+ // An illustrated sheet can still be decoding after the logical cursor advances.
+ // Expose that interval to both the neighbouring frame and direct page navigation.
+ window.WH1BookReader=Object.freeze({...reader,inspect(){
+  return {...reader.inspect(),paintPending:!!pages.length&&displayed!==pages[currentPage]};
+ }});
  function paint(){
-  const p=reader.inspect();
+  if(!displayed||displayed!==pages[currentPage])return false;
+  const p=reader.inspect(),position=document.getElementById('position');
+  const source=position.textContent.split(' ｜ 原本 ')[0]+' ｜ 原本 '+p.scan+' / '+maxScans;
+  if(position.textContent!==source)position.textContent=source;
   if(!layout||layout.count!==p.pages||layout.font!==fontPx||
      layout.width!==document.documentElement.clientWidth||Math.abs(layout.height-innerHeight)>1)return false;
   const number=layout.offset+p.index+1,label=number+' / '+layout.total;
-  const location=document.getElementById('location'),position=document.getElementById('position');
+  const location=document.getElementById('location');
   location.dataset.wh1Global=label;location.setAttribute('aria-label',label);
-  const base=position.textContent.split(' ｜ 原本 ')[0];
-  position.textContent=base+' ｜ 原本 '+p.scan+' / '+maxScans;
   document.documentElement.style.setProperty('--wh1-global-progress',(number/layout.total*100).toFixed(2)+'%');
   return true;
  }
  const decoded=new Map(),recent=new Map();
- let displayed=null,pageList=null,version=0;
+ // Template and pager callbacks also update this label after a viewport resize.
+ // Reconcile those writes before the browser paints the already committed sheet.
+ new MutationObserver(paint).observe(document.getElementById('position'),{childList:true,characterData:true,subtree:true});
  function artwork(p){
   if(!p)return null;
   const name=p.image||p.figures?.[ILLUSTRATION_SELECTED[p.group]||0]?.image;
   return name&&images[name]||null;
  }
- function warm(url){
+ function warm(page){
+  const url=artwork(page);
   if(!url)return null;
-  let record=decoded.get(url);
+  let record=decoded.get(page);
   if(record)return record;
   const image=new Image();image.src=url;
   record={image,settled:false};
   record.promise=image.decode().then(()=>{record.settled=true;},()=>{record.settled=true;});
-  decoded.set(url,record);
+  decoded.set(page,record);
   if(decoded.size>5)decoded.delete(decoded.keys().next().value);
   return record;
  }
  const show=showPage;
  showPage=function(...args){
-  const ticket=++version,target=pages[currentPage],url=artwork(target),art=warm(url);
+  const ticket=++version,target=pages[currentPage];
   if(!target)return;
-  if(pageList!==pages){recent.clear();displayed=null;pageList=pages;}
+  if(pageList!==pages){recent.clear();decoded.clear();displayed=null;pageList=pages;}
+  const art=warm(target);
   const commit=()=>{
    if(ticket!==version||target!==pages[currentPage])return;
    const area=document.getElementById('reader-page');
@@ -680,7 +691,7 @@ function bindWh1Counter(segment,session,maxScans){
     const image=area.querySelector('img');if(image){art.image.alt=image.alt;image.replaceWith(art.image);}
    }
    displayed=target;paint();
-   warm(artwork(pages[currentPage+1]));
+   warm(pages[currentPage+1]);
    return result;
   };
   if(art&&!art.settled&&displayed){art.promise.then(commit);return;}
@@ -694,6 +705,7 @@ function bindWh1Counter(segment,session,maxScans){
    layout=d.pagination;paint();return;
   }
   if(d.action!=='globalProgress')return;
+  if(displayed&&displayed!==pages[currentPage]){e.stopImmediatePropagation();return;}
   if(d.pagination)layout=d.pagination;
   if(paint()){e.stopImmediatePropagation();return;}
   if(/^\d+ \/ \d+$/.test(d.label)){
@@ -798,6 +810,7 @@ function turnSection(direction,repeat,preparing=false){
  }
  const previous=$('reader'),book=bookZip,segment=SEGMENTS[index],previousURL=frameURL;
  const structured=!!book.wh3Flow;
+ const keepNeighbour=structured||(typeof manifest!=='undefined'&&manifest?.readingFlow?.format==='wh1-bound-source-v1');
  const previousSession=inputSession,size=currentState.size,bounds=previous.getBoundingClientRect();
  const cached=parkedSection;
  const reuse=cached&&cached.index===index&&cached.book===book&&cached.size===size&&
@@ -856,17 +869,17 @@ function turnSection(direction,repeat,preparing=false){
    if(!matchesViewport()||size!==currentState.size||job.oldKey!==currentState.key){cancel();return;}
    cleanup();
    pane.style.cssText=previous.style.cssText;pane.removeAttribute('aria-hidden');
-   if(structured){
+   if(keepNeighbour){
     // Both live documents already contain their boundary page. Keep just the
     // old neighbour behind the opaque active page until the reader moves away.
     parkedSection={pane:previous,url:previousURL,session:previousSession,sequence:viewportSerial,index:activeSegment,book,size,bounds};
     pane.style.zIndex='1';
    }
-   retireSection(previous,previousSession,session,bounds,structured);pane.id='reader';pane.inert=false;
+   retireSection(previous,previousSession,session,bounds,keepNeighbour);pane.id='reader';pane.inert=false;
    frameURL=url;activeSegment=index;inputSession=session;viewportSerial=sequence;pendingDest=null;pendingLoaded=true;
    if(restoreFocus)pane.focus({preventScroll:true});
    if($('storageMessage').textContent===sectionTurnNotice)$('storageBanner').hidden=true;
-   if(!structured)URL.revokeObjectURL(previousURL);
+   if(!keepNeighbour)URL.revokeObjectURL(previousURL);
    if(labelCounts&&labelCounts===wh3Counts&&labelCounts.counts[index]!==target.totalPages){
     labelCounts.counts[index]=target.totalPages;
     try{localStorage.setItem(labelCounts.key,JSON.stringify(labelCounts.counts));}catch(_){}
@@ -962,6 +975,7 @@ function turnSection(direction,repeat,preparing=false){
    url=URL.createObjectURL(new Blob([rendered],{type:'text/html'}));
    pane.removeAttribute('id');pane.removeAttribute('src');pane.setAttribute('aria-hidden','true');pane.inert=true;
    Object.assign(pane.style,{position:'fixed',left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px',border:'0',display:'block',background:'var(--paper)',pointerEvents:'none'});
+   if(keepNeighbour){previous.style.zIndex='1';pane.style.zIndex='0';}
    pane.src=url;previous.before(pane);
   }catch(_){fail();}
  })();
