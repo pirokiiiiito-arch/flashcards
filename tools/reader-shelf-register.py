@@ -158,6 +158,12 @@ def registration_flow(archive, m, ref, admitted):
         return None
     if 'text' not in ref['modes'] and not m.get('readingFlow'):
         return {'route': 'without-prose', 'edges': []}
+    from reader_shelf_wh1_parts import FORMAT as wh1_format, verify as verify_wh1
+    if m.get('readingFlow', {}).get('format') == wh1_format:
+        with zipfile.ZipFile(archive) as packed:
+            edges = verify_wh1(m, packed.read, independent=ref['boundaryReviews'])
+        check(edge_keys(edges)==edge_keys(ref['continuations']), '原本で確認した分冊の接続と違います')
+        return {'route':wh1_format,'edges':edges}
     if m.get('bookId') == 'us-presidents-south' and m.get('template_profile') == 'world_history_1':
         return {'route': 'legacy-continuous', 'edges': []}
     if ref['profile'] != 'world_history_1' or m.get('template_profile') != ref['profile']:

@@ -206,7 +206,7 @@ function pickedArchive(fileList){
 }
 let inputSession='',viewportSerial=0;
 function usesPresidentsTemplate(){
- return BOOK_ID==='us-presidents-south'&&manifest?.bookId===BOOK_ID&&manifest.template_profile==='world_history_1'&&manifest.canonicalTemplate==='wh1-0011-0030';
+ return (BOOK_ID==='us-presidents-south'||manifest?.readingFlow?.format==='wh1-bound-source-v1')&&manifest?.bookId===BOOK_ID&&manifest.template_profile==='world_history_1'&&manifest.canonicalTemplate==='wh1-0011-0030';
 }
 function usesWh3StandardInput(){
  return !!bookZip?.wh3Flow&&bookZip.wh3Flow.manifest===manifest||manifest?.bookId==='wh3'&&manifest.template_profile==='world_history_1';
@@ -628,9 +628,84 @@ function sectionPaneBridge(segment,session,segments,structured){
   }
  });
 }
+function bindWh1Counter(segment,session,maxScans){
+ const reader=window.WH1BookReader;
+ if(!reader||typeof showPage!=='function')return;
+ let layout=null;
+ function paint(){
+  const p=reader.inspect();
+  if(!layout||layout.count!==p.pages||layout.font!==fontPx||
+     layout.width!==document.documentElement.clientWidth||Math.abs(layout.height-innerHeight)>1)return false;
+  const number=layout.offset+p.index+1,label=number+' / '+layout.total;
+  const location=document.getElementById('location'),position=document.getElementById('position');
+  location.dataset.wh1Global=label;location.setAttribute('aria-label',label);
+  const base=position.textContent.split(' ｜ 原本 ')[0];
+  position.textContent=base+' ｜ 原本 '+p.scan+' / '+maxScans;
+  document.documentElement.style.setProperty('--wh1-global-progress',(number/layout.total*100).toFixed(2)+'%');
+  return true;
+ }
+ const decoded=new Map(),recent=new Map();
+ let displayed=null,pageList=null,version=0;
+ function artwork(p){
+  if(!p)return null;
+  const name=p.image||p.figures?.[ILLUSTRATION_SELECTED[p.group]||0]?.image;
+  return name&&images[name]||null;
+ }
+ function warm(url){
+  if(!url)return null;
+  let record=decoded.get(url);
+  if(record)return record;
+  const image=new Image();image.src=url;
+  record={image,settled:false};
+  record.promise=image.decode().then(()=>{record.settled=true;},()=>{record.settled=true;});
+  decoded.set(url,record);
+  if(decoded.size>5)decoded.delete(decoded.keys().next().value);
+  return record;
+ }
+ const show=showPage;
+ showPage=function(...args){
+  const ticket=++version,target=pages[currentPage],url=artwork(target),art=warm(url);
+  if(!target)return;
+  if(pageList!==pages){recent.clear();displayed=null;pageList=pages;}
+  const commit=()=>{
+   if(ticket!==version||target!==pages[currentPage])return;
+   const area=document.getElementById('reader-page');
+   if(displayed&&area.firstChild){
+    recent.set(displayed,Array.from(area.childNodes));
+    if(recent.size>3)recent.delete(recent.keys().next().value);
+   }
+   const stored=recent.get(target),result=show.apply(this,args);
+   if(stored?.length){area.replaceChildren(...stored);recent.delete(target);}
+   else if(art?.image.naturalWidth&&(!target.figures||target.figures.length===1)){
+    const image=area.querySelector('img');if(image){art.image.alt=image.alt;image.replaceWith(art.image);}
+   }
+   displayed=target;paint();
+   warm(artwork(pages[currentPage+1]));
+   return result;
+  };
+  if(art&&!art.settled&&displayed){art.promise.then(commit);return;}
+  return commit();
+ };
+
+ window.addEventListener('message',e=>{
+  const d=e.data;
+  if(e.source!==parent||d?.wh1bridge!==1)return;
+  if(d.action==='boundPagination'&&d.session===session){
+   layout=d.pagination;paint();return;
+  }
+  if(d.action!=='globalProgress')return;
+  if(d.pagination)layout=d.pagination;
+  if(paint()){e.stopImmediatePropagation();return;}
+  if(/^\d+ \/ \d+$/.test(d.label)){
+   parent.postMessage({wh1bridge:1,type:'boundPaginationRequest',segment,session},'*');
+  }
+ },true);
+}
 function sectionPaneDocument(html,index,session,structured=false){
  const settings=JSON.stringify([index,session,SEGMENTS.length,structured]);
- const script='<script>('+sectionPaneBridge.toString()+')(...'+settings+');<\/script>';
+ const bound=manifest?.readingFlow?.format==='wh1-bound-source-v1'
+  ? '('+bindWh1Counter.toString()+')(...'+JSON.stringify([index,session,totalScans])+');' : '';
+ const script='<script>'+bound+'('+sectionPaneBridge.toString()+')(...'+settings+');<\/script>';
  return html.replace('</body>',()=>script+'</body>');
 }
 async function segmentAssets(book,segment,current){
@@ -853,7 +928,7 @@ function turnSection(direction,repeat,preparing=false){
     const total=counts.length?counts.reduce((sum,n)=>sum+n,0):totalScans;
     const page=counts.length?counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1):target.scan;
     const label=page+' / '+total;if(structured)labelCounts=wh3Counts;
-    const pagination=structured?{offset:page-1-d.pageIndex,total,count:d.totalPages,font:size,width:Math.round(bounds.width),height:Math.round(bounds.height)}:undefined;
+    const pagination=structured||manifest?.readingFlow?.format==='wh1-bound-source-v1'?{offset:page-1-d.pageIndex,total,count:d.totalPages,font:size,width:Math.round(bounds.width),height:Math.round(bounds.height)}:undefined;
     post(structured?'wh3Progress':'globalProgress',{label,ratio:page/total,scan:target.scan,maxScans:totalScans,pagination});
     post('sectionPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages,size,label});
    }catch(_){fail();}
@@ -1162,6 +1237,15 @@ async function loadBook(file,shouldSave=true){
   const replacement=!shouldSave&&window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID,manifest:m,isSaved:true});
   if(replacement){location.replace(replacement);return;}
   if(shouldSave)await LibraryDB.authorizeFile({id:BOOK_ID},file);
+  if(m.readingFlow?.format==='wh1-bound-source-v1'){
+   if(m.canonicalTemplate!=='wh1-0011-0030'||m.template_profile!=='world_history_1')throw Error('第1巻の基準書式を特定できません');
+   if(!shouldSave&&location.pathname.endsWith('/read.html')){
+    const url=new URL('read-wh1-v9.html',location.href);url.search=location.search;location.replace(url);return;
+   }
+   const byPath=new Map();
+   for(const part of m.segments)byPath.set(part.part,await book.readText(part.display.path));
+   book.readingFlow={byPath,locate:(index,destination)=>({index,destination})};
+  }
   if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){
    book.readingFlow=await window.WH1ExactPager.continuousReading(book,m);
   }
@@ -1436,6 +1520,16 @@ window.addEventListener('message',e=>{
  const d=e.data;
  if(d.type==='bookStart'){goToBookStart();return;}
  if(d.segment!==activeSegment)return;
+ if(d.type==='boundPaginationRequest'&&manifest?.readingFlow?.format==='wh1-bound-source-v1'&&d.session===inputSession){
+  const counts=wh1ExactPager?.getStatus()?.counts;
+  if(counts){
+   const bounds=$('reader').getBoundingClientRect();
+   const pagination={offset:counts.slice(0,activeSegment).reduce((a,b)=>a+b,0),total:counts.reduce((a,b)=>a+b,0),
+    count:counts[activeSegment],font:currentState.size,width:Math.round(bounds.width),height:Math.round(bounds.height)};
+   e.source.postMessage({wh1bridge:1,action:'boundPagination',session:inputSession,pagination},'*');
+  }
+  return;
+ }
  if(d.type==='sectionOriginal'&&bookZip?.wh3Flow&&inputSession&&d.session===inputSession){void sendSectionOriginal(e,bookZip,SEGMENTS[activeSegment]);return;}
  if(d.type==='sectionActivity'&&inputSession&&d.session===inputSession){postponeAdjacentSection();return;}
  if(d.type==='sectionTurn'&&inputSession&&d.session===inputSession)turnSection(d.direction,d.repeat);
@@ -1491,7 +1585,7 @@ $('zoomOut').onclick=()=>{originalScale=Math.max(0.7,Math.round((originalScale-.
 $('zoomIn').onclick=()=>{originalScale=Math.min(5,Math.round((originalScale+.25)*100)/100);setOriginalScale();};
 window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();closeOriginal();}});
 async function recoverSavedBook(){
- if(BOOK_ID==='us-presidents-south'&&location.pathname.endsWith('/read.html')){
+ if((BOOK_ID==='us-presidents-south'||BOOK_ID==='wh6')&&location.pathname.endsWith('/read.html')){
   const route=new URL('read-wh1-v9.html',location.href);
   route.search=location.search;route.hash=location.hash;
   location.replace(route);return;

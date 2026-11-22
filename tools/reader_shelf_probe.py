@@ -214,6 +214,27 @@ class Reader:
         if plan['route'] == 'merged-template-flow-v1':
             frame = self.open(self.manifest['range'][0])
             return trace_template(frame, plan)
+        if plan['route'] == 'wh1-bound-source-v1':
+            check(page.evaluate('!!bookZip.readingFlow'), '第1巻の読書画面で統合済み本文を開けません')
+            observed={}
+            for i,part in enumerate(self.manifest['segments']):
+                frame=self.open(part['start'])
+                sheets=frame.evaluate('WH1BookReader.pageManifest()')
+                for j,sheet in enumerate(sheets):
+                    for span in sheet.get('bodySpans',[]):
+                        key=tuple(span['ref'])
+                        record=observed.setdefault(key,[i,j,j,'',0])
+                        check(record[0]==i and span['start']==record[4] and span['end']>span['start'],
+                              '原本の本文を読書画面の文字位置に対応づけられません')
+                        record[2:]=[j,record[3]+span['text'],span['end']]
+            results=[]
+            for edge in plan['edges']:
+                l,r=observed[tuple(edge['from'])],observed[tuple(edge['to'])]
+                check(l[0]==r[0] and r[1]-l[2] in (0,1),'分冊の途中で本文と別の画面が挟まっています')
+                if r[1]!=l[2]:
+                    check(page.evaluate('([l,r])=>Array.from(new Intl.Segmenter("ja",{granularity:"word"}).segment(l+r)).some(w=>w.index===l.length)',[l[3],r[3]]),'分冊の境界で単語が切れています')
+                results.append(dict(edge,section=l[0],screens=[l[2],r[1]]))
+            return {'route':plan['route'],'joins':results,'bodyBlocks':len(observed)}
         if plan['route'] == 'legacy-continuous':
             check(page.evaluate('!!bookZip.readingFlow'), '既存の全巻組版処理が選択されていません')
             return {'route': plan['route']}

@@ -349,13 +349,20 @@ def pack(manifest_path, archive, structure_reviews=None):
 
             m['schema'] = 1
             source_ranges = []
-            if m.get('segments') and profile == 'world_history_1':
+            from reader_shelf_wh1_parts import FORMAT as wh1_format, verify as verify_wh1
+            bound_wh1 = m.get('readingFlow', {}).get('format') == wh1_format
+            if bound_wh1:
+                template_source = False
+            elif m.get('segments') and profile == 'world_history_1':
                 from reader_shelf_template import read_part
                 sample = read_part(m['segments'][0], read_bytes)
                 template_source = sample.get('kind') in ('text', 'image', 'mixed') and 'pages' not in sample
             else:
                 template_source = profile == 'novel'
-            if template_source or m.get('entry') and not m.get('segments'):
+            if bound_wh1:
+                verify_wh1(m, read_bytes, write)
+                # The independent source review is retained in the registered manifest.
+            elif template_source or m.get('entry') and not m.get('segments'):
                 if m.get('segments'):
                     from reader_shelf_template import template_html
                     storage_ranges(m)
