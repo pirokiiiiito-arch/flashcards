@@ -95,23 +95,23 @@ class SourceRubyLayout(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.temp.cleanup)
         cls.root = Path(cls.temp.name)
         for path in TEMPLATES.iterdir():
             if path.suffix in ('.css', '.js'):
                 (cls.root / path.name).write_bytes(path.read_bytes())
         cls.pw = sync_playwright().start()
-        exe = os.environ.get('CHROME_PATH') or shutil.which('chromium') or shutil.which('google-chrome') or cls.pw.chromium.executable_path
-        cls.browser = cls.pw.chromium.launch(executable_path=exe, args=[
-            '--no-sandbox', '--no-zygote', '--single-process', '--disable-gpu', '--disable-dev-shm-usage'])
+        cls.addClassCleanup(cls.pw.stop)
+        exe = (os.environ.get('CHROME_PATH') or os.environ.get('CHROME_BIN') or
+               shutil.which('chromium') or shutil.which('google-chrome') or cls.pw.chromium.executable_path)
+        cls.browser = cls.pw.chromium.launch(executable_path=exe, timeout=15000,
+                                             args=['--no-sandbox', '--disable-dev-shm-usage'])
+        cls.addClassCleanup(cls.browser.close)
         cls.page = cls.browser.new_page()
+        cls.page.set_default_timeout(5000)
+        cls.page.add_init_script('localStorage.clear()')
         cls.errors = []
         cls.page.on('pageerror', lambda e: cls.errors.append(str(e)))
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.pw.stop()
-        cls.temp.cleanup()
 
     def load(self, profile, book):
         name = 'novel.html' if profile == 'novel' else 'mixed.html'
@@ -123,9 +123,11 @@ class SourceRubyLayout(unittest.TestCase):
         path.write_text(html)
         self.errors.clear()
         self.page.goto(path.as_uri(), wait_until='load')
-        self.page.evaluate('localStorage.clear()')
-        # The fill and the off-screen measuring element update on the next frame.
-        self.page.evaluate('() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))')
+        if not self.errors:
+            self.page.wait_for_function("""() => {
+                const state = (window.NovelReader || window.StandardReader)?.inspect();
+                return state && (state.pages || state.warning);
+            }""")
 
     def observe(self, blocks):
         result = self.page.evaluate(OBSERVE)
@@ -155,10 +157,18 @@ class SourceRubyLayout(unittest.TestCase):
                     initial = self.observe(blocks)
                     if profile == 'novel':
                         self.assertGreater(initial['state']['dialogueCount'], 0)
+                    self.assertEqual(initial['state']['font'], 20)
+                    self.page.evaluate("""() => {
+                        const api = window.NovelReader || window.StandardReader;
+                        new MutationObserver(() => { window.renderedFont = api.inspect().font; })
+                            .observe(document.getElementById('text-flow'), {childList:true});
+                    }""")
                     self.page.set_viewport_size({'width': 320, 'height': 568})
                     self.page.locator('#larger').click()
                     self.page.locator('#larger').click()
-                    self.page.evaluate('() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))')
+                    self.page.wait_for_function("""window.renderedFont === 24 &&
+                        document.getElementById('measure-sheet').getBoundingClientRect().width ===
+                        document.getElementById('sheet').getBoundingClientRect().width""")
                     resized = self.observe(blocks)
                     self.assertNotEqual(initial['boundaries'], resized['boundaries'])
 

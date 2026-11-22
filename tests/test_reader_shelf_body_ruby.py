@@ -24,12 +24,11 @@ def reading(text, start, end, value, scan):
                 sourceImageSha256='1' * 64, sourceBox=[12, 10, 18, 26], reviewStatus='verified')
 
 
-COLLECT = """async () => {
+COLLECT = """() => {
     const api = StandardReader, manifest = api.pageManifest();
     const all = [], annotations = [];
     for (let i=0; i < manifest.length; i++) {
         api.gotoPage(i);
-        await new Promise(requestAnimationFrame);
         const flow = document.getElementById('text-flow');
         const plain = flow.cloneNode(true);
         plain.querySelectorAll('rt').forEach(r => r.remove());
@@ -57,11 +56,13 @@ class ShelfBodyRuby(unittest.TestCase):
         first = {'type': 'body', 'text': '𠮷か\u3099。' + '東西南北' * 135}
         second = {'type': 'body', 'text': '山川山川。旧註。' + '山川' * 35}
         with sync_playwright() as pw:
-            exe = os.environ.get('CHROME_PATH') or shutil.which('chromium') or shutil.which('google-chrome') or pw.chromium.executable_path
-            browser = pw.chromium.launch(executable_path=exe, args=[
-                '--no-sandbox', '--disable-dev-shm-usage', '--no-zygote', '--single-process'])
+            exe = (os.environ.get('CHROME_PATH') or os.environ.get('CHROME_BIN') or
+                   shutil.which('chromium') or shutil.which('google-chrome') or pw.chromium.executable_path)
+            browser = pw.chromium.launch(executable_path=exe, timeout=15000,
+                                         args=['--no-sandbox', '--disable-dev-shm-usage'])
             try:
                 page = browser.new_page(viewport={'width': 320, 'height': 568})
+                page.set_default_timeout(5000)
                 page.set_content(fixture(first, second))
                 page.wait_for_function('window.StandardReader?.inspect().pages > 1')
                 old = page.evaluate(COLLECT)
@@ -77,12 +78,21 @@ class ShelfBodyRuby(unittest.TestCase):
                 page.goto('about:blank')
                 page.set_content(fixture(first, second))
                 page.wait_for_function('window.StandardReader?.inspect().pages > 1')
+                page.evaluate("""() => {
+                    const record = () => { window.renderedFont = StandardReader.inspect().font; };
+                    record();
+                    new MutationObserver(record).observe(document.getElementById('text-flow'), {childList:true});
+                }""")
                 expected = first['text'] + second['text']
                 for width, size in [(320, 20), (390, 22), (430, 24), (320, 30)]:
                     page.set_viewport_size({'width': width, 'height': 568})
-                    while page.evaluate('StandardReader.inspect().font') < size:
+                    current = page.evaluate('StandardReader.inspect().font')
+                    self.assertLessEqual(current, size)
+                    for _ in range((size - current) // 2):
                         page.locator('#larger').click()
-                    page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+                    page.wait_for_function("""size => window.renderedFont === size &&
+                        document.getElementById('measure-sheet').getBoundingClientRect().width ===
+                        document.getElementById('sheet').getBoundingClientRect().width""", arg=size)
                     result = page.evaluate(COLLECT)
                     self.assertTrue(result['integrity'])
                     self.assertEqual(''.join(result['all']), expected)

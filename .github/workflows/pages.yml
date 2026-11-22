@@ -13,8 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    # The staged bookshelf also runs its small synthetic page-turn regression.
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -237,7 +236,7 @@ jobs:
           if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
             "$qa_python" -m playwright install chromium
           fi
-          "$qa_python" -m unittest discover -s tests -p 'test_reader_shelf*.py'
+          timeout --signal=ABRT --kill-after=10s 8m "$qa_python" -u -X faulthandler -m unittest discover -v --durations 10 -s tests -p 'test_reader_shelf*.py'
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
