@@ -400,7 +400,7 @@ async function wh3ReadingFlow(book,manifest){
 }
 // END WH3 continuous scan layout
 // BEGIN WH3 reference presentation
-const wh3LayoutVersion='common-punctuation-20261122-9';
+const wh3LayoutVersion='common-punctuation-20261122-10';
 let wh3Template=null,wh3Counts=null,wh3State=null;
 function wh3FrameDocument(plain,archived,context){
  for(const [mark,id] of [['<!--WH3_PRIVATE_STRUCTURE-->','reader-verified-structure'],['<!--WH3_PRIVATE_DATA-->','bookdata']]){
@@ -442,7 +442,8 @@ function wh3Progress(){
  const ready=counts.every(n=>Number.isSafeInteger(n)&&n>0);
  const total=ready?counts.reduce((a,b)=>a+b,0):0;
  const index=ready?1+wh3State.pageIndex+counts.slice(0,activeSegment).reduce((a,b)=>a+b,0):0;
- issueChild('wh3Progress',{session:inputSession,label:ready?(index+' / '+total):'全巻ページ数を計測中…',ratio:ready?index/total:null});
+ issueChild('wh3Progress',{session:inputSession,label:ready?(index+' / '+total):'全巻ページ数を計測中…',ratio:ready?index/total:null,
+  pagination:{offset:ready?index-1-wh3State.pageIndex:null,total,count:counts[activeSegment],font:wh3Counts.font,width:wh3Counts.width,height:wh3Counts.height}});
 }
 function wh3MeasureFrame(job,html,index){
  const pane=document.createElement('iframe'),session=crypto.randomUUID();
@@ -484,7 +485,7 @@ async function wh3MeasureBook(job){
  }catch(error){
   if(wh3Counts!==job)return;
   console.warn('全巻のページ計測',error);
-  if(wh3State)issueChild('wh3Progress',{session:inputSession,label:(wh3State.pageIndex+1)+' / '+wh3State.pageCount+'（分冊）',ratio:null});
+  if(wh3State)issueChild('wh3Progress',{session:inputSession,label:(wh3State.pageIndex+1)+' / '+wh3State.pageCount+'（分冊）',ratio:null,pagination:{sectionOnly:true}});
   job.failed=true;
  }
 }
@@ -829,7 +830,8 @@ function turnSection(direction,repeat,preparing=false){
     const total=counts.length?counts.reduce((sum,n)=>sum+n,0):totalScans;
     const page=counts.length?counts.slice(0,index).reduce((sum,n)=>sum+n,d.pageIndex+1):target.scan;
     const label=page+' / '+total;if(structured)labelCounts=wh3Counts;
-    post(structured?'wh3Progress':'globalProgress',{label,ratio:page/total,scan:target.scan,maxScans:totalScans});
+    const pagination=structured?{offset:page-1-d.pageIndex,total,count:d.totalPages,font:size,width:Math.round(bounds.width),height:Math.round(bounds.height)}:undefined;
+    post(structured?'wh3Progress':'globalProgress',{label,ratio:page/total,scan:target.scan,maxScans:totalScans,pagination});
     post('sectionPaint',{key:d.key,pageIndex:d.pageIndex,totalPages:d.totalPages,size,label});
    }catch(_){fail();}
   }else if(d.session===session&&d.type==='sectionPainted'&&target){

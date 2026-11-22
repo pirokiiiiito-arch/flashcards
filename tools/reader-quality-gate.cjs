@@ -28,6 +28,18 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='f8d583411afb5ba38ddb2f536ecb3f69711f7fd5'){
+    // Verify the public pagination fix can reproduce its exact prior host.
+    const lines=data.toString('utf8').split('\n');
+    for(const [at,count,...prior] of [
+      [832,2,"    post(structured?'wh3Progress':'globalProgress',{label,ratio:page/total,scan:target.scan,maxScans:totalScans});"],
+      [487,1,"  if(wh3State)issueChild('wh3Progress',{session:inputSession,label:(wh3State.pageIndex+1)+' / '+wh3State.pageCount+'（分冊）',ratio:null});"],
+      [444,2," issueChild('wh3Progress',{session:inputSession,label:ready?(index+' / '+total):'全巻ページ数を計測中…',ratio:ready?index/total:null});"],
+      [402,1,"const wh3LayoutVersion='common-punctuation-20261122-9';"]
+    ])lines.splice(at,count,...prior);
+    data=Buffer.from(lines.join('\n'));
+    if(blobSHA(data)!=='9fcca1e95b82fa764bcb1866d89fc0e66c247c6c')throw Error('SHELF_PROGRESS_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='9fcca1e95b82fa764bcb1866d89fc0e66c247c6c'){
     // Restore the last byte-pinned host, then run the earlier frozen-reader checks.
     const lines=data.toString('utf8').split('\n');

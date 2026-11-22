@@ -64,6 +64,7 @@ test('turning between vertical text and figure explanations swaps surfaces and p
       documentElement: {classList: {toggle: (name, value) => classes.set(name, value)}},
       createDocumentFragment: () => ({append() {}})
     },
+    font: 20, innerWidth: 390, innerHeight: 630, paintedLocation: null, paintShelfProgress() {},
     index: 0, pages: [
       {kind: 'text', scan: 11, parts: []}, {kind: 'image', scan: 11, figure: 0, caption: 'a'},
       {kind: 'image', scan: 11, figure: 0, caption: 'b'}

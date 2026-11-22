@@ -481,10 +481,36 @@ function postHost(type,body={}){
  if(!embedded||typeof host?.session!=='string'||!host.session||!host.origin)return;
  try{parent.postMessage({type,session:host.session,...body},host.origin)}catch(_){}
 }
+// The host measures all sections. Count from the page actually mounted here so
+// a delayed host reply (or an image still decoding) cannot move the visible number.
+let shelfProgress=null,paintedLocation=null;
+function paintShelfProgress(){
+ if(!shelfProgress||!paintedLocation)return;
+ const {pagination}=shelfProgress,shown=paintedLocation;
+ let {label,ratio}=shelfProgress;
+ if(pagination){
+  if(pagination.sectionOnly){label=shown.number+' / '+shown.count+'（分冊）';ratio=null;}
+  else if(Number.isSafeInteger(pagination.offset)&&pagination.offset>=0&&
+   Number.isSafeInteger(pagination.total)&&pagination.total>=pagination.offset+shown.count&&
+   pagination.count===shown.count&&pagination.font===shown.font&&
+   pagination.width===shown.width&&pagination.height===shown.height){
+   const globalPage=pagination.offset+shown.number;
+   label=globalPage+' / '+pagination.total;ratio=globalPage/pagination.total;
+  }else{label='全巻ページ数を計測中…';ratio=null;}
+ }
+ const out=$('page-major');out.dataset.global=label;out.setAttribute('aria-label',label);
+ const bar=$('progress-fill').style;
+ if(Number.isFinite(ratio))bar.setProperty('--book-progress',100*ratio+'%');
+ else bar.removeProperty('--book-progress');
+}
 function receiveHost(e){
  const m=e.data;
  if(!embedded||!host||e.source!==parent||e.origin!==host.origin||
-   !m||m.session!==host.session||m.type!=='reader-viewport-v8')return;
+   !m||m.session!==host.session)return;
+ if(m.wh1bridge===1&&m.action==='wh3Progress'){
+  shelfProgress=m;paintShelfProgress();return;
+ }
+ if(m.type!=='reader-viewport-v8')return;
  if(!Number.isSafeInteger(m.seq)||m.seq<=hostSeq||typeof m.scale!=='number'||
    !Number.isFinite(m.scale)||m.scale<.5||m.scale>10)return;
  hostSeq=m.seq;hostScale=m.scale;hostKnown=true;reflectZoom();
@@ -1099,6 +1125,8 @@ function render(){
  }else if(p.kind==='toc')$('contents').replaceChildren(tocElement(p));
  else setFigure(p,asset);
  $('page-major').textContent=(index+1)+' / '+pages.length;
+ paintedLocation={number:index+1,count:pages.length,font,width:innerWidth,height:innerHeight};
+ paintShelfProgress();
  const description=p.kind==='text'?[verticalReaderSymbols.japanesePunctuation(sectionOf(scan)),'本文'].filter(Boolean).join(' '):p.kind==='image'?'図版｜'+verticalReaderSymbols.japanesePunctuation(figures[p.figure].title):p.kind==='toc'?'目次':p.title;
  $('page-description').textContent=description;
  $('page-origin').textContent=' ｜ 原本 '+scan+' / '+book.totalScans;
@@ -1310,10 +1338,6 @@ if(embedded){postHost('reader-ready-v8');window.addEventListener('pageshow',()=>
   if(i<0&&Number.isInteger(o.scan)){i=pages.findIndex(p=>p.scan===o.scan);if(i<0)i=pages.findIndex(p=>p.sourceSpans?.some(s=>s.scan===o.scan));}
   if(i>=0){api.gotoPage(i);selectedOrigin=Number.isInteger(o.scan)?{scan:o.scan,index:i}:null;}snapshot();}
  addEventListener('message',e=>{if(e.source!==parent||e.data?.wh1bridge!==1)return;const d=e.data;
-  if(d.action==='wh3Progress'&&d.session===window.__readerHost?.session){
-   const out=$('page-major');out.dataset.global=d.label;out.setAttribute('aria-label',d.label);
-   if(Number.isFinite(d.ratio))$('progress-fill').style.setProperty('--book-progress',(100*d.ratio)+'%');return;
-  }
   if(d.action==='goto')dest(d.destination);else if(d.action==='localToc')$('menu-backdrop').hidden=false;
   else if(d.action==='loadAssets'&&Number.isFinite(d.size)){let current=api.inspect().font;for(let n=0;n<Math.min(8,Math.abs(current-d.size)/2);n++)$(current<d.size?'larger':'smaller').click();snapshot();}});
  new MutationObserver(snapshot).observe($('page-major'),{childList:true,characterData:true,subtree:true});

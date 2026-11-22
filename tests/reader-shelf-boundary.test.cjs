@@ -111,3 +111,53 @@ test('a cached older presentation gets its original inline image source', async 
     assert.deepEqual(await open({wh3Flow:{archive}},1),[1,false,requested]);
   }
 });
+
+test('a mounted structured page paints its global counter and progress before the host can reply', () => {
+  const progress = html.slice(html.indexOf('let shelfProgress='), html.indexOf("window.addEventListener('message',receiveHost)"));
+  const rendering = html.slice(html.indexOf('function render(){'), html.indexOf('function menuRefresh(){'));
+  const host = {session:'active', origin:'https://shelf.example'}, parent = {}, nodes = new Map();
+  function node(id) {
+    if (!nodes.has(id)) nodes.set(id, {hidden:true, dataset:{}, style:{
+      setProperty(key,value) { this[key]=value; }, removeProperty(key) { delete this[key]; }
+    }, setAttribute(key,value) { this[key]=value; }});
+    return nodes.get(id);
+  }
+  const pages = [20,21,22].map(scan=>({scan, kind:'text', parts:[scan]}));
+  const context = vm.createContext({
+    host, parent, embedded:true, $:node, pages, book:{totalScans:40}, innerWidth:390, innerHeight:800,
+    font:20, index:0, selectedOriginal:null, persist(){}, currentSource:()=>true,
+    document:{createDocumentFragment:()=>({append(value) { this.scan=value; }})},
+    textFlow:{replaceChildren(fragment) { this.scan=fragment.scan; }}, partNode:scan=>scan,
+    verticalReaderSymbols:{japanesePunctuation:v=>v}, sectionOf:()=>'', pageArtwork(){},
+    waitingForArtwork:()=>false
+  });
+  vm.runInContext(progress+'\n'+rendering+'\nrender();',context);
+  const pagination = {offset:57,total:120,count:3,font:20,width:390,height:800};
+  const send = (label,layout=pagination) => context.receiveHost({
+    source:parent, origin:host.origin, data:{wh1bridge:1,session:host.session,action:'wh3Progress',label,pagination:layout}
+  });
+  const shown = () => [context.textFlow.scan,node('page-major').dataset.global,node('page-major')['aria-label']];
+  send('58 / 120');
+  assert.deepEqual(shown(),[20,'58 / 120','58 / 120']);
+  context.gotoPage(1);
+  assert.deepEqual(shown(),[21,'59 / 120','59 / 120']);
+  send('58 / 120');
+  assert.deepEqual(shown(),[21,'59 / 120','59 / 120']);
+  assert.equal(node('progress-fill').style['--book-progress'],100*59/120+'%');
+  context.waitingForArtwork=()=>true;
+  context.gotoPage(2);
+  send('60 / 120');
+  assert.deepEqual(shown(),[21,'59 / 120','59 / 120']);
+  context.waitingForArtwork=()=>false;
+  context.render();
+  assert.deepEqual(shown(),[22,'60 / 120','60 / 120']);
+  context.gotoPage(0);
+  assert.deepEqual(shown(),[20,'58 / 120','58 / 120']);
+  context.innerHeight=710;
+  context.render();
+  assert.equal(node('page-major').dataset.global,'全巻ページ数を計測中…');
+  assert.equal(node('progress-fill').style['--book-progress'],undefined);
+  send('1 / 3（分冊）',{sectionOnly:true});
+  context.gotoPage(1);
+  assert.deepEqual(shown(),[21,'2 / 3（分冊）','2 / 3（分冊）']);
+});
