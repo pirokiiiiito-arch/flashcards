@@ -2886,9 +2886,7 @@
         }
       },
       "signature": "6KBAJ8Wp4xOD2agN2fn79Ek+VAVqeo8MZ5zDAguRto7xpbGRUKAaWuVJxIMpEyg26+2dM7ibaKMwT9g6pkAAUQ=="
-    }
-  ],
-  "pending": [
+    },
     {
       "key": "242bd0af5d76a5da3189868c86fe8d652cb415abcf0c5998bb519a44bac175c2",
       "entry": "a4db71694324efc3bd922210f98f2f6e80e2cab49e2c0e449069f8338afd411c",
@@ -3337,5 +3335,6 @@
       },
       "signature": "wNQbVViHXA3sFa6VCo6OfsHHbgslj/Ov8nFrwBLa51ir+y+ckzaC1d54PM0FYPDE/LQxFfwBcKo9fw/jUesW/g=="
     }
-  ]
+  ],
+  "pending": []
 }
