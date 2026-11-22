@@ -51,11 +51,13 @@ const LibraryDB = (() => {
     const r = db.transaction('books', 'readonly').objectStore('books').getAll();
     r.onsuccess = () => resolve(r.result || []); r.onerror = () => reject(r.error);
   }); } finally { db.close(); } }
+  function generationRange(id, generation) {
+    const prefix=checkId(id)+'|'+generation+'|';
+    return IDBKeyRange.bound(prefix,prefix+'\uffff');
+  }
   function generationBlob(chunks,meta) {
     return new Promise((resolve,reject)=>{
-      const prefix=checkId(meta.id)+'|'+meta.generation+'|';
-      const range=IDBKeyRange.bound(prefix,prefix+'\uffff');
-      const req=chunks.getAll(range);
+      const req=chunks.getAll(generationRange(meta.id,meta.generation));
       req.onerror=()=>reject(req.error);
       req.onsuccess=()=>{
         if(req.result.length!==meta.count || req.result.some(piece=>!(piece instanceof Blob))){
@@ -89,18 +91,18 @@ const LibraryDB = (() => {
         const admission=await authorizeFile(book,blob);
         if(validate)await validate(blob);
         meta.registrationRoot=admission.chunkRoot;
-        const previous=await new Promise((resolve,reject)=>{
-          const tx=db.transaction('books','readwrite'),books=tx.objectStore('books'),old=books.get(book.id);
+        await new Promise((resolve,reject)=>{
+          const tx=db.transaction(['books','chunks'],'readwrite'),books=tx.objectStore('books'),old=books.get(book.id);
           old.onsuccess=()=>{
             if(old.result?.generation!==original?.generation && old.result?.registrationRoot!==meta.registrationRoot) { tx.abort(); return; }
             books.put(meta,book.id);
+            if(old.result?.generation && old.result.generation!==generation)
+              tx.objectStore('chunks').delete(generationRange(book.id,old.result.generation));
           };
-          tx.oncomplete=()=>resolve(old.result);
+          tx.oncomplete=()=>resolve();
           tx.onabort=tx.onerror=()=>reject(tx.error||new Error('修正版を保存できません'));
         });
         active=false;db.close();
-        if(previous?.generation&&previous.generation!==generation)
-          await deleteGeneration(book.id,previous.generation).catch(()=>{});
         return meta;
       },
       async abort() {
@@ -114,22 +116,26 @@ const LibraryDB = (() => {
   async function deleteGeneration(id, generation) {
     const db = await open();
     try { await new Promise((resolve,reject) => {
-      const tx=db.transaction('chunks','readwrite');
-      const prefix = `${checkId(id)}|${generation}|`;
-      const range = IDBKeyRange.bound(prefix, prefix+'\uffff');
-      const req = tx.objectStore('chunks').openKeyCursor(range);
-      req.onsuccess=()=>{ const c=req.result; if(c){ c.delete(); c.continue(); } };
+      const tx=db.transaction(['books','chunks'],'readwrite'),current=tx.objectStore('books').get(checkId(id));
+      current.onsuccess=()=>{
+        if(current.result?.generation!==generation)tx.objectStore('chunks').delete(generationRange(id,generation));
+      };
       tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error);
     }); } finally { db.close(); }
   }
   async function removeBook(id) {
     checkId(id);
-    const old = await getMeta(id); if (!old) return false;
-    const db=await open(); try { await new Promise((resolve,reject) => {
-      const tx=db.transaction('books','readwrite'); tx.objectStore('books').delete(id);
-      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+    const db=await open();
+    try { return await new Promise((resolve,reject) => {
+      const tx=db.transaction(['books','chunks'],'readwrite'),books=tx.objectStore('books'),old=books.get(id);
+      old.onsuccess=()=>{
+        if(!old.result)return;
+        books.delete(id);
+        tx.objectStore('chunks').delete(generationRange(id,old.result.generation));
+      };
+      tx.oncomplete=()=>resolve(Boolean(old.result));
+      tx.onabort=tx.onerror=()=>reject(tx.error||new Error('書籍を端末から削除できません'));
     }); } finally { db.close(); }
-    await deleteGeneration(id, old.generation); return true;
   }
   async function readBlob(id) {
     const db=await open();
