@@ -28,6 +28,10 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='3b9caf7e1e077c4ae688996e1a292c064ae0d766'){
+    data=Buffer.from(data.toString('utf8').replace('inset-columns-20261122-12','source-inset-placement-20261123-11'));
+    if(blobSHA(data)!=='9481ff228b96671807a9e3e3a01af4fb62b2744f')throw Error('SHELF_ASIDE_LAYOUT_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='9481ff228b96671807a9e3e3a01af4fb62b2744f'){
     // Restore the exact host before explicit inset placements were supported.
     const lines=data.toString('utf8').split('\n');

@@ -35,6 +35,15 @@ button:focus-visible{outline:2px solid #2f8190;outline-offset:3px}
 .text-flow .separator{font-size:.9em;margin:0 0 1em 0;text-indent:0;letter-spacing:.25em}
 .text-flow .signature{font-size:.95em;margin:0 0 1em 0;text-indent:0}
 .text-flow .aside-body{background:#fbf8f0;border-right:2px solid #b9a28b;padding-right:.3em;text-indent:0}
+/* Keep inset paragraphs out of the vertical overflow clip.
+   Both the measuring flow and the visible flow lay out identical vertical children. */
+.text-flow:has(> .aside-body){
+ display:flex;flex-direction:row;direction:rtl;align-items:stretch;
+ writing-mode:horizontal-tb;overflow:visible
+}
+.text-flow:has(> .aside-body)>*{
+ flex:none;direction:ltr;writing-mode:vertical-rl
+}
 .text-flow .note-text{font-size:.84em;line-height:1.5;color:#5e6465;text-indent:0;font-weight:400}
 .portrait-sheet{width:100%;height:100%;display:flex;justify-content:center;align-items:center;flex-direction:column;gap:0;min-height:0;margin:0}
 .portrait-sheet img{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;object-position:center;background:white}
