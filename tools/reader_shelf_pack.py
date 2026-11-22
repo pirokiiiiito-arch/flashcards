@@ -8,6 +8,9 @@ import re
 import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
+from urllib.parse import unquote_to_bytes
+
+from reader_shelf_template import validate_source_ruby
 
 FLOW = 'structured-scan-flow-v1'
 
@@ -167,18 +170,23 @@ def structured_sources(m, read_bytes, emit_original=None, independent_reviews=No
                 require(all(type(x) in (int,float) and math.isfinite(x) and x>0 for x in (width,height))
                         and rect[0]>=0 and rect[1]>=0 and rect[0]+rect[2]<=width and rect[1]+rect[3]<=height,
                         '図版が原本の寸法に収まりません')
+            original_hash = emit_original(n, page) if emit_original else None
             for j, b in enumerate(page['blocks']):
                 require(b.get('type') in {'body','heading','toc','note','footnote','caption'},
                         '原本の本文種別が不正です')
                 require(isinstance(b.get('text'), str) and b['text'], '本文ブロックの文字がありません')
+                if 'ruby' in b:
+                    if b['ruby'] and original_hash is None:
+                        ref = m.get('originalScans', {}).get(str(n))
+                        require(ref and ref.get('path'), f'原本{n}のルビを登録画像と照合できません')
+                        original_hash = sha(read_bytes(member(ref['path'])))
+                    validate_source_ruby(dict(b, scan=n), original_hash)
                 blocks[(n, j)] = b['type']
                 if b['type'] == 'body':
                     bodies[n, j] = b['text']
                     if b.get('id'):
                         require(ids.get(b['id'], (n, j)) == (n, j), '原本の本文IDが重複しています')
                         ids[b['id']] = (n, j)
-            if emit_original:
-                emit_original(n, page)
         require(sorted(source_scans) == list(range(part['start'], part['end'] + 1)),
                 '分冊内の原本番号に欠落または重複があります')
         for item in model.get('segments', []):
@@ -221,10 +229,37 @@ def standalone_reviews(m, read_bytes):
     ranges = flow.get('sourceRanges', [])
     declared = list(flow.get('confirmedSeams', flow.get('continuations', m.get('continuations', []))))
     records = list(flow.get('boundaryReviews', [])) + m.get('structure_reviews', {}).get('boundaries', [])
-    if not records:
-        return ranges, declared, []
-    from reader_shelf_template import read_part, template_entries
-    data = read_part({'part':m['entry']}, read_bytes)
+    from reader_shelf_template import TemplateSource, read_part, template_entries
+    if records:
+        data = read_part({'part':m['entry']}, read_bytes)
+    else:
+        # Keep opaque legacy readers byte-identical. When the standalone edition
+        # declares block ruby in literal bookdata, audit it even without seams.
+        raw = read_bytes(m['entry'])
+        if not re.search(rb'"ruby"\s*:', raw):
+            return ranges, declared, []
+        parser = TemplateSource()
+        parser.feed(raw.decode('utf-8-sig'))
+        parser.close()
+        data = parser.data
+        if not isinstance(data, dict) or ('pages' not in data and data.get('kind') not in ('text','mixed','image')):
+            return ranges, declared, []
+    originals = {p['scan']:p.get('dataUrl') or p.get('original') for p in data.get('pages', [])}
+    originals.update({p['scan']:p.get('src') for p in data.get('originals', []) if p.get('src')})
+    image_hashes = {}
+
+    def original_sha(n):
+        if n not in image_hashes:
+            url = originals.get(n) or ''
+            header, comma, payload = url.partition(',')
+            if comma and header.startswith('data:image/'):
+                raw = base64.b64decode(payload, validate=True) if header.endswith(';base64') else unquote_to_bytes(payload)
+            else:
+                ref = m.get('originalScans', {}).get(str(n))
+                require(ref and ref.get('path'), f'原本{n}のルビを対応する画像と照合できません')
+                raw = read_bytes(member(ref['path']))
+            image_hashes[n] = sha(raw)
+        return image_hashes[n]
     bodies, ids = {}, {}
     counts = {}
     entries = ([{'kind':'text','scan':p['scan'],'blocks':p['blocks']} for p in data['pages']]
@@ -234,6 +269,11 @@ def standalone_reviews(m, read_bytes):
             continue
         for b in e.get('blocks', [e]):
             n = b.get('scan', e.get('scan'))
+            if 'ruby' in b:
+                expected = original_sha(n) if b['ruby'] else None
+                validate_source_ruby(dict(b, scan=n, type=b.get('type','body')), expected)
+            if not records:
+                continue
             i = counts.get(n, 0)
             counts[n] = i + 1
             ref = tuple(b.get('sourceRef', [n, i]))
@@ -357,6 +397,7 @@ def pack(manifest_path, archive, structure_reviews=None):
                                 f'原本{n}の分冊内画像と登録画像が異なります')
                     m['originalScans'][str(n)] = {**(registered or {}), 'path': path, 'sha256': h}
                     write(path, data, zipfile.ZIP_STORED)
+                    return h
                 structured_sources(m, read_bytes, original)
                 for part in m['segments']:
                     data = read_bytes(part['part'])

@@ -8,7 +8,7 @@ import subprocess
 import sys
 import re
 
-ACTIVE_LOCK_SHA256 = '6e31546af47084f4d3e4fb258fb226d59f54951b8e254799429b564beceacdce'
+ACTIVE_LOCK_SHA256 = '98a9aed7348498d0c053a294e8e8fa880529a77628362ba611563793f3b6e05a'
 
 
 def verify_runtime(root):

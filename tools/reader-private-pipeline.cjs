@@ -64,7 +64,7 @@ function correctUnsafe(file,eventFile){
  fail(v.objHash(v.replay(raw,events))===v.objHash(old),'PRIOR_CANONICAL_DIVERGED');
  fail(e.expectedCanonicalSha256===m.canonical.sha256,'CANONICAL_VERSION_CONFLICT');
  const p=(Array.isArray(old)?old:old.pages).find(p=>p.scan===e.scan);fail(p,'UNKNOWN_SCAN');
- const parts=String(e.pointer).split('/');fail(/^(reading_text|title|figures\/\d+\/(caption|display_title)|boxed_articles\/\d+\/(text|title)|blocks\/\d+\/text|ruby\/\d+\/(base|reading|rt)|notes\/\d+\/text)$/.test(e.pointer),'UNSAFE_TEXT_EDIT');
+ const parts=String(e.pointer).split('/');fail(/^(reading_text|title|figures\/\d+\/(caption|display_title)|boxed_articles\/\d+\/(text|title)|blocks\/\d+\/(?:text|ruby\/\d+\/reading)|ruby\/\d+\/(base|reading|rt)|notes\/\d+\/text)$/.test(e.pointer),'UNSAFE_TEXT_EDIT');
  const clone=structuredClone(old),pp=(Array.isArray(clone)?clone:clone.pages).find(p=>p.scan===e.scan);let dest=pp;for(const key of parts.slice(0,-1))dest=dest[key];
  fail(dest&&(dest[parts.at(-1)]??null)===e.before&&typeof e.after==='string','EDIT_PRECONDITION');dest[parts.at(-1)]=e.after;
  const record={...e,sourceSha256:p.sha256,beforeDataSha256:v.objHash(old),afterDataSha256:v.objHash(clone)};

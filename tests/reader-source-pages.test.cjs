@@ -114,6 +114,15 @@ test('ruby readings and notes have their own source fields in an illustrated boo
  assert.deepEqual(x.work().queue[0].issues.map(i=>i.field).sort(),['1/notes/0/text','1/ruby/0/reading']);
 });
 
+test('two readings of the same base remain separate original-source fields',t=>{
+ const x=book(t,'source-ruby',[{blocks:[{text:'空、空。',ruby:[
+  {start:0,end:1,base:'空',reading:'そら'},{start:2,end:3,base:'空',reading:'から'}
+ ]}]}]);
+ assert.equal(x.fields['1/blocks/0'],'空、空。');
+ x.records.second.fields['1/blocks/0/ruby/1/reading']='そら';x.save();
+ assert.deepEqual(x.work().queue[0].issues.map(i=>i.field),['1/blocks/0/ruby/1/reading']);
+});
+
 test('production and preview heading observations detect old prose before a story start at any font size',t=>{
  const x=book(t,'novel-geometry',[{reading_text:'前話。'},{title:'朝の駅',reading_text:'鳥が鳴く。'}]);
  x.records.inventory.pages[1].regions.find(r=>r.fields.includes('2/title')).kind='heading';x.save();

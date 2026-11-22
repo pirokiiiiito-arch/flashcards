@@ -10,7 +10,7 @@ function code(from,to){
  if(a<0||b<=a)throw Error('Missing exact standard-engine function: '+from+' -> '+to);
  return engine.slice(a,b);
 }
-const bootstrap=new Function('book','mode','split',code('const sourceKind=','const main=')+'\nreturn {blocks,figures,flow};');
+const bootstrap=new Function('book','mode','split',code('function sourceRubyFor(', 'function rubyInside(')+code('const sourceKind=','const main=')+'\nreturn {blocks,figures,flow};');
 const helpers=new Function('verticalReaderSymbols','split',code('function joinLogicalContinuations(', 'function protectedPageBoundary(')+
  '\nreturn {joinLogicalContinuations,textPart};')(require('../templates/reader/v2/vertical-symbols.js'),split);
 const {joinLogicalContinuations,textPart}=helpers;

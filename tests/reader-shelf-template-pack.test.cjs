@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const path=require('node:path');
+const {createHash}=require('node:crypto');
 const test=require('node:test');
 const {spawnSync}=require('node:child_process');
 
@@ -83,6 +84,22 @@ test('custom book styling or ruby cannot be lost in a template conversion',()=>{
  assert.match(assemble(a).stderr,/個別の読書画面/);
  const b=fixture();b[1]['s/next.json'].blocks[1].glosses=[{base:'章',reading:'しょう'}];
  assert.match(assemble(b).stderr,/ルビ/);
+});
+
+test('canonical ruby is lossless across packing and remains attached to the specified occurrence',()=>{
+ const originalSha=createHash('sha256').update('synthetic asset').digest('hex');
+ const annotation={start:4,end:6,base:'生物',reading:'なまもの',sourceScan:22,
+  sourceImageSha256:originalSha,sourceBox:[5,9,15,41],reviewStatus:'verified'};
+ const source=fixture();const block=source[1]['s/next.json'].blocks[2];
+ block.text='𠮷生物と生物';block.ruby=[annotation];
+ const result=assemble(source);assert.equal(result.status,0,result.stderr);
+ const row=JSON.parse(result.stdout).book.entries.at(-1);
+ assert.equal(row.text,block.text);assert.deepEqual(row.ruby,[annotation]);assert.deepEqual(row.sourceRef,[22,1]);
+ for(const change of [{start:true},{start:3},{end:99},{base:'別字'},{reading:'  '},
+   {sourceScan:1},{sourceImageSha256:'0'.repeat(64)},{sourceBox:[1,0,1,2]},{reviewStatus:'candidate'}]){
+  block.ruby=[{...annotation,...change}];assert.match(assemble(source).stderr,/ルビ/,JSON.stringify(change));
+ }
+ block.ruby=[annotation,annotation];assert.match(assemble(source).stderr,/ルビ/);
 });
 
 test('a continuation cannot reorder a real chapter heading or another paragraph',()=>{

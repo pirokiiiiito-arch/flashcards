@@ -59,7 +59,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'1e931004f0a0619cc2940287181fceb8daf5d054',
- 'reader/library/read.html':'3b9caf7e1e077c4ae688996e1a292c064ae0d766'
+ 'reader/library/read.html':'801838d42701169fb00b2499104b1785482de88e'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
@@ -104,7 +104,14 @@ function textFields(pages){
  const out={};
  for(const p of pages){const scan=p.scan;const put=(k,v)=>{if(typeof v==='string'&&v.length)out[scan+'/'+k]=v;};
   put('title',p.title);put('body',p.reading_text??p.ocr);put('manual_heading',p.manual_heading);
-  for(const [i,b]of(p.blocks||[]).entries())put('blocks/'+i,b.text);
+  for(const [i,b]of(p.blocks||[]).entries()){
+   put('blocks/'+i,b.text);
+   if(Array.isArray(b.ruby))for(const [j,r]of b.ruby.entries()){
+    if(!r)continue;
+    put('blocks/'+i+'/ruby/'+j+'/base',r.base);
+    put('blocks/'+i+'/ruby/'+j+'/reading',r.reading);
+   }
+  }
   for(const [i,f]of(p.figures||[]).entries()){put('figures/'+i+'/caption',f.caption);put('figures/'+i+'/title',f.display_title);}
   for(const [i,a]of(p.boxed_articles||[]).entries()){put('boxed/'+i+'/text',a.text);put('boxed/'+i+'/title',a.title);}
   for(const [i,r]of(Array.isArray(p.ruby)?p.ruby:[]).entries()){if(r){put('ruby/'+i+'/base',r.base);put('ruby/'+i+'/reading',r.reading??r.rt);}}
@@ -135,7 +142,7 @@ function replay(raw,events){
    demand(f.representation==='original_JPEG_unchanged'&&Array.isArray(f.source_box_xyxy)&&objHash(f.source_box_xyxy)===objHash([0,0,p.source_image_width,p.source_image_height]),'REGISTRATION_NOT_WHOLE_ORIGINAL');
    p.figures.push(structuredClone(f));previous=objHash(data);demand(previous===e.afterDataSha256,'CORRECTION_CHAIN_BROKEN');continue;
   }
-  demand(/^(reading_text|title|(?:figures\/\d+\/(?:caption|display_title))|(?:boxed_articles\/\d+\/(?:text|title))|(?:blocks\/\d+\/text)|(?:ruby\/\d+\/(?:base|reading|rt))|(?:notes\/\d+\/text))$/.test(e.pointer||''),'UNSAFE_CORRECTION_FIELD');
+  demand(/^(reading_text|title|(?:figures\/\d+\/(?:caption|display_title))|(?:boxed_articles\/\d+\/(?:text|title))|(?:blocks\/\d+\/(?:text|ruby\/\d+\/reading))|(?:ruby\/\d+\/(?:base|reading|rt))|(?:notes\/\d+\/text))$/.test(e.pointer||''),'UNSAFE_CORRECTION_FIELD');
   const parts=e.pointer.split('/');let target=p;for(const part of parts.slice(0,-1)){demand(target&&Object.hasOwn(target,part),'CORRECTION_PATH_MISSING');target=target[part];}
   const key=parts.at(-1);demand((target[key]??null)===e.before&&typeof e.after==='string','STALE_CORRECTION');
   target[key]=e.after;previous=objHash(data);demand(previous===e.afterDataSha256,'CORRECTION_CHAIN_BROKEN');
@@ -341,7 +348,7 @@ function admittedBookshelfNavUI(root,policy){
  const wh3Layout='reader/library/wh3-format.html';
  if(fs.existsSync(safe(root,wh3Layout))){
   const bytes=fs.readFileSync(safe(root,wh3Layout)),digest=hash(bytes),html=bytes.toString('utf8');
-  demand(digest==='1666f7f47176dcd08c66ffd96bf80e515d680ec351d3ea1ed048b2cfd4449f84'&&html.includes('<!--WH3_PRIVATE_DATA-->')&&html.includes('<!--WH3_PRIVATE_STRUCTURE-->')&&!/data:image\/[^;]+;base64,/.test(html),'WH3_PUBLIC_LAYOUT_NOT_REVIEWED');
+  demand(digest==='70c5ad6a512a49eca493c41c20e26f0dc38fb8c165229a9f09c0ddc01e27b0ba'&&html.includes('<!--WH3_PRIVATE_DATA-->')&&html.includes('<!--WH3_PRIVATE_STRUCTURE-->')&&!/data:image\/[^;]+;base64,/.test(html),'WH3_PUBLIC_LAYOUT_NOT_REVIEWED');
   approved[wh3Layout]=digest;
  }
  let sharedChanged=0;

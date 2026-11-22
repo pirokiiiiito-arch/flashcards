@@ -6,7 +6,7 @@ import json
 from pathlib import PurePosixPath
 from urllib.parse import unquote_to_bytes
 
-from reader_shelf_template import part_image, read_part, template_entries
+from reader_shelf_template import part_image, read_part, template_entries, validate_source_ruby
 
 
 def require(ok, text):
@@ -65,7 +65,13 @@ def apply_merge(manifest, read_bytes):
     require(len(order) == len(set(order)) and len(canonical) == len(book['body_blocks'])
             and len(pairs) == len(set(pairs)) and set(pairs) == set(zip(order, order[1:])),
             '統合境界に欠落・重複・順序の逆転があります')
+    for event in stream['layout_events']:
+        if event['type'] == 'heading':
+            require(event.get('ruby', []) == canonical[event['heading_id']].get('ruby', []),
+                    '論理見出しと原稿のルビが違います')
     for segment in stream['segments']:
+        require(segment.get('ruby', []) == canonical[segment['id']].get('ruby', []),
+                '論理本文と原稿のルビが違います')
         require(segment['text'] == canonical[segment['id']]['text'], '論理本文ブロックと原稿の文字が違います')
 
     generated = {}
@@ -127,13 +133,18 @@ def apply_merge(manifest, read_bytes):
         if kind in ('body','heading'):
             by_key[ref[0], kind, row['text']].append(ref)
     matched = {}
+    source_hashes = {s['scan_number']:s.get('image_sha256') for s in book['scans']}
     for ident, b in canonical.items():
         possible_scans = {scans[r['scan_id']] for r in b['source_refs']}
         candidates = [ref for n in possible_scans for ref in by_key[n, b['kind'], b['text']]]
         if ident in block_ids:
             candidates = [ref for ref in candidates if ref == block_ids[ident]]
         require(len(candidates) == 1, f'統合原稿と読書分冊で本文または見出しを一意に対応づけられません: {ident}')
-        matched[ident] = candidates[0]
+        ref = candidates[0]
+        authored = blocks_by_ref[ref]
+        require(authored.get('ruby', []) == b.get('ruby', []), f'統合原稿と読書分冊でルビが違います: {ident}')
+        validate_source_ruby(dict(authored, scan=ref[0], type=b['kind']), source_hashes[ref[0]])
+        matched[ident] = ref
     if manifest['template_profile'] == 'novel':
         for segment in stream['segments']:
             ref = matched[segment['id']]
@@ -259,6 +270,8 @@ def generate_text_sections(manifest, book, stream, canonical, scans, generated, 
         require(n >= previous, '原本順と論理読順が異なるため、配置を収録した確認済みの読書分冊を指定してください')
         previous = n
         block = {'id': ident, 'type': 'dialogue' if novel and ident in dialogues else b['kind'], 'text':b['text']}
+        if 'ruby' in b:
+            block['ruby'] = b['ruby']
         if b.get('source_heading_id'):
             block['source_heading_id'] = b['source_heading_id']
         page_map[n]['blocks'].append(block)

@@ -96,7 +96,9 @@ const verticalReaderSymbols=(()=>{
   const result={upright:0,native:0,uprightDigits:0,halfwidthQuestions:0,fullwidthQuestions:0,mismatches:0,examples:[]};
   let node;
   while((node=walker.nextNode())){
-   const parent=node.parentElement, style=view.getComputedStyle(parent);
+   const parent=node.parentElement;
+   if(parent.closest('rt,rp'))continue;
+   const style=view.getComputedStyle(parent);
    const combined=style.textCombineUpright==='all'||style.webkitTextCombine==='horizontal';
    if(!isSymbol.test(node.data)||(combined&&!/[0-9]/.test(node.data)))continue;
    if(style.writingMode==='horizontal-tb'&&parent.closest('[data-horizontal],.figure-caption,rt'))continue;
@@ -132,10 +134,74 @@ const verticalReaderSymbols=(()=>{
  }
  return {japanesePunctuation,displayText,standaloneDigitAt,uprightRanges,count,inspect};
 })();
+// Registered readings use code-point offsets within one original block. Convert once
+// to the same grapheme coordinates as pagination. Dialogue slices use UTF-16 offsets.
+function sourceRubyFor(block,startUTF16=0,endUTF16=block.text.length,scan=block.scan){
+ const entries=block.ruby;
+ if(entries===undefined||Array.isArray(entries)&&!entries.length)return;
+ if(!Array.isArray(entries))throw Error('原本ルビは配列で指定してください');
+ const units=split(block.text),points=Array.from(block.text);
+ const byPoint=new Map([[0,0]]),byUtf16=new Map([[0,0]]);
+ let cp=0,utf=0;
+ units.forEach((u,i)=>{
+  cp+=Array.from(u).length;utf+=u.length;
+  byPoint.set(cp,i+1);byUtf16.set(utf,i+1);
+ });
+ const startUnit=byUtf16.get(startUTF16),endUnit=byUtf16.get(endUTF16);
+ if(startUnit===undefined||endUnit===undefined)throw Error('本文の区切りが文字の途中です');
+ const spans=[];let last=0;
+ for(const g of entries){
+  if(!g||g.reviewStatus!=='verified'||g.sourceScan!==scan||
+     typeof g.sourceImageSha256!=='string'||!/^[a-f0-9]{64}$/.test(g.sourceImageSha256)||
+     !Array.isArray(g.sourceBox)||g.sourceBox.length!==4||
+     !g.sourceBox.every(n=>Number.isSafeInteger(n)&&n>=0)||
+     g.sourceBox[0]>=g.sourceBox[2]||g.sourceBox[1]>=g.sourceBox[3]||
+     !Number.isSafeInteger(g.start)||!Number.isSafeInteger(g.end)||g.start<last||
+     g.end<=g.start||!byPoint.has(g.start)||!byPoint.has(g.end)||
+     points.slice(g.start,g.end).join('')!==g.base||typeof g.reading!=='string'||!g.reading.trim())
+   throw Error('原本ルビの位置・親文字・確認記録が不正です。原本 '+scan);
+  last=g.end;
+  const a=byPoint.get(g.start),z=byPoint.get(g.end);
+  if(z<=startUnit||a>=endUnit)continue;
+  if(a<startUnit||z>endUnit)throw Error('ルビの親文字が本文の区切りをまたいでいます。原本 '+scan);
+  spans.push({start:a-startUnit,end:z-startUnit,reading:g.reading});
+ }
+ return spans.length?spans:undefined;
+}
+function rubyInside(spans,point){
+ return spans?.find(s=>s.start<point&&point<s.end);
+}
+function rubyShift(spans,by){
+ return spans.map(s=>({...s,start:s.start+by,end:s.end+by}));
+}
+function rubySlice(spans,off,n){
+ return rubyShift(spans.filter(s=>s.start>=off&&s.end<=off+n),-off);
+}
 function setVerticalText(element,source,part={}){
  const before=part.before||'',after=part.after||'';
  verticalReaderEdges.set(element,{before,after});
  const text=part.displayText??verticalReaderSymbols.displayText(source);
+ if(part.ruby?.length){
+  const units=split(text),fragment=document.createDocumentFragment();
+  function run(start,end,annotation){
+   if(start===end)return;
+   const node=document.createElement(annotation?'ruby':'span');
+   setVerticalText(node,units.slice(start,end).join(''),{
+    displayText:units.slice(start,end).join(''),
+    before:(before+units.slice(0,start).join('')).slice(-3),
+    after:(units.slice(end).join('')+after).slice(0,3)
+   });
+   if(annotation){
+    node.style.rubyPosition='over';node.style.webkitRubyPosition='before';
+    const rt=document.createElement('rt');rt.textContent=annotation.reading;
+    rt.style.fontSize='0.5em';node.append(rt);
+   }
+   fragment.append(node);
+  }
+  let start=0;
+  for(const r of part.ruby){run(start,r.start);run(r.start,r.end,r);start=r.end;}
+  run(start,units.length);element.replaceChildren(fragment);return;
+ }
  let fragment=null,offset=0;
  for(const {start,end} of verticalReaderSymbols.uprightRanges(text,before,after)){
   if(!fragment)fragment=document.createDocumentFragment();

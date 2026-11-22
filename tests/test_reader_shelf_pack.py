@@ -9,7 +9,7 @@ from pathlib import Path
 
 TOOLS = Path(__file__).resolve().parents[1]/'tools'
 sys.path.insert(0,str(TOOLS))
-from reader_shelf_pack import pack, structured_sources, review_seams
+from reader_shelf_pack import pack, structured_sources, review_seams, source_json
 
 spec=importlib.util.spec_from_file_location('shelf_register',TOOLS/'reader-shelf-register.py')
 register=importlib.util.module_from_spec(spec)
@@ -45,6 +45,41 @@ class Pack(unittest.TestCase):
     def decision(self,kind):
         return {'source_review_status':'verified','display_boundary':kind,'left_body_id':'20','right_body_id':'21','left_suffix':'録20','right_prefix':'記録21'}
 
+    def test_ruby_in_structured_pages_is_bound_to_the_packaged_original(self):
+        self.parts[0]['continuations']=[self.edge]
+        row=self.parts[0]['pages'][0]['blocks'][0]
+        annotation={'start':0,'end':2,'base':'記録','reading':'きろく','sourceScan':1,
+                    'sourceImageSha256':hashlib.sha256(b'b').hexdigest(),'sourceBox':[2,3,4,6],'reviewStatus':'verified'}
+        row['ruby']=[dict(annotation,sourceImageSha256='0'*64)]
+        with self.assertRaisesRegex(ValueError, 'ルビ'):self.make()
+        row['ruby']=[annotation]
+        archive,manifest=self.make()
+        with zipfile.ZipFile(archive) as z:
+            page=source_json(z.read(manifest['segments'][0]['part']).decode(),'bookdata')['pages'][0]
+            changed_image = manifest['originalScans']['1']['path']
+            with self.assertRaisesRegex(ValueError, 'ルビ'):
+                structured_sources(manifest, lambda path: b'different scan' if path == changed_image else z.read(path))
+        self.assertEqual(page['blocks'][0]['ruby'],[annotation])
+        self.assertEqual(page['blocks'][0]['text'],'記録1')
+
+    def test_standalone_bookdata_checks_ruby_even_without_any_seam(self):
+        source=self.parts[0]['pages'][0]
+        source['dataUrl']=source.pop('original')
+        block=source['blocks'][0]
+        ruby={'start':0,'end':2,'base':'記録','reading':'きろく','sourceScan':1,'sourceBox':[1,1,3,5],
+              'sourceImageSha256':hashlib.sha256(b'b').hexdigest(),'reviewStatus':'verified'}
+        self.manifest.update(entry='reader.html',range=[1,1]);del self.manifest['segments']
+        manifest_path=self.root/'manifest.json';manifest_path.write_text(json.dumps(self.manifest))
+        def write_reader():
+            html='<html><script type="application/json" id="bookdata">'+json.dumps({'pages':[source]})+'</script></html>'
+            (self.root/'reader.html').write_text(html)
+            return html.encode()
+        block['ruby']=[dict(ruby,start=1)];write_reader()
+        with self.assertRaisesRegex(ValueError,'ルビ'):pack(manifest_path,self.root/'reject.zip')
+        block['ruby']=[ruby];original=write_reader()
+        dest=self.root/'good.zip';pack(manifest_path,dest)
+        with zipfile.ZipFile(dest) as z:self.assertEqual(z.read('reader.html'),original)
+
     def test_new_structured_id_retains_originals_and_verified_edges(self):
         self.parts[0]['continuations']=[self.edge]
         dest,manifest=self.make()
@@ -54,6 +89,29 @@ class Pack(unittest.TestCase):
             self.assertEqual(z.read('originals/021.png'),b'b')
             self.assertEqual(z.read('1.html'),(self.root/'1.html').read_bytes())
         self.assertEqual(register.registration_flow(dest,manifest,self.ref,False)['edges'],[self.edge])
+
+    def test_repack_compiled_template_resolves_embedded_original_by_index(self):
+        from reader_shelf_template import template_html
+        first = {'start':1,'end':1,'part':'first.json'}
+        self.manifest.update(range=[1,1], segments=[first])
+        source = {'id':'sample-new','kind':'text','blocks':[{
+            'scan':1, 'text':'記録', 'ruby':[{'start':0,'end':2,'base':'記録','reading':'きろく','sourceScan':1,
+            'sourceBox':[1,1,3,5],'sourceImageSha256':hashlib.sha256(b'b').hexdigest(),'reviewStatus':'verified'}]}],
+            'originals':[{'scan':1,'src':'data:image/png;base64,Yg=='}]}
+        compiled = template_html(self.manifest, lambda _: json.dumps(source).encode())
+        standalone = dict(self.manifest, entry='reader.html')
+        del standalone['segments']
+        manifest = self.root/'manifest.json'
+        manifest.write_text(json.dumps(standalone))
+        reader = self.root/'reader.html'
+        reader.write_bytes(compiled.replace(b'Yg==', b'YQ=='))
+        with self.assertRaisesRegex(ValueError, 'ルビ'):
+            pack(manifest, self.root/'reject.zip')
+        reader.write_bytes(compiled)
+        archive = self.root/'checked.zip'
+        pack(manifest, archive)
+        with zipfile.ZipFile(archive) as z:
+            self.assertEqual(z.read('reader.html'), compiled)
 
     def test_premerged_review_still_binds_the_real_html(self):
         self.manifest.pop('segments')

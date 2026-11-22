@@ -20,7 +20,7 @@ const sourceKind=b=>b.type==='heading'?'heading':
  (b.type==='note'||b.type==='footnote'||b.type==='caption')?'note':'body';
 let blocks=(Array.isArray(book.blocks)?book.blocks:[]).filter(b=>b&&typeof b.text==='string'&&b.text.length)
  .map((b,i)=>({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
-   text:b.text,scan:Number(b.scan)||1,units:split(b.text),
+   text:b.text,scan:Number(b.scan)||1,units:split(b.text),ruby:sourceRubyFor(b,0,b.text.length,Number(b.scan)||1),
    sourceBlock:i,sourceJoined:b.joinPrevious===true,continuesHeading:b.continuesHeading===true}));
 let figures=(Array.isArray(book.figures)?book.figures:[]).map((f,i)=>({
  id:String(f.id||'figure-'+(i+1)),title:String(f.title||'図版 '+(i+1)),
@@ -40,7 +40,7 @@ if(mode==='mixed'){
     const scan=Number(b.scan||entry.scan);
     if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
     blocks.push({type:b.type==='heading'?'heading':'body',semanticType:sourceKind(b),
-      text:b.text,scan,units:split(b.text),sourceBlock:blocks.length,
+      text:b.text,scan,units:split(b.text),ruby:sourceRubyFor(b,0,b.text.length,scan),sourceBlock:blocks.length,
       sourceJoined:b.joinPrevious===true,continuesHeading:b.continuesHeading===true});
     flow.push({kind:'text',block:blocks.length-1});
    }
@@ -64,6 +64,12 @@ if(mode==='mixed'){
 }else figures.forEach((_,i)=>flow.push({kind:'image',figure:i}));
 const main=$('reader-main'),sheet=$('sheet'),measureSheet=$('measure-sheet');
 const textFlow=$('text-flow'),measureText=$('measure-text'),caption=$('figure-caption'),measureCaption=$('measure-caption');
+// Reserve the outer half-column for the first printed reading, including the
+// off-screen measurement copy. Its ink may occupy this internal padding.
+const hasPrintedRuby=blocks.some(block=>block.ruby?.length);
+if(hasPrintedRuby){
+ for(const surface of [textFlow,measureText])surface.style.paddingRight='0.55em';
+}
 const host=window.__readerHost||null,embedded=window.parent!==window;
 let hostScale=1,hostKnown=!embedded,hostSeq=-1;
 let font=20,pages=[],index=0,activeFigure=-1,activeSrc=null,sourceURL=null,rebuildFrame=0,touch=null,warning='';
@@ -109,7 +115,7 @@ function fitsInk(el){
  const bottom=bound.bottom-(parseFloat(cs.paddingBottom)||0);
  const top=bound.top+(parseFloat(cs.paddingTop)||0);
  const left=bound.left+(parseFloat(cs.paddingLeft)||0);
- const right=bound.right-(parseFloat(cs.paddingRight)||0);
+ const right=bound.right-(hasPrintedRuby&&el===measureText?0:parseFloat(cs.paddingRight)||0);
  const range=document.createRange(),walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
  let node;
  while((node=walker.nextNode())){
@@ -225,7 +231,9 @@ const verticalReaderSymbols=(()=>{
   const result={upright:0,native:0,uprightDigits:0,halfwidthQuestions:0,fullwidthQuestions:0,mismatches:0,examples:[]};
   let node;
   while((node=walker.nextNode())){
-   const parent=node.parentElement, style=view.getComputedStyle(parent);
+   const parent=node.parentElement;
+   if(parent.closest('rt,rp'))continue;
+   const style=view.getComputedStyle(parent);
    const combined=style.textCombineUpright==='all'||style.webkitTextCombine==='horizontal';
    if(!isSymbol.test(node.data)||(combined&&!/[0-9]/.test(node.data)))continue;
    if(style.writingMode==='horizontal-tb'&&parent.closest('[data-horizontal],.figure-caption,rt'))continue;
@@ -261,10 +269,74 @@ const verticalReaderSymbols=(()=>{
  }
  return {japanesePunctuation,displayText,standaloneDigitAt,uprightRanges,count,inspect};
 })();
+// Registered readings use code-point offsets within one original block. Convert once
+// to the same grapheme coordinates as pagination. Dialogue slices use UTF-16 offsets.
+function sourceRubyFor(block,startUTF16=0,endUTF16=block.text.length,scan=block.scan){
+ const entries=block.ruby;
+ if(entries===undefined||Array.isArray(entries)&&!entries.length)return;
+ if(!Array.isArray(entries))throw Error('原本ルビは配列で指定してください');
+ const units=split(block.text),points=Array.from(block.text);
+ const byPoint=new Map([[0,0]]),byUtf16=new Map([[0,0]]);
+ let cp=0,utf=0;
+ units.forEach((u,i)=>{
+  cp+=Array.from(u).length;utf+=u.length;
+  byPoint.set(cp,i+1);byUtf16.set(utf,i+1);
+ });
+ const startUnit=byUtf16.get(startUTF16),endUnit=byUtf16.get(endUTF16);
+ if(startUnit===undefined||endUnit===undefined)throw Error('本文の区切りが文字の途中です');
+ const spans=[];let last=0;
+ for(const g of entries){
+  if(!g||g.reviewStatus!=='verified'||g.sourceScan!==scan||
+     typeof g.sourceImageSha256!=='string'||!/^[a-f0-9]{64}$/.test(g.sourceImageSha256)||
+     !Array.isArray(g.sourceBox)||g.sourceBox.length!==4||
+     !g.sourceBox.every(n=>Number.isSafeInteger(n)&&n>=0)||
+     g.sourceBox[0]>=g.sourceBox[2]||g.sourceBox[1]>=g.sourceBox[3]||
+     !Number.isSafeInteger(g.start)||!Number.isSafeInteger(g.end)||g.start<last||
+     g.end<=g.start||!byPoint.has(g.start)||!byPoint.has(g.end)||
+     points.slice(g.start,g.end).join('')!==g.base||typeof g.reading!=='string'||!g.reading.trim())
+   throw Error('原本ルビの位置・親文字・確認記録が不正です。原本 '+scan);
+  last=g.end;
+  const a=byPoint.get(g.start),z=byPoint.get(g.end);
+  if(z<=startUnit||a>=endUnit)continue;
+  if(a<startUnit||z>endUnit)throw Error('ルビの親文字が本文の区切りをまたいでいます。原本 '+scan);
+  spans.push({start:a-startUnit,end:z-startUnit,reading:g.reading});
+ }
+ return spans.length?spans:undefined;
+}
+function rubyInside(spans,point){
+ return spans?.find(s=>s.start<point&&point<s.end);
+}
+function rubyShift(spans,by){
+ return spans.map(s=>({...s,start:s.start+by,end:s.end+by}));
+}
+function rubySlice(spans,off,n){
+ return rubyShift(spans.filter(s=>s.start>=off&&s.end<=off+n),-off);
+}
 function setVerticalText(element,source,part={}){
  const before=part.before||'',after=part.after||'';
  verticalReaderEdges.set(element,{before,after});
  const text=part.displayText??verticalReaderSymbols.displayText(source);
+ if(part.ruby?.length){
+  const units=split(text),fragment=document.createDocumentFragment();
+  function run(start,end,annotation){
+   if(start===end)return;
+   const node=document.createElement(annotation?'ruby':'span');
+   setVerticalText(node,units.slice(start,end).join(''),{
+    displayText:units.slice(start,end).join(''),
+    before:(before+units.slice(0,start).join('')).slice(-3),
+    after:(units.slice(end).join('')+after).slice(0,3)
+   });
+   if(annotation){
+    node.style.rubyPosition='over';node.style.webkitRubyPosition='before';
+    const rt=document.createElement('rt');rt.textContent=annotation.reading;
+    rt.style.fontSize='0.5em';node.append(rt);
+   }
+   fragment.append(node);
+  }
+  let start=0;
+  for(const r of part.ruby){run(start,r.start);run(r.start,r.end,r);start=r.end;}
+  run(start,units.length);element.replaceChildren(fragment);return;
+ }
  let fragment=null,offset=0;
  for(const {start,end} of verticalReaderSymbols.uprightRanges(text,before,after)){
   if(!fragment)fragment=document.createDocumentFragment();
@@ -309,6 +381,7 @@ function joinLogicalContinuations(source){
    if(!prior||b.semanticType!=='body'||prior.semanticType!=='body')
     throw Error('G402_SOURCE_CONTINUATION_BARRIER scan='+b.scan);
    const start=prior.units.length;
+   if(b.ruby)prior.ruby=[...(prior.ruby||[]),...rubyShift(b.ruby,start)];
    prior.text+=b.text;
    prior.units.push(...b.units);
    prior.sourceRanges.push({start,end:prior.units.length,scan:b.scan,sourceBlock:b.sourceBlock});
@@ -328,8 +401,9 @@ function joinLogicalContinuations(source){
  return logical;
 }
 function textPart(b,off,n){
+ const ruby=b.ruby?rubySlice(b.ruby,off,n):undefined;
  const first=b.sourceRanges?.find(r=>r.end>off);
- return {type:b.type,scan:first?.scan||b.scan,text:(b.sourceUnits||b.units).slice(off,off+n).join(''),displayText:b.units.slice(off,off+n).join(''),
+ return {ruby,type:b.type,scan:first?.scan||b.scan,text:(b.sourceUnits||b.units).slice(off,off+n).join(''),displayText:b.units.slice(off,off+n).join(''),
   before:b.units.slice(Math.max(0,off-3),off).join('').slice(-3),after:b.units.slice(off+n,off+n+3).join('').slice(0,3),
   continued:off>0,
   // Offsets are grapheme indices within the ORIGINAL registered source block.
@@ -338,7 +412,8 @@ function textPart(b,off,n){
    sourceStart:Math.max(0,off-r.start),sourceEnd:Math.min(r.end,off+n)-r.start
   }))};
 }
-function protectedPageBoundary(units,point,checkWord=true){
+function protectedPageBoundary(units,point,checkWord=true,ruby){
+ if(ruby&&rubyInside(ruby,point))return true;
  if(point<=0||point>=units.length)return false;
  const left=units.slice(Math.max(0,point-14),point).join('');
  const right=units.slice(point,Math.min(units.length,point+14)).join('');
@@ -385,6 +460,7 @@ function paginateBlocks(group,start){
    while(lo<hi){const mid=Math.ceil((lo+hi)/2);
     if(fitsParts(current,textPart(b,off,mid)))lo=mid;else hi=mid-1;
    }
+   if(b.ruby){const crossing=rubyInside(b.ruby,off+lo);if(crossing)lo=crossing.start-off;}
    if(lo===0){if(current.length){flush();continue}
     throw Error('文字サイズに対して本文領域が不足しています');
    }
@@ -394,18 +470,18 @@ function paginateBlocks(group,start){
     const maximum=lo,min=Math.max(1,lo-8);
     for(let n=lo;n>=min;n--){
      if(/[。！？!?、」』）)]/.test(b.units[off+n-1]||'')&&
-        !protectedPageBoundary(b.units,off+n)&&
+        !protectedPageBoundary(b.units,off+n,true,b.ruby)&&
         fitsParts(current,textPart(b,off,n))){lo=n;break}
     }
     // Preserve known source-side Japanese compounds and number+unit pairs
     // by carrying the entire unit to the next page whenever it still fits.
-    while(lo>0&&protectedPageBoundary(b.units,off+lo))lo--;
+    while(lo>0&&protectedPageBoundary(b.units,off+lo,true,b.ruby))lo--;
     if(lo===0&&current.length){flush();continue;}
     // An exceptionally long token may itself exceed an empty screen.
     if(lo===0&&!current.length){
-     lo=maximum;while(lo>0&&protectedPageBoundary(b.units,off+lo,false))lo--;
+     lo=maximum;while(lo>0&&protectedPageBoundary(b.units,off+lo,false,b.ruby))lo--;
     }
-    if(lo===0||protectedPageBoundary(b.units,off+lo,false))
+    if(lo===0||protectedPageBoundary(b.units,off+lo,false,b.ruby))
      throw Error('句読点・単位を安全に組版できません。原本と画面寸法を確認してください');
    }
    current.push(textPart(b,off,lo));off+=lo;at+=lo;flush();

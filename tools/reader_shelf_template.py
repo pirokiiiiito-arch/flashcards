@@ -11,17 +11,22 @@ from pathlib import Path, PurePosixPath
 import re
 
 TEMPLATE = Path(__file__).resolve().parents[1] / 'templates/reader/v2'
+ASSET_TABLE = ';\n(()=>{const assets='
+ASSET_BINDINGS = (';for(const row of [...READER_BOOK.originals,...(READER_BOOK.entries||READER_BOOK.figures||[])])'
+                  'if(row.assetIndex!==undefined)row.src=assets[row.assetIndex];})();')
 
-# Source volumes from the preceding v2 release can be assembled with the same
-# layout and the current page-turn renderer. Custom engines keep their own entry.
+# Accept prior canonical assets when repacking an old source volume. Do not
+# replace custom presentation code just because a newer reader is available.
 PREVIOUS_ENGINE_SHA = {
-    'standard.js': 'aa50214094838cff85f5ace542e03d55d7703886d42557e44e4308d83a39f31c',
-    'novel.js': 'bb3e9d9674e9edc6fa440528ccfcc4b746a371c572fa55004c3dce0e49cac250',
+    'standard.js': {'aa50214094838cff85f5ace542e03d55d7703886d42557e44e4308d83a39f31c',
+                    'b1e1fa8389b602934131725b9e6cfab85687ef24fd24977e4e262a4bc3960769'},
+    'novel.js': {'bb3e9d9674e9edc6fa440528ccfcc4b746a371c572fa55004c3dce0e49cac250',
+                 'dc7ffb8fc36d4b6d87e7c15bb65d34f34b47d57d22501d74d354a0022b649abc'},
 }
 
 
 def known_previous_engine(file, source):
-    return file in PREVIOUS_ENGINE_SHA and sha256(source.strip()).hexdigest() == PREVIOUS_ENGINE_SHA[file]
+    return file in PREVIOUS_ENGINE_SHA and sha256(source.strip()).hexdigest() in PREVIOUS_ENGINE_SHA[file]
 
 
 
@@ -46,9 +51,29 @@ class TemplateSource(HTMLParser):
         if self.script == 'json':
             self.data = json.loads(data)
         elif self.script == 'js' and self.data is None:
-            match = re.fullmatch(r'\s*window\.READER_BOOK\s*=\s*(\{.*\})\s*;?\s*', data, re.S)
+            match = re.match(r'\s*window\.READER_BOOK\s*=\s*(?=\{)', data)
             if match:
-                self.data = json.loads(match[1])
+                decoder = json.JSONDecoder()
+                try:
+                    book, end = decoder.raw_decode(data, match.end())
+                except json.JSONDecodeError:
+                    return
+                tail = data[end:].strip()
+                if tail in ('', ';'):
+                    self.data = book
+                elif tail.startswith(ASSET_TABLE):
+                    assets, end = decoder.raw_decode(tail, len(ASSET_TABLE))
+                    if tail[end:] != ASSET_BINDINGS:
+                        return
+                    if not isinstance(assets, list):
+                        raise ValueError('統合読書HTMLの画像一覧が不正です')
+                    for row in book.get('originals', []) + (book.get('entries') or book.get('figures') or []):
+                        if 'assetIndex' in row:
+                            index = row['assetIndex']
+                            if type(index) is not int or not 0 <= index < len(assets) or not isinstance(assets[index], str):
+                                raise ValueError('統合読書HTMLの画像番号が不正です')
+                            row['src'] = assets[index]
+                    self.data = book
 
 
 def verified_template(html, profile, part, read_bytes):
@@ -184,6 +209,34 @@ def arrange(entries, text, links):
     return result
 
 
+def validate_source_ruby(block, original_sha):
+    """Ruby uses code-point offsets local to one original block, also after a join."""
+    if 'ruby' not in block:
+        return
+    rubies = block['ruby']
+    if not isinstance(rubies, list) or rubies and block['type'] not in ('body', 'dialogue', 'heading'):
+        raise ValueError('ルビは本文・会話・見出しの注記配列で指定してください')
+    previous_end = 0
+    for ruby in rubies:
+        if not isinstance(ruby, dict):
+            raise ValueError('ルビに親文字・読み・原本位置が必要です')
+        start, end = ruby.get('start'), ruby.get('end')
+        if (type(start) is not int or type(end) is not int
+                or not previous_end <= start < end <= len(block['text'])
+                or ruby.get('base') != block['text'][start:end] or not ruby['base'].strip()):
+            raise ValueError('ルビの親文字・範囲・順序が本文と一致しません')
+        box = ruby.get('sourceBox')
+        if (ruby.get('reviewStatus') != 'verified' or type(ruby.get('sourceScan')) is not int
+                or ruby['sourceScan'] != block['scan'] or not isinstance(original_sha, str)
+                or not re.fullmatch('[0-9a-f]{64}', original_sha) or ruby.get('sourceImageSha256') != original_sha
+                or not isinstance(ruby.get('reading'), str) or not ruby['reading'].strip()
+                or any(ord(c) < 32 for c in ruby['reading'])
+                or not isinstance(box, list) or len(box) != 4 or not all(type(n) is int for n in box)
+                or not (0 <= box[0] < box[2] and 0 <= box[1] < box[3])):
+            raise ValueError('ルビの読み・原本番号・原本画像SHA・位置・確認状態を照合できません')
+        previous_end = end
+
+
 def template_html(manifest, read_bytes):
     """read_bytes resolves safe archive-root paths. Source block ordinals are local to a scan."""
     profile = manifest['template_profile']
@@ -219,10 +272,10 @@ def template_html(manifest, read_bytes):
         return n
 
     kinds = set()
-    def require_supported(row):
-        rich_fields = ('ruby','rubies','glosses','emphasis','captionGlosses','notes','footnotes',
+    def require_supported(row, *, text_block=False):
+        rich_fields = ('rubies','glosses','emphasis','captionGlosses','notes','footnotes',
                        'toc','toc_entries','html','css','style','bbox')
-        if any(row.get(k) for k in rich_fields):
+        if any(row.get(k) for k in rich_fields) or (not text_block and row.get('ruby')):
             raise ValueError('ルビ・注記・図版切り抜き等を含む書式は、対応する構造付き原本または全巻HTMLを指定してください')
     for part in manifest['segments']:
         src = read_part(part, read_bytes, profile)
@@ -244,11 +297,12 @@ def template_html(manifest, read_bytes):
             if item.get('src'):
                 register_original(n, part_image(item['src'], part, read_bytes))
         for item in template_entries(src):
-            require_supported(item)
             kind = item['kind']
+            if kind != 'text' or 'blocks' in item:
+                require_supported(item)
             if kind == 'text':
                 for block in item.get('blocks', [item]):
-                    require_supported(block)
+                    require_supported(block, text_block=True)
                     n = valid_scan(block.get('scan',item.get('scan')), part)
                     key = n, ordinal[n]
                     ordinal[n] += 1
@@ -273,6 +327,9 @@ def template_html(manifest, read_bytes):
         register_original(int(n), data_url(ref['path'], read_bytes, ref.get('sha256')))
     if set(originals) != set(range(manifest['range'][0], manifest['range'][1] + 1)):
         raise ValueError('原本範囲に対応する原本画像が不足または重複しています')
+    original_hashes = {idx: digest.hex() for digest, idx in image_indexes.items()}
+    for (scan, _), block in text.items():
+        validate_source_ruby(block, original_hashes[originals[scan]])
     from reader_shelf_pack import review_seams
     bodies, ids, edges = {}, {}, set()
     for link in links:
@@ -315,9 +372,7 @@ def template_html(manifest, read_bytes):
     # Store each private image only once even when it serves as both a plate and an original.
     def js(obj):
         return json.dumps(obj,ensure_ascii=False,separators=(',',':')).replace('<',r'\u003c')
-    source = ('window.READER_BOOK='+js(book)+';\n(()=>{const assets='+js(images)+';'
-              'for(const row of [...READER_BOOK.originals,...(READER_BOOK.entries||READER_BOOK.figures||[])])'
-              'if(row.assetIndex!==undefined)row.src=assets[row.assetIndex];})();')
+    source = 'window.READER_BOOK='+js(book)+ASSET_TABLE+js(images)+ASSET_BINDINGS
     shell = (TEMPLATE/('novel.html' if novel else 'mixed.html')).read_text()
     shell, count = re.subn(r'<script>window\.READER_BOOK=.*?</script>',
                            lambda _:'<script>'+source+'</script>', shell, flags=re.S)

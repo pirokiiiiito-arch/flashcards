@@ -46,6 +46,32 @@ class CanonicalBookshelfTests(unittest.TestCase):
               template_profile=self.manifest['template_profile'], stages=[{'number':n,'status':'passed'} for n in range(1,5)],
               merged_bookdata_sha256=b,logical_stream_sha256=s,body_sha256=self.stream['body_text_sha256']))
 
+    def add_ruby(self):
+        source_hash = hashlib.sha256(b'original scan').hexdigest()
+        self.book['scans'][0]['image_sha256'] = source_hash
+        for target, logical, base, reading in [
+                (self.blocks[0], self.stream['segments'][0], '最初', 'さいしょ'),
+                (self.blocks[-1], self.stream['layout_events'][0], '入口', 'いりぐち')]:
+            target['ruby'] = [dict(start=0, end=2, base=base, reading=reading, sourceScan=1,
+                                   sourceImageSha256=source_hash, sourceBox=[1, 2, 5, 9], reviewStatus='verified')]
+            logical['ruby'] = list(target['ruby'])
+
+    def test_ruby_from_verified_body_and_heading_survives_merge(self):
+        self.add_ruby()
+        self.save()
+        loader = apply_merge(self.manifest, self.read)
+        raw = source_json(loader(self.manifest['segments'][0]['part']).decode(), 'bookdata')
+        blocks = raw['pages'][0]['blocks']
+        self.assertEqual([b['ruby'][0]['reading'] for b in blocks], ['いりぐち', 'さいしょ'])
+        self.assertEqual([b['text'] for b in blocks], ['入口', '最初のページ。'])
+
+    def test_logical_stream_must_retain_the_declared_ruby(self):
+        self.add_ruby()
+        del self.stream['segments'][0]['ruby']
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'ルビ'):
+            apply_merge(self.manifest, self.read)
+
     def test_report_drives_twenty_scan_pack_with_actual_layout_events_and_body_ids(self):
         self.save()
         loader = apply_merge(self.manifest,self.read)

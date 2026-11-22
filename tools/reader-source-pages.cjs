@@ -24,6 +24,7 @@ function correctionField(event){
  if(p==='reading_text')return 'body';
  if(p==='title')return 'title';
  if(/^ruby\/\d+\/(base|reading|rt)$/.test(p))return p.replace(/\/rt$/,'/reading');
+ if(/^blocks\/\d+\/ruby\/\d+\/reading$/.test(p))return p;
  if(/^notes\/\d+\/text$/.test(p))return p;
  if(/^blocks\/\d+\/text$/.test(p))return p.slice(0,-5);
  if(/^figures\/\d+\/(caption|display_title)$/.test(p))return p.replace(/display_title$/,'title');
