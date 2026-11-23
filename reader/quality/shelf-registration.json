@@ -3816,5 +3816,934 @@
       "signature": "ujkmGQ9HpFDqlhpII+1kkisQu9XmNw4vx6lPwbwIyX41nIs5jFbGI5PQeXYOdnd0OMEifbhLFNi/d3DV4Rqfog=="
     }
   ],
-  "pending": []
+  "pending": [
+    {
+      "key": "17df2c090b3329d7e585443217d80b00bfe95b2baa674fc14454fa5327105474",
+      "entry": "072d57955bcb5df0932a27ccb474de0f2413cf5acb37b4c38ebac2bffcffd584",
+      "bytes": 292065673,
+      "sha256": "27e53974722fdbeb2db7110b22984b71fcd8f50b643fa80117b5e31f228d4ac0",
+      "chunkRoot": "c0e15d0db1cc7d95cf4afabe64a2bea8d6d69ad06b9101449aac66086b049038",
+      "channel": "preview",
+      "evidence": {
+        "version": 1,
+        "archive": "27e53974722fdbeb2db7110b22984b71fcd8f50b643fa80117b5e31f228d4ac0",
+        "source": "83313ee5fba89720c155ccaaeb31c73e39fafb0e4c2488b767fe57b4f43d178d",
+        "host": "2261621710b7a57769281bea7bd9eede8ccf50d41b2dca3162ad8bb243aa3f4c",
+        "report": "92afa96edd12234473d0abd965209f763a7eafd2e9b47c246253bd51a03d106b",
+        "first": 1,
+        "last": 264,
+        "modes": [
+          "contents",
+          "figure",
+          "original",
+          "text"
+        ],
+        "singleScreen": false,
+        "batches": [
+          [
+            1,
+            20,
+            [
+              [
+                "text",
+                10,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "figure",
+                1,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "contents",
+                4,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "original",
+                8,
+                1,
+                5,
+                -45,
+                -56,
+                1,
+                0,
+                0,
+                0
+              ]
+            ]
+          ],
+          [
+            21,
+            40,
+            [
+              [
+                "text",
+                30,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            41,
+            60,
+            [
+              [
+                "text",
+                50,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            61,
+            80,
+            [
+              [
+                "text",
+                70,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            81,
+            100,
+            [
+              [
+                "text",
+                90,
+                1,
+                5,
+                -45,
+                -56,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            101,
+            120,
+            [
+              [
+                "text",
+                110,
+                1,
+                5,
+                -44,
+                -55,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            121,
+            140,
+            [
+              [
+                "text",
+                130,
+                1,
+                5,
+                -47,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            141,
+            160,
+            [
+              [
+                "text",
+                150,
+                1,
+                5,
+                -47,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            161,
+            180,
+            [
+              [
+                "text",
+                170,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            181,
+            200,
+            [
+              [
+                "text",
+                190,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            201,
+            220,
+            [
+              [
+                "text",
+                210,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            221,
+            240,
+            [
+              [
+                "text",
+                221,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            241,
+            260,
+            [
+              [
+                "text",
+                241,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            261,
+            264,
+            [
+              [
+                "figure",
+                262,
+                1,
+                5,
+                -47,
+                -59,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ]
+        ],
+        "toc": {
+          "kind": "source",
+          "rows": 39,
+          "landed": 39,
+          "reference": "a52fbd0ba7f591db001e547b33cac555eeaf7704d2c4d665a4633b5c4d75bcee",
+          "results": "c2c9b1571980066ca63bd81e6e13557c493c02e4a08d1f99f6762cfa3ec0132f"
+        },
+        "pageTurns": {
+          "version": 1,
+          "report": "a5a103cd3690b9c9828edcf986fa6b88decb54d984184dc740718ac45263c902",
+          "boundaries": [
+            [
+              20,
+              21,
+              "shared-page"
+            ],
+            [
+              40,
+              41,
+              "shared-page"
+            ],
+            [
+              60,
+              61,
+              "shared-page"
+            ],
+            [
+              80,
+              81,
+              "segment"
+            ],
+            [
+              100,
+              101,
+              "shared-page"
+            ],
+            [
+              120,
+              121,
+              "segment"
+            ],
+            [
+              140,
+              141,
+              "shared-page"
+            ],
+            [
+              160,
+              161,
+              "shared-page"
+            ],
+            [
+              180,
+              181,
+              "shared-page"
+            ],
+            [
+              200,
+              201,
+              "shared-page"
+            ],
+            [
+              220,
+              221,
+              "segment"
+            ],
+            [
+              240,
+              241,
+              "segment"
+            ],
+            [
+              260,
+              261,
+              "segment"
+            ]
+          ],
+          "sectionCount": 14,
+          "sections": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              5,
+              6
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              7,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              10
+            ],
+            [
+              10,
+              11
+            ],
+            [
+              11,
+              12
+            ],
+            [
+              12,
+              13
+            ]
+          ]
+        },
+        "sourceProof": {
+          "version": 1,
+          "status": "partial",
+          "pendingScans": 264,
+          "batches": [
+            [
+              1,
+              20,
+              20
+            ],
+            [
+              21,
+              40,
+              20
+            ],
+            [
+              41,
+              60,
+              20
+            ],
+            [
+              61,
+              80,
+              20
+            ],
+            [
+              81,
+              100,
+              20
+            ],
+            [
+              101,
+              120,
+              20
+            ],
+            [
+              121,
+              140,
+              20
+            ],
+            [
+              141,
+              160,
+              20
+            ],
+            [
+              161,
+              180,
+              20
+            ],
+            [
+              181,
+              200,
+              20
+            ],
+            [
+              201,
+              220,
+              20
+            ],
+            [
+              221,
+              240,
+              20
+            ],
+            [
+              241,
+              260,
+              20
+            ],
+            [
+              261,
+              264,
+              4
+            ]
+          ],
+          "scopeBatches": [
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 4,
+                "heading": 4,
+                "caption": 4,
+                "note": 4,
+                "ruby": 4,
+                "figure": 4,
+                "toc": 4,
+                "other": 4
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            }
+          ],
+          "captionCensus": {
+            "version": 1,
+            "status": "partial",
+            "pendingScans": 264,
+            "batches": [
+              [
+                1,
+                20,
+                20
+              ],
+              [
+                21,
+                40,
+                20
+              ],
+              [
+                41,
+                60,
+                20
+              ],
+              [
+                61,
+                80,
+                20
+              ],
+              [
+                81,
+                100,
+                20
+              ],
+              [
+                101,
+                120,
+                20
+              ],
+              [
+                121,
+                140,
+                20
+              ],
+              [
+                141,
+                160,
+                20
+              ],
+              [
+                161,
+                180,
+                20
+              ],
+              [
+                181,
+                200,
+                20
+              ],
+              [
+                201,
+                220,
+                20
+              ],
+              [
+                221,
+                240,
+                20
+              ],
+              [
+                241,
+                260,
+                20
+              ],
+              [
+                261,
+                264,
+                4
+              ]
+            ],
+            "report": "2fcc1512a092b26fa80d63b10f7d55a90e4ff0a452238805db7a4f1c39614f7e"
+          },
+          "report": "7110d70a8de0ae62d047d832be5f805f4227c1c6031b7c06117254ec632c54e9"
+        }
+      },
+      "signature": "qCeLl+54Nqp7uaX++wR63v0YMmMByO4Z+LmuHnj1rw7TSP0se6HvPEhRCU1fjYQl1HMnrSs9IcXu8EMSKDK6NQ=="
+    }
+  ]
 }
