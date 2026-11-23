@@ -67,6 +67,14 @@ const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
  'reader/library/index.html':'5278def2a0ef742bfc416e6461fef5476ee4754c',
  'reader/library/sw.js':'379bf9063a8502d988a44cbdfcb8bb1832ab1a8b'
 });
+// Reviewed, exact text-only bookshelf presentation. The four public UI assets
+// form one atomic revision; no OCR, private scans, or reader pages are admitted.
+const BOOKSHELF_TEXT_COVER_UI_GIT_BLOBS=Object.freeze({
+ 'reader/library/app.js':'5b2dc26c0fdeaa1cccb52881de4b92b217e1c79b',
+ 'reader/library/app.css':'6faf0761691a047d1f1d55769c4fd638847eac6a',
+ 'reader/library/index.html':'ac34360b49cad7f1f4c2f10af57d848ba926a790',
+ 'reader/library/sw.js':'7268ad5322689acb79cdcd6762e572978c1fe135'
+});
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
 const REQUIRED=new Set(['G1-01','G1-02','G1-04','G2-04','G2-05','G3-01','G3-03','G3-05','G3-06','G3-07','G4-01','G4-03','G6-02','G6-05','G6-12','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08','G8-11']);
@@ -356,7 +364,9 @@ function admittedBookshelfNavUI(root,policy){
  }
  // Each shell revision admits one exact combination of reader, cache and
  // caption runtime. An older review may still verify its own original host.
- const captionFit=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8').includes("const CACHE='private-bookshelf-shell-v31-registration-20261122';");
+ const shelfWorker=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8');
+ const textCoversFit=shelfWorker.includes("const CACHE='private-bookshelf-shell-v32-textcovers-20261123';");
+ const captionFit=textCoversFit||shelfWorker.includes("const CACHE='private-bookshelf-shell-v31-registration-20261122';");
  const sharedPins=captionFit?{...SHARED_SHELF_UI_GIT_BLOBS,
   'reader/library/read.html':'eab3edc8d7eaf6cbf2d4ebd73bed805aaa903236'}:SHARED_SHELF_UI_GIT_BLOBS;
  let sharedChanged=0;
@@ -440,7 +450,7 @@ function admittedBookshelfNavUI(root,policy){
  }
  // The sort revision changes only the publicly served bookshelf UI and cache.
  // Require all three exact files together; never waive frozen book readers.
- const sortPins=captionFit?{...BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS,
+ const sortPins=textCoversFit?BOOKSHELF_TEXT_COVER_UI_GIT_BLOBS:captionFit?{...BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS,
   'reader/library/sw.js':'51eb5303c9949fa89baaa1eb27ce0207a18207cb'}:BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS;
  let sortChanged=0;
  for(const [f,pin] of Object.entries(sortPins)){
@@ -451,7 +461,7 @@ function admittedBookshelfNavUI(root,policy){
   demand(gitBlob===pin,'BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED '+f);
   approved[f]=sha;sortChanged++;
  }
- demand(sortChanged===0||sortChanged===Object.keys(BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS).length,
+ demand(sortChanged===0||sortChanged===Object.keys(sortPins).length,
    'BOOKSHELF_SORT_UI_PARTIAL_RELEASE');
  if(sortChanged){
   const app=fs.readFileSync(safe(root,'reader/library/app.js'),'utf8');
@@ -485,7 +495,17 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('private-bookshelf-shell-v22-reader-input-20261121')&&sw.includes('app.js?v=bookshelf-reader-input-20261121');
   const deviceSave=index.includes('app.js?v=bookshelf-device-save-20261121')&&
     sw.includes('private-bookshelf-shell-v23-device-save-20261121')&&sw.includes('app.js?v=bookshelf-device-save-20261121');
-  const registration=index.includes('app.js?v=bookshelf-registration-20261122')&&(captionFit||sw.includes("const CACHE='private-bookshelf-shell-v30-registration-20261122';"))&&sw.includes('shelf-registration.mjs');
+  const textCoversEntry=textCoversFit&&
+    index.includes('app.js?v=bookshelf-textcovers-20261123')&&
+    index.includes('app.css?v=bookshelf-textcovers-20261123')&&
+    sw.includes('app.js?v=bookshelf-textcovers-20261123')&&
+    sw.includes('app.css?v=bookshelf-textcovers-20261123')&&
+    !index.includes('<script src="./book-covers.js"></script>')&&
+    !sw.includes("'./book-covers.js'")&&
+    !app.includes('BookCovers')&&!app.includes('fetchPrivateCover')&&
+    app.includes("txt.className='cover-title';txt.textContent=book.title;");
+  const registration=(index.includes('app.js?v=bookshelf-registration-20261122')||textCoversEntry)&&
+    (captionFit||sw.includes("const CACHE='private-bookshelf-shell-v30-registration-20261122';"))&&sw.includes('shelf-registration.mjs');
   if(registration){
     const files={
       "reader/library/storage.js": "af781a3639386a04402ad2c07a7dee579bc94cd218307ef5ab5f7fb42196f961",
@@ -511,7 +531,7 @@ function admittedBookshelfNavUI(root,policy){
   }
   demand(app.includes('function compareBookTitles(a, b)')&&
     app.includes('const matching=books.filter(b=>b.title.toLowerCase().includes(q)).sort(compareBookTitles)')&&
-    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry||nineStoriesEntry||inputUpdate||deviceSave||registration),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
+    (oldSortEntry||row22Entry||safeBottomEntry||columnFit24Entry||wh1GeometryEntry||nineStoriesEntry||inputUpdate||deviceSave||registration||textCoversEntry),'BOOKSHELF_SORT_UI_CONTROL_MISSING');
  }
  return approved;
 }
