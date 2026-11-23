@@ -142,6 +142,19 @@ class FigureTextTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '部分校正'):
             self.make_regional()
 
+    def test_standalone_printed_note_targets_its_own_prose_field(self):
+        def as_prose(review):
+            review['regions'] = [{'box':[5,50,15,70], 'text':'第一',
+                                  'role':'body','proseSha256':digest('第一段。')}]
+        archive,manifest,ref = self.make_regional(as_prose)
+        self.assertEqual(bound.FORMAT, register.registration_flow(archive,manifest,ref,False)['route'])
+        archive.unlink()
+        def wrong_role(review):
+            as_prose(review)
+            review['regions'][0]['role'] = 'note'
+        with self.assertRaisesRegex(ValueError, '部分校正'):
+            self.make_regional(wrong_role)
+
     def test_region_review_requires_real_rect_printed_text_and_associated_figure(self):
         for override in ({'box':[4,4,90,9]},{'text':'別画像'},{'imageSha256':digest('unrelated image')}):
             with self.subTest(override=override), self.assertRaisesRegex(ValueError, '部分校正'):
