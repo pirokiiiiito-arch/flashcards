@@ -1,0 +1,310 @@
+{
+  "schema": "reader-proof-inventory-v1",
+  "bookId": "example-book",
+  "range": [
+    1,
+    20
+  ],
+  "pages": [
+    {
+      "scan": 1,
+      "image": {
+        "path": "originals/0001.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/001-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/001-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 2,
+      "image": {
+        "path": "originals/0002.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/002-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/002-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 3,
+      "image": {
+        "path": "originals/0003.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/003-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/003-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 4,
+      "image": {
+        "path": "originals/0004.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/004-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/004-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 5,
+      "image": {
+        "path": "originals/0005.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/005-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/005-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 6,
+      "image": {
+        "path": "originals/0006.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/006-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/006-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 7,
+      "image": {
+        "path": "originals/0007.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/007-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/007-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 8,
+      "image": {
+        "path": "originals/0008.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/008-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/008-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 9,
+      "image": {
+        "path": "originals/0009.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/009-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/009-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 10,
+      "image": {
+        "path": "originals/0010.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/010-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/010-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 11,
+      "image": {
+        "path": "originals/0011.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/011-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/011-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 12,
+      "image": {
+        "path": "originals/0012.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/012-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/012-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 13,
+      "image": {
+        "path": "originals/0013.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/013-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/013-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 14,
+      "image": {
+        "path": "originals/0014.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/014-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/014-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 15,
+      "image": {
+        "path": "originals/0015.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/015-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/015-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 16,
+      "image": {
+        "path": "originals/0016.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/016-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/016-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 17,
+      "image": {
+        "path": "originals/0017.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/017-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/017-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 18,
+      "image": {
+        "path": "originals/0018.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/018-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/018-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 19,
+      "image": {
+        "path": "originals/0019.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/019-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/019-review.json",
+        "sha256": null
+      }
+    },
+    {
+      "scan": 20,
+      "image": {
+        "path": "originals/0020.jpg",
+        "sha256": null
+      },
+      "census": {
+        "path": "proof/020-census.json",
+        "sha256": null
+      },
+      "review": {
+        "path": "proof/020-review.json",
+        "sha256": null
+      }
+    }
+  ]
+}

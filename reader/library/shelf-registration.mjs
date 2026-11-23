@@ -35,6 +35,38 @@ const previousSignatures = new Set([
   '/BZQATy1RVm29fcrP4wgxgjNNm+k2qKoMLbjjt8H2mpB3AzucWhl1FX2lFc2ln5bSnNsDkNXHPIUocPIiMJQ5w==',
   'SmZuQROqur7JtfESZGVh8n1V6iyedI74wwf/+hIgdriPD3UL/zCUEKOz3NFHh/cxix5E73D3JeByBV22JBjjlQ=='
 ]);
+// Exact previously signed editions remain readable while newer preparations carry page-proof totals.
+const beforeSourceProof = new Set([...previousSignatures,
+  '7AvDqIF0xGFOFQPujUw+9cHmCVc4+LwOiNABmgsoRdksunPnLGy20B61JH3GUvXU7mj0Wm/pQtAmZN7FtBdYgA==',
+  '4S9IUoN7TnAawKU/hd6Uw7vpmFnlWrxuH0eYOr6wJ5XXwavxKjUZKlhg9frTPLe/YTDmPP1C88933gzl/5ezjw==',
+  'RGTY72jF3yCZHXD/ztrv4NzAGmGXTVmB2HULvMDHSMNF0Sd6mPHqHODxpoQ8e2IINfPvs7DtDqR3kzClbve3zQ==',
+  '6KBAJ8Wp4xOD2agN2fn79Ek+VAVqeo8MZ5zDAguRto7xpbGRUKAaWuVJxIMpEyg26+2dM7ibaKMwT9g6pkAAUQ==',
+  '4FiWU+qjfrdMZ0cxkIiZEYSiGSZsziXPuSG27J6CULIp2PUO2gkgINjWLeWF5bRzBEltpLLI1Wb/psXze68zbQ==',
+]);
+function validateSourceProof(record) {
+  const proof = record.evidence.sourceProof;
+  if (proof === undefined) return;
+  const {first, last} = record.evidence;
+  requireValue(proof?.version === 1 && hex.test(proof.report) && Array.isArray(proof.batches) &&
+    proof.batches.length === Math.ceil((last - first + 1) / 20), '原本20枚ごとの照合記録が必要です');
+  const scopes = ['body','heading','caption','note','ruby','figure','toc','other'];
+  requireValue(Array.isArray(proof.scopeBatches) && proof.scopeBatches.length === proof.batches.length,
+    '範囲ごとの項目別照合記録が必要です');
+  let pending = 0;
+  for (const [i, row] of proof.batches.entries()) {
+    const start = first + 20*i, end = Math.min(start + 19, last);
+    requireValue(Array.isArray(row) && row.length === 3 && row[0] === start && row[1] === end &&
+      Number.isInteger(row[2]) && row[2] >= 0 && row[2] <= end-start+1, '原本照合の範囲・未照合枚数が不正です');
+    const group=proof.scopeBatches[i], counts=group?.pending;
+    requireValue(counts && Object.keys(counts).length===scopes.length &&
+      scopes.every(s=>Number.isInteger(counts[s]) && counts[s]>=0 && counts[s]<=row[2]) &&
+      Number.isSafeInteger(group.matchedRegions) && group.matchedRegions>=0,
+      '原本照合の項目別枚数が不正です');
+    pending += row[2];
+  }
+  requireValue(proof.pendingScans === pending && proof.status === (pending ? 'partial' : 'complete') &&
+    (record.channel !== 'release' || !pending), '原本照合の内訳と本棚版の状態が異なります');
+}
 function validatePageTurns(record) {
   const {pageTurns: t, batches} = record.evidence;
   if (t === undefined && previousSignatures.has(record.signature)) return;
@@ -81,6 +113,7 @@ export function validateEvidence(r) {
   requireValue(t && Number.isInteger(t.rows) && t.rows>=0 && t.rows===t.landed && hex.test(t.reference) && hex.test(t.results) &&
     (t.rows ? t.kind==='source' && modes.has('contents') : t.kind==='source-absent' && !modes.has('contents')), '原本目次と実際の移動先の照合が必要です');
   validatePageTurns(r);
+  validateSourceProof(r);
   return r;
 }
 const publicSPKI = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIplDryA9HQEYXBj+RKvCmS9F7Plv8h/csCzjJ938ax3Z07ikPuA5+d80bYUAl2MUdh/zVVFRDsqfmVpz17K/YA==';
@@ -97,6 +130,7 @@ export function signingText(record) {
 }
 async function signed(record) {
   validateEvidence(record);
+  requireValue(record.evidence.sourceProof || beforeSourceProof.has(record.signature), '原本20枚ごとの照合記録がありません');
   requireValue(typeof record.signature==='string' && /^[A-Za-z0-9+/]{85}[AQgw]==$/.test(record.signature),'登録検査の署名がありません');
   publicKey ||= crypto.subtle.importKey('spki',unbase64(publicSPKI),{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
   requireValue(await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},await publicKey,unbase64(record.signature),utf8.encode(signingText(record))),'登録検査の署名を確認できません');

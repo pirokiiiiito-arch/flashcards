@@ -275,6 +275,9 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
    sourceReview=require('./reader-source-pages.cjs').fromManifest(manifest.file,requestedScope);
   }catch(error){
    sourceReview=require('./reader-source-pages.cjs').pendingRange(entry.bookId,entry.scanRange,error.message);
+   sourceReview.proofBatches=require('./reader-proof-batches.cjs').unavailable(
+    entry.bookId,entry.scanRange,artifact.sha256,'SOURCE_RECORDS_UNAVAILABLE');
+   sourceReview.readyForProofCompletion=false;
   }
   if(sourceReview.queue&&!queues.adoptionRequired&&repair.status!=='blocked'&&sourceReview.status!=='source_records_unavailable'){
    for(const row of sourceReview.queue){
@@ -286,6 +289,18 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
     if(queues.queues)queues.queues={...queues.queues,text:[...(queues.queues.text||[]),task]};
     if(!queues.nextAction)queues.nextAction=task;
    }
+  }
+  // Geometric OCR candidates and existing text work do not cover all eight source roles
+  // or final readback. Keep one distinct task for each scan awaiting that evidence.
+  if(sourceReview.proofBatches?.queue && !queues.adoptionRequired){
+   const tasks=sourceReview.proofBatches.queue.map(({scan,issues})=>({
+    id:'proof_original_and_display:'+scan,type:'proof_original_and_display',scan,issues,
+    reason:'原本の全領域と読書表示を照合し、未確認箇所を記録する',lane:'text',blockedBy:[],recorded:false
+   }));
+   queues.productionPending=[...queues.productionPending,...tasks];
+   queues.readyTasks=[...queues.readyTasks,...tasks];
+   if(queues.queues)queues.queues={...queues.queues,text:[...(queues.queues.text||[]),...tasks]};
+   if(!queues.nextAction&&tasks.length)queues.nextAction=tasks[0];
   }
   let verticalSymbols=null;
   const symbolChecker='integration/vertical-symbols/tools/reader-vertical-symbols.cjs';

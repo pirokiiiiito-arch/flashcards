@@ -103,7 +103,11 @@
     return !!meta && (meta.registrationRoot ? meta.registrationRoot!==book.registrationRoot : book.registrationChannel!=='existing'||meta.subtitle!==book.subtitle||meta.size!==book.totalBytes);
   }
   async function showBook(book){selected=book; $('detailTitle').textContent=book.title;
-    $('detailSub').textContent=[book.subtitle||'',book.totalBytes?nice(book.totalBytes):'',book.status||''].filter(Boolean).join(' ／ ');
+    const proof=book.sourceProof;
+    const total=proof?.batches.reduce((sum,[start,end])=>sum+end-start+1,0);
+    const regions=proof?.scopeBatches.reduce((sum,batch)=>sum+batch.matchedRegions,0);
+    const progress=proof ? `原本照合完了 ${total-proof.pendingScans}／${total}枚（${proof.batches.filter(row=>row[2]===0).length}／${proof.batches.length}分冊）${regions?'・照合済みの箇所 '+num.format(regions)+'件':''}` : '';
+    $('detailSub').textContent=[book.subtitle||'',book.totalBytes?nice(book.totalBytes):'',book.status||'',progress].filter(Boolean).join(' ／ ');
     const local=savedIds.has(book.id),signedIn=tokenValid();
     const unavailable=!local&&signedIn&&!book.parts.length;
     $('detailStatus').textContent=local?'この端末に保存されています。通信なしで開けます。':signedIn?'Google Driveから初回だけ書籍データを保存します。':'Google Driveに接続すると、この端末に保存して読めます。';

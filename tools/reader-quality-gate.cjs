@@ -28,6 +28,19 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='57714085f7bc76e85ff7a0dab54e34823b3ee69e'){
+    // Reverse only the reviewed caption-ruby loader, invocation and pagination cache key.
+    const lines=data.toString('utf8').split('\n');
+    const changes=[
+      [1292,1,"   const paginationManifest={...m,created:(m.created||'')+':heading-start-v1'};"],
+      [1286,3,"    byPath.set(part.part,startWh1HeadingPages(html));"],
+      [1283,1],
+      [117,1]
+    ];
+    for(const [at,count,...prior] of changes)lines.splice(at,count,...prior);
+    data=Buffer.from(lines.join('\n'));
+    if(blobSHA(data)!=='0182b40ed502f6b6546777d39afc8da432b77171')throw Error('WH1_CAPTION_RUBY_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='0182b40ed502f6b6546777d39afc8da432b77171'){
     // Restore the exact shell before bound-book heading pagination and early input resumption.
     const lines=data.toString('utf8').split('\n');

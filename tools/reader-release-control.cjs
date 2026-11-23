@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const legacy=require('./reader-quality-gate.cjs');
 const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
 const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
-const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-ruby-coverage.cjs','reader-scoped-review.cjs','reader-source-pages.cjs','reader-shelf-prior.cjs','reader-shelf-register.py','reader_shelf_probe.py','reader_shelf_turns.py','reader_shelf_turn_frames.py'];
+const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-ruby-coverage.cjs','reader-scoped-review.cjs','reader-source-pages.cjs','reader-proof-batches.cjs','reader_shelf_readback.py','reader_shelf_readback.js','reader_template_readback.py','reader_template_readback.js','reader_shelf_proof.py','reader_shelf_caption_ruby.py','reader_shelf_wh1_parts.py','reader-shelf-prior.cjs','reader-shelf-register.py','reader_shelf_probe.py','reader_shelf_turns.py','reader_shelf_turn_frames.py'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
@@ -59,13 +59,13 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'1e931004f0a0619cc2940287181fceb8daf5d054',
- 'reader/library/read.html':'0182b40ed502f6b6546777d39afc8da432b77171'
+ 'reader/library/read.html':'57714085f7bc76e85ff7a0dab54e34823b3ee69e'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
- 'reader/library/app.js':'08047be27b256a5981e805d345a631327a1de623',
+ 'reader/library/app.js':'5b6b0c4e0cd0254b9730dda5a336abd0cf239f6e',
  'reader/library/index.html':'5278def2a0ef742bfc416e6461fef5476ee4754c',
- 'reader/library/sw.js':'189b68606f820934e9f4867ecddee15b34f6f131'
+ 'reader/library/sw.js':'379bf9063a8502d988a44cbdfcb8bb1832ab1a8b'
 });
 function implementationHash(){return objHash(Object.fromEntries(IMPLEMENTATION.map(f=>[f,hash(fs.readFileSync(path.join(__dirname,f)))])));}
 const POST=new Set(['G8-03','G8-04','G8-08']);
@@ -235,7 +235,9 @@ function validateBundle(file,{phase='prepare'}={}){
    }
    result.eligible=true;result.contentCertified=false;return result;
   }
-  const {fields}=validateSourceEvidence(root,m,pages,index,sourceReview),display=json(root,m.display);
+  const {fields}=validateSourceEvidence(root,m,pages,index,sourceReview);
+  demand(sourceReview.proofBatches.status==='complete','BATCH_PROOF_PENDING');
+  const display=json(root,m.display);
   require('./reader-scoped-review.cjs').verifyNovelStarts(root,m,pages,profile,template,display,fields);
   demand(display.artifactSha256===m.artifact.sha256&&display.actualPixels===true&&objHash(display.fields)===objHash(fields),'DISPLAY_NOT_CANONICAL');
   const conditions=new Set();for(const c of display.conditions||[]){demand(c.passed===true&&c.artifactSha256===m.artifact.sha256&&c.actualPixels===true&&objHash(c.scans)===objHash(pages.map(p=>p.scan))&&c.overflowCount===0&&c.roundTripSha256===objHash(fields),'INCOMPLETE_DISPLAY_CONDITION');conditions.add(c.width+'/'+c.fontPx);}
@@ -475,11 +477,12 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('private-bookshelf-shell-v22-reader-input-20261121')&&sw.includes('app.js?v=bookshelf-reader-input-20261121');
   const deviceSave=index.includes('app.js?v=bookshelf-device-save-20261121')&&
     sw.includes('private-bookshelf-shell-v23-device-save-20261121')&&sw.includes('app.js?v=bookshelf-device-save-20261121');
-  const registration=index.includes('app.js?v=bookshelf-registration-20261122')&&sw.includes("const CACHE='private-bookshelf-shell-v29-registration-20261122';")&&sw.includes('shelf-registration.mjs');
+  const registration=index.includes('app.js?v=bookshelf-registration-20261122')&&sw.includes("const CACHE='private-bookshelf-shell-v30-registration-20261122';")&&sw.includes('shelf-registration.mjs');
   if(registration){
     const files={
-      "reader/library/storage.js": "d6435730676c6d9265c121f249e3027b76d82972b2205766a84f863ddc248786",
-      "reader/library/shelf-registration.mjs": "5b1c5311261c986f90361c1a557501421cc82aeb3642199ddb6bd5eacafb5c75",
+      "reader/library/storage.js": "af781a3639386a04402ad2c07a7dee579bc94cd218307ef5ab5f7fb42196f961",
+      "reader/library/shelf-registration.mjs": "bcde0f40f34d5634d327ac078bc37497fb8a9b14a48da25882e2293d526f91d7",
+      "reader/library/wh1-caption-ruby.js": "81898e2e602327606e2369b333c726793f2eab1869e27a0438fc2d6fd107fcd6",
       "reader/wh1/full/index.html": "389750d3d6cd32459a8af698595ae1e48e5819aef79aa3c1f8754fa2883ba381"
 };
     for(const [name,pin] of Object.entries(files)){

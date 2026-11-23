@@ -11,6 +11,7 @@ from pathlib import Path
 
 from reader_shelf_probe import check, digest, measure
 from reader_shelf_pack import FLOW, pack, structured_sources
+from reader_shelf_proof import measure as proof_measure, require_claims
 
 BLOCK=4*1024*1024
 REGISTRY='reader/quality/shelf-registration.json'
@@ -261,6 +262,8 @@ def prepare(a):
     m,ranges,htmls=inspect_archive(a.archive,ref)
     full,root=parts_fingerprint(book,a.readback)
     check(a.archive.stat().st_size==book['totalBytes'] and sha(a.archive)==full,'検査対象のZIPとDriveの同一ID読戻しが違います')
+    proof = proof_measure(a.archive, full, m, book['id'], getattr(a, 'proof_index', None), site)
+    require_claims(proof, a.channel, book, m, ref)
     claim=ref.get('rubyCoverageClaim')
     check(claim in (None,'partial','complete'),'ふりがな照合状態が不正です')
     ruby_reports=[]
@@ -296,9 +299,11 @@ def prepare(a):
     detail={'pageTurns':turns,'continuity':joins,'batches':batches,'destinations':hits,'hostFiles':hosts,'sourceSha256':hashlib.sha256(ref_bytes).hexdigest(),'physicalIPhone':'not tested by this tool'}
     if ruby_reports:
         detail['sourceRubyCoverage']={'status':'complete','reports':ruby_reports}
+    detail['sourceProof'] = proof
     report=digest(detail)
     evidence={'version':1,'archive':full,'source':detail['sourceSha256'],'host':digest(hosts),'report':report,'first':ref['range'][0],'last':ref['range'][1],'modes':sorted(ref['modes']),'singleScreen':bool(ref.get('singleScreen')),'batches':batches,'toc':{'kind':ref['toc']['kind'],'rows':len(ref['toc']['rows']),'landed':len(hits),'reference':digest(ref['toc']),'results':digest(hits)}}
     evidence['pageTurns']=turn_summary(turns,ranges)
+    evidence['sourceProof'] = proof
     record={'key':key,'entry':identity(book),'bytes':book['totalBytes'],'sha256':full,'chunkRoot':root,'channel':a.channel,'evidence':evidence}
     args=['node','--input-type=module','-e',"import fs from 'node:fs';import {parseLedger} from './reader/library/shelf-registration.mjs';await parseLedger(JSON.parse(fs.readFileSync(0)))"]
     signing="import fs from 'node:fs';import crypto from 'node:crypto';import {signingText} from './reader/library/shelf-registration.mjs';const r=JSON.parse(fs.readFileSync(0));console.log(crypto.sign('sha256',Buffer.from(signingText(r)),{key:fs.readFileSync(process.argv[1]),dsaEncoding:'ieee-p1363'}).toString('base64'));"
@@ -323,6 +328,8 @@ def checked_stage(a):
     detail=read(a.prepared/'verification.json')
     rec=plan['record']
     check(digest(detail)==plan['detailHash']==rec['evidence']['report'],'操作検査記録が変わりました')
+    check(detail.get('sourceProof') is not None and detail['sourceProof'] == rec['evidence'].get('sourceProof'),
+          '原本20枚ごとの校正判定を含む版の prepare が必要です')
     check('pageTurns' in detail, '分冊境界の往復検査を含む最新版の prepare が必要です')
     ranges=[row[:2] for row in rec['evidence']['batches']]
     check(turn_summary(detail['pageTurns'],ranges)==rec['evidence'].get('pageTurns'),
@@ -384,6 +391,7 @@ def main():
     q.add_argument('--channel',choices=['preview','release'],required=True)
     q.add_argument('--chromium',type=Path)
     q.add_argument('--handoff',type=Path)
+    q.add_argument('--proof-index', type=Path, help='登録ZIPの各読書HTMLと原本別校正・読戻しを結ぶ非公開台帳')
     q.add_argument('--ruby-inventory',action='append',type=Path,help='各収録HTMLに対応する私有の全原本ルビ照合台帳。分冊順に繰り返し指定できる。')
     q.add_argument('--key',required=True,type=Path)
     a=p.parse_args()

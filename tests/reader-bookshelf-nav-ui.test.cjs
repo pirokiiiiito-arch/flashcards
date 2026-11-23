@@ -676,3 +676,29 @@ test('a touch already down at the section boundary can finish on its original if
  assert.deepEqual(events.slice(-2).map(e=>e.type),['sectionLateStep','sectionRetired']);
  assert.deepEqual(steps,[]);
 });
+
+test('only the reviewed caption-ruby host and signed proofreading shelf assets are admitted',t=>{
+ const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'reader-source-proof-ui-'));
+ t.after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
+ fs.cpSync(path.join(root,'reader'),path.join(tmp,'reader'),{recursive:true});
+ const accepted=gate.admittedBookshelfNavUI(tmp,policy);
+ for(const [name,error] of [
+  ['read.html',/SHARED_SHELF_UI_BYTES_NOT_REVIEWED/],
+  ['app.js',/BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED/],
+  ['sw.js',/BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED/],
+  ['wh1-caption-ruby.js',/REGISTRATION_FILE_CHANGED/],
+  ['storage.js',/REGISTRATION_FILE_CHANGED/],
+  ['shelf-registration.mjs',/REGISTRATION_FILE_CHANGED/]
+ ]){
+  const relative='reader/library/'+name,target=path.join(tmp,relative);
+  const original=fs.readFileSync(target);
+  assert.ok(accepted[relative],relative);
+  fs.appendFileSync(target,'\n/* unrelated change */');
+  assert.throws(()=>gate.admittedBookshelfNavUI(tmp,policy),error);
+  fs.writeFileSync(target,original);
+ }
+ const shelf=JSON.parse(fs.readFileSync(path.join(tmp,'reader/quality/shelf-registration.json')));
+ shelf.editions[0].evidence.report='d'.repeat(64);
+ fs.writeFileSync(path.join(tmp,'reader/quality/shelf-registration.json'),JSON.stringify(shelf));
+ assert.throws(()=>gate.admittedBookshelfNavUI(tmp,policy));
+});

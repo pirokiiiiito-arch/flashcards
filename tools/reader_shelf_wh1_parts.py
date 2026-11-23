@@ -15,14 +15,14 @@ STYLE_SHA = '35d2da2a4827b26328656e6f3e74843e671182a46ade27dc69279cb4bfdabbe3'
 ZERO_BAND = re.compile(r'(?<![0-9０-９])[0０]{16,}(?![0-9０-９])')
 
 
-def observe_figure_text(blocks, groups, segment, observed, full_reviews, texts_by_hash, *, joined=False):
+def observe_figure_text(blocks, groups, segment, observed, full_reviews, texts_by_hash, *, joined=False, caption_rubies=None):
     """Follow the template's figure grouping, including image overrides and hidden blocks."""
     starts, consumed = {}, set()
     for group in groups:
         scan, at = group['scan'], group['at']
         require(type(at) is int and 0 <= at < len(blocks) and at not in starts and group['figs'],
                 f'原本{scan}: 図版の開始位置を特定できません')
-        images, descriptions = [], []
+        images, descriptions, notes = [], [], []
         for kind, indices in (('figure', group['figs']), ('note', group['desc'])):
             for index in indices:
                 require(type(index) is int and 0 <= index < len(blocks),
@@ -40,8 +40,13 @@ def observe_figure_text(blocks, groups, segment, observed, full_reviews, texts_b
                             f'原本{scan}: 図の説明に長い0列があります。原本の本文順・図注を照合してください')
                     digest = sha(text.encode())
                     descriptions.append(digest)
+                    notes.append((digest, block.get('ruby', [])))
                     if scan in observed:
                         texts_by_hash[digest] = text
+        if caption_rubies is not None:
+            for image in images:
+                for digest, rubies in notes:
+                    caption_rubies.setdefault((scan, image, digest), []).append(rubies)
         starts[at] = (scan, dict(images=images, descriptions=descriptions))
         consumed.update(group.get('suppress', []))
         if 'heading' in group:
@@ -75,7 +80,7 @@ def observe_figure_text(blocks, groups, segment, observed, full_reviews, texts_b
                 texts_by_hash[hashed] = text
 
 
-def verify_region_review(scan, review, observed, texts_by_hash, size):
+def verify_region_review(scan, review, observed, texts_by_hash, size, caption_rubies=None):
     """Check only the source regions reviewed in a correction and the affected prose."""
     err = f'原本{scan}: 図説の部分校正と読書版が一致しません'
     require(isinstance(review, dict) and review.get('sourceSha256') == observed['sourceSha256'], err)
@@ -90,11 +95,21 @@ def verify_region_review(scan, review, observed, texts_by_hash, size):
         require(0 <= x < X <= size[0] and 0 <= y < Y <= size[1] and isinstance(text, str), err)
         has_image = 'imageSha256' in region or 'descriptionSha256' in region
         has_prose = 'role' in region or 'proseSha256' in region
-        require(has_image != has_prose, err)
+        require(has_image != has_prose and ('ruby' not in region or has_image), err)
         if has_image:
             image, digest = region.get('imageSha256'), region.get('descriptionSha256')
             require(isinstance(image, str) and isinstance(digest, str), err)
             require(any(image in f['images'] and digest in f['descriptions'] for f in observed['figures']), err)
+            if 'ruby' in region:
+                ruby = region['ruby']
+                require(isinstance(ruby, dict) and set(ruby) == {'base','reading','start','end'}, err)
+                start, end = ruby['start'], ruby['end']
+                require(type(start) is int and type(end) is int and 0 <= start < end <= len(texts_by_hash[digest])
+                        and texts_by_hash[digest][start:end] == text == ruby['base']
+                        and isinstance(ruby['reading'], str) and ruby['reading'].strip(), err)
+                notes = (caption_rubies or {}).get((int(scan), image, digest), [])
+                require(len(notes) == 1 and sum(isinstance(r, dict) and
+                        all(r.get(k) == v for k, v in ruby.items()) for r in notes[0]) == 1, err)
         else:
             digest = region.get('proseSha256')
             require([region.get('role'), digest] in observed['prose'], err)
@@ -134,6 +149,7 @@ def verify(m, read, write=None, independent=None, independent_figure_text=None, 
     def observations():
         return {int(n): dict(sourceSha256=m['originalScans'][n]['sha256'], prose=[], figures=[]) for n in selected}
     source_observed, display_observed = observations(), observations()
+    source_rubies, display_rubies = {}, {}
     paths = {}
     def entry(meta,path,stored=False):
         data=read(member(path))
@@ -163,8 +179,8 @@ def verify(m, read, write=None, independent=None, independent_figure_text=None, 
     for s in m['segments']:
         raw,groups,toc=fields(entry(s,s['part']))
         disp,gr2,toc2=fields(entry(s['display'],s['display']['path']))
-        observe_figure_text(raw,groups,s,source_observed,reviews,texts_by_hash)
-        observe_figure_text(disp,gr2,s,display_observed,reviews,texts_by_hash,joined=True)
+        observe_figure_text(raw,groups,s,source_observed,reviews,texts_by_hash,caption_rubies=source_rubies)
+        observe_figure_text(disp,gr2,s,display_observed,reviews,texts_by_hash,joined=True,caption_rubies=display_rubies)
         require(toc==toc2,'統合前後で目次が変わっています')
         def supplements(blocks):
             return [{k:v for k,v in b.items() if k!='sourceSpans'} for b in blocks if b['type']!='body']
@@ -198,8 +214,8 @@ def verify(m, read, write=None, independent=None, independent_figure_text=None, 
         require(expected == source_observed[int(n)] == display_observed[int(n)],
                 f'原本{n}: 原本照合と読書版の本文順・見出し・独立した注・図版・説明文が一致しません')
     for n, review in region_reviews.items():
-        for actual in (source_observed[int(n)], display_observed[int(n)]):
-            verify_region_review(n, review, actual, texts_by_hash, image_sizes[n])
+        for actual, rubies in ((source_observed,source_rubies),(display_observed,display_rubies)):
+            verify_region_review(n, review, actual[int(n)], texts_by_hash, image_sizes[n], rubies)
     require(raw_bodies==display_bodies and list(raw_bodies)==display_refs,'本文の欠落・重複・順序違いがあります')
     if independent is not None:
         require(m['readingFlow']['boundaryReviews']==independent,'原本境界照合表と分冊が一致しません')

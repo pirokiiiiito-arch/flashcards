@@ -164,7 +164,19 @@ function fromBundle(root,m,pages,index,events,raw){
  const clean=Object.fromEntries(['differences','alerts','numbers','openIssues','carriedIssues'].map(k=>[k,Array.isArray(resolutions?.[k])?resolutions[k]:undefined]));
  const seed=raw??read('raw'),seedPages=Array.isArray(seed)?seed:seed?.pages;
  if(!Array.isArray(seedPages))errors.push('ORIGINAL_FIRST_PASS_REQUIRED');
- return collect(m,pages,index,Array.isArray(inventory?.pages)?inventory:null,second,clean,Array.isArray(events)?events:[],seedPages,errors);
+ const work=collect(m,pages,index,Array.isArray(inventory?.pages)?inventory:null,second,clean,Array.isArray(events)?events:[],seedPages,errors);
+ const proof=require('./reader-proof-batches.cjs');
+ try {
+  if (!m.proofInventory) throw Error('PROOF_INVENTORY_REQUIRED');
+  const inventoryFile=v.safe(root,m.proofInventory.path);
+  if (!hex(m.proofInventory.sha256)) throw Error('PROOF_INVENTORY_HASH_REQUIRED');
+  work.proofBatches=proof.audit({bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,
+   inventoryFile,inventorySha256:m.proofInventory.sha256,sourceIndex:index});
+ } catch(error) {
+  work.proofBatches=proof.unavailable(m.bookId,m.range,m.artifact.sha256,error.message);
+ }
+ work.readyForProofCompletion=work.readyForSourceChecks && work.proofBatches.status==='complete';
+ return work;
 }
 
 function pendingRange(bookId,range,reason){

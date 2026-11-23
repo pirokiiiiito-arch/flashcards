@@ -67,3 +67,9 @@ python tools/reader-shelf-register.py finalize \
 標準読書画面と小説画面は標準のAPIで試験する。それ以外の既存形式は `ui.position` と `ui.scan` に実画面の数値を読む `selector`、必要なら `attribute` とキャプチャ付き `pattern` を指定する。`ui.goto` は本の正規の移動操作を `click`、`fill`、`select`、`wait` で指定する。値とセレクタ内の `{scan}` は対象の原本番号になる。`ui.frame`、画面別の `textSelector,figureSelector,originalSelector,contentsSelector`、目次の `toc.ui.show,row,label,number` も指定できる。これらは実際の画面要素を選ぶための設定であり、倍率や合格結果を指定する欄はない。
 
 独自の画面で境界試験に使う要素は、必要に応じて `ui.turns.body`（紙面）、`number`（ページ番号全体）、`next` と `prev`（前後ボタン）のCSSセレクタで指定する。総ページ数は `ui.turns.total`、同じ画面が複数の原本にまたがる場合の出典一覧は `ui.turns.sourceScans` に指定できる。どちらも `position` と同じ形式の抽出設定を使う。番号表示が「現在 / 総数」以外の形式なら、`ui.turns.numberPattern` の第1・第2キャプチャに現在番号と総数をそれぞれ指定する。
+
+### 20枚ごとの原本照合を登録する
+
+`prepare --proof-index PRIVATE/proof/index.json` に、登録するZIPと同じSHA-256を持つ非公開台帳を指定する。台帳の `schema` は `reader-shelf-proof-index-v1`。`bookId`、`range`、`archiveSha256`、`members` を記録する。各memberはZIPから実際に開くHTMLの `path`、`inventory:{path,sha256}` と、取得した場合の `readback:{path,sha256}` を持つ。これらのファイルは台帳からの相対パスで示す。分冊と全巻表示で別々のHTMLを開く書籍では、それぞれに同じ原本照合記録と各表示の読戻しを対応づける。原本画像のSHA-256を実際のZIPまたは内蔵原本と比較する。
+
+`preview` は未照合の枚数を保持する。記録のないHTML・ページは該当範囲を未照合と数える。`release` には全範囲の照合完了が必要。`reference.json` の `sourceProofClaim:"complete"` および `sourceScopeClaims` の個別項目の `"complete"` は、実測に一致するときだけ受理する。項目は `body, heading, caption, note, ruby, figure, toc, other`。書誌の「図説・注 校正済み」のような項目別完了表記にも同じ判定を行う。本棚は署名した各20枚の件数、分冊・全巻で一致した箇所の数を使用する。原文や原本画像は非公開に保つ。

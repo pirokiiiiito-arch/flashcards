@@ -23,7 +23,7 @@ jobs:
           node --check tools/reader-preview-consent.cjs
           node --check tools/reader-scoped-review.cjs
           node --check tools/reader-work-ledger-validate.cjs
-          node --test tests/reader-ruby-coverage.test.cjs tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
+          node --test tests/reader-proof-batches.test.cjs tests/reader-ruby-coverage.test.cjs tests/reader-unified-handoff.test.cjs tests/reader-work-ledger-validate.test.cjs tests/reader-preview-consent.test.cjs tests/reader-preview-v3.test.cjs tests/reader-repair-context.test.cjs tests/reader-work-resume.test.cjs
           node --check tools/reader-repair-profiles.cjs
           node --check tools/reader-repair-state.cjs
           node --check tools/reader-repair-transition.cjs
@@ -236,6 +236,7 @@ jobs:
           if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
             "$qa_python" -m playwright install chromium
           fi
+          "$qa_python" -m unittest discover -v -s tests -p 'test_reader_template_readback.py'
           timeout --signal=ABRT --kill-after=10s 8m "$qa_python" -u -X faulthandler -m unittest discover -v --durations 10 -s tests -p 'test_reader_shelf*.py'
       - name: Configure Pages
         uses: actions/configure-pages@v5

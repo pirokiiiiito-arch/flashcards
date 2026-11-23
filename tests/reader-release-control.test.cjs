@@ -12,6 +12,15 @@ function fixture(){
  m.raw=put(r,'immutable/raw.json',data);m.canonical=put(r,'canonical.json',data);m.originalIndex=put(r,'immutable/index.json',{'1':page.sha256});m.template=put(r,'immutable/template.html',template);m.corrections=put(r,'events.json',[]);
  m.profile=put(r,'immutable/profile.json',{templateSha256:m.template.sha256,defaultFontPx:20,lineHeight:1.5,digitOrientation:'preserve-approved',gesture:'up-next-down-prev-one-step-native-zoom'});
  m.lock=put(r,'immutable/lock.json',{schema:'reader-input-lock-v2',raw:m.raw.sha256,originalIndex:m.originalIndex.sha256,template:m.template.sha256,profile:m.profile.sha256});m.artifact=put(r,'candidate.html',template.replace('{{READER_DATA}}',JSON.stringify(data)));
+ const {scopes}=require('../tools/reader-proof-batches.cjs');
+ const proofCommon={scan:1,sourceSha256:page.sha256,completeScopes:scopes};
+ const values=[{id:'heading',scope:'heading',value:{text:page.title,startsPage:true}},{id:'line',scope:'body',value:{text:page.reading_text}}];
+ fs.writeFileSync(path.join(r,'pixel.png'),Buffer.from(png,'base64'));
+ const image={path:'pixel.png',sha256:page.sha256};
+ const census=put(r,'source-census.json',{...proofCommon,reviewedBy:'synthetic census',edgesChecked:true,regions:values.map(({id,scope})=>({id,scope,box:[0,0,1,1]}))});
+ const review=put(r,'source-reading.json',{...proofCommon,reviewedBy:'synthetic source reader',blindToOutput:true,regions:values.map(({id,value})=>({id,state:'matched',value}))});
+ const readback=put(r,'synthetic-output.json',{schema:'reader-proof-readback-v1',bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,pages:[{...proofCommon,capture:image,regions:values}]});
+ m.proofInventory=put(r,'proof-inventory.json',{schema:'reader-proof-inventory-v1',bookId:m.bookId,range:m.range,readback,pages:[{scan:1,image,census,review}]});
  const fields=v.textFields(data),subject={bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,canonicalSha256:m.canonical.sha256,rawSha256:m.raw.sha256,originalIndexSha256:m.originalIndex.sha256,templateSha256:m.template.sha256,profileSha256:m.profile.sha256,loaderSha256:m.loaderSha256};
  m.inventory=put(r,'inventory.json',{pages:[{scan:1,sourceSha256:page.sha256,reviewedBy:'fixture-first',secondReviewer:'fixture-second',firstPassId:'one',secondPassId:'two',edgesChecked:true,secondViewedFirst:false,width:1,height:1,regions:[{id:'r1',box:[0,0,1,1],kind:'body',fields:Object.keys(fields)}]}]});
  m.second=put(r,'second.json',{runId:'second-run',viewedFirst:false,sourceIndexSha256:m.originalIndex.sha256,method:'independent fixture',reviewedBy:'fixture-second',fields});
@@ -116,4 +125,13 @@ test('Nine Stories preview passes the original private reader a trusted parent v
  const start=importer.lastIndexOf('<script>'),end=importer.lastIndexOf('</script>');
  assert.ok(start>=0&&end>start);
  new (require('node:vm').Script)(importer.slice(start+8,end));
+});
+
+test('normal route requires the per-batch proof; a separately authorized unfinished preview stays content-uncertified',()=>{
+ const x=fixture();delete x.m.proofInventory;
+ x.m.previewAuthorization=put(x.r,'preview.json',{explicit:true,requestedBy:'synthetic',requestText:'preview the unfinished fixture',at:'2026-11-12',artifactSha256:x.m.artifact.sha256});
+ put(x.r,'manifest.json',x.m);
+ blocked(x,/BATCH_PROOF_PENDING/);
+ const preview=result(x,'preview');assert.equal(preview.eligible,true);assert.equal(preview.contentCertified,false);
+ assert.equal(preview.sourceReview.proofBatches.pendingScans,1);
 });

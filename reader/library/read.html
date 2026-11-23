@@ -115,6 +115,7 @@ THE SOFTWARE.
 </script>
 <script src="./storage.js"></script>
 <script src="./wh1-reader-routing.js?v=wh1-library-v9-20261110"></script>
+<script src="./wh1-caption-ruby.js"></script>
 <script src="./wh1-exact-pagination.js"></script>
 <script id="wh2-unified-swipe-host-v1">
 /* WH2 reader UI only. The saved ZIP, OCR text and original scans are untouched.
@@ -1280,13 +1281,16 @@ async function loadBook(file,shouldSave=true){
     const url=new URL('read-wh1-v9.html',location.href);url.search=location.search;location.replace(url);return;
    }
    const byPath=new Map();
+   let captionRuby=false;
    for(const part of m.segments){
     const html=await book.readText(part.display.path);
-    byPath.set(part.part,startWh1HeadingPages(html));
+    const prepared=html.includes('"ruby"')?window.WH1CaptionRuby.prepare(html):html;
+    if(prepared.includes("/* WH1 source caption ruby v1 */"))captionRuby=true;
+    byPath.set(part.part,startWh1HeadingPages(prepared));
    }
    // The exact pager keys its counts by the edition's creation tag. A new layout
    // has its own count cache while bookmarks keep their original book and source keys.
-   const paginationManifest={...m,created:(m.created||'')+':heading-start-v1'};
+   const paginationManifest={...m,created:(m.created||'')+':heading-start-v1'+(captionRuby?':caption-ruby-v1':'')};
    book.readingFlow={byPath,paginationManifest,locate:(index,destination)=>({index,destination})};
   }
   if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){

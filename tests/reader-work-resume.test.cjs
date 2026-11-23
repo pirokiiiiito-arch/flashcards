@@ -104,6 +104,9 @@ test('selected state, quality and pinned code resume read-only without any quali
  for(const k of ['stateChanged','artifactChanged','workStarted','productionAdmitted','qualityCertified','deliveryAuthorized','consentCreated'])assert.equal(r.report[k],false,k);
  assert.equal(r.report.workflow.productionAdmissionGate,'workflow_run_guard.require_workflow');
  assert.equal(r.report.quality.assessmentSummary.recordedStates.not_run,60);
+ assert.equal(r.report.sourceReview.proofBatches.status,'partial');
+ assert.deepEqual(r.report.sourceReview.proofBatches.batches.map(b=>[b.range,b.pendingScans]),[[[1,2],2]]);
+ assert.deepEqual(r.report.readyTasks.filter(t=>t.type==='proof_original_and_display').map(t=>t.scan),[1,2]);
  assert.ok(r.report.restoreRequirements.requiredFiles.some(x=>x.path==='workflow/reader.html'&&x.storage==='private'));
  assert.ok(r.report.restoreRequirements.requiredFiles.some(x=>x.path==='repo/tools/reader-work-resume.cjs'&&x.storage==='public_repository'));
  assert.deepEqual(files(f.root).map(p=>[p,digest(fs.readFileSync(p))]),before);

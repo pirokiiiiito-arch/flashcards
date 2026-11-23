@@ -13,7 +13,8 @@ const LibraryDB = (() => {
     const policy = await import(rulesURL), active = await policy.ledger(true), admitted = [];
     for (const book of entries) {
       const record = await policy.admitEntry(book, active);
-      if (record) admitted.push({...book, registrationRoot:record.chunkRoot, registrationChannel:record.channel || 'existing'});
+      if (record) admitted.push({...book, registrationRoot:record.chunkRoot, registrationChannel:record.channel || 'existing',
+        sourceProof:record.evidence?.sourceProof || null});
     }
     return admitted;
   }

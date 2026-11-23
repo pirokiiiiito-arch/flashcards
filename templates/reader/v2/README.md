@@ -154,3 +154,40 @@ window.READER_BOOK={
 この追加は共通機構の変更としてレビューします。`tests/reader-layout-qa.test.cjs` は合成API・DOMによるコード回帰であり、実書籍の24条件表示ではありません。Pagesでは既存の書籍preflight・隔離stage・release-controlを維持し、生成後の公開ツリーのQAコードが検査したソースと同一であることを専用テストで確認します。書籍registry・receipt・互換baselineはこのツール掲載のために変更しません。
 
 配信後は `tools/verify-layout-qa-pages.cjs` が公開QA URLのHTTP 200と実配信SHAを再取得し、`reader-layout-qa-public-evidence` に保存します。この記録はQAプログラムの到達性とバイト一致だけの証拠であり、私有書籍の配信・校正・実機の証拠ではありません。
+
+## 原本20枚ごとの校正と校了
+
+原本の順で20枚ずつ照合する。最終分冊は残りの枚数を対象にする。新規制作・既存稿の修正とも、選定済みの書籍ID、原本番号、原画像のSHA-256を引き継ぐ。
+
+1. 原本の紙面全体を端まで見て、本文、見出し、図説、注、ふりがな、図版、目次、その他の各領域を記録する。領域IDと原本座標を付ける。説明だけが前後の原本に載る場合、複数の図を説明する場合、飾り罫を含む場合も記録する。独立した領域一覧は、OCRの検出候補や登録済み図版から作らない。
+2. 原本を見て、読書表示を伏せた状態で読めた文字と領域の所属を確定する。ふりがなは親文字の位置・範囲と読みを対で記録する。全文字を確認した種類だけを確認範囲に加える。該当領域がない場合も、原本と独立照合の両方で確認した種類を記録する。判読不能は箇所・根拠と読書上の表記を残す。未照合、推定、候補の残存を判読不能として確定しない。
+3. 実際の読書画面を開き、原本から挙げた各領域を読み返す。次に表示された文字・領域を原本へ逆にたどり、欠落・余分な文字・誤った所属・重複を照合する。図の説明、別ページの注、ふりがなの親文字と読み、見出しの改ページも含める。同じ版の実表示証拠を採る。値の転記、原本画像を開いただけの画面、機械検出だけで読書表示済みとは記録しない。
+4. 1件ずつ一致・訂正を反映して再照合・原本判読不能の結果を記録する。原本と独立照合・実表示の8種類を全て比較し、未照合、未解決の差分、出典不明の表示がゼロになった分冊を校了する。判読不能の確定数は校了時も明記する。一部分だけの突合は対象と件数を示した部分校正とし、ほかの分冊へその状態を引き継がない。全巻の校了は依頼範囲に含まれる全分冊がこの条件を満たした時点で記録する。
+
+後日の修正では原本・証拠・読書用成果物の版やSHAを確認する。変更の影響を受けた箇所と接続先を再照合し、新しい成果物に結び付く表示証拠を採る。原本と独立照合が同じ場合はその証拠を引き継ぐ。分冊の校了、60項目検査、公開承認、iPhone実機での確認はそれぞれの結果を記録する。
+
+`templates/reader/v2/proof-inventory.schema.json` に沿って、作業用の `templates/reader/v2/proof-inventory.json` を私有の制作フォルダーへコピーし、依頼の書籍ID・範囲に合わせて各原本に行を設ける。各画像、領域一覧、独立照合のファイルを相対パスと実バイトのSHA-256で結ぶ。書籍の私有品質manifestの `proofInventory` にはこの記録の `path` と `sha256` を指定する。
+
+- `census` には `scan`、`sourceSha256`、`reviewedBy`、`edgesChecked`、`completeScopes`、`regions` を記録する。各領域は `id`、`scope`、原画像の `box` を持つ。種類は `body`、`heading`、`caption`、`note`、`ruby`、`figure`、`toc`、`other`。一部分だけを照合した領域には `partial: true` を付ける。
+- `review` には `scan`、`sourceSha256`、`reviewedBy`、`blindToOutput: true`、`completeScopes` と領域ごとの `id`、`state`、`value` を記録する。照合済みの状態は `matched`、`corrected`、`illegible`。通常の文字は `text`、見出しは `text` と `startsPage`、ふりがなは `base`、`reading`、`start`、`end`、`parent`、画像は `sha256` で突合する。
+- 判読不能を確定するときは `census` の領域に `illegible: true`、`review` に根拠と原本のSHA・矩形・注を残す。読書画面が注を表示する場合はその文と元の画像を照合する。原本ボタンを使う形式では、正しい原本を実際に開いて原本番号・画像SHA・寸法・矩形・画面証拠を記録する。注を私有記録に残す場合は、読書画面上の前後の文字も観測して余分な文字が入っていないことを確かめる。確認できない箇所は保留する。
+- 独立した見出しは実画面の先頭から始まることを確認する。原本で本文内見出しと確定した場合は `census` の `placement: "inline"` と根拠の `placementReason` を記録する。
+- 実表示の `readback` はその成果物の `artifactSha256` と採取時の各原本ページの `capture`、`completeScopes`、観測済みの領域・値を持つ。図説だけを確認したときは図説の範囲に限定する。本文中に正しく印刷された「17」も、誤って本文へ入った「17」も、原本で読みと所属を確かめる。
+
+```sh
+node tools/reader-proof-batches.cjs --artifact PRIVATE/reader.html --inventory PRIVATE/proof-inventory.json --book-id BOOK_ID --start 1 --end 20 --readback PRIVATE/readback.json
+```
+
+`--require-complete` は全範囲の校了を要求する場合に付ける。通常の制作・再開では、未照合が残る分冊と対象の種類を引き継げる。
+
+『世界の歴史1』の読書経路では、実際に配布するZIPと本棚のサイトを使って観測記録を採る。`--route shelf` は本棚、`--route part` は分冊を開く。領域IDとDOM内の位置の対応が必要な場合は `--locations PRIVATE/locations.json` を追加する。対応ファイルには位置を記し、原本から転記した期待文字は渡さない。
+
+```sh
+python tools/reader_shelf_readback.py --archive PRIVATE/book.zip --inventory PRIVATE/proof-inventory.json --site SITE_ROOT --chromium CHROMIUM --route shelf --start 1 --end 20 --out PRIVATE/readback.json
+```
+
+標準・小説の分冊は、下記のコマンドで対象HTMLの実画面を読み返す。本文・見出し・図説・ふりがなの観測値を、原本から作った独立照合記録と比較する。
+
+```sh
+python tools/reader_template_readback.py --html PRIVATE/reader.html --inventory PRIVATE/proof-inventory.json --out PRIVATE/readback.json --chromium CHROMIUM
+```

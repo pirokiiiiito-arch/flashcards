@@ -220,7 +220,14 @@ function issue(file,request,context){
  if(p.channel==='preview')fail(/^reader\/preview\/[A-Za-z0-9_./-]+\/index\.html$/.test(context.entry)&&!context.entry.includes('..')&&context.book.stage==='draft','PREVIEW_RECEIPT_REQUIRES_DRAFT_ROUTE');
  // Publish only aggregate coverage. Page worklists belong to the private workspace.
  const {sourceReview,...receipt}=r;
- if(sourceReview)receipt.sourceReview={totalScans:sourceReview.totalScans,matchedScans:sourceReview.matchedScans,pendingScans:sourceReview.pendingScans};
+ if(sourceReview){
+  receipt.sourceReview={totalScans:sourceReview.totalScans,matchedScans:sourceReview.matchedScans,pendingScans:sourceReview.pendingScans};
+  if(sourceReview.proofBatches){
+   const {status,pendingScans,batches}=sourceReview.proofBatches;
+   receipt.sourceReview.proofBatches={status,pendingScans,
+    batches:batches.map(({range,status,pendingScans})=>({range,status,pendingScans}))};
+  }
+ }
  const payload={...receipt,...(p.channel==='preview'?{previewProtocol:'reader-immutable-preview-v3'}:{}),channel:p.channel,entry:context.entry,bookRecordSha256:v.objHash(context.book),reportSha256:context.reportSha256,publicFiles:context.publicFiles,issuedAt:new Date().toISOString(),trustBoundary:'Local evidence attestation, not independent reviewer authentication.'};
  return {schema:'reader-local-attestation-v1',payload,digest:v.objHash(payload)};
 }

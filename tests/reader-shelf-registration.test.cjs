@@ -63,3 +63,22 @@ test('registration needs measured turns for every source boundary and every disp
     assert.throws(() => r.validateEvidence(invalid));
   }
 });
+
+
+test('source proofreading totals correspond to the 20-scan intervals on the signed edition', async () => {
+  const r=await registration;
+  const record=structuredClone(baseline().editions.at(-1)), {first,last}=record.evidence;
+  const keys=['body','heading','caption','note','ruby','figure','toc','other'];
+  const batches=[];
+  for(let i=first;i<=last;i+=20)batches.push([i,Math.min(i+19,last),1]);
+  record.evidence.sourceProof={version:1,report:'d'.repeat(64),status:'partial',pendingScans:batches.length,batches,
+    scopeBatches:batches.map(()=>({pending:Object.fromEntries(keys.map(k=>[k,1])),matchedRegions:0}))};
+  r.validateEvidence(record);
+  const alternate=structuredClone(record);alternate.evidence.sourceProof.report='c'.repeat(64);
+  assert.notEqual(r.signingText(alternate),r.signingText(record));
+  for(const change of [x=>x.channel='release',x=>x.evidence.sourceProof.pendingScans++,
+    x=>x.evidence.sourceProof.batches[0][0]++,x=>delete x.evidence.sourceProof.scopeBatches[0].pending.ruby,
+    x=>x.evidence.sourceProof.scopeBatches[0].pending.caption=2]){
+    const altered=structuredClone(record);change(altered);assert.throws(()=>r.validateEvidence(altered));
+  }
+});

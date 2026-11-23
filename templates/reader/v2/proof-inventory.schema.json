@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "原本校正用の私有台帳",
+  "description": "読書用成果物の外に保管する。記録ファイルの実体、原本との対応、照合の内容、実表示との一致は reader-proof-batches.cjs で再検査する。",
+  "type": "object",
+  "required": ["schema", "bookId", "range", "pages"],
+  "properties": {
+    "schema": { "const": "reader-proof-inventory-v1" },
+    "bookId": { "type": "string", "minLength": 1 },
+    "range": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scan", "image", "census", "review"],
+        "properties": {
+          "scan": { "type": "integer", "minimum": 1 },
+          "image": { "$ref": "#/$defs/file" },
+          "census": { "$ref": "#/$defs/file" },
+          "review": { "$ref": "#/$defs/file" }
+        }
+      }
+    },
+    "readback": { "$ref": "#/$defs/file" }
+  },
+  "$defs": {
+    "file": {
+      "type": "object", "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": {
+          "description": "記録を用意する前のテンプレートは null。検証時はそのファイルのSHA-256を指定する。",
+          "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}
