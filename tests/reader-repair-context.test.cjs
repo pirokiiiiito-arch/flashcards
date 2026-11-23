@@ -16,12 +16,14 @@ function fixture(t,{blank=false,revision=''}={}){
  const put=(rel,value)=>{const f=path.join(root,rel);fs.mkdirSync(path.dirname(f),{recursive:true});
   fs.writeFileSync(f,Buffer.isBuffer(value)?value:typeof value==='string'?value:JSON.stringify(value,null,2)+'\n');return f;};
  const ref=(rel,value)=>{const f=put('bundle/'+rel,value);return{path:rel,sha256:v.hash(fs.readFileSync(f))};};
- const image=Buffer.from('synthetic original image bytes'),sourceSha=v.hash(image),text=blank?'':'合成本文。';
- const book={bookId:'synthetic-shared-work',range:[1,1],pages:[{scan:1,sha256:sourceSha,width:10,height:10,
+ const captured=require('./fixtures/reader-repair-page.json')[blank?'blank':'text'];
+ const image=Buffer.from(captured.originalPng,'base64'),sourceSha=v.hash(image),text=blank?'':'合成本文。';
+ const book={bookId:'synthetic-shared-work',range:[1,1],pages:[{scan:1,sha256:sourceSha,width:112,height:34,
   dataUrl:'data:image/png;base64,'+image.toString('base64'),blocks:blank?[]:[{id:'body-1',kind:'body',text}],figures:[]}]};
  const model={model_schema:'reader-logical-stream-v1',book_id:book.bookId,body_char_count:Array.from(text).length,
   segments:blank?[]:[{id:'body-1',text}],heading_inventory_binding:{inventory_sha256:'a'.repeat(64),approval_sha256:'b'.repeat(64)}};
- const html=put('input.html','<!doctype html><script id="bookdata" type="application/json">'+JSON.stringify(book)+'</script>'+ 
+ const html=put('input.html','<!doctype html><script id="bookdata" type="application/json">'+JSON.stringify(book)+'</script>'+
+  '<p id="proof-text" style="margin:4px;font:20px sans-serif"></p><script>document.getElementById("proof-text").textContent=JSON.parse(document.getElementById("bookdata").textContent).pages[0].blocks.map(b=>b.text).join("")</script>'+
   '<script id="reader-verified-structure">window.readerVerifiedStructure='+JSON.stringify({model})+';</script>'+revision);
  const m=pipe.init(html,bundle,book.bookId,put('loader.html','synthetic generic loader'),put('index.json',{'1':sourceSha}));
  const manifest=path.join(bundle,'manifest.json'),save=()=>put('bundle/manifest.json',m);
@@ -61,8 +63,8 @@ function fixture(t,{blank=false,revision=''}={}){
   qualityState:'unverified',releaseStatus:'blocked',retainedReviewState:'reviewed_canonical_with_scoped_source_reviews',knownDefects:[]}],history:[]};
  function progress(){return {schema:'reader-repair-progress-v2',bookId:book.bookId,range:book.range,profile:'text',artifactSha256:m.artifact.sha256,
   pages:blank?[]:[{scan:1,sourceImageSha256:sourceSha,inventory:{status:'source_verified',sourceImageSha256:sourceSha,
-   evidenceSha256:review.sha256,reviewedBy:'synthetic-reviewer',width:10,height:10,hasReadableText:true,allRegionsInventoried:true},
-   regions:[{id:'body-1',kind:'body',box:[0,0,10,10],sourceImageSha256:sourceSha,
+   evidenceSha256:review.sha256,reviewedBy:'synthetic-reviewer',width:112,height:34,hasReadableText:true,allRegionsInventoried:true},
+   regions:[{id:'body-1',kind:'body',box:[0,0,112,34],sourceImageSha256:sourceSha,
     transcription:{firstRunId:'synthetic-first',secondRunId:'synthetic-second',secondSawFirstPass:false,
      firstTextSha256:v.hash(text),secondTextSha256:v.hash(text),sourceImageSha256:sourceSha},
     comparison:{status:'resolved_against_source',evidenceSha256:review.sha256,sourceImageSha256:sourceSha,reviewedBy:'synthetic-reviewer'}}]}],
@@ -92,8 +94,21 @@ function fixture(t,{blank=false,revision=''}={}){
   const fields=v.textFields(book.pages),subject={bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,canonicalSha256:m.canonical.sha256,
    rawSha256:m.raw.sha256,originalIndexSha256:m.originalIndex.sha256,templateSha256:m.template.sha256,profileSha256:m.profile.sha256,loaderSha256:m.loaderSha256};
   m.inventory=ref('formal/inventory.json',{pages:[{scan:1,sourceSha256:sourceSha,reviewedBy:'synthetic-first',secondReviewer:'synthetic-second',
-   firstPassId:'one',secondPassId:'two',edgesChecked:true,secondViewedFirst:false,width:10,height:10,
-   regions:blank?[]:[{id:'body',kind:'body',box:[0,0,10,10],fields:Object.keys(fields)}]}]});
+   firstPassId:'one',secondPassId:'two',edgesChecked:true,secondViewedFirst:false,width:112,height:34,
+   regions:blank?[]:[{id:'body',kind:'body',box:[0,0,112,34],fields:Object.keys(fields)}]}]});
+  const scopes=require('../tools/reader-proof-batches.cjs').scopes;
+  const source={scan:1,sourceSha256:sourceSha,completeScopes:scopes};
+  const imageRef=ref('formal/source.png',image);
+  const census=ref('formal/proof-census.json',{...source,reviewedBy:'synthetic source census',edgesChecked:true,
+   regions:blank?[]:[{id:'body-1',scope:'body',box:[3,3,104,29]}]});
+  const reading=ref('formal/proof-reading.json',{...source,reviewedBy:'synthetic independent reading',blindToOutput:true,
+   regions:blank?[]:[{id:'body-1',state:'matched',value:{text:'合成本文。'}}]});
+  assert.equal(captured.artifactSha256,m.artifact.sha256,'the stored Chromium readback is for these exact fixture bytes');
+  const capture=ref('formal/browser.png',Buffer.from(captured.capturePng,'base64'));
+  const readback=ref('formal/proof-readback.json',{schema:'reader-proof-readback-v1',bookId:book.bookId,range:book.range,
+   artifactSha256:captured.artifactSha256,pages:[{...source,capture:{path:'browser.png',sha256:capture.sha256},regions:captured.regions}]});
+  m.proofInventory=ref('proof-inventory.json',{schema:'reader-proof-inventory-v1',bookId:book.bookId,range:book.range,readback,
+   pages:[{scan:1,image:imageRef,census,review:reading}]});
   m.second=ref('formal/second.json',{runId:'synthetic-blind-second',viewedFirst:false,sourceIndexSha256:m.originalIndex.sha256,
    method:'synthetic independent source fixture',reviewedBy:'synthetic-second',fields});
   m.resolutions=ref('formal/resolutions.json',{openIssues:[],differences:[],alerts:[],numbers:[]});
@@ -203,13 +218,18 @@ test('retained blank source is real work without fabricated regions; unproved em
  assert.ok(!r.tasks.some(x=>x.type==='inventory_source_page_regions'));
  const l=adoptAndAdvance(f);assert.equal(l.books[0].currentWork.independentSecondPass,'not_applicable_source_verified');
  const p=f.progress();p.pages=[{scan:1,sourceImageSha256:f.sourceSha,regions:[],inventory:{status:'source_verified',
-  sourceImageSha256:f.sourceSha,evidenceSha256:'e'.repeat(64),reviewedBy:'synthetic',width:10,height:10,hasReadableText:false,allRegionsInventoried:true,blankPage:true}}];
+  sourceImageSha256:f.sourceSha,evidenceSha256:'e'.repeat(64),reviewedBy:'synthetic',width:112,height:34,hasReadableText:false,allRegionsInventoried:true,blankPage:true}}];
  const bad=f.run(f.ledger,p);assert.equal(bad.counts.blankPagesRecorded,0);assert.ok(bad.tasks.some(x=>x.type==='inventory_source_page_regions'));
 });
 test('formal evidence transition requires real unchanged preparation gate and archived scoped evidence',t=>{
  const f=fixture(t),l=adoptAndAdvance(f);
  assert.equal(state.bindFormal(l,f.book.bookId,f.manifest,AT).ok,false,'active partial scoped evidence is not formal proof');
- f.formalize();assert.equal(v.validateBundle(f.manifest,{phase:'prepare'}).eligible,true);
+ f.formalize();
+ const proof=f.m.proofInventory;
+ delete f.m.proofInventory;f.save();
+ const missing=v.validateBundle(f.manifest,{phase:'prepare'});assert.equal(missing.eligible,false);assert.match(missing.errors.join('|'),/BATCH_PROOF_PENDING/);
+ f.m.proofInventory=proof;f.save();
+ const prepared=v.validateBundle(f.manifest,{phase:'prepare'});assert.equal(prepared.eligible,true,prepared.errors.join(','));
  const b=state.bindFormal(l,f.book.bookId,f.manifest,AT);assert.equal(b.ok,true,b.errors.join(','));
  const r=f.run(b.ledger);assert.equal(r.evidenceMode,'formal_canonical');assert.equal(r.status,'waiting');
  assert.equal(r.counts.completedCanonicalChecks,57);assert.equal(r.waitingTasks.length,3);assert.equal(r.releaseEligible,false);
