@@ -175,7 +175,7 @@ test('Nine Stories returns to the same book after connecting, then uses the comm
   vm.runInContext([
     between(app,'function openSheet(','function normalizeTitle('),
     between(app,'async function hasNewEdition(','function readerHref('),
-    between(app,'const tokenValid=','async function fetchPrivateCover('),
+    between(app,'const tokenValid=','async function loadGoogleScript('),
     between(app,'async function googleSignIn()','async function driveRequest('),
     between(app,'async function refreshCloud()','async function assertZip(')
   ].join('\n'),c);
@@ -193,6 +193,17 @@ test('Nine Stories returns to the same book after connecting, then uses the comm
   await c.primaryAction();
   assert.deepEqual(downloads,[indexed]);
   assert.equal(c.location.href,'shelf');
+});
+
+test('all bookshelf covers use written book titles and never fetch or display photos', () => {
+  const css=fs.readFileSync(path.join(directory,'app.css'),'utf8');
+  assert.match(app, /txt\.className='cover-title';txt\.textContent=book\.title/);
+  assert.doesNotMatch(app, /BookCovers|book-cover-photo|fetchPrivateCover/);
+  assert.doesNotMatch(css, /book-cover-photo|photo-ready/);
+  assert.match(css, /\.cover-title\{/);
+  assert.doesNotMatch(index, /<script src="\.\/book-covers\.js"><\/script>/);
+  assert.doesNotMatch(sw, /'\.\/book-covers\.js'/);
+  assert.match(sw, /private-bookshelf-shell-v32-textcovers-20261123/);
 });
 
 test('versioned shelf helper/app and fresh service-worker updates leave generic reader storage contracts intact', () => {
