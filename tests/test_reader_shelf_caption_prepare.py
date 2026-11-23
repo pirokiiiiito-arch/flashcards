@@ -113,6 +113,72 @@ class CaptionWorkTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '取り込み'):
             prepare.refresh(self.work)
 
+    def test_partial_reinitialization_keeps_previously_received_input_and_review(self):
+        former = self.start()
+        page = former['pages'][0]
+        proof = self.work/page['review']['path']
+        updated = prepare.load(proof)
+        updated['reviewedBy'] = '原本からの独立再読'
+        proof.write_bytes(prepare.json_bytes(updated))
+        former = prepare.refresh(self.work)
+        self.sources['pages'] = []
+        self.assertEqual(self.start(), former)
+
+
+    def test_combine_keeps_both_batches_original_receipts_and_gaps(self):
+        self.sources['range'] = [1, 1]
+        self.start()
+        second = self.root/'second'
+        manifest = self.root/'more.json'
+        manifest.write_bytes(prepare.json_bytes({'bookId':'example', 'range':[21, 21],
+                              'pages':[{'scan':21, 'source':self.image.name}]}))
+        prepare.init(manifest, second)
+        selection = self.root/'batches.json'
+        batches = [prepare.reference(p/prepare.INDEX, self.root) for p in (self.work, second)]
+        selection.write_bytes(prepare.json_bytes({'bookId':'example', 'range':[1, 40], 'batches':batches + batches[:1]}))
+        output = self.root/'combined'
+        combined = prepare.combine(selection, output)
+        self.assertEqual([p['scan'] for p in combined['pages']], [1, 21])
+        self.assertEqual(combined, prepare.combine(selection, output))
+        receipts = prepare.load(output/combined['originalOcrSources']['path'])['pages']
+        self.assertEqual([r['rawSha256'] for r in receipts], [prepare.digest(self.raw.read_bytes()), None])
+        self.assertEqual(len(combined['selectedBatches']), 2)
+        previous = (output/prepare.INDEX).read_bytes()
+        selection.write_bytes(prepare.json_bytes({'bookId':'example', 'range':[1, 40], 'batches':batches[1:]}))
+        with self.assertRaisesRegex(ValueError, '出力先'):
+            prepare.combine(selection, output)
+        self.assertEqual((output/prepare.INDEX).read_bytes(),previous)
+
+    def test_combine_rejects_conflicting_revisions_and_rehashed_pages(self):
+        self.sources['range'] = [1, 1]
+        index = self.start()
+        second = self.root/'second'
+        import shutil
+        shutil.copytree(self.work, second)
+        path = second/index['pages'][0]['review']['path']
+        review = prepare.load(path)
+        review['reviewedBy'] = 'second pass'
+        path.write_bytes(prepare.json_bytes(review))
+        prepare.refresh(second)
+        selected = self.root/'selected.json'
+        batches=[prepare.reference(p/prepare.INDEX,self.root) for p in (self.work,second)]
+        selected.write_bytes(prepare.json_bytes({'bookId':'example','range':[1,2],'batches':batches}))
+        output = self.root/'result'
+        with self.assertRaisesRegex(ValueError, '異なる版'):
+            prepare.combine(selected,output)
+        self.assertFalse(output.exists())
+        index=prepare.load(second/prepare.INDEX)
+        new_bytes=b'{"rows":[]}'
+        raw=second/'switched.json'
+        raw.write_bytes(new_bytes)
+        index['pages'][0]['ocr']=prepare.reference(raw,second)
+        (second/prepare.INDEX).write_bytes(prepare.json_bytes(index))
+        selected.write_bytes(prepare.json_bytes({'bookId':'example','range':[1,2],
+                    'batches':[prepare.reference(second/prepare.INDEX,self.root)]}))
+        with self.assertRaisesRegex(ValueError, '受領記録'):
+            prepare.combine(selected,output)
+        self.assertFalse(output.exists())
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -265,7 +265,7 @@ def prepare(a):
     caption_report = {}
     proof = proof_measure(a.archive, full, m, book['id'], getattr(a, 'proof_index', None), site,
                           getattr(a, 'caption_census', None), caption_report_out=caption_report)
-    require_claims(proof, a.channel, book, m, ref)
+    require_claims(proof, a.channel, book, m, ref, caption_report)
     claim=ref.get('rubyCoverageClaim')
     check(claim in (None,'partial','complete'),'ふりがな照合状態が不正です')
     ruby_reports=[]

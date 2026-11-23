@@ -48,7 +48,9 @@ class ShelfProof(unittest.TestCase):
         book = {'range': [7,27], 'entry': 'standalone.html'}
         missing = proof.measure(self.archive, self.sha, book, self.book_id)
         self.assertEqual(missing['batches'], [[7,26,20],[27,27,1]])
-        proof.require_claims(missing, 'preview', {'status':'部分校正済み・本文校正中'}, {}, {})
+        proof.require_claims(missing, 'preview', {'status':'図説校正中・本文校正中'}, {}, {})
+        with self.assertRaisesRegex(ValueError, '部分校正'):
+            proof.require_claims(missing, 'preview', {'status':'部分校正済み・本文校正中'}, {}, {})
         for channel, meta, ref in [('release',{},{}),('preview',{'status':'全文校了'},{}),
                                    ('preview',{'subtitle':'全字確認済み'},{}),('preview',{'status':'全21枚校正済み'},{}),
                                    ('preview',{'status':'21枚校正済み'},{}),('preview',{'status':'図説・注 校正済み'},{}),
@@ -116,6 +118,24 @@ class ShelfProof(unittest.TestCase):
         summary['scopeBatches'][0]['pending']['note'] = 1
         with self.assertRaisesRegex(ValueError,'未完了'):
             proof.require_claims(summary,'preview',{'status':'図説・注 校正済み'}, {}, {})
+
+    def test_scoped_counts_come_from_original_caption_census_while_body_remains_open(self):
+        summary = {'status':'partial','pendingScans':21,'batches':[[1,20,20],[21,21,1]],
+            'scopeBatches':[{'pending':dict.fromkeys(proof.SCOPES, n) | {'caption':missing,'figure':missing},
+                             'matchedRegions':0,'matchedScopeRegions':{'caption':captions,'figure':figures}}
+                             for n,missing,captions,figures in [(20,1,7,12),(1,1,0,0)]],
+            'captionCensus':{'version':1,'status':'partial','pendingScans':2,'batches':[[1,20,1],[21,21,1]]}}
+        details = {'pages':[{'scan':n,'status':'partial' if n in (13,21) else 'complete',
+                             'checkedCaptions':7 if n==7 else 0,'checkedFigures':12 if n==7 else 0}
+                            for n in range(1,22)]}
+        for label in ('図説19/21枚校正済み','図説7件校正済み','挿図12点確認済み','原本7枚目の図説確認済み',
+                      '原本1〜12枚の図説校正済み','原本1〜12枚の図説7件校正済み','図説を一部校正済み'):
+            proof.require_claims(summary,'preview',{'status':label}, {},{},details)
+        for label in ('図説20/21枚校正済み','図説7/20枚校正済み','図説8件校正済み','挿図13点確認済み',
+                      '本文1枚校正済み','原本13枚目の図説校正済み','全図説校正済み・本文未完了',
+                      '原本8〜12枚の図説7件校正済み','原本1〜20枚の図説校正済み'):
+            with self.subTest(label=label), self.assertRaises(ValueError):
+                proof.require_claims(summary,'preview',{'status':label}, {},{},details)
 
     def test_tampered_image_inventory_or_wrong_readback_route_fails(self):
         self.index['members'] = [{'path':'first.html','inventory':dict(self.inventory,sha256='0'*64)}]
@@ -193,6 +213,16 @@ class ShelfProof(unittest.TestCase):
             summary=self.measure()
             self.assertEqual(summary['captionCensus']['status'],'complete')
             proof.require_claims(summary,'release',{'status':'図説校了'},{},{})
+            for member in self.index['members']:
+                del member['inventory']
+            captions_only = self.measure()
+            self.assertEqual(captions_only['pendingScans'],1)
+            self.assertEqual(captions_only['scopeBatches'][0]['pending']['caption'],0)
+            self.assertEqual(captions_only['scopeBatches'][0]['matchedScopeRegions']['caption'],1)
+            proof.require_claims(captions_only,'preview',{'status':'図説校正済み・本文校正中'}, {}, {})
+            for channel,label in [('release','図説校正済み'),('preview','全字校正済み'),('preview','図説2件校正済み')]:
+                with self.assertRaises(ValueError):
+                    proof.require_claims(captions_only,channel,{'status':label},{},{})
             row=self.index['members'][-1]
             shelf=json.loads((self.root/'shelf.json').read_bytes())
             shelf['pages'][0]['painted'][-1]['value']['text']='図の説。'

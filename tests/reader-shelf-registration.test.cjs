@@ -82,3 +82,29 @@ test('source proofreading totals correspond to the 20-scan intervals on the sign
     const altered=structuredClone(record);change(altered);assert.throws(()=>r.validateEvidence(altered));
   }
 });
+
+test('the shelf requires new caption counts and keeps earlier signed previews readable', async () => {
+  const r = await registration, db = baseline();
+  await r.parseLedger(db);
+  const record = structuredClone(db.editions.find(row => row.evidence.sourceProof));
+  const proof = record.evidence.sourceProof;
+  const batches = proof.batches.map(([first, last, remaining]) => [first, last, remaining ? 1 : 0]);
+  const pending = batches.reduce((n, b) => n + b[2], 0);
+  proof.captionCensus = {version: 1, report: 'c'.repeat(64), batches, pendingScans: pending,
+    status: pending ? 'partial' : 'complete'};
+  r.validateEvidence(record);
+  for (const mutate of [
+    census => { census.batches.pop(); },
+    census => { census.batches[0][1]++; },
+    census => { census.batches[0][2] = proof.batches[0][2] + 1; },
+    census => { census.pendingScans++; },
+    census => { census.status = census.status === 'partial' ? 'complete' : 'partial'; },
+  ]) {
+    const altered = structuredClone(record);
+    mutate(altered.evidence.sourceProof.captionCensus);
+    assert.throws(() => r.validateEvidence(altered));
+  }
+  delete proof.captionCensus;
+  record.signature = Buffer.alloc(64).toString('base64');
+  await assert.rejects(r.parseLedger({...db, pending: [record]}), /図説全件/);
+});

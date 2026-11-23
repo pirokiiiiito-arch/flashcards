@@ -70,6 +70,11 @@ python tools/reader-shelf-register.py finalize \
 
 ### 20枚ごとの原本照合を登録する
 
-`prepare --proof-index PRIVATE/proof/index.json` に、登録するZIPと同じSHA-256を持つ非公開台帳を指定する。台帳の `schema` は `reader-shelf-proof-index-v1`。`bookId`、`range`、`archiveSha256`、`members` を記録する。各memberはZIPから実際に開くHTMLの `path`、`inventory:{path,sha256}` と、取得した場合の `readback:{path,sha256}` を持つ。これらのファイルは台帳からの相対パスで示す。分冊と全巻表示で別々のHTMLを開く書籍では、それぞれに同じ原本照合記録と各表示の読戻しを対応づける。原本画像のSHA-256を実際のZIPまたは内蔵原本と比較する。
+`prepare --proof-index PRIVATE/proof/index.json` に、登録するZIPと同じSHA-256を持つ非公開台帳を指定する。台帳の `schema` は `reader-shelf-proof-index-v1`。`bookId`、`range`、`archiveSha256`、`members` を記録する。各memberにはZIPから実際に開くHTMLの `path` と、取得済みの `inventory:{path,sha256}`・`readback:{path,sha256}` を記録する。原本全体の校正台帳が未作成でも、取得済みの図説台帳と読戻しを登録できる。これらのファイルは台帳からの相対パスで示す。分冊と全巻表示で別々のHTMLを開く書籍では、それぞれに同じ原本照合記録と各表示の読戻しを対応づける。原本画像のSHA-256を実際のZIPまたは内蔵原本と比較する。
 
 `preview` は未照合の枚数を保持する。記録のないHTML・ページは該当範囲を未照合と数える。`release` には全範囲の照合完了が必要。`reference.json` の `sourceProofClaim:"complete"` および `sourceScopeClaims` の個別項目の `"complete"` は、実測に一致するときだけ受理する。項目は `body, heading, caption, note, ruby, figure, toc, other`。書誌の「図説・注 校正済み」のような項目別完了表記にも同じ判定を行う。本棚は署名した各20枚の件数、分冊・全巻で一致した箇所の数を使用する。原文や原本画像は非公開に保つ。
+
+
+原本から独立に作った図説台帳を `captionCensus:{path,sha256}` で指定する。確認済みの20枚分を先に提出すると、その外の原本は未確認のまま残る。分冊と本棚に個別のHTMLがある書籍は両メンバーの読戻しを指定する。同じHTMLを両経路で使う書籍は、そのメンバーの `readback` に分冊、`shelfReadback` に本棚の記録を指定する。
+
+「原本1〜20枚の図説校正済み」は、その範囲の全ページで図の有無と各図説を照合できた場合に使える。「図説20枚校正済み」の枚数には、図のないことを原本全面で確認したページも含む。「図説7件校正済み」「図版12点確認済み」は、確認済みページの図説件数・図版点数をそれぞれ数える。本文・注・本文のルビは個別に校正を続ける。全原本の一般校正と図説の全件照合がそろった後に本全体の校了を認める。

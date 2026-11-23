@@ -236,3 +236,13 @@ python tools/reader_caption_census.py --index PRIVATE/caption-work/caption-censu
 原本の矩形、対応する図、独立した転記、ふりがなの文字範囲、OCR行の採否を記入する具体例は `templates/reader/v2/caption-review.example.json` を参照する。
 
 同じ書籍の棚登録用 `--proof-index` にも `captionCensus` の相対パスとSHA-256を指定する。分冊用と本棚用の読書HTMLが別の場合は各メンバーの `readback` に対応する実表示を登録する。標準・小説で同じ読書HTMLを両経路で使う場合は分冊を `readback`、本棚を `shelfReadback` に指定する。実画面の記録を別経路に流用すると、その原本は未確認になる。上記の診断は原本と表示の対応を返す。通常の完成検査・本棚登録は、採用した実体のSHA・対象範囲・読書経路も照合する。
+
+### 照合済みの分冊を全巻に引き継ぐ
+
+分冊ごとに台帳を作った場合は、採用する台帳のパスとSHA-256を `selected-batches.json` の `batches` 配列に記録する。各要素は `{"path":"001-020/caption-census.json","sha256":"採用台帳のSHA-256"}` の形式で、一覧全体には `bookId` と全巻の `range` を付ける。
+
+```sh
+python tools/reader_caption_prepare.py combine --selection PRIVATE/selected-batches.json --out PRIVATE/combined-r1
+```
+
+出力の `caption-census.json` を制作と本棚登録の両方に指定する。提出した分冊の原資料と元OCRの受領記録を引き継ぎ、未提出の原本は未確認として集計する。次の分冊を追加するときは同じ採用一覧に追記して新しい出力先にまとめる。同じ原本に異なる照合結果が指定された場合は、元の分冊を確認し、採用する版を一覧で指定する。

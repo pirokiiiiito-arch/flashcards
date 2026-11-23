@@ -9,6 +9,7 @@ import zipfile
 from collections import defaultdict
 from pathlib import Path
 
+from reader_caption_census import WH1_SHELF_HOSTS as SHELF_HOSTS
 from reader_shelf_probe import check, digest
 from reader_shelf_template import read_part
 
@@ -62,13 +63,6 @@ def embedded_originals(data):
 
 
 SCOPES = ('body', 'heading', 'caption', 'note', 'ruby', 'figure', 'toc', 'other')
-SHELF_HOSTS = {
-    'reader/library/' + name for name in (
-        'read.html', 'read-wh1-v9.html', 'wh1-caption-ruby.js', 'storage.js', 'wh1-reader-routing.js',
-        'wh1-pager-v9.js', 'wh1-figure-viewport-v9.js', 'wh1-display-check-v9.js', 'wh1-exact-pagination.js')
-}
-
-
 def verify_readback(receipt, bound_wh1, display, site):
     if not bound_wh1:
         return
@@ -170,32 +164,38 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None,
             row = rows[name]
             data = packed.read(name)
             artifact.write_bytes(data)
-            inventory, doc = pinned(index_path.parent, row['inventory'])
-            check(doc.get('bookId') == book_id and doc.get('range') == scan_range and isinstance(doc.get('pages'), list),
-                  '校正台帳と対象の分冊が一致しません')
-            if manifest.get('originalScans'):
+            doc = {}
+            inventory = None
+            if row.get('inventory') is not None:
+                inventory, doc = pinned(index_path.parent, row['inventory'])
+                check(doc.get('bookId') == book_id and doc.get('range') == scan_range and isinstance(doc.get('pages'), list),
+                      '校正台帳と対象の分冊が一致しません')
+                if manifest.get('originalScans'):
+                    for page in doc['pages']:
+                        scan = page['scan']
+                        check(type(scan) is int and start <= scan <= end, '校正台帳に対象外の原本があります')
+                        if scan not in sources:
+                            original = manifest['originalScans'][str(scan)]
+                            sources[scan] = sha(packed.read(original['path']))
+                            check(sources[scan] == original['sha256'], 'ZIP内の原本と制作台帳が違います')
+                else:
+                    sources.update(embedded_originals(data))
                 for page in doc['pages']:
                     scan = page['scan']
-                    check(type(scan) is int and start <= scan <= end, '校正台帳に対象外の原本があります')
-                    if scan not in sources:
-                        original = manifest['originalScans'][str(scan)]
-                        sources[scan] = sha(packed.read(original['path']))
-                        check(sources[scan] == original['sha256'], 'ZIP内の原本と制作台帳が違います')
-            else:
+                    reviews = tuple((page.get(key) or {}).get('sha256') for key in ('image', 'census', 'review'))
+                    check(source_reviews.setdefault(scan, reviews) == reviews, '同じ原本に対する分冊と全巻の校正資料が異なります')
+                    check(isinstance(page.get('image'), dict) and page['image'].get('sha256') == sources.get(page['scan'])
+                          and sources.get(page['scan']), '登録する本の原本画像と照合画像が違います')
+            elif not manifest.get('originalScans'):
                 sources.update(embedded_originals(data))
-            for page in doc['pages']:
-                scan = page['scan']
-                reviews = tuple((page.get(key) or {}).get('sha256') for key in ('image', 'census', 'review'))
-                check(source_reviews.setdefault(scan, reviews) == reviews, '同じ原本に対する分冊と全巻の校正資料が異なります')
-                check(isinstance(page.get('image'), dict) and page['image'].get('sha256') == sources.get(page['scan'])
-                      and sources.get(page['scan']), '登録する本の原本画像と照合画像が違います')
-            cmd = ['node', str(Path(__file__).with_name('reader-proof-batches.cjs')), '--artifact', str(artifact),
-                   '--inventory', str(inventory), '--book-id', book_id, '--start', str(start), '--end', str(end)]
+            cmd = []
             readback = row.get('readback') or doc.get('readback')
             if readback:
                 folder = index_path.parent if row.get('readback') else inventory.parent
                 receipt, captured = pinned(folder, readback)
                 readback_hashes[receipt] = readback['sha256']
+                check(captured.get('range') == scan_range and captured.get('bookId') == book_id,
+                      '読戻しの書籍・対象範囲が読書HTMLと一致しません')
                 verify_readback(captured, bound_wh1, name in displays, site)
                 if bound_wh1:
                     check(captured.get('archiveSha256') == archive_sha and captured.get('member') == name,
@@ -212,6 +212,16 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None,
                       and shelf_capture.get('route') == 'shelf', '本棚の図説読戻しの書籍・対象範囲・経路が異なります')
                 caption_readback(caption_receipts, shelf_path, shelf_capture, role='shelf', archive_sha=archive_sha,
                                  member=name, artifact_sha=sha(data), site=site)
+            if inventory is None:
+                for n in range(start,end+1):
+                    pending.add(n)
+                    outstanding_scopes[n].update(SCOPES)
+                    matched_regions[n] = set()
+                evidence.append({'member': name, 'html': sha(data), 'inventory': None,
+                                 'readback': readback['sha256'] if readback else None})
+                continue
+            cmd = ['node', str(Path(__file__).with_name('reader-proof-batches.cjs')), '--artifact', str(artifact),
+                   '--inventory', str(inventory), '--book-id', book_id, '--start', str(start), '--end', str(end)] + cmd
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             check(sha(inventory.read_bytes()) == row['inventory']['sha256'] and
                   (not readback or sha(receipt.read_bytes()) == readback['sha256']),
@@ -252,18 +262,29 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None,
     caption_pending = set(caption_report['pendingScans'])
     check(all(type(n) is int and low <= n <= high for n in caption_pending), '図説全件判定の原本番号が不正です')
     check(caption_report['status'] == ('partial' if caption_pending else 'complete'), '図説全件判定と未確認枚数が異なります')
-    for n in caption_pending:
-        outstanding_scopes[n].update(('figure','caption'))
+    # The census owns the figure and caption scopes. The general region audit
+    # remains required for whole-page signoff, independently of scoped progress.
+    for n in range(low, high+1):
+        if n in caption_pending:
+            outstanding_scopes[n].update(('figure', 'caption'))
+        else:
+            outstanding_scopes[n].difference_update(('figure', 'caption'))
     pending.update(caption_pending)
     if index_path:
         check(sha(index_path.read_bytes()) == index_sha, '照合中に本棚校正台帳が変わりました')
     batches = [[n, min(n + 19, high), sum(i in pending for i in range(n, min(n + 19, high) + 1))]
                for n in range(low, high + 1, 20)]
     scopes = []
+    caption_pages = {p['scan']: p for p in caption_report['pages']}
     for start, end, _ in batches:
         scans = range(start, end + 1)
-        scopes.append({'pending': {key: sum(key in outstanding_scopes[i] for i in scans) for key in SCOPES},
-                       'matchedRegions': sum(len(matched_regions[i]) for i in scans)})
+        by_scope = {key: sum(1 for n in scans for scope, _, _ in matched_regions[n] if key == scope)
+                    for key in SCOPES}
+        for key, field in (('figure', 'checkedFigures'), ('caption', 'checkedCaptions')):
+            by_scope[key] = sum(caption_pages[n].get(field, 0) for n in scans if n not in caption_pending)
+        scopes.append({'pending': {key: sum(key in outstanding_scopes[n] for n in scans) for key in SCOPES},
+                       'matchedRegions': sum(len(matched_regions[n]) for n in scans),
+                       'matchedScopeRegions': by_scope})
     # The shelf stores counts and a digest. Original positions, transcriptions,
     # paths and screenshots stay in the private source census.
     captions = {'version': 1, 'status': caption_report['status'], 'pendingScans': len(caption_pending),
@@ -275,7 +296,7 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None,
                               'captionReport': captions['report']})}
 
 
-def require_claims(summary, channel, book, manifest, reference):
+def require_claims(summary, channel, book, manifest, reference, caption_report=None):
     caption = summary.get('captionCensus', {})
     all_captions = caption.get('version') == 1 and caption.get('status') == 'complete' and caption.get('pendingScans') == 0
     def require_scope(scope):
@@ -293,38 +314,93 @@ def require_claims(summary, channel, book, manifest, reference):
             check(state in ('partial', 'complete'), '項目別の照合状態が不正です')
             if state == 'complete':
                 require_scope(scope)
-    if summary['status'] == 'complete' and all_captions:
-        return
-    check(channel != 'release', '原本と読書表示を照合できていないページがあります')
-    # Preserve genuinely partial progress labels. Treat unqualified completed
-    # labels as whole-book claims, and named scopes as independent claims.
-    scopes = {'本文':'body','見出し':'heading','図説':'caption','図の説明':'caption','図版説明':'caption',
-              '図注':'caption','キャプション':'caption','注記':'note','脚注':'note','注':'note',
-              'ルビ':'ruby','ふりがな':'ruby','図版':'figure','挿図':'figure','目次':'toc','その他':'other'}
-    scope_pattern = '|'.join(sorted(scopes, key=len, reverse=True))
+    complete = summary['status'] == 'complete' and all_captions
+    check(channel != 'release' or complete, '原本と読書表示を照合できていないページがあります')
+    words = {'本文':'body','見出し':'heading','図説':'caption','図の説明':'caption','図版説明':'caption',
+             '図注':'caption','キャプション':'caption','注記':'note','脚注':'note','注':'note',
+             'ルビ':'ruby','ふりがな':'ruby','図版':'figure','挿図':'figure','図':'figure','目次':'toc','その他':'other'}
+    scope_pattern = '|'.join(sorted(words, key=len, reverse=True))
     completed = re.compile(r'(?:校了|(?:校正|照合|確認)(?:完了|済み?)|proofreading complete|fully proofread)(?:版)?', re.I)
     for doc in (book, manifest):
         for key in ('status', 'subtitle'):
-            for label in re.split(r'[／/｜|、。]+', doc.get(key) or ''):
-                for match in completed.finditer(label):
-                    prefix = label[:match.start()].strip()
-                    if prefix.endswith('未') or re.search(r'未完|ではない|していない', label[match.end():]):
+            # Keep a numeric fraction together. A standalone slash separates two claims.
+            label = re.sub(r'(?<=[0-9０-９])[/／](?=[0-9０-９])', '∕', doc.get(key) or '')
+            for span in re.split(r'[／/｜|、。]+', label):
+                begin = 0
+                for match in completed.finditer(span):
+                    phrase = span[begin:match.start()].strip()
+                    begin = match.end()
+                    if phrase.endswith('未') or re.match(r'[（( ]*(?:ではない|していない)', span[begin:]):
                         continue
-                    current = prefix.rsplit('・', 1)[-1].strip()
-                    if re.search(r'部分|一部', current) and '全' not in current:
-                        continue
-                    number = re.search(r'([0-9０-９]+)(枚|箇所)', current)
-                    if number and '全' not in current:
-                        count, unit = int(number[1]), number[2]
-                        if unit == '枚':
-                            available = sum(end-start+1-pending for start,end,pending in summary['batches'])
+                    # Ignore a preceding completed or in-progress clause when it
+                    # shares this line with the claim currently being evaluated.
+                    phrase = re.split(r'(?:校正中|確認中|未確認|未完了)[・\s]*', phrase)[-1]
+                    scopes = {words[w] for w in re.findall(scope_pattern, phrase)}
+                    interval = re.search(r'(?:原本)?([0-9０-９]+)\s*[〜～~–－-]\s*([0-9０-９]+)\s*枚(?:目)?', phrase)
+                    single = None if interval else re.search(r'([0-9０-９]+)枚目', phrase)
+                    selected = interval or single
+                    if selected:
+                        first = int(selected[1])
+                        last = int(interval[2]) if interval else first
+                        check(summary['batches'][0][0] <= first <= last <= summary['batches'][-1][1],
+                              '書誌が示す範囲が原本の範囲を超えています')
+                        phrase = phrase[:selected.start()] + phrase[selected.end():]
+                    progress = re.search(r'([0-9０-９]+)(?:\s*∕\s*([0-9０-９]+))?\s*(枚|箇所|か所|ヶ所|件|点)', phrase)
+                    if selected and not progress:
+                        if scopes and scopes <= {'figure','caption'}:
+                            assert_caption_range(summary, caption_report, first, last)
                         else:
-                            available = sum(batch['matchedRegions'] for batch in summary['scopeBatches'])
-                        check(count <= available, '校正済みと表示する枚数・箇所数に照合記録が足りません')
+                            check(complete, '指定範囲の校了には該当原本の照合記録が必要です')
                         continue
-                    named = re.search(r'((?:'+scope_pattern+r')(?:[・と＋+、及び\s]*(?:'+scope_pattern+r'))*)[のをは\s]*$',prefix)
-                    if named:
-                        for word in re.findall(scope_pattern,named[1]):
-                            require_scope(scopes[word])
+                    partial = re.search(r'部分|一部', phrase) and '全' not in phrase
+                    if progress or partial:
+                        check(len(scopes) <= 1, '項目が複数ある部分校正の数は項目ごとに記載してください')
+                        scope = next(iter(scopes), None)
+                        batches = summary['batches']
+                        total = sum(end-start+1 for start,end,_ in batches)
+                        if scope:
+                            available = total - sum(b['pending'][scope] for b in summary['scopeBatches'])
+                            regions = sum(b.get('matchedScopeRegions',{}).get(scope,0) for b in summary['scopeBatches'])
+                        else:
+                            available = total - summary['pendingScans']
+                            regions = sum(b['matchedRegions'] for b in summary['scopeBatches'])
+                        if selected:
+                            check(scope in ('caption', 'figure') and caption_report is not None,
+                                  '指定範囲の図説件数には原本別の記録が必要です')
+                            pages = [p for p in caption_report['pages']
+                                     if first <= p['scan'] <= last and p['status']=='complete']
+                            total, available = last-first+1, len(pages)
+                            field = 'checkedCaptions' if scope=='caption' else 'checkedFigures'
+                            regions = sum(p[field] for p in pages)
+                        if not progress:
+                            check(available > 0 or regions > 0, '部分校正を示す照合記録がありません')
+                            continue
+                        count, denominator, unit = progress.groups()
+                        check(unit == '枚' or denominator is None,'図説の箇所数に原本枚数の分母は使用できません')
+                        if denominator is not None:
+                            check(int(denominator) == total, '原本の総枚数が書誌表示と違います')
+                        check(int(count) <= (available if unit=='枚' else regions), '校正済みと表示する枚数・箇所数に照合記録が足りません')
+                        if '全' in phrase and selected:
+                            check(available==total, '指定した全範囲の原本図説の照合が必要です')
+                        elif '全' in phrase and denominator is None:
+                            if scope:
+                                require_scope(scope)
+                            else:
+                                check(complete, '全枚の原本照合が必要です')
+                        continue
+                    if scopes:
+                        for scope in scopes:
+                            require_scope(scope)
                     else:
-                        check(False, '完了を示す書誌表示には全枚の原本照合が必要です')
+                        check(complete, '完了を示す書誌表示には全枚の原本照合が必要です')
+
+
+def assert_caption_range(summary, report, first, last):
+    batches = summary['captionCensus']['batches']
+    check(batches[0][0] <= first <= last <= batches[-1][1], '書誌が示す原本の範囲が本の範囲を超えています')
+    if report is not None:
+        verified = {p['scan'] for p in report['pages'] if p['status']=='complete'}
+        check(all(n in verified for n in range(first,last+1)), '指定範囲の図説に未確認の原本があります')
+    else:
+        check(all(pending==0 for a,b,pending in batches if first<=b and a<=last),
+              '指定範囲の図説の原本別記録が必要です')

@@ -1,0 +1,7 @@
+{
+  "releaseId": "20261123-caption-consistent-v9-2-12",
+  "packages": {
+    "integration": "f9cf229789152cdf12e03bf19f8fb39efdfcbf0fb8ae2268051cea881477bf87",
+    "production": "1aa439edc5ebfe1e8b0eb1455eac4fcf57167a4a3b0de957f53011a6ba1fee71"
+  }
+}

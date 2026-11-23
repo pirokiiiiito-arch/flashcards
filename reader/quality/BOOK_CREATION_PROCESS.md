@@ -322,6 +322,8 @@ preview の検査成功も 60項目やiPhone実機の合格ではない。
 
 依頼から書籍ID・原本全範囲を決めて先に記録した `request.json` を使用する。制作工程台帳の `book_id` と `scan_range` に同じ対象を明示し、統合が依頼範囲に含まれるときに `scope.include_merge` を有効にする。現行の配布ZIPを展開し、次の2工程を実行する。以下の PRIVATE と runtime は採用した実パスに置き換える。
 
+統合入口は同じ現行規則版の統合用・制作用の両ZIPに対応する。公開コードと一緒に配布する `tools/reader-merge-runtime-locks.json` から、使用するZIPの `workflow_guard_v9_2/active_release.json` のSHAを照合し、次に全対象ファイルの実バイトを検証する。
+
 1. 承認済みの統合台帳を制作工程台帳のcontent入力としてパス・実SHA付きで登録し、分冊を選定する。
 
 ```sh
@@ -339,7 +341,7 @@ python3 tools/reader-merge-work.py --runtime runtime merge --request PRIVATE/req
 統合保留時には、同じ依頼の工程台帳に登録済みでSHAが一致する候補を使う。正しい候補が一つなら入口がそのまま選定・統合を実行する。複数候補の採用判断や変更済み入力の承認は採用記録で確認する。合格済み原稿を作り直さない。
 採用済みの制作再開entryがある書籍は、両コマンドに `--entry PRIVATE/current-work.json --expected-entry-sha256 ENTRY_SHA` を付ける。ENTRY_SHAは選定記録の外部固定値を使う。統合が保留になったらWorkは結果の `nextAction` と `diagnostics` の該当箇所を処理する。個別ファイルの読み取り照合結果は `inputAudit` に出る。依頼範囲内の前提が整った作業は `nextProductionTask` と `readyTasks` を参照し、同じターンで着手して実際の証拠を記録する。原本・根拠・権限を必要とする判断は制作の既存手順に従う。依頼・入力・環境が変わるまで同一失敗の統合を反復しない。継続できる作業が尽きた時に、不足している資料または判断を具体的に伝える。
 
-統合報告の `requested_scope` に依頼の書籍ID・原本範囲・SHAが残る。4工程の合格後に必要な表示・配布検査は従来どおり実施する。Workの再開時は、採用した実行版・工程台帳・引継記録を一組で復元する。
+統合報告の `requested_scope` に依頼の書籍ID・原本範囲・SHAが残る。統合JSONの4工程が通った時点で、最終読書画面の図説欄は `captionCensus.status=partial`、原本番号は20枚ずつ分かれた実表示待ちとして引き継ぐ。図説索引を付属ファイルとして登録し、その原本フォルダからの相対パスを統合台帳の `caption_census_paths` に列挙する。統合後の `captionCensus.sourceSelection` を原本フォルダ直下の選定ファイルに保存すると、`reader_caption_prepare.py combine` が原本調査票・SHAを再利用できる。統合版の分冊・本棚を描画した結果を照合する。4工程の合格後に必要な表示・配布検査は従来どおり実施する。Workの再開時は、採用した実行版・工程台帳・引継記録を一組で復元する。
 
 ## 本棚への最終登録
 

@@ -95,15 +95,27 @@ def init(sources, work):
         old = load(index_path)
         if old['bookId'] != book or old['range'] != [first, last]:
             raise ValueError('別の書籍または原本範囲用の作業フォルダです')
+        if 'selectedBatches' in old:
+            raise ValueError('採用済み分冊の集約結果です。分冊の原資料を更新してから再集約してください')
+    else:
+        old = {'pages': []}
     by_scan = {}
     for row in data['pages']:
         n = row['scan']
         if type(n) is not int or not first <= n <= last or n in by_scan:
             raise ValueError(f'原本番号の範囲または重複を確認してください: {n}')
         by_scan[n] = row
+    previous = {p['scan']: p for p in old['pages']}
     pages = []
     for scan in range(first, last + 1):
-        row = by_scan.get(scan, {})
+        row = dict(by_scan.get(scan, {}))
+        for field in ('source', 'ocr'):
+            ref = previous.get(scan, {}).get(field)
+            if not row.get(field) and ref:
+                prior = local(work, ref['path'])
+                if digest(prior.read_bytes()) != ref['sha256']:
+                    raise ValueError(f'{scan}: 保存した{field}の版が変わりました')
+                row[field] = str(prior)
         image = pinned_input(row.get('source'), scan, 'source', sources.parent, work)
         raw_ref = pinned_input(row.get('ocr'), scan, 'ocr', sources.parent, work)
         image_sha = image['sha256'] if image else None
@@ -167,6 +179,8 @@ def attach(sources, work):
 
 def refresh(work):
     index = load(work / INDEX)
+    if 'selectedBatches' in index:
+        raise ValueError('集約した台帳は分冊の原資料を更新してから再集約してください')
     origin = index['originalOcrSources']
     if reference(local(work, origin['path']), work) != origin:
         raise ValueError('OCR取り込み時の記録が一致しません')
@@ -238,9 +252,93 @@ def crops(work, padding):
     return result
 
 
+def combine(selection, work):
+    """Assemble selected batch records without recalculating an OCR receipt from review data."""
+    plan = load(selection)
+    first, last = plan['range']
+    book = plan['bookId']
+    if not isinstance(book, str) or not book.strip() or not all(type(n) is int for n in (first, last)) or not 1 <= first <= last:
+        raise ValueError('統合する書籍と原本範囲を確認してください')
+    if not isinstance(plan.get('batches'), list) or not plan['batches']:
+        raise ValueError('採用する分冊台帳とそのSHA-256を指定してください')
+
+    work.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=work.parent) as temp:
+        output = Path(temp) / 'assembled'
+        pages, origins, adopted = {}, {}, {}
+
+        def copy_pin(root, ref):
+            path = local(root, ref['path'])
+            data = path.read_bytes()
+            sha = digest(data)
+            if sha != ref['sha256']:
+                raise ValueError(f'採用した資料のSHA-256が違います: {path.name}')
+            name = f'inputs/{sha}{path.suffix.lower()}'
+            dest = local(output, name)
+            if not dest.is_file():
+                write(dest, data)
+            return {'path': name, 'sha256': sha}
+
+        for selected in plan['batches']:
+            source = (selection.parent / selected['path']).resolve(strict=True)
+            index_pin = copy_pin(source.parent, {'path': source.name, 'sha256': selected['sha256']})
+            batch = load(output / index_pin['path'])
+            if batch.get('schema') != 'reader-caption-census-v1' or batch.get('bookId') != book:
+                raise ValueError('別の書籍の図説台帳です')
+            begin, end = batch['range']
+            if not first <= begin <= end <= last:
+                raise ValueError('分冊の原本範囲が統合対象外です')
+            origin_pin = copy_pin(source.parent, batch['originalOcrSources'])
+            receipt = load(output / origin_pin['path'])
+            if receipt.get('schema') != 'reader-caption-ocr-origin-v1' or receipt.get('bookId') != book or receipt['range'] != batch['range']:
+                raise ValueError('元OCR受領記録の書籍または原本範囲が違います')
+            local_origins = {}
+            for row in receipt['pages']:
+                n = row['scan']
+                if type(n) is not int or not begin <= n <= end or n in local_origins:
+                    raise ValueError('元OCR受領記録の原本番号が不正です')
+                local_origins[n] = row
+            adopted[index_pin['sha256']] = {'index': index_pin, 'originalOcrSources': origin_pin, 'range': [begin, end]}
+            seen = set()
+            for page in batch['pages']:
+                n = page['scan']
+                if type(n) is not int or not begin <= n <= end or n in seen:
+                    raise ValueError('図説台帳の原本番号の範囲または重複を確認してください')
+                seen.add(n)
+                refs = {k: copy_pin(source.parent, page[k]) if page.get(k) else None
+                        for k in ('source', 'census', 'review', 'ocr', 'ocrAudit')}
+                row = local_origins.get(n)
+                if row is None or (refs['source'] or {}).get('sha256') != row.get('sourceSha256') or (refs['ocr'] or {}).get('sha256') != row.get('rawSha256'):
+                    raise ValueError(f'原本{n}枚目の元画像・OCRが受領記録と一致しません')
+                item = {'scan': n, **refs}
+                if n in pages and (item != pages[n] or row != origins[n]):
+                    raise ValueError(f'原本{n}枚目に異なる版が指定されています。採用する版を1つ選んでください')
+                pages[n], origins[n] = item, row
+        receipt = json_bytes({'schema': 'reader-caption-ocr-origin-v1', 'bookId': book,
+                              'range': [first, last], 'pages': [origins[n] for n in sorted(origins)]})
+        origin_path = output / 'inputs' / f'ocr-origins-{digest(receipt)}.json'
+        write(origin_path, receipt)
+        index = {'schema': 'reader-caption-census-v1', 'bookId': book, 'range': [first, last],
+                 'pages': [pages[n] for n in sorted(pages)], 'originalOcrSources': reference(origin_path, output),
+                 'selectedBatches': [adopted[h] for h in sorted(adopted)]}
+        write(output / INDEX, json_bytes(index))
+        if work.exists() and any(work.iterdir()):
+            for file in output.rglob('*'):
+                if file.is_file():
+                    existing = work / file.relative_to(output)
+                    if not existing.is_file() or digest(existing.read_bytes()) != digest(file.read_bytes()):
+                        raise ValueError('出力先に別の統合結果があります。新しい出力先を指定してください')
+        else:
+            output.rename(work)
+        return index
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='action', required=True)
+    p = commands.add_parser('combine')
+    p.add_argument('--selection', type=Path, required=True)
+    p.add_argument('--out', type=Path, required=True)
     p = commands.add_parser('init')
     p.add_argument('--sources', type=Path, required=True)
     p.add_argument('--out', type=Path, required=True)
@@ -257,7 +355,10 @@ def main():
     p.add_argument('--work', type=Path, required=True)
     p.add_argument('--padding', type=int, default=48)
     args = parser.parse_args()
-    if args.action == 'init':
+    if args.action == 'combine':
+        index = combine(args.selection.resolve(), args.out.resolve())
+        print(f'{len(index["pages"])}枚分の採用済み台帳を集約しました')
+    elif args.action == 'init':
         result = init(args.sources.resolve(), args.out.resolve())
         if not args.records_only:
             sheets(result, args.out.resolve())

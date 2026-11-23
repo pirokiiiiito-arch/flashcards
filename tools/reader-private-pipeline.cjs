@@ -11,7 +11,9 @@ function pinCaptionIndex(root,relative,m){
  const bytes=fs.readFileSync(v.safe(root,relative));
  const index=JSON.parse(bytes);
  fail(index.schema==='reader-caption-census-v1' && index.bookId===m.bookId &&
-  index.range[0]<=m.range[0] && index.range[1]>=m.range[1],'CAPTION_INDEX_SCOPE_MISMATCH');
+  Array.isArray(index.range) && index.range.length===2 && index.range.every(Number.isSafeInteger) &&
+  index.range[0]>=1 && index.range[0]<=index.range[1] &&
+  index.range[0]<=m.range[1] && index.range[1]>=m.range[0],'CAPTION_INDEX_SCOPE_MISMATCH');
  const name=path.posix.join(path.posix.dirname(relative),'index-'+v.hash(bytes)+'.json');
  return write(root,name,bytes);
 }

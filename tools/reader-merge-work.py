@@ -8,14 +8,17 @@ import subprocess
 import sys
 import re
 
-ACTIVE_LOCK_SHA256 = 'fc2e9791634a747380fdb663351c8778c8f09a4f0800d05dd9e4d9808f08d670'
+RUNTIME_LOCKS = Path(__file__).with_name('reader-merge-runtime-locks.json')
 
 
 def verify_runtime(root):
     lock = (root / 'active_release.json').read_bytes()
-    if hashlib.sha256(lock).hexdigest() != ACTIVE_LOCK_SHA256:
+    publication = json.loads(RUNTIME_LOCKS.read_bytes())
+    runtime = json.loads(lock)
+    if (runtime.get('release_id') != publication['releaseId']
+            or hashlib.sha256(lock).hexdigest() not in publication['packages'].values()):
         raise ValueError('統合運用版が一致しません。現行のWork用統合パッケージを使用してください')
-    for name, expected in json.loads(lock)['sha256'].items():
+    for name, expected in runtime['sha256'].items():
         if hashlib.sha256((root / name).read_bytes()).hexdigest() != expected:
             raise ValueError('配布した統合運用版とファイルが一致しません: ' + name)
 

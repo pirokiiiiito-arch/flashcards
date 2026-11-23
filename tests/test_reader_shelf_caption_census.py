@@ -185,6 +185,43 @@ class TestReaderCaptionCensus(unittest.TestCase):
         index.write_text(json.dumps(doc))
         result=audit(index,book_id='fixture',scan_range=(1,2),readbacks=b.readbacks())
         self.assertEqual(result['pendingScans'],[2])
+
+    def test_partial_index_preserves_progress_and_counts_only_reviewed_figures(self):
+        b=CaptionBook(self.root,2)
+        figure=b.figure(2,'sketch',['legend'])
+        b.caption(2,'legend',['sketch'],'原本の図。')
+        b.paint(2,[figure],'原本の図。')
+        result=audit(b.save(),book_id='fixture',scan_range=[1,23],readbacks=b.readbacks())
+        self.assertEqual(result['pendingScans'],list(range(3,24)))
+        self.assertEqual([row['pendingScans'] for row in result['batches']],
+                         [list(range(3,21)),[21,22,23]])
+        self.assertEqual([p.get('checkedFigures') for p in result['pages'][:3]],[0,1,None])
+        self.assertEqual([p.get('checkedCaptions') for p in result['pages'][:3]],[0,1,None])
+
+    def test_whole_book_readback_can_verify_a_later_partial_source_index(self):
+        b=CaptionBook(self.root,5)
+        p=b.save()
+        index=json.loads(p.read_bytes()); index['range']=[3,4]; index['pages']=index['pages'][2:4]
+        origins=json.loads((b.root/'original-ocr.json').read_bytes())
+        origins['range']=[3,4];origins['pages']=origins['pages'][2:4]
+        index['originalOcrSources']=b.write('ocr-batch.json',json.dumps(origins).encode())
+        p.write_text(json.dumps(index))
+        result=audit(p,book_id='fixture',scan_range=[2,5],readbacks=b.readbacks())
+        self.assertEqual(result['pendingScans'],[2,5])
+
+    def test_bad_neighbor_binding_affects_only_a_genuinely_linked_page(self):
+        b=CaptionBook(self.root,21)
+        figure=b.figure(20,'f',['legend-on-21'])
+        b.caption(21,'legend-on-21',['f'],'次の紙面の図説。')
+        b.paint(20,[figure],'次の紙面の図説。')
+        receipts=b.readbacks()
+        result=audit(b.save(),book_id='fixture',scan_range=[1,20],readbacks=receipts,
+                     page_issues={21:['CAPTION_WRONG_ARCHIVE_MEMBER']})
+        self.assertEqual(result['pendingScans'],[20])
+        receipt=receipts['shelf'][0][1]
+        receipts['shelf'].append((self.root/'irrelevant.json',dict(receipt,route='part',range=[41,60])))
+        result=audit(b.save(),book_id='fixture',scan_range=[1,20],readbacks=receipts)
+        self.assertEqual(result['pendingScans'],[])
     def test_multiple_figures_with_individually_painted_legends(self):
         b=CaptionBook(self.root);a=b.figure(1,'a',['capA']);z=b.figure(1,'z',['capZ'])
         b.caption(1,'capA',['a'],'最初');b.caption(1,'capZ',['z'],'別の図');b.paint(1,[a,z],'最初')

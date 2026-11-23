@@ -43,6 +43,10 @@ const beforeSourceProof = new Set([...previousSignatures,
   '6KBAJ8Wp4xOD2agN2fn79Ek+VAVqeo8MZ5zDAguRto7xpbGRUKAaWuVJxIMpEyg26+2dM7ibaKMwT9g6pkAAUQ==',
   '4FiWU+qjfrdMZ0cxkIiZEYSiGSZsziXPuSG27J6CULIp2PUO2gkgINjWLeWF5bRzBEltpLLI1Wb/psXze68zbQ==',
 ]);
+// This already admitted preview predates the independently checked caption census.
+const beforeCaptionCensus = new Set([...beforeSourceProof,
+  'LUNDyAFwuEAHIuu+IRJyu3VZKXjfpsi802TMytvJP0suV4ZJyfykjU1GJPeGIUwgmjSevdGqZIpGnqnrJJcKWA==',
+]);
 function validateSourceProof(record) {
   const proof = record.evidence.sourceProof;
   if (proof === undefined) return;
@@ -66,6 +70,20 @@ function validateSourceProof(record) {
   }
   requireValue(proof.pendingScans === pending && proof.status === (pending ? 'partial' : 'complete') &&
     (record.channel !== 'release' || !pending), '原本照合の内訳と本棚版の状態が異なります');
+  const census = proof.captionCensus;
+  if (census === undefined) return;
+  requireValue(census?.version === 1 && hex.test(census.report) && Array.isArray(census.batches) &&
+    census.batches.length === proof.batches.length, '原本全範囲の図説照合記録が必要です');
+  let pendingCaptions = 0;
+  for (const [i, [first, last, remaining]] of proof.batches.entries()) {
+    const row = census.batches[i];
+    requireValue(Array.isArray(row) && row.length === 3 && row[0] === first && row[1] === last &&
+      Number.isInteger(row[2]) && row[2] >= 0 && row[2] <= remaining,
+      '原本ごとの図説照合枚数が全体の判定と異なります');
+    pendingCaptions += row[2];
+  }
+  requireValue(census.pendingScans === pendingCaptions &&
+    census.status === (pendingCaptions ? 'partial' : 'complete'), '図説校了の表示と照合記録が異なります');
 }
 function validatePageTurns(record) {
   const {pageTurns: t, batches} = record.evidence;
@@ -131,6 +149,8 @@ export function signingText(record) {
 async function signed(record) {
   validateEvidence(record);
   requireValue(record.evidence.sourceProof || beforeSourceProof.has(record.signature), '原本20枚ごとの照合記録がありません');
+  requireValue(record.evidence.sourceProof?.captionCensus || beforeCaptionCensus.has(record.signature),
+    '今回の版の図説全件照合の結果がありません');
   requireValue(typeof record.signature==='string' && /^[A-Za-z0-9+/]{85}[AQgw]==$/.test(record.signature),'登録検査の署名がありません');
   publicKey ||= crypto.subtle.importKey('spki',unbase64(publicSPKI),{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
   requireValue(await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},await publicKey,unbase64(record.signature),utf8.encode(signingText(record))),'登録検査の署名を確認できません');

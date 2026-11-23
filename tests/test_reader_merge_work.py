@@ -19,12 +19,21 @@ class WorkMergeTests(unittest.TestCase):
             root = Path(directory)
             program = root / 'book_merge_guard.py'
             program.write_bytes(b'synthetic')
-            lock = json.dumps({'sha256': {program.name: hashlib.sha256(program.read_bytes()).hexdigest()}}).encode()
+            lock = json.dumps({'release_id': 'fixture', 'sha256': {program.name: hashlib.sha256(program.read_bytes()).hexdigest()}}).encode()
             (root / 'active_release.json').write_bytes(lock)
             with self.assertRaises(ValueError):
                 module.verify_runtime(root)
-            with patch.object(module, 'ACTIVE_LOCK_SHA256', hashlib.sha256(lock).hexdigest()):
+            pins = root / 'fixture-locks.json'
+            pins.write_text(json.dumps({'releaseId': 'fixture', 'packages': {
+                'production': '0' * 64, 'integration': hashlib.sha256(lock).hexdigest()}}))
+            with patch.object(module, 'RUNTIME_LOCKS', pins):
                 module.verify_runtime(root)
+                altered = json.loads(lock)
+                altered['release_id'] = 'other'
+                (root / 'active_release.json').write_text(json.dumps(altered))
+                with self.assertRaises(ValueError):
+                    module.verify_runtime(root)
+                (root / 'active_release.json').write_bytes(lock)
                 program.write_bytes(b'changed')
                 with self.assertRaises(ValueError):
                     module.verify_runtime(root)

@@ -16,6 +16,11 @@ CAP = re.compile(r'caption-(\d+)\Z')
 IMAGE = re.compile(r'image-(\d+)\Z')
 LABEL = re.compile(r'figure-label-(\d+)-(\d+)\Z')
 IMAGE_CAP = re.compile(r'image-caption-(\d+)\Z')
+WH1_SHELF_HOSTS = frozenset(
+    'reader/library/' + name for name in (
+        'read.html','read-wh1-v9.html','wh1-caption-ruby.js','storage.js','wh1-reader-routing.js',
+        'wh1-pager-v9.js','wh1-figure-viewport-v9.js','wh1-display-check-v9.js','wh1-exact-pagination.js')
+)
 
 
 class EvidenceError(ValueError):
@@ -308,7 +313,7 @@ def concat_fields(fields):
 
 
 def audit(index_path, *, book_id, scan_range, source_hashes=None, readbacks=None,
-          archive_sha256=None, artifact_sha256=None, index_sha256=None, ocr_hashes=None):
+          archive_sha256=None, artifact_sha256=None, index_sha256=None, ocr_hashes=None, page_issues=None):
     low,high=scan_range
     require(type(low) is int and type(high) is int and 0<low<=high,'INVALID_BOOK_RANGE')
     issues={n:[] for n in range(low,high+1)}
@@ -328,9 +333,12 @@ def audit(index_path, *, book_id, scan_range, source_hashes=None, readbacks=None
             extent=doc.get('range')
             require(doc.get('schema')=='reader-caption-census-v1' and doc.get('bookId')==book_id and
                     isinstance(extent,list) and len(extent)==2 and all(type(z) is int for z in extent) and
-                    0<extent[0]<=low<=high<=extent[1] and isinstance(doc.get('pages'),list),'WRONG_CAPTION_CENSUS')
-            low,high=extent
-            issues.update({n:[] for n in range(low,high+1)})
+                    0<extent[0]<=extent[1] and extent[0]<=high and low<=extent[1] and
+                    isinstance(doc.get('pages'),list),'WRONG_CAPTION_CENSUS')
+            # Verify all supplied pages, including any referenced by an illustration
+            # across the batch boundary. Missing requested pages remain in the queue.
+            index_start,index_end=extent
+            issues.update({n:[] for n in range(index_start,index_end+1)})
             if doc.get('originalOcrSources'):
                 origin=json.loads(pinned(path.parent,doc['originalOcrSources']))
                 require(origin.get('schema')=='reader-caption-ocr-origin-v1' and origin.get('bookId')==book_id and
@@ -338,7 +346,7 @@ def audit(index_path, *, book_id, scan_range, source_hashes=None, readbacks=None
                 origin_scans=set()
                 for original in origin['pages']:
                     n=original['scan']
-                    require(type(n) is int and n in issues,'OUT_OF_RANGE_ORIGINAL_OCR_MANIFEST')
+                    require(type(n) is int and index_start<=n<=index_end,'OUT_OF_RANGE_ORIGINAL_OCR_MANIFEST')
                     if n in origin_scans:
                         issue(n,'DUPLICATE_ORIGINAL_OCR_EXPORT')
                         continue
@@ -349,7 +357,8 @@ def audit(index_path, *, book_id, scan_range, source_hashes=None, readbacks=None
                         continue
                     original_ocr[n]=(source_sha,raw_sha)
             for p in doc['pages']:
-                require(isinstance(p,dict) and type(p.get('scan')) is int and p['scan'] in issues,'OUT_OF_RANGE_SOURCE_PAGE')
+                require(isinstance(p,dict) and type(p.get('scan')) is int and index_start<=p['scan']<=index_end,
+                        'OUT_OF_RANGE_SOURCE_PAGE')
                 rows[p['scan']].append(p)
         except (ValueError,OSError,KeyError,TypeError,AttributeError) as exc:each(str(exc) if isinstance(exc,EvidenceError) else 'INVALID_CAPTION_CENSUS')
     for n,entries in rows.items():
@@ -388,21 +397,24 @@ def audit(index_path, *, book_id, scan_range, source_hashes=None, readbacks=None
         measured=defaultdict(list)
         for filename,receipt in (readbacks or {}).get(route,[]):
             extent=receipt.get('range') if isinstance(receipt,dict) else None
-            affected=[n for n in srcs if isinstance(extent,list) and len(extent)==2 and
-                      all(type(v) is int for v in extent) and extent[0]<=n<=extent[1]]
+            known_range=(isinstance(extent,list) and len(extent)==2 and all(type(v) is int for v in extent)
+                         and 0<extent[0]<=extent[1])
+            affected=[n for n in srcs if not known_range or extent[0]<=n<=extent[1]]
             try:
                 require(receipt.get('schema')=='reader-proof-readback-v1' and receipt.get('bookId')==book_id and
                         receipt.get('route')==route and isinstance(receipt.get('pages'),list) and
-                        isinstance(receipt.get('range'),list) and len(receipt['range'])==2,'WRONG_READBACK')
+                        known_range,'WRONG_READBACK')
                 require(HEX.fullmatch(str(receipt.get('artifactSha256'))) and
                         (archive_sha256 is None or receipt.get('archiveSha256')==archive_sha256),'WRONG_READBACK_VERSION')
-                observed_artifacts.add(receipt['artifactSha256'])
                 for obs in receipt['pages']:
                     n=obs['scan']
-                    require(type(n) is int and receipt['range'][0]<=n<=receipt['range'][1] and n in issues,'WRONG_READBACK_RANGE')
-                    measured[n].append((Path(filename).parent,obs))
+                    require(type(n) is int and extent[0]<=n<=extent[1],'WRONG_READBACK_RANGE')
+                    if n in srcs:
+                        measured[n].append((Path(filename).parent,obs))
+                    if requested[0]<=n<=requested[1]:
+                        observed_artifacts.add(receipt['artifactSha256'])
             except (ValueError,KeyError,TypeError,AttributeError):
-                for n in (affected or srcs):issue(n,'INVALID_READBACK',route=route)
+                for n in affected:issue(n,'INVALID_READBACK',route=route)
         seen_captions=Counter()
         for n,src in srcs.items():
             try:
@@ -471,6 +483,8 @@ def audit(index_path, *, book_id, scan_range, source_hashes=None, readbacks=None
         for c,(n,_) in captions.items():
             if seen_captions[c]!=1:issue(n,'CAPTION_MISSING_OR_DUPLICATE_IN_READER',id=c,route=route)
     if artifact_sha256 is not None and artifact_sha256 not in observed_artifacts:each('ARTIFACT_HASH_NOT_OBSERVED')
+    for scan,codes in (page_issues or {}).items():
+        for code in sorted(codes):issue(scan,code)
     links=defaultdict(set)
     for c,(n,cap) in captions.items():
         for f in cap['figureIds']:
@@ -485,6 +499,10 @@ def audit(index_path, *, book_id, scan_range, source_hashes=None, readbacks=None
                 queue.append(other)
     low,high=requested
     pages=[dict(scan=n,status='partial' if issues[n] else 'complete',issues=issues[n]) for n in range(low,high+1)]
+    for page in pages:
+        if page['status']=='complete':
+            source=srcs[page['scan']]
+            page.update(checkedFigures=len(source['figures']),checkedCaptions=len(source['captions']))
     pending=[p['scan'] for p in pages if p['issues']]
     batches=[]
     for start in range(low,high+1,20):
