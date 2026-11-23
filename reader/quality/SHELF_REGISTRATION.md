@@ -65,6 +65,7 @@ python tools/reader-shelf-register.py prepare \
   --site "$PUBLISHED_TREE" --catalog private/current-bookshelf.json \
   --book private/entry.json --archive private/book.zip \
   --readback private/readback --reference private/reference.json \
+  --proof-index private/proof/index.json \
   --channel preview --key "$PRIVATE_SHELF_KEY" --out private/checked
 
 python tools/reader-shelf-register.py catalog \
