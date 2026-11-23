@@ -1243,6 +1243,49 @@ function startWh1HeadingPages(html){
  if(!html.includes(anchor))html=html.replace(lookup,()=>lookup+anchor);
  return html;
 }
+// Convert embedded original scans to object URLs for the lifetime of this local reader.
+// The stored, hash-verified HTML and the JPEG/PNG/WebP bytes stay exact.
+function compactStandaloneOriginals(bytes){
+ if(bytes.byteLength<32*1024*1024)return null;
+ const dec=new TextDecoder('utf-8',{fatal:true});
+ const head=new TextDecoder().decode(bytes.subarray(0,32768));
+ if(!head.includes('<script type="application/json" id="bookdata">'))return null;
+ const enc=new TextEncoder();
+ function locate(needle,at,limit){
+  const tag=enc.encode(needle);
+  for(let i=bytes.indexOf(tag[0],at);i>=0&&i+tag.length<=limit;i=bytes.indexOf(tag[0],i+1)){
+   let j=1;while(j<tag.length&&bytes[i+j]===tag[j])j++;
+   if(j===tag.length)return i;
+  }
+  return -1;
+ }
+ const mapTag=',"originals":[',start=locate(mapTag,0,bytes.length);
+ if(start<0)return null;
+ const stop=bytes.indexOf(93,start+mapTag.length);
+ if(stop<0)return null;
+ const prefix='"src":"',parts=[],urls=[];
+ let at=start,saved=0;
+ try{
+  while(at<stop){
+   const tag=locate(prefix,at,stop);if(tag<0)break;
+   const begin=tag+prefix.length,end=bytes.indexOf(34,begin),comma=bytes.indexOf(44,begin);
+   if(end<begin||end>stop||comma<begin||comma>begin+32||comma>=end)throw Error('unsupported original source');
+   const mime=/^data:(image\/(?:jpeg|png|webp));base64$/.exec(dec.decode(bytes.subarray(begin,comma)));
+   if(!mime)throw Error('unsupported original image');
+   const binary=atob(dec.decode(bytes.subarray(comma+1,end))),raw=new Uint8Array(binary.length);
+   for(let i=0;i<raw.length;i++)raw[i]=binary.charCodeAt(i);
+   const url=URL.createObjectURL(new Blob([raw],{type:mime[1]}));urls.push(url);
+   parts.push(dec.decode(bytes.subarray(saved,begin)),url);saved=end;at=end+1;
+  }
+  if(!urls.length)return null;
+  parts.push(dec.decode(bytes.subarray(saved)));
+  return parts.join('');
+ }catch(_){
+  for(const url of urls)URL.revokeObjectURL(url);
+  return null;
+ }
+}
+
 async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
@@ -1265,7 +1308,12 @@ async function loadBook(file,shouldSave=true){
    }
    document.open();
    if(inherited)writeLegacyNineEpigraph(bytes);
-   else document.write(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+   else {
+    // This edition has been checked with blob-backed original scans on the saved-book route.
+    const compact=m.sha256==='7bec7d5ef409cc65ff30bc5b33f6618c2d1c2e42743c841966d2815f55a9f385'
+     ? compactStandaloneOriginals(bytes) : null;
+    document.write(compact??new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+   }
    document.close();
    return;
   }
