@@ -21,6 +21,24 @@ def layout(rows, figures, previous=None):
 
 
 class FigureCaptionGeometryTests(unittest.TestCase):
+    def test_caption_start_compares_vertical_alternatives_from_full_ocr_geometry(self):
+        lines = [line('a', 240, 550, 550), line('b', 240, 578, 550)]
+        source = dict(width=1000, height=1400, figures=[{'bbox':[150,100,600,500]}],
+                      rows=lines, existingCaptionRows=[['a','b']])
+        self.assertNotIn('initialCandidates', inspect_input(source))
+        source['sourceRows'] = lines + [{'id':'alt', 'box':[184,548,233,597],
+                                        'text':'7', 'kind':'line_main'}]
+        out = inspect_input(source)
+        self.assertIn('caption-initial-review', out['reviewFlags'])
+        self.assertEqual(out['initialCandidates'][0]['fragments'], ['alt'])
+        self.assertEqual(out['initialCandidates'][0]['figure'], 0)
+
+    def test_initial_cannot_match_caption_and_source_ids_at_different_positions(self):
+        source = dict(width=1000, height=1400, rows=[line('a',100,540,850)],
+                      figures=[{'bbox':[100,100,850,510]}], sourceRows=[line('a',400,540,850)])
+        with self.assertRaisesRegex(ValueError, 'original OCR geometry'):
+            inspect_input(source)
+
     def test_distant_body_does_not_become_caption_of_only_figure(self):
         rows=[line('body',100,40,850),line('legend',100,1030,850)]
         result=layout(rows,[[100,410,900,1000]])

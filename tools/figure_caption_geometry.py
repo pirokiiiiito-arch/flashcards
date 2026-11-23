@@ -3,10 +3,14 @@
 CLI: python figure_caption_geometry.py input.json
 Input: {"width":..., "height":..., "rows":[{"box":[x1,y1,x2,y2],"text":"...","id":"..."}],
         "figures":[{"bbox":[x1,y1,x2,y2]}], "existingCaptionRows":[["id",...],...]}
-Only pass candidate horizontal lines outside artwork. Existing source order is optional.
+Use rows for candidate horizontal lines outside art, and sourceRows for ALL raw
+OCR rows including text whose orientation may have been misdetected. Existing
+caption source order is optional. sourceRows uses the same IDs and rectangles.
 The JSON result lists candidate row IDs and review flags. Nonempty flags require
 a source-verified assignment or retention of the original image for this page.
 """
+from caption_initials import candidates as initial_candidates
+
 import argparse
 from collections import defaultdict
 import json
@@ -163,8 +167,26 @@ def inspect_input(data):
                     flags.append('conflicting-figure')
             if alternating_columns([by_id[key] for key in sequence], width, height):
                 flags.append('interleaved-column-order')
-    return {'candidates': {i:[r['id'] for r in group] for i,group in sorted(groups.items())},
-            'reviewFlags':sorted(set(flags))}
+    assigned = {i:[r['id'] for r in group] for i,group in sorted(groups.items())}
+    orders = enumerate(previous) if previous is not None else assigned.items()
+    source_rows = data.get('sourceRows', rows)
+    source = {row['id']: row for row in source_rows}
+    if len(source) != len(source_rows):
+        raise ValueError('Duplicate source OCR row IDs')
+    for key, horizontal_row in by_id.items():
+        if key not in source or source[key]['box'] != horizontal_row['box']:
+            raise ValueError(f'Caption row missing from the original OCR geometry: {key}')
+    for row in source_rows:
+        x, y, X, Y = row['box']
+        if not (0 <= x < X <= width and 0 <= y < Y <= height):
+            raise ValueError(f'Invalid original OCR region {row["id"]}')
+    initials = [dict(figure=i, **zone) for i, ids in orders
+                for zone in initial_candidates(ids, source_rows)]
+    result = {'candidates': assigned, 'reviewFlags': sorted(set(flags))}
+    if initials:
+        result['initialCandidates'] = initials
+        result['reviewFlags'] = sorted(set(flags) | {'caption-initial-review'})
+    return result
 
 
 if __name__ == '__main__':

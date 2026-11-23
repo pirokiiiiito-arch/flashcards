@@ -1,4 +1,6 @@
 """Verify book data bound to the existing WH1 011–030 reader without reformatting it."""
+from collections import Counter
+from io import BytesIO
 import json
 import re
 import zipfile
@@ -13,7 +15,7 @@ STYLE_SHA = '35d2da2a4827b26328656e6f3e74843e671182a46ade27dc69279cb4bfdabbe3'
 ZERO_BAND = re.compile(r'(?<![0-9０-９])[0０]{16,}(?![0-9０-９])')
 
 
-def observe_figure_text(blocks, groups, segment, observed, *, joined=False):
+def observe_figure_text(blocks, groups, segment, observed, full_reviews, descriptions_by_hash, *, joined=False):
     """Follow the template's figure grouping, including image overrides and hidden blocks."""
     starts, consumed = {}, set()
     for group in groups:
@@ -34,9 +36,12 @@ def observe_figure_text(blocks, groups, segment, observed, *, joined=False):
                     images.append(segment['assets'][name]['sha256'])
                 if kind == 'note':
                     text = block['text']
-                    require(not ZERO_BAND.search(text) or scan in observed,
+                    require(not ZERO_BAND.search(text) or str(scan) in full_reviews,
                             f'原本{scan}: 図の説明に長い0列があります。原本の本文順・図注を照合してください')
-                    descriptions.append(sha(text.encode()))
+                    digest = sha(text.encode())
+                    descriptions.append(digest)
+                    if scan in observed:
+                        descriptions_by_hash[digest] = text
         starts[at] = (scan, dict(images=images, descriptions=descriptions))
         consumed.update(group.get('suppress', []))
         if 'heading' in group:
@@ -58,12 +63,45 @@ def observe_figure_text(blocks, groups, segment, observed, *, joined=False):
             if kind == 'figure':
                 image = segment['assets'][block['image']]['sha256']
                 caption = block.get('caption')
+                if caption:
+                    descriptions_by_hash[sha(caption.encode())] = caption
                 observed[scan]['figures'].append(dict(images=[image], descriptions=[sha(caption.encode())] if caption else []))
             elif kind in ('body', 'heading', 'note', 'aside', 'signature', 'separator'):
                 observed[scan]['prose'].append([kind, sha(block['text'].encode())])
 
 
-def verify(m, read, write=None, independent=None, independent_figure_text=None):
+def verify_region_review(scan, review, observed, descriptions, size):
+    """Check only the source regions reviewed in a correction and the affected prose."""
+    err = f'原本{scan}: 図説の部分校正と読書版が一致しません'
+    require(isinstance(review, dict) and review.get('sourceSha256') == observed['sourceSha256'], err)
+    regions, prose = review.get('regions'), review.get('prose')
+    require(isinstance(regions, list) and regions and isinstance(prose, list), err)
+    locations = set()
+    for region in regions:
+        require(isinstance(region, dict), err)
+        box, text = region.get('box'), region.get('text')
+        require(isinstance(box, list) and len(box) == 4 and all(type(x) is int for x in box), err)
+        x, y, X, Y = box
+        require(0 <= x < X <= size[0] and 0 <= y < Y <= size[1] and isinstance(text, str), err)
+        image, caption = region.get('imageSha256'), region.get('descriptionSha256')
+        require(isinstance(image, str) and isinstance(caption, str), err)
+        location = (image, *box)
+        require(location not in locations and caption in descriptions and text in descriptions[caption], err)
+        locations.add(location)
+        require(any(image in f['images'] and caption in f['descriptions'] for f in observed['figures']), err)
+    counts = Counter(tuple(pair) for pair in observed['prose'])
+    claims = set()
+    for field in prose:
+        require(isinstance(field, dict), err)
+        role, digest, count = field.get('role'), field.get('sha256'), field.get('count')
+        require(role in ('heading','body','note','aside','signature','separator') and isinstance(digest, str)
+                and re.fullmatch(r'[a-f0-9]{64}', digest) and type(count) is int and count >= 0, err)
+        key = (role, digest)
+        require(key not in claims and counts[key] == count, err)
+        claims.add(key)
+
+
+def verify(m, read, write=None, independent=None, independent_figure_text=None, independent_regions=None):
     require(m.get('template_profile')=='world_history_1' and m.get('canonicalTemplate')=='wh1-0011-0030',
             '第1巻の基準書式を特定できません')
     scans = storage_ranges(m)
@@ -73,8 +111,16 @@ def verify(m, read, write=None, independent=None, independent_figure_text=None):
             '図版本文の原本照合記録が不正です')
     if independent_figure_text is not None:
         require(reviews == independent_figure_text, '登録用の原本照合記録と図版本文の検査対象が違います')
+    region_reviews = m.get('sourceRegionReviews', {})
+    require(isinstance(region_reviews, dict) and set(region_reviews) <= set(m['originalScans']),
+            '図説の部分校正記録が不正です')
+    if independent_regions is not None:
+        require(region_reviews == independent_regions, '登録用の図説の部分校正記録と照合できません')
+    selected = set(reviews) | set(region_reviews)
+    descriptions_by_hash = {}
+    image_sizes = {}
     def observations():
-        return {int(n): dict(sourceSha256=m['originalScans'][n]['sha256'], prose=[], figures=[]) for n in reviews}
+        return {int(n): dict(sourceSha256=m['originalScans'][n]['sha256'], prose=[], figures=[]) for n in selected}
     source_observed, display_observed = observations(), observations()
     paths = {}
     def entry(meta,path,stored=False):
@@ -95,14 +141,18 @@ def verify(m, read, write=None, independent=None, independent_figure_text=None):
             require(len(rows)==1,f'書籍データが見つかりません: {name}')
             result.append(json.loads(rows[0]))
         return result
-    for meta in m['originalScans'].values():
-        entry(meta,meta['path'],True)
+    for n, meta in m['originalScans'].items():
+        original = entry(meta,meta['path'],True)
+        if n in region_reviews:
+            from PIL import Image
+            with Image.open(BytesIO(original)) as image:
+                image_sizes[n] = image.size
     raw_bodies={};display_bodies={};display_refs=[];joined=set()
     for s in m['segments']:
         raw,groups,toc=fields(entry(s,s['part']))
         disp,gr2,toc2=fields(entry(s['display'],s['display']['path']))
-        observe_figure_text(raw,groups,s,source_observed)
-        observe_figure_text(disp,gr2,s,display_observed,joined=True)
+        observe_figure_text(raw,groups,s,source_observed,reviews,descriptions_by_hash)
+        observe_figure_text(disp,gr2,s,display_observed,reviews,descriptions_by_hash,joined=True)
         require(toc==toc2,'統合前後で目次が変わっています')
         def supplements(blocks):
             return [{k:v for k,v in b.items() if k!='sourceSpans'} for b in blocks if b['type']!='body']
@@ -135,6 +185,9 @@ def verify(m, read, write=None, independent=None, independent_figure_text=None):
     for n, expected in reviews.items():
         require(expected == source_observed[int(n)] == display_observed[int(n)],
                 f'原本{n}: 原本照合と読書版の本文順・見出し・独立した注・図版・説明文が一致しません')
+    for n, review in region_reviews.items():
+        for actual in (source_observed[int(n)], display_observed[int(n)]):
+            verify_region_review(n, review, actual, descriptions_by_hash, image_sizes[n])
     require(raw_bodies==display_bodies and list(raw_bodies)==display_refs,'本文の欠落・重複・順序違いがあります')
     if independent is not None:
         require(m['readingFlow']['boundaryReviews']==independent,'原本境界照合表と分冊が一致しません')

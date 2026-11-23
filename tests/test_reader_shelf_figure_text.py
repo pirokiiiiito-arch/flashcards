@@ -109,6 +109,49 @@ class FigureTextTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '登録用'):
             register.registration_flow(dest, manifest, dict(self.reference, figureTextReviews=None), False)
 
+    def make_regional(self, adjust=None):
+        from PIL import Image
+        manifest_file = self.write(None)
+        manifest = json.loads(manifest_file.read_bytes())
+        original = self.root/'source.png'
+        Image.new('L',(80,120),255).save(original)
+        source_sha = hashlib.sha256(original.read_bytes()).hexdigest()
+        manifest['originalScans']['1']['sha256'] = source_sha
+        review = {'sourceSha256':source_sha,
+                  'regions':[{'box':[5,50,15,70], 'text':'標本',
+                              'imageSha256':digest('cropped image'),
+                              'descriptionSha256':digest('標本の断面。')}],
+                  'prose':[{'role':'body','sha256':digest('第一段。'),'count':1},
+                           {'role':'body','sha256':digest('第7一段。'),'count':0}]}
+        if adjust:
+            adjust(review)
+        manifest['sourceRegionReviews'] = {'1':review}
+        manifest_file.write_text(json.dumps(manifest))
+        archive = self.root/'region.zip'
+        pack(manifest_file,archive)
+        return archive,manifest,dict(self.reference,sourceRegionReviews={'1':review})
+
+    def test_region_review_checked_in_original_display_and_registration(self):
+        archive,manifest,reference = self.make_regional()
+        self.assertEqual(bound.FORMAT,register.registration_flow(archive,manifest,reference,False)['route'])
+        for other in (self.reference,dict(reference,sourceRegionReviews=None)):
+            with self.assertRaisesRegex(ValueError, '部分校正'):
+                register.registration_flow(archive,manifest,other,False)
+        archive.unlink()
+        self.blocks[1]['text'] = '第7一段。'
+        with self.assertRaisesRegex(ValueError, '部分校正'):
+            self.make_regional()
+
+    def test_region_review_requires_real_rect_printed_text_and_associated_figure(self):
+        for override in ({'box':[4,4,90,9]},{'text':'別画像'},{'imageSha256':digest('unrelated image')}):
+            with self.subTest(override=override), self.assertRaisesRegex(ValueError, '部分校正'):
+                self.make_regional(lambda review: review['regions'][0].update(override))
+
+    def test_local_region_review_does_not_authorize_other_artifact_on_same_page(self):
+        self.blocks[-1]['text'] = '0'*100+'標本の断面。'
+        with self.assertRaisesRegex(ValueError, '長い0列'):
+            self.make_regional()
+
     def test_normal_numeric_value_is_not_flagged(self):
         self.blocks[-1]['text'] = '1' + '0' * 22 + '個'
         dest, manifest = self.make()

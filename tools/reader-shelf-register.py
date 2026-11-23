@@ -141,9 +141,11 @@ def registration_flow(archive, m, ref, admitted):
     if not admitted and m.get('readingFlow', {}).get('format') == wh1_format:
         figure_reviews = ref.get('figureTextReviews', {})
         check(isinstance(figure_reviews, dict), '登録用の図版本文の原本照合記録が不正です')
+        regional = ref.get('sourceRegionReviews', {})
+        check(isinstance(regional, dict), '登録用の図説の部分校正記録が不正です')
         with zipfile.ZipFile(archive) as packed:
             edges = verify_wh1(m, packed.read, independent=ref['boundaryReviews'],
-                               independent_figure_text=figure_reviews)
+                               independent_figure_text=figure_reviews, independent_regions=regional)
         check(edge_keys(edges)==edge_keys(ref['continuations']), '原本で確認した分冊の接続と違います')
         return {'route':wh1_format,'edges':edges}
     if len(segments) < 2:
