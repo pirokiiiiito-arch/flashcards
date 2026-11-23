@@ -108,3 +108,31 @@ test('the shelf requires new caption counts and keeps earlier signed previews re
   record.signature = Buffer.alloc(64).toString('base64');
   await assert.rejects(r.parseLedger({...db, pending: [record]}), /図説全件/);
 });
+
+test('the exact old edition stays readable, but staging it again requires a text review', async () => {
+  const r = await registration;
+  const db = baseline();
+  const legacy = db.editions.find(row => row.evidence.sourceProof?.captionCensus && !row.evidence.sourceProof.textDisagreements);
+  assert.ok(legacy);
+  await r.parseLedger(db);
+  await assert.rejects(r.parseLedger({...db, pending:[legacy]}), /本文OCR不一致/);
+});
+
+test('resolved text comparisons must cover every source batch even when the rest of a preview is pending', async () => {
+  const r = await registration;
+  const rec = structuredClone(baseline().editions.find(row => row.evidence.sourceProof?.captionCensus));
+  const proof = rec.evidence.sourceProof;
+  const rows = proof.batches.map(([first,last],i) => [first,last,i === 0 ? 2 : 0,i === 0 ? 2 : 0]);
+  const report = {version:1,status:'complete',pending:0,detected:2,resolved:2,batches:rows,report:'a'.repeat(64)};
+  proof.textDisagreements = report;
+  r.validateEvidence(rec);
+  for (const mutate of [
+    x => { x.pending = 1; }, x => { x.resolved--; }, x => { x.detected++; },
+    x => { x.batches.pop(); }, x => { x.batches[0][0]++; }, x => { x.batches[0][3]--; },
+    x => { x.status = 'partial'; }, x => { x.report = ''; }, x => { x.batches[0][2] = -1; }
+  ]) {
+    const invalid = structuredClone(rec);
+    mutate(invalid.evidence.sourceProof.textDisagreements);
+    assert.throws(() => r.validateEvidence(invalid));
+  }
+});

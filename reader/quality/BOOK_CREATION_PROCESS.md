@@ -47,6 +47,8 @@ node tools/reader-source-pages.cjs PRIVATE/manifest.json --request PRIVATE/reque
 
 既存の `allScanReview` 形式に残っている一次・追加の保留件数は `pendingImportedFindings` に引き継ぐ。個別に決着した箇所は `resolutions.carriedIssues` に原本番号 `scan`、元のグループ名 `group`（pending または extraPending）、その記録順 `ordinal`（1始まり）、元記録の `priorReviewSha256`、`sourceSha256`、採用欄の `field` と `canonicalSha256`、`regionId`、`offset`（コードポイント、0始まり）、`sourceReading`、`reviewedBy`、`reason`、`resolved: true` を保存する。他形式の既知の指摘は `resolutions.openIssues` に原本番号と内容を引き継ぐ。
 
+本文のOCR候補が割れた箇所は、確認版の本棚登録にも原本での解決が必要。原本番号・領域、各候補、原本で確定した読みと確認者を残し、統合後の読書HTMLで元の位置にその文字列があることを検証する。ヘッダーなど本文と重ならない文字を独立OCRから取り分けるときも、元の位置と不一致を保存する。候補がそろわない本文行と手で起こした欄も原本と突き合わせる。
+
 確認版では未解決ページを表示・引継ぎし、作業可能な別ページの校正を続ける。原本の読みが確定したページだけを校了の対象とし、既定の検査を実行する。
 
 ## 横書きの段組みと図の説明を照合する

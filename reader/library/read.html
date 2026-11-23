@@ -1310,7 +1310,7 @@ async function loadBook(file,shouldSave=true){
    if(inherited)writeLegacyNineEpigraph(bytes);
    else {
     // This edition has been checked with blob-backed original scans on the saved-book route.
-    const compact=m.sha256==='7bec7d5ef409cc65ff30bc5b33f6618c2d1c2e42743c841966d2815f55a9f385'
+    const compact=(m.originalImageHandling==='blob-v1'||m.sha256==='7bec7d5ef409cc65ff30bc5b33f6618c2d1c2e42743c841966d2815f55a9f385')
      ? compactStandaloneOriginals(bytes) : null;
     document.write(compact??new TextDecoder('utf-8',{fatal:true}).decode(bytes));
    }

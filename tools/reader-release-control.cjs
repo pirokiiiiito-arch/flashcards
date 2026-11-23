@@ -375,7 +375,8 @@ function admittedBookshelfNavUI(root,policy){
   const data=fs.readFileSync(safe(root,f)),sha=hash(data);
   if(sha===base)continue;
   const blob=crypto.createHash('sha1').update('blob '+data.length+String.fromCharCode(0)).update(data).digest('hex');
-  const compactOriginals=textCoversFit&&f==='reader/library/read.html'&&blob===legacy.COMPACT_ORIGINALS_HOST_BLOB;
+  const compactOriginals=textCoversFit&&f==='reader/library/read.html'&&
+   [legacy.COMPACT_ORIGINALS_HOST_BLOB,legacy.MANIFEST_ORIGINALS_HOST_BLOB].includes(blob);
   demand(blob===pin||compactOriginals,'SHARED_SHELF_UI_BYTES_NOT_REVIEWED '+f);
   if(f==='reader/library/read.html'&&data.includes('function wh3FrameDocument('))demand(approved[wh3Layout],'WH3_LAYOUT_MISSING');
   const href=f==='reader/library/read.html'?'./':'../../library/',html=data.toString('utf8');
@@ -510,7 +511,7 @@ function admittedBookshelfNavUI(root,policy){
   if(registration){
     const files={
       "reader/library/storage.js": "af781a3639386a04402ad2c07a7dee579bc94cd218307ef5ab5f7fb42196f961",
-      "reader/library/shelf-registration.mjs": "92ca2508786e603519d9b5d427ab715a5f284dd5f1e5dc96c6e53f23c7bf812d",
+      "reader/library/shelf-registration.mjs": "11e3ec6ff89c69ce1df25a5197e09d9052c8b7e567e43b7fd3a85428e8e06a4c",
       "reader/library/wh1-caption-ruby.js": captionFit ? "54e6296d91724811fe357bb5da6884b4827eb26fc0939339dca7f8e2cec675a6" : "81898e2e602327606e2369b333c726793f2eab1869e27a0438fc2d6fd107fcd6",
       "reader/wh1/full/index.html": "389750d3d6cd32459a8af698595ae1e48e5819aef79aa3c1f8754fa2883ba381"
 };

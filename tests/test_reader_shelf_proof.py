@@ -251,6 +251,12 @@ class ShelfProof(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'正式版'):
                 registrar.prepare(args)
             args.channel='preview'
+            with self.assertRaisesRegex(ValueError,'本文OCR不一致'):
+                registrar.prepare(args)
+            # Exercise re-staging after the new mandatory discrepancy audit succeeds.
+            audit = patch.object(registrar,'audit_text_disagreements',return_value={'version':1})
+            audit.start()
+            self.addCleanup(audit.stop)
             with self.assertRaisesRegex(RuntimeError,'preview reached browser checks'):
                 registrar.prepare(args)
             changed=book|{'status':'図説校了'}

@@ -18,7 +18,7 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def pinned(folder, reference):
+def pinned_bytes(folder, reference):
     check(isinstance(reference, dict) and isinstance(reference.get('path'), str), '校正資料の参照が不正です')
     child = Path(reference['path'])
     check(not child.is_absolute() and '..' not in child.parts, '校正資料は台帳と同じ作業フォルダ内に置いてください')
@@ -26,6 +26,11 @@ def pinned(folder, reference):
     check(path.is_relative_to(folder) and path.is_file(), '参照した校正資料がありません')
     data = path.read_bytes()
     check(sha(data) == reference.get('sha256'), '登録する校正資料の版が異なります')
+    return path, data
+
+
+def pinned(folder, reference):
+    path, data = pinned_bytes(folder, reference)
     return path, json.loads(data)
 
 

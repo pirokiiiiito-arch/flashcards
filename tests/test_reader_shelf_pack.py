@@ -85,6 +85,26 @@ class Pack(unittest.TestCase):
         self.assertEqual(page['blocks'][0]['ruby'],[annotation])
         self.assertEqual(page['blocks'][0]['text'],'記録1')
 
+    def test_standalone_original_image_handling_is_explicit(self):
+        self.manifest.update(entry='reader.html', range=[1, 1])
+        del self.manifest['segments']
+        html=b'<html><body>Standalone example</body></html>'
+        (self.root/'reader.html').write_bytes(html)
+        manifest=self.root/'manifest.json'
+        for mode in (None, 'blob-v1', 'other'):
+            if mode:
+                self.manifest['originalImageHandling']=mode
+            manifest.write_text(json.dumps(self.manifest))
+            dest=self.root/f'{mode}.zip'
+            if mode=='other':
+                with self.assertRaises(ValueError):
+                    pack(manifest,dest)
+                continue
+            result=pack(manifest,dest)
+            self.assertEqual(result.get('originalImageHandling'),mode)
+            with zipfile.ZipFile(dest) as archive:
+                self.assertEqual(archive.read('reader.html'),html)
+
     def test_standalone_bookdata_checks_ruby_even_without_any_seam(self):
         source=self.parts[0]['pages'][0]
         source['dataUrl']=source.pop('original')

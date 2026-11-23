@@ -375,7 +375,8 @@ def pack(manifest_path, archive, structure_reviews=None):
                     data = read_bytes(m['entry'])
                     require(not m.get('sha256') or sha(data) == m['sha256'], '統合読書HTMLの版が違います')
                 require(re.search(rb'<html\b', data, re.I), '全巻統合の読書HTMLが必要です')
-                m = {k: m[k] for k in ('schema', 'bookId', 'title', 'range', 'template_profile', 'subtitle', 'edition', 'status') if k in m}
+                require(m.get('originalImageHandling') in (None, 'blob-v1'), '原本画像の読込方式が不正です')
+                m = {k: m[k] for k in ('schema', 'bookId', 'title', 'range', 'template_profile', 'subtitle', 'edition', 'status', 'originalImageHandling') if k in m}
                 m.update(format='standalone-reader-html-v1', entry='reader.html', sha256=sha(data))
                 if source_ranges or confirmed or reviews:
                     m['readingFlow'] = {'format':'merged-template-flow-v1','sourceRanges':source_ranges,

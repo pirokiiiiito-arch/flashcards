@@ -12,6 +12,7 @@ from pathlib import Path
 from reader_shelf_probe import check, digest, measure
 from reader_shelf_pack import FLOW, pack, structured_sources
 from reader_shelf_proof import measure as proof_measure, require_claims
+from reader_text_disagreements import audit as audit_text_disagreements, check_summary as check_text_disagreements
 
 BLOCK=4*1024*1024
 REGISTRY='reader/quality/shelf-registration.json'
@@ -289,14 +290,15 @@ def prepare(a):
         check(full in covered or set(htmls).issubset(covered),'正式な納品判定がこの実体に対応していません')
     if claim=='complete':
         check(ruby_reports,'全原本の目視確認済みと記す版には原本照合台帳を --ruby-inventory で指定してください')
+    proof['textDisagreements'] = audit_text_disagreements(a.archive, full, m, book['id'], getattr(a, 'proof_index', None), site)
     key=textsha(book['id'])
     prior_pending = [r for r in ledger['pending'] if r['key'] == key]
-    # A preparation signed before the new census can be rechecked and re-staged
+    # A preparation signed before the current source audit can be rechecked and re-staged
     # for the very same bytes and catalog identity. Other candidates stay intact.
     if prior_pending:
         check(len(prior_pending) == 1 and
               prior_pending[0].get('sha256') == full and prior_pending[0].get('entry') == identity(book) and
-              'captionCensus' not in prior_pending[0].get('evidence', {}).get('sourceProof', {}),
+              'textDisagreements' not in prior_pending[0].get('evidence', {}).get('sourceProof', {}),
               'この本の先行登録の確定または取下げが必要です')
     ids=[b['id'] for b in catalog['books']]
     check(len(ids)==len(set(ids)),'本棚の書籍IDが重複しています')
@@ -341,6 +343,7 @@ def checked_stage(a):
     check(detail.get('sourceProof') is not None and detail['sourceProof'] == rec['evidence'].get('sourceProof'),
           '原本20枚ごとの校正判定を含む版の prepare が必要です')
     proof = detail['sourceProof']
+    check_text_disagreements(proof.get('textDisagreements'), rec['evidence']['first'], rec['evidence']['last'])
     check(isinstance(proof.get('captionCensus'), dict) and proof['captionCensus'].get('version') == 1,
           '旧候補には図・図説の全件判定がありません。同じ版を prepare で再照合してください')
     check(isinstance(detail.get('captionCensusReport'), dict) and

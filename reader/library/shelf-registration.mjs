@@ -47,6 +47,14 @@ const beforeSourceProof = new Set([...previousSignatures,
 const beforeCaptionCensus = new Set([...beforeSourceProof,
   'LUNDyAFwuEAHIuu+IRJyu3VZKXjfpsi802TMytvJP0suV4ZJyfykjU1GJPeGIUwgmjSevdGqZIpGnqnrJJcKWA==',
 ]);
+// Old signatures identify only the immutable editions available before this check.
+const beforeTextReview = new Set([...beforeCaptionCensus,
+  'ujkmGQ9HpFDqlhpII+1kkisQu9XmNw4vx6lPwbwIyX41nIs5jFbGI5PQeXYOdnd0OMEifbhLFNi/d3DV4Rqfog==',
+  'qCeLl+54Nqp7uaX++wR63v0YMmMByO4Z+LmuHnj1rw7TSP0se6HvPEhRCU1fjYQl1HMnrSs9IcXu8EMSKDK6NQ==',
+  '9uUvAmZMDGEf1UGWhz/SlcqmDkt0c3dISkkpjzpYpdTDWnL/i8itg8zrY6aS5Sy1ZfNF6Jw6KIH9jRgjCWiX8Q==',
+  'yxaM6EQaJ9Jrtg+Xrraovo/KlwEKBwHNmJjfFxnrOO0rZxCI5FL7N4kY2VgVf9MY7HRJi+apy3FNT1cASoczmA==',
+  '0BdhJcutpcSpHbulfcc5sN+R+YE4YHgkeTBZ5ApwlNiqU722pJaxXvP68LECXasumhIN4WzV8uuEyKcobngtkA==',
+]);
 function validateSourceProof(record) {
   const proof = record.evidence.sourceProof;
   if (proof === undefined) return;
@@ -84,6 +92,24 @@ function validateSourceProof(record) {
   }
   requireValue(census.pendingScans === pendingCaptions &&
     census.status === (pendingCaptions ? 'partial' : 'complete'), '図説校了の表示と照合記録が異なります');
+}
+function validateTextDisagreements(record) {
+  const proof = record.evidence.sourceProof;
+  const review = proof?.textDisagreements;
+  if (review === undefined) return;
+  requireValue(review?.version === 1 && review.status === 'complete' && review.pending === 0 &&
+    typeof review.report === 'string' && hex.test(review.report) && Array.isArray(review.batches) &&
+    review.batches.length === proof.batches.length, '本文のOCR不一致の原本照合記録が必要です');
+  let total = 0;
+  for (const [i, row] of review.batches.entries()) {
+    const [first, last] = proof.batches[i];
+    requireValue(Array.isArray(row) && row.length === 4 && row[0] === first && row[1] === last &&
+      Number.isSafeInteger(row[2]) && row[2] >= 0 && row[3] === row[2],
+      '20枚ごとのOCR不一致に未解決または範囲外の記録があります');
+    total += row[2];
+  }
+  requireValue(Number.isSafeInteger(total) && total === review.detected && total === review.resolved,
+    'OCR不一致の合計と原本で確定した件数が一致しません');
 }
 function validatePageTurns(record) {
   const {pageTurns: t, batches} = record.evidence;
@@ -132,6 +158,7 @@ export function validateEvidence(r) {
     (t.rows ? t.kind==='source' && modes.has('contents') : t.kind==='source-absent' && !modes.has('contents')), '原本目次と実際の移動先の照合が必要です');
   validatePageTurns(r);
   validateSourceProof(r);
+  validateTextDisagreements(r);
   return r;
 }
 const publicSPKI = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIplDryA9HQEYXBj+RKvCmS9F7Plv8h/csCzjJ938ax3Z07ikPuA5+d80bYUAl2MUdh/zVVFRDsqfmVpz17K/YA==';
@@ -146,11 +173,13 @@ export function signingText(record) {
   const {signature,...body}=record;
   return JSON.stringify(['reader-shelf-approval-v1',ordered(body)]);
 }
-async function signed(record) {
+async function signed(record, previouslyAdmitted = false) {
   validateEvidence(record);
   requireValue(record.evidence.sourceProof || beforeSourceProof.has(record.signature), '原本20枚ごとの照合記録がありません');
   requireValue(record.evidence.sourceProof?.captionCensus || beforeCaptionCensus.has(record.signature),
     '今回の版の図説全件照合の結果がありません');
+  requireValue(record.evidence.sourceProof?.textDisagreements ||
+    (previouslyAdmitted && beforeTextReview.has(record.signature)), '今回の版の本文OCR不一致の解決記録がありません');
   requireValue(typeof record.signature==='string' && /^[A-Za-z0-9+/]{85}[AQgw]==$/.test(record.signature),'登録検査の署名がありません');
   publicKey ||= crypto.subtle.importKey('spki',unbase64(publicSPKI),{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
   requireValue(await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},await publicKey,unbase64(record.signature),utf8.encode(signingText(record))),'登録検査の署名を確認できません');
@@ -164,7 +193,7 @@ export async function parseLedger(data) {
   }
   const updated=new Set();
   for (const r of data.editions) {
-    await signed(r);requireValue(!updated.has(r.key),'同じ本の現行版が重複しています');updated.add(r.key);active.set(r.key,[r]);
+    await signed(r,true);requireValue(!updated.has(r.key),'同じ本の現行版が重複しています');updated.add(r.key);active.set(r.key,[r]);
   }
   const staged=new Set();
   for (const r of data.pending) {
