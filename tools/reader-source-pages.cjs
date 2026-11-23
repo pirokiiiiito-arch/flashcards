@@ -154,7 +154,33 @@ function collect(m,pages,index,inventory,second,resolutions,events,rawPages,sour
   pendingScans:queue.length,pendingImportedFindings,readyForSourceChecks:queue.length===0,queue};
 }
 
-function fromBundle(root,m,pages,index,events,raw){
+function pendingCaptions(range,reason){
+ const pages=[],batches=[];
+ for(let first=range[0];first<=range[1];first+=20){
+  const last=Math.min(first+19,range[1]);
+  const pendingScans=[];
+  for(let scan=first;scan<=last;scan++){
+   pendingScans.push(scan);
+   pages.push({scan,status:'partial',issues:[{code:reason}]});
+  }
+  batches.push({range:[first,last],status:'partial',pendingScans});
+ }
+ return {status:'partial',pages,batches,pendingScans:pages.map(p=>p.scan)};
+}
+
+function captionAudit(root,m,original){
+ if(!m.captionCensus)return pendingCaptions(m.range,'CAPTION_CENSUS_REQUIRED');
+ const {spawnSync}=require('node:child_process');
+ const run=spawnSync('python3',['-B',path.join(__dirname,'reader_caption_work.py')],{
+  input:JSON.stringify({root,manifest:{bookId:m.bookId,range:m.range,captionCensus:m.captionCensus,
+   captionReadbacks:m.captionReadbacks,captionArchive:m.captionArchive,captionSiteRoot:m.captionSiteRoot,captionOcrOrigins:m.captionOcrOrigins},original,artifactSha256:m.artifact.sha256}),
+  encoding:'utf8',maxBuffer:32*1024*1024
+ });
+ if(run.status!==0)return pendingCaptions(m.range,run.error?.message||run.stderr?.trim()||'CAPTION_CENSUS_UNAVAILABLE');
+ try{return JSON.parse(run.stdout);}catch{return pendingCaptions(m.range,'CAPTION_CENSUS_INVALID_RESULT');}
+}
+
+function fromBundle(root,m,pages,index,events,raw,captionUnavailable=null){
  const v=api(),errors=[];
  function read(key){try{return v.json(root,m[key]);}catch{errors.push('READ_SOURCE_RECORD_'+key);return null;}}
  const inventory=read('inventory'),second=read('second'),resolutions=read('resolutions');
@@ -175,7 +201,8 @@ function fromBundle(root,m,pages,index,events,raw){
  } catch(error) {
   work.proofBatches=proof.unavailable(m.bookId,m.range,m.artifact.sha256,error.message);
  }
- work.readyForProofCompletion=work.readyForSourceChecks && work.proofBatches.status==='complete';
+ work.captionCensus=captionUnavailable?pendingCaptions(m.range,captionUnavailable):captionAudit(root,m,index);
+ work.readyForProofCompletion=work.readyForSourceChecks && work.proofBatches.status==='complete' && work.captionCensus.status==='complete';
  return work;
 }
 
@@ -183,9 +210,9 @@ function pendingRange(bookId,range,reason){
  const nextAction='採用した原本一覧と照合対象のHTML・校正記録を復元し、再照合する';
  const queue=[];
  for(let scan=range[0];scan<=range[1];scan++)queue.push({scan,issues:[{reason}],nextAction});
- return {bookId,range,totalScans:queue.length,matchedScans:0,pendingScans:queue.length,readyForSourceChecks:false,queue,status:'source_records_unavailable'};
+ return {bookId,range,totalScans:queue.length,matchedScans:0,pendingScans:queue.length,readyForSourceChecks:false,queue,captionCensus:pendingCaptions(range,reason),status:'source_records_unavailable'};
 }
-function fromManifest(file,requestedScope){
+function fromManifest(file,requestedScope,captionUnavailable=null){
  const root=path.dirname(path.resolve(file)),m=JSON.parse(fs.readFileSync(file,'utf8')),v=api();
  if(requestedScope)require('./reader-request-scope.cjs').matchRequestedScope(requestedScope,m.bookId,m.range);
  const parsed=v.extract(v.bytes(root,m.artifact));
@@ -196,7 +223,7 @@ function fromManifest(file,requestedScope){
  const raw=v.json(root,m.raw),events=v.json(root,m.corrections),canonical=v.json(root,m.canonical);
  if(lock.raw!==m.raw.sha256||v.objHash(parsed.data)!==v.objHash(canonical)||v.objHash(v.replay(raw,events))!==v.objHash(canonical))
   throw Error('SOURCE_WORKLIST_CANONICAL_MISMATCH');
- return fromBundle(root,m,parsed.pages,index,events,raw);
+ return fromBundle(root,m,parsed.pages,index,events,raw,captionUnavailable);
 }
 
 if(require.main===module){

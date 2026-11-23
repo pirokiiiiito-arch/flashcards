@@ -7,6 +7,74 @@ const fail=(ok,s)=>{if(!ok)throw Error(s);};
 function write(root,name,value){const b=typeof value==='string'||Buffer.isBuffer(value)?value:JSON.stringify(value,null,2)+'\n';const file=path.join(root,name);fs.mkdirSync(path.dirname(file),{recursive:true});if(fs.existsSync(file)){fail(v.hash(fs.readFileSync(file))===v.hash(b),'IMMUTABLE_FILE_CONFLICT '+name);}else fs.writeFileSync(file,b,{flag:'wx',mode:0o600});return {path:name,sha256:v.hash(b)};}
 function saveManifest(root,m){const b=JSON.stringify(m,null,2)+'\n',tmp=path.join(root,'.manifest-'+crypto.randomUUID());fs.writeFileSync(tmp,b,{flag:'wx',mode:0o600});fs.renameSync(tmp,path.join(root,'manifest.json'));}
 function load(file){const root=path.dirname(path.resolve(file)),m=JSON.parse(fs.readFileSync(file));fail(m.schema==='reader-private-bundle-v2','WRONG_MANIFEST');return{root,m};}
+function pinCaptionIndex(root,relative,m){
+ const bytes=fs.readFileSync(v.safe(root,relative));
+ const index=JSON.parse(bytes);
+ fail(index.schema==='reader-caption-census-v1' && index.bookId===m.bookId &&
+  index.range[0]<=m.range[0] && index.range[1]>=m.range[1],'CAPTION_INDEX_SCOPE_MISMATCH');
+ const name=path.posix.join(path.posix.dirname(relative),'index-'+v.hash(bytes)+'.json');
+ return write(root,name,bytes);
+}
+function captionOcrOrigins(root,indexRef){
+ const index=v.json(root,indexRef),ref=index.originalOcrSources;
+ fail(ref && typeof ref.path==='string','CAPTION_ORIGINAL_OCR_RECEIPT_REQUIRED');
+ const receipt={...ref,path:path.posix.join(path.posix.dirname(indexRef.path),ref.path)};
+ v.bytes(root,receipt);
+ return receipt;
+}
+function bindCaptions(file,selectionFile){
+ const {root,m}=load(file),chosen=JSON.parse(fs.readFileSync(selectionFile));
+ fail(chosen.bookId===m.bookId && v.objHash(chosen.range)===v.objHash(m.range),'CAPTION_BINDING_SCOPE_MISMATCH');
+ const readbacks=chosen.captionReadbacks??{part:[],shelf:[]};
+ for(const role of ['part','shelf']){
+  fail(Array.isArray(readbacks[role]),'CAPTION_ROUTE_REFERENCES_REQUIRED');
+  for(const ref of readbacks[role])v.bytes(root,ref);
+ }
+ if(chosen.captionArchive)v.bytes(root,chosen.captionArchive);
+ const index=pinCaptionIndex(root,chosen.captionCensusPath,m);
+ const received=chosen.captionOcrOrigins??captionOcrOrigins(root,index);
+ const origin=v.json(root,received);
+ fail(origin.schema==='reader-caption-ocr-origin-v1' && origin.bookId===m.bookId &&
+  Array.isArray(origin.pages),'CAPTION_ORIGINAL_OCR_RECEIPT_MISMATCH');
+ if(m.captionOcrOrigins && received.sha256!==m.captionOcrOrigins.sha256){
+  const current=v.json(root,m.captionOcrOrigins);
+  const next=new Map(origin.pages.map(x=>[x.scan,x]));
+  for(const row of current.pages){
+   if(!row.rawSha256)continue;
+   const unchanged=next.get(row.scan)?.rawSha256===row.rawSha256 &&
+    next.get(row.scan)?.sourceSha256===row.sourceSha256;
+   fail(unchanged||chosen.previousOcrReceiptSha256===m.captionOcrOrigins.sha256,'CAPTION_OCR_RECEIPT_VERSION_CONFLICT');
+  }
+ }
+ m.captionCensus=index;
+ m.captionOcrOrigins=received;
+ m.captionReadbacks=readbacks;
+ m.captionArchive=chosen.captionArchive??null;
+ m.captionSiteRoot=chosen.captionSiteRoot??null;
+ saveManifest(root,m);
+ return {bookId:m.bookId,range:m.range,captionCensus:m.captionCensus};
+}
+function initialCaptionCensus(root,m,pages){
+ const {spawnSync}=require('node:child_process');
+ const scratch=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'reader-caption-inputs-'));
+ try{
+  const inputs=pages.map(page=>{
+   const source=page.original??page.dataUrl;
+   const image=Buffer.from(source.slice(source.indexOf(',')+1),'base64');
+   fail(v.hash(image)===page.sha256,'CAPTION_SOURCE_HASH_MISMATCH');
+   const filename=String(page.scan)+(source.startsWith('data:image/png;')?'.png':'.jpg');
+   fs.writeFileSync(path.join(scratch,filename),image,{mode:0o600});
+   return {scan:page.scan,source:filename,ocr:null};
+  });
+  const sources=path.join(scratch,'sources.json');
+  fs.writeFileSync(sources,JSON.stringify({bookId:m.bookId,range:m.range,pages:inputs}),{mode:0o600});
+  const relative='caption-work/caption-census.json';
+  const run=spawnSync('python3',['-B',path.join(__dirname,'reader_caption_prepare.py'),'init','--sources',sources,
+   '--out',path.join(root,'caption-work'),'--records-only'],{encoding:'utf8',maxBuffer:4*1024*1024});
+  fail(run.status===0,run.error?.message||run.stderr||'CAPTION_INITIALIZATION_FAILED');
+  return pinCaptionIndex(root,relative,m);
+ }finally{fs.rmSync(scratch,{recursive:true,force:true});}
+}
 function init(htmlFile,root,bookId,loaderFile,sourceIndexFile){
  fail(!fs.existsSync(root),'WORKSPACE_ALREADY_EXISTS');fail(/^[a-z0-9-]{3,100}$/.test(bookId),'BAD_BOOK_ID');
  const input=fs.readFileSync(htmlFile),parsed=v.extract(input),external=JSON.parse(fs.readFileSync(sourceIndexFile));
@@ -24,6 +92,9 @@ function init(htmlFile,root,bookId,loaderFile,sourceIndexFile){
  m.second=write(root,'review/second-pass.json',{runId:null,viewedFirst:null,sourceIndexSha256:m.originalIndex.sha256,fields:{}});
  m.resolutions=write(root,'review/resolutions.json',{openIssues:[{kind:'source-review-not-performed',range}],differences:[],numbers:[],alerts:[]});
  m.boundaries=write(root,'review/boundaries.json',{items:[]});m.display=write(root,'review/display.json',{artifactSha256:m.artifact.sha256,actualPixels:false,fields:{},conditions:[]});
+ m.captionCensus=initialCaptionCensus(root,m,parsed.pages);
+ m.captionOcrOrigins=captionOcrOrigins(root,m.captionCensus);
+ m.captionReadbacks={part:[],shelf:[]};
  m.checks=write(root,'review/checks.json',Object.fromEntries(RULES.map(id=>[id,{status:'not_run'}])));saveManifest(root,m);return m;
 }
 // Opt-in, fail-closed source provenance entrypoint for NEW scan batches. Legacy
@@ -222,6 +293,11 @@ function issue(file,request,context){
  const {sourceReview,...receipt}=r;
  if(sourceReview){
   receipt.sourceReview={totalScans:sourceReview.totalScans,matchedScans:sourceReview.matchedScans,pendingScans:sourceReview.pendingScans};
+  if(sourceReview.captionCensus){
+   const {status,pendingScans,batches}=sourceReview.captionCensus;
+   receipt.sourceReview.captionCensus={status,pendingScans:pendingScans.length,
+    batches:batches.map(b=>({range:b.range,status:b.status,pendingScans:b.pendingScans.length}))};
+  }
   if(sourceReview.proofBatches){
    const {status,pendingScans,batches}=sourceReview.proofBatches;
    receipt.sourceReview.proofBatches={status,pendingScans,
@@ -246,6 +322,6 @@ function completePlan(planFile,artifactFile,readbackFile,observedFileId){
  return {schema:'reader-delivery-completion-v1',planSha256:v.hash(fs.readFileSync(planFile)),artifactSha256:p.artifactSha256,targetFileId:observedFileId,completedAt:new Date().toISOString()};
 }
 if(require.main===module){
- const[c,...a]=process.argv.slice(2);try{let r;if(c==='init')r=init(...a);else if(c==='init-resolved')r=initResolved(...a);else if(c==='authorize-preview')r=authorizePreview(...a);else if(c==='authorize-preview-v3')r=authorizePreviewV3(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: init-resolved HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX SOURCE_PREFLIGHT_REPORT | (legacy) init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | authorize-preview MANIFEST CONVERSATION_EVIDENCE ASSESSMENT | authorize-preview-v3 MANIFEST ACTUAL_CONVERSATION_EVIDENCE FINAL_ASSESSMENT | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='init-resolved'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
+ const[c,...a]=process.argv.slice(2);try{let r;if(c==='bind-captions')r=bindCaptions(...a);else if(c==='init')r=init(...a);else if(c==='init-resolved')r=initResolved(...a);else if(c==='authorize-preview')r=authorizePreview(...a);else if(c==='authorize-preview-v3')r=authorizePreviewV3(...a);else if(c==='correct')r=correct(...a);else if(c==='build')r=build(...a);else if(c==='plan')r=plan(a[0],JSON.parse(fs.readFileSync(a[1])));else if(c==='export')r=exportChecked(a[0],a[1],JSON.parse(fs.readFileSync(a[2])));else if(c==='verify-plan')r=verifyPlan(...a);else if(c==='complete-plan')r=completePlan(...a);else if(c==='issue')r=issue(a[0],JSON.parse(fs.readFileSync(a[1])),JSON.parse(fs.readFileSync(a[2])));else throw Error('Commands: bind-captions MANIFEST SELECTION | init-resolved HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX SOURCE_PREFLIGHT_REPORT | (legacy) init HTML PRIVATE_DIR BOOK_ID LOADER SOURCE_INDEX | authorize-preview MANIFEST CONVERSATION_EVIDENCE ASSESSMENT | authorize-preview-v3 MANIFEST ACTUAL_CONVERSATION_EVIDENCE FINAL_ASSESSMENT | correct MANIFEST EVENT | build MANIFEST | plan MANIFEST REQUEST | export MANIFEST OUT REQUEST | issue MANIFEST REQUEST CONTEXT | verify-plan PLAN ARTIFACT CURRENT | complete-plan PLAN ARTIFACT READBACK OBSERVED_FILE_ID');console.log(JSON.stringify(c==='init'||c==='init-resolved'||c==='build'||c==='correct'?{bookId:r.bookId,artifact:r.artifact,deliveryState:r.deliveryState||'blocked-unreviewed'}:r,null,2));}catch(e){console.error('BLOCK: '+e.message);process.exitCode=1;}
 }
-module.exports={init,initResolved,checkSourcePreflight,authorizePreview,authorizePreviewV3,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};
+module.exports={init,initResolved,bindCaptions,checkSourcePreflight,authorizePreview,authorizePreviewV3,correct,build,plan,exportChecked,issue,verifyPlan,completePlan};

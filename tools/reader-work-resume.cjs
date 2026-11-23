@@ -272,7 +272,10 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
   // tasks when they do not yet contain a compatible source bundle.
   let sourceReview;
   try{
-   sourceReview=require('./reader-source-pages.cjs').fromManifest(manifest.file,requestedScope);
+   const captionDeps=['reader_caption_work.py','reader_caption_census.py','figure_caption_geometry.py','caption_initials.py'];
+   const missing=captionDeps.filter(name=>!chain.pins.has('tools/'+name));
+   sourceReview=require('./reader-source-pages.cjs').fromManifest(manifest.file,requestedScope,
+    manifest.data.captionCensus && missing.length?'UNPINNED_CAPTION_PROGRAM: '+missing.join(','):null);
   }catch(error){
    sourceReview=require('./reader-source-pages.cjs').pendingRange(entry.bookId,entry.scanRange,error.message);
    sourceReview.proofBatches=require('./reader-proof-batches.cjs').unavailable(
@@ -301,6 +304,16 @@ function inspect(entryFile,{expectedEntrySha256,surface='work',requestFile}={}){
    queues.readyTasks=[...queues.readyTasks,...tasks];
    if(queues.queues)queues.queues={...queues.queues,text:[...(queues.queues.text||[]),...tasks]};
    if(!queues.nextAction&&tasks.length)queues.nextAction=tasks[0];
+  }
+  if(sourceReview.captionCensus && !queues.adoptionRequired){
+   const tasks=sourceReview.captionCensus.pages.filter(p=>p.status!=='complete').map(({scan,issues})=>({
+    id:'collate_all_captions:'+scan,type:'collate_all_captions',scan,issues,lane:'text',blockedBy:[],recorded:false,
+    reason:'原本全体の図・図説と全OCR行を照合し、分冊と本棚の実表示を読み返す'
+   }));
+   queues.productionPending.push(...tasks);
+   queues.readyTasks.push(...tasks);
+   if(queues.queues)queues.queues={...queues.queues,text:[...(queues.queues.text||[]),...tasks]};
+   if(!queues.nextAction && tasks.length)queues.nextAction=tasks[0];
   }
   let verticalSymbols=null;
   const symbolChecker='integration/vertical-symbols/tools/reader-vertical-symbols.cjs';

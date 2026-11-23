@@ -48,6 +48,11 @@ class ArchiveServer(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+def readback_runner(script):
+    probe = Path(__file__).with_name('reader_caption_visibility.js').read_text()
+    return script.read_text().replace('/*__CAPTION_VISIBILITY__*/', probe)
+
+
 def normalize(raw, census, locations, originals=None):
     """Select by slots and coordinates, keep output order and report unclaimed visible content."""
     rows = {r['key']:r for r in raw['rows']}
@@ -87,7 +92,7 @@ def normalize(raw, census, locations, originals=None):
             else:
                 emit((order[left]+0.9,0,0),ident,'other',{'disposition':'source-only','before':left_text,'after':right_text},observedWindow=window)
         elif not illegible and key in rows and rows[key]['scope']==scope:
-            value=dict(rows[key]['value']);start=loc.get('start',0);end=loc.get('end')
+            value=dict(rows[key]['value']);value.pop('captionVisibility',None);start=loc.get('start',0);end=loc.get('end')
             if 'text' in value:
                 full=value['text'];end=len(full) if end is None else end
                 if type(start) is not int or type(end) is not int or not 0<=start<end<=len(full): continue
@@ -115,7 +120,7 @@ def normalize(raw, census, locations, originals=None):
         cursor=0
         for start,end in ranges+[(size,size)]:
             if start>cursor:
-                value=dict(row['value'])
+                value=dict(row['value']);value.pop('captionVisibility',None)
                 if 'text' in value:value['text']=value['text'][cursor:start]
                 emit((order[key],cursor,0),f'unmapped/{key}/{cursor}',scope,value)
             if start<cursor:complete.discard(scope)
@@ -189,7 +194,7 @@ def capture(args):
     out=args.out.resolve();out.parent.mkdir(parents=True,exist_ok=True)
     images=out.parent/(out.stem+'-captures');images.mkdir(exist_ok=True)
     site=args.site.resolve();archive=args.archive.resolve()
-    runner=Path(__file__).with_suffix('.js').read_text()
+    runner=readback_runner(Path(__file__).with_suffix('.js'))
     root=hashlib.sha256()
     with archive.open('rb') as f:
         archive_digest=hashlib.file_digest(f,'sha256').hexdigest();f.seek(0)

@@ -1,11 +1,15 @@
 """Resolve OCR caption-to-figure candidates by physical edges, line clusters and column order.
 
-CLI: python figure_caption_geometry.py input.json
+CLI: python figure_caption_geometry.py input.json [--source-rows original.json]
 Input: {"width":..., "height":..., "rows":[{"box":[x1,y1,x2,y2],"text":"...","id":"..."}],
         "figures":[{"bbox":[x1,y1,x2,y2]}], "existingCaptionRows":[["id",...],...]}
 Use rows for candidate horizontal lines outside art, and sourceRows for ALL raw
 OCR rows including text whose orientation may have been misdetected. Existing
 caption source order is optional. sourceRows uses the same IDs and rectangles.
+A legacy input with rows alone still lists geometric candidates, with a review
+flag indicating that source coverage is unknown. The CLI exits 2 for review.
+--source-rows accepts an array of identified rows or the original scan/rows
+object. For unnumbered rows of scan 20 its stable IDs start at s020-r001.
 The JSON result lists candidate row IDs and review flags. endingCandidates
 links an unassigned short source row to the preceding printed caption line. Nonempty flags require
 a source-verified assignment or retention of the original image for this page.
@@ -200,7 +204,13 @@ def inspect_input(data):
                 flags.append('interleaved-column-order')
     assigned = {i:[r['id'] for r in group] for i,group in sorted(groups.items())}
     orders = list(enumerate(previous) if previous is not None else assigned.items())
+    if 'sourceRows' not in data:
+        flags.append('missing-source-rows')
     source_rows = data.get('sourceRows', rows)
+    if not isinstance(source_rows, list):
+        raise ValueError('sourceRows must be an array of original OCR rows')
+    if not source_rows and 'sourceRows' in data:
+        flags.append('empty-source-rows')
     source = {row['id']: row for row in source_rows}
     if len(source) != len(source_rows):
         raise ValueError('Duplicate source OCR row IDs')
@@ -213,7 +223,7 @@ def inspect_input(data):
             raise ValueError(f'Invalid original OCR region {row["id"]}')
     initials = [dict(figure=i, **zone) for i, ids in orders
                 for zone in initial_candidates(ids, source_rows)]
-    ends = caption_end_candidates(orders, source, figures) if 'sourceRows' in data else []
+    ends = caption_end_candidates(orders, source, figures)
     result = {'candidates': assigned}
     if ends:
         result['endingCandidates'] = ends
@@ -225,9 +235,33 @@ def inspect_input(data):
     return result
 
 
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('input', type=Path)
+    parser.add_argument('--source-rows', type=Path, help='complete original OCR rows with IDs and rectangles')
+    args = parser.parse_args()
+    try:
+        page = json.loads(args.input.read_bytes())
+        if args.source_rows:
+            if 'sourceRows' in page:
+                raise ValueError('Use either embedded sourceRows or --source-rows')
+            original = json.loads(args.source_rows.read_bytes())
+            if isinstance(original, dict):
+                for key in ('scan', 'width', 'height', 'source_sha256'):
+                    if key in original and key in page and original[key] != page[key]:
+                        raise ValueError(f'Original OCR page differs at {key}')
+                scan = original.get('scan')
+                original = original['rows']
+                if type(scan) is int and scan > 0 and isinstance(original, list):
+                    original = [dict(row, id=row.get('id', f's{scan:03}-r{i:03}'))
+                                for i, row in enumerate(original, 1)]
+            page['sourceRows'] = original
+        result = inspect_input(page)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        parser.exit(1, f'Invalid caption geometry: {error}\n')
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 2 if result['reviewFlags'] else 0
+
+
 if __name__ == '__main__':
-    parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('input',type=Path)
-    result=inspect_input(json.loads(parser.parse_args().input.read_bytes()))
-    print(json.dumps(result,ensure_ascii=False,indent=2))
-    raise SystemExit(2 if result['reviewFlags'] else 0)
+    raise SystemExit(main())

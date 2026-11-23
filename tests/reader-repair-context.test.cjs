@@ -109,6 +109,7 @@ function fixture(t,{blank=false,revision=''}={}){
    artifactSha256:captured.artifactSha256,pages:[{...source,capture:{path:'browser.png',sha256:capture.sha256},regions:captured.regions}]});
   m.proofInventory=ref('proof-inventory.json',{schema:'reader-proof-inventory-v1',bookId:book.bookId,range:book.range,readback,
    pages:[{scan:1,image:imageRef,census,review:reading}]});
+  require('./fixtures/reader-caption-production.cjs').addCaptionProof(bundle,m,{image:imageRef,width:112,height:34});
   m.second=ref('formal/second.json',{runId:'synthetic-blind-second',viewedFirst:false,sourceIndexSha256:m.originalIndex.sha256,
    method:'synthetic independent source fixture',reviewedBy:'synthetic-second',fields});
   m.resolutions=ref('formal/resolutions.json',{openIssues:[],differences:[],alerts:[],numbers:[]});

@@ -1,9 +1,11 @@
+import importlib.util
 import json
 import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 TOOLS = Path(__file__).resolve().parents[1] / 'tools'
@@ -75,10 +77,13 @@ class ShelfProof(unittest.TestCase):
             self.assertEqual(self.measure()['pendingScans'],1)
             self.index['members'].append({'path':'display.html','inventory':self.inventory})
             result=self.measure()
-            self.assertEqual(result['pendingScans'],0)
-            self.assertEqual(result['batches'],[[1,1,0]])
+            self.assertEqual(result['pendingScans'],1)
+            self.assertEqual(result['batches'],[[1,1,1]])
+            self.assertEqual(result['captionCensus']['pendingScans'],1)
             self.assertEqual(result['scopeBatches'][0]['matchedRegions'],1)
-            proof.require_claims(result,'release', {},{}, {})
+            proof.require_claims(result,'preview', {},{}, {})
+            with self.assertRaisesRegex(ValueError,'正式版'):
+                proof.require_claims(result,'release', {},{}, {})
 
     def test_signed_summary_changes_if_capture_reference_changes_with_same_counts(self):
         inventory = self.write_json('empty.json', {'schema':'reader-proof-inventory-v1','bookId':'fixture',
@@ -103,10 +108,13 @@ class ShelfProof(unittest.TestCase):
         summary = proof.measure(self.archive, self.sha, self.book, self.book_id)
         for key in ('caption','note'):
             summary['scopeBatches'][0]['pending'][key] = 0
+        with self.assertRaisesRegex(ValueError,'未完了'):
+            proof.require_claims(summary,'preview',{'status':'図説校了'}, {},{})
+        summary['captionCensus'].update(status='complete',pendingScans=0)
         proof.require_claims(summary,'preview',{'status':'図説・注 校正済み／本文校正中'}, {},
                              {'sourceScopeClaims':{'caption':'complete','note':'complete'}})
         summary['scopeBatches'][0]['pending']['note'] = 1
-        with self.assertRaisesRegex(ValueError,'未照合'):
+        with self.assertRaisesRegex(ValueError,'未完了'):
             proof.require_claims(summary,'preview',{'status':'図説・注 校正済み'}, {}, {})
 
     def test_tampered_image_inventory_or_wrong_readback_route_fails(self):
@@ -143,3 +151,84 @@ class ShelfProof(unittest.TestCase):
         (self.root / next(iter(hosts))).write_bytes(b'changed host')
         with self.assertRaisesRegex(ValueError, '異なります'):
             proof.verify_readback(receipt, True, False, self.root)
+
+
+    def test_actual_source_census_and_both_members_control_caption_signoff(self):
+        from test_reader_shelf_caption_census import CaptionBook, png
+        census = CaptionBook(self.root)
+        cap_image = census.figure(1, 'illustration', ['legend'])
+        census.caption(1, 'legend', ['illustration'], '図の説明。')
+        census.paint(1, [cap_image], '図の説明。')
+        path = census.save().rename(self.root/'caption-index.json')
+        self.index['captionCensus'] = {'path':path.name,'sha256':proof.sha(path.read_bytes())}
+        self.book['originalScans']['1']['sha256'] = census.source
+        with zipfile.ZipFile(self.archive,'w') as packed:
+            packed.writestr('first.html','first')
+            packed.writestr('display.html','display')
+            packed.writestr('original.jpg',png())
+        self.sha=proof.sha(self.archive.read_bytes())
+        self.index['archiveSha256']=self.sha
+        self.book['readingFlow']={'format':'wh1-bound-source-v1'}
+        hosts={}
+        for name in proof.SHELF_HOSTS:
+            host=self.root/name
+            host.parent.mkdir(parents=True,exist_ok=True)
+            host.write_text(name)
+            hosts[name]=proof.sha(host.read_bytes())
+        inventory = self.write_json('legacy.json',{'bookId':'fixture','range':[1,1],
+            'pages':[{'scan':1,'image':{'sha256':census.source}}]})
+        for role,name,raw in [('part','first.html',b'first'),('shelf','display.html',b'display')]:
+            obs=census.readbacks()[role][0][1]
+            obs.update(member=name, archiveSha256=self.sha, artifactSha256=proof.sha(raw))
+            if role=='shelf':
+                obs['hostFiles']=hosts
+            self.index['members'].append({'path':name,'inventory':inventory,'readback':self.write_json(role+'.json',obs)})
+        def complete_original_regions(cmd,**unused):
+            html=Path(cmd[cmd.index('--artifact')+1]).read_bytes()
+            data={'schema':'reader-proof-batches-v1','artifactSha256':proof.sha(html),'bookId':'fixture',
+                  'range':[1,1],'status':'complete','pendingScans':0,'queue':[],'pages':[
+                      {'scan':1,'pendingScopes':[],'matchedRegions':[]}]}
+            return SimpleNamespace(stdout=json.dumps(data))
+        with patch.object(proof.subprocess,'run',side_effect=complete_original_regions):
+            summary=self.measure()
+            self.assertEqual(summary['captionCensus']['status'],'complete')
+            proof.require_claims(summary,'release',{'status':'図説校了'},{},{})
+            row=self.index['members'][-1]
+            shelf=json.loads((self.root/'shelf.json').read_bytes())
+            shelf['pages'][0]['painted'][-1]['value']['text']='図の説。'
+            row['readback']=self.write_json('shelf.json',shelf)
+            failed=self.measure()
+            self.assertEqual(failed['captionCensus']['pendingScans'],1)
+            with self.assertRaisesRegex(ValueError,'正式版'):
+                proof.require_claims(failed,'release',{},{},{})
+            proof.require_claims(failed,'preview',{'status':'本文校正中'},{},{})
+
+    def test_registration_preflight_legacy_candidate_can_be_rechecked_as_preview(self):
+        spec = importlib.util.spec_from_file_location('shelf_registration_caption_test', TOOLS/'reader-shelf-register.py')
+        registrar=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(registrar)
+        (self.root/registrar.REGISTRY).parent.mkdir(parents=True)
+        book={'id':'fixture','title':'見本','subtitle':'','status':'本文校正中','scans':1,
+              'parts':[{'id':'fixture-size-id','size':self.archive.stat().st_size}],'totalBytes':self.archive.stat().st_size}
+        ledger={'pending':[{'key':registrar.textsha('fixture'),'sha256':self.sha,'entry':registrar.identity(book),
+                            'evidence':{'sourceProof':{'version':1,'status':'complete'}}}]}
+        for name,data in [(registrar.REGISTRY,ledger),('book.json',book),('catalog.json',{'books':[]}),
+                          ('ref.json',{'bookId':'fixture','title':'見本','range':[1,1],'profile':'world_history_1'})]:
+            self.write_json(name,data)
+        args=SimpleNamespace(site=self.root,catalog=self.root/'catalog.json',book=self.root/'book.json',
+            reference=self.root/'ref.json',archive=self.archive,readback=self.root,channel='release')
+        with patch.object(registrar,'inspect_archive',return_value=(self.book,[[1,1]],[])),              patch.object(registrar,'parts_fingerprint',return_value=(self.sha,'root')),              patch.object(registrar,'registration_flow',side_effect=RuntimeError('preview reached browser checks')):
+            with self.assertRaisesRegex(ValueError,'正式版'):
+                registrar.prepare(args)
+            args.channel='preview'
+            with self.assertRaisesRegex(RuntimeError,'preview reached browser checks'):
+                registrar.prepare(args)
+            changed=book|{'status':'図説校了'}
+            self.write_json('book.json',changed)
+            with self.assertRaisesRegex(ValueError,'未完了'):
+                registrar.prepare(args)
+            self.write_json('book.json',book)
+            ledger['pending'][0]['sha256']='f'*64
+            self.write_json(registrar.REGISTRY,ledger)
+            with self.assertRaisesRegex(ValueError,'先行登録'):
+                registrar.prepare(args)

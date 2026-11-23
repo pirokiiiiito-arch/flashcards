@@ -1,0 +1,50 @@
+{
+  "description": "架空の紙面を使った記入例。原本番号・画像・OCR・担当・転記は各書籍の実際の値を使う。生成された各票の出典とハッシュは保持する。",
+  "census.json": {
+    "scan": 1,
+    "wholePage": true,
+    "reviewedBy": "例・初読担当",
+    "figures": [
+      {
+        "id": "figure-001-a",
+        "box": [130, 100, 580, 390],
+        "imageSha256": "<実際に表示する図画像のSHA-256>",
+        "captionIds": ["caption-001-a"]
+      }
+    ],
+    "captions": [
+      {
+        "id": "caption-001-a",
+        "box": [130, 405, 590, 455],
+        "figureIds": ["figure-001-a"],
+        "rowIds": ["s001-r012", "s001-r013"]
+      }
+    ]
+  },
+  "review.json": {
+    "scan": 1,
+    "wholePage": true,
+    "blindToOutput": true,
+    "reviewedBy": "例・独立再読担当",
+    "figureIds": ["figure-001-a"],
+    "captions": [
+      {
+        "id": "caption-001-a",
+        "figureIds": ["figure-001-a"],
+        "text": "橋を渡る人。",
+        "rubies": [{"start": 0, "end": 1, "base": "橋", "reading": "はし"}]
+      }
+    ]
+  },
+  "ocrAudit.json": {
+    "reviewedBy": "例・原本とOCRを照合した担当",
+    "decisions": [
+      {
+        "figureId": "figure-001-a",
+        "rowId": "s001-r014",
+        "disposition": "body",
+        "reason": "原本で図説の最終句点の後に余白があり、この行は次の本文段落に続く。"
+      }
+    ]
+  }
+}

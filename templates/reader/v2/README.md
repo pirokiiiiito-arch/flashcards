@@ -205,3 +205,34 @@ python tools/figure_caption_geometry.py templates/reader/v2/caption-ending-geome
 ```
 
 読書画面では、図説が複数ページになる場合も次画面へ進み、全ての断片が順にそろい、原本どおりに終わることを確かめる。原本画像・矩形・対応する図と本文・訂正後の実表示に証拠を結び、確認できた領域を所属する20枚の進捗に反映する。
+
+## 原本全体から図と図説を照合する
+
+新規制作・次の20枚・既存稿の補修では、分冊の原本を1枚ずつ端まで見る。図のある場所と図説のある場所を先に列挙し、図のない紙面、説明が隣の原本に載る紙面も記録する。挿図・地図・複数図・全面図版には図ID、原本番号、矩形、対応する説明IDを付ける。説明がないことを紙面で確認できた図は、説明IDの空配列を記録する。原本をまだ開いていない紙面は未確認のまま残す。
+
+読書画面を伏せて、原本の各図説を最初の字から最後の句読点まで読み、段順・対応する図・親文字とふりがなを記録する。独立したレビューにも図と図説の件数を残す。原本の全OCR行を別に保存し、図の下、横、間にある行と、本文に誤って入った短い行・語頭・最終行を座標で照合する。候補の各行に所属先と根拠を記録する。OCRが拾わなかった行も原本から補う。
+
+実際に配る分冊と本棚で、各図説が続く画面の最後まで読み返す。余分な図・図説、消えた説明、取り違えた図、末尾の欠落、ふりがなの親文字と読みを、原本から表示へ、表示から原本へともに照合する。図を複数まとめる場合、別の原本の図を説明する場合、原本1枚を画像のまま表示する場合も、印刷された関係を記録する。照合結果は20枚ごとに確定し、未確認があれば原本番号・理由とともに引き継ぐ。図説の校了を本文・他の領域の校了と区別する。
+新規の私有原稿を `reader-private-pipeline.cjs init-resolved` で取り込むと、原本実体から `caption-work` にページごとの未確認台帳ができる。原本から先に制作するときは、`templates/reader/v2/caption-sources.example.json` の入力例に合わせて `sources.json` を作る。掲載する全原本の番号と画像・元OCRのパスを記す。未入手の入力には `null` を指定する。
+
+```sh
+python tools/reader_caption_prepare.py init --sources PRIVATE/sources.json --out PRIVATE/caption-work
+python tools/reader_caption_prepare.py attach --work PRIVATE/caption-work --sources PRIVATE/later-sources.json
+python tools/reader_caption_prepare.py sheets --work PRIVATE/caption-work
+python tools/reader_caption_prepare.py crops --work PRIVATE/caption-work
+python tools/reader_caption_prepare.py refresh --work PRIVATE/caption-work
+```
+
+`attach` は後から届いた原本・同じ原本の元OCRに使う。画像と図説の原本座標を記録してから `crops` で周囲の本文を含む拡大画像を作り、原画像と照合する。`refresh` で記録の版を固定する。`caption-census.json` は全ページを原本、独立した棚卸し、読書表示を伏せた照合、元OCR、OCR全行の検査に結び付ける。空の雛形を作った時点では全ページが未確認となる。
+
+制作中の私有manifestでは `captionCensus` に索引の相対パスとSHA-256、`captionReadbacks.part` と `captionReadbacks.shelf` に各経路の実画面記録の参照配列、`captionArchive` に実配布ZIPの参照、`captionSiteRoot` に実際に観測した本棚の検査用サイトの相対フォルダーを指定する。`bind-captions` の選定ファイルは `bookId`、`range`、`captionCensusPath` とこれらの実表示参照を持つ。元OCRの独立した受領記録があれば、その相対パスとSHA-256を `captionOcrOrigins` で指定する。原本とOCRの受領時に固定されたハッシュが校正用のOCR全行と一致することを検査する。既に採用したOCRを別の版に切り替える場合は、選定ファイルに旧受領記録の `previousOcrReceiptSha256` を指定する。原本の棚卸しが先に進んだときは、実表示の配列を空にして読戻し待ちのまま保存できる。
+
+```sh
+node tools/reader-private-pipeline.cjs bind-captions PRIVATE/manifest.json PRIVATE/selected-bindings.json
+node tools/reader-source-pages.cjs PRIVATE/manifest.json --request PRIVATE/request.json
+python tools/reader_caption_census.py --index PRIVATE/caption-work/caption-census.json --book-id BOOK_ID --start 1 --end 20 --part-readback PRIVATE/part.json --shelf-readback PRIVATE/shelf.json
+```
+
+原本の矩形、対応する図、独立した転記、ふりがなの文字範囲、OCR行の採否を記入する具体例は `templates/reader/v2/caption-review.example.json` を参照する。
+
+同じ書籍の棚登録用 `--proof-index` にも `captionCensus` の相対パスとSHA-256を指定する。分冊用と本棚用の読書HTMLが別の場合は各メンバーの `readback` に対応する実表示を登録する。標準・小説で同じ読書HTMLを両経路で使う場合は分冊を `readback`、本棚を `shelfReadback` に指定する。実画面の記録を別経路に流用すると、その原本は未確認になる。上記の診断は原本と表示の対応を返す。通常の完成検査・本棚登録は、採用した実体のSHA・対象範囲・読書経路も照合する。

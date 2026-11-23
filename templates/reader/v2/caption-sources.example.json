@@ -1,0 +1,8 @@
+{
+  "bookId": "example-book",
+  "range": [1, 2],
+  "pages": [
+    {"scan": 1, "source": "originals/0001.png", "ocr": "raw-ocr/001.json"},
+    {"scan": 2, "source": "originals/0002.png", "ocr": null}
+  ]
+}

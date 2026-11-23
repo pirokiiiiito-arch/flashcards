@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -65,4 +66,35 @@ class StandaloneReadback(unittest.TestCase):
                 self.assertEqual(second['painted'][0]['value']['text'],'第二日。')
                 self.assertEqual([r['value']['sha256'] for r in second['painted'] if r['scope']=='figure'],[digest])
                 self.assertEqual([r['value']['text'] for r in second['painted'] if r['scope']=='caption'],['山の地図。'])
+                caption = next(r for r in second['painted'] if r['scope']=='caption')
+                self.assertTrue(caption['value']['captionVisibility']['fullyVisible'])
+                self.assertEqual(caption['value']['captionVisibility']['fragments'][0]['glyphs'],5)
                 self.assertTrue(report['hostFiles'])
+                # The deployed standalone format writes the archive entry into
+                # read.html after the shelf opens it. Bundle external fixtures.
+                inline = re.sub(r'<script src="(?:\./)?([^"]+)"></script>',
+                    lambda m:'<script>'+(work/m[1]).read_text()+'</script>', html)
+                inline = re.sub(r'<link rel="stylesheet" href="(?:\./)?([^"]+)">',
+                    lambda m:'<style>'+(work/m[1]).read_text()+'</style>', inline)
+                packed_html=work/'reader.html'
+                packed_html.write_text(inline)
+                raw=packed_html.read_bytes()
+                archive=work/'book.zip'
+                with ZipFile(archive,'w') as z:
+                    z.writestr('reader.html',raw)
+                    z.writestr('manifest.json',json.dumps(dict(schema=1,bookId=book['id'],title='fixture',
+                        format='standalone-reader-html-v1',entry='reader.html',range=[1,2],sha256=hashlib.sha256(raw).hexdigest())))
+                shelf=capture(packed_html,inv,work/'shelf.json',Path(chromium),route='shelf',archive=archive,site=ROOT)
+                self.assertEqual(shelf['route'],'shelf')
+                self.assertEqual(shelf['member'],'reader.html')
+                self.assertEqual(shelf['archiveSha256'],hashlib.sha256(archive.read_bytes()).hexdigest())
+                self.assertIn('reader/library/read.html',shelf['hostFiles'])
+                self.assertEqual(shelf['pages'][1]['painted'],report['pages'][1]['painted'])
+                # All text stays in the DOM, but only the first line can be seen.
+                clipped=html.replace('</head>', '<style>#figure-caption{max-width:1.1em!important;max-height:1.5em!important;overflow:hidden!important}</style></head>')
+                (work/filename).write_text(clipped)
+                hidden=capture(work/filename,inv,work/'hidden.json',Path(chromium))
+                observed=next(r for r in hidden['pages'][1]['painted'] if r['scope']=='caption')
+                self.assertEqual(observed['value']['text'],'山の地図。')
+                self.assertFalse(observed['value']['captionVisibility']['fullyVisible'])
+                self.assertGreater(observed['value']['captionVisibility']['fragments'][0]['hidden'],0)

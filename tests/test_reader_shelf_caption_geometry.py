@@ -1,3 +1,6 @@
+import json
+import subprocess
+import tempfile
 import unittest
 
 import sys
@@ -13,7 +16,7 @@ def line(key, left, top, right, text=None):
 
 
 def layout(rows, figures, previous=None):
-    source = {'width': 1000,'height': 1400,'rows': rows,
+    source = {'width': 1000,'height': 1400,'rows': rows,'sourceRows': rows,
               'figures': [{'bbox':coordinates} for coordinates in figures]}
     if previous is not None:
         source['existingCaptionRows']=previous
@@ -21,6 +24,57 @@ def layout(rows, figures, previous=None):
 
 
 class FigureCaptionGeometryTests(unittest.TestCase):
+    def test_legacy_input_keeps_candidates_but_cannot_clear_an_unchecked_original(self):
+        head = line('a', 100, 500, 500, '説明')
+        tail = line('b', 100, 529, 125, '。')
+        data = dict(width=1000, height=1400, figures=[{'bbox': [100,570,800,900]}],
+                    rows=[head, tail], existingCaptionRows=[['a']])
+        result = inspect_input(data)
+        self.assertEqual(result['candidates'], {0:['a','b']})
+        self.assertEqual(result['endingCandidates'][0]['row'], 'b')
+        self.assertIn('missing-source-rows', result['reviewFlags'])
+        for value, expected in [({}, 'missing-source-rows'), ({'sourceRows':[]}, 'empty-source-rows')]:
+            blank = dict(data, rows=[], figures=[], existingCaptionRows=[], **value)
+            self.assertEqual(inspect_input(blank)['reviewFlags'], [expected])
+
+    def test_cli_exit_status_distinguishes_review_missing_original_and_invalid_geometry(self):
+        script = Path(inspect_input.__code__.co_filename)
+        head = line('a', 100, 500, 500, '説明。')
+        case = dict(width=1000, height=1400, figures=[{'bbox':[100,535,800,900]}],
+                    rows=[head], existingCaptionRows=[['a']])
+        with tempfile.TemporaryDirectory() as tmp:
+            page, original = Path(tmp)/'page.json', Path(tmp)/'ocr.json'
+            def run(*extra):
+                return subprocess.run([sys.executable,str(script),str(page),*extra],capture_output=True,text=True)
+            page.write_text(json.dumps(case))
+            partial = run()
+            self.assertEqual(partial.returncode,2)
+            self.assertEqual(json.loads(partial.stdout)['reviewFlags'], ['missing-source-rows'])
+            original.write_text(json.dumps({'rows':[head]}))
+            valid = run('--source-rows',str(original))
+            self.assertEqual(valid.returncode,0,valid.stderr)
+            self.assertEqual(json.loads(valid.stdout)['candidates'], {'0':['a']})
+            case['sourceRows'] = [head]
+            page.write_text(json.dumps(case))
+            self.assertEqual(run().returncode,0)
+            self.assertEqual(run('--source-rows',str(original)).returncode,1)
+
+    def test_cli_reads_native_scan_rows_without_requiring_manual_id_conversion(self):
+        script = Path(inspect_input.__code__.co_filename)
+        first = line('s020-r001', 100, 500, 500, '説明したも')
+        last = line('s020-r002', 100, 528, 125, 'の。')
+        with tempfile.TemporaryDirectory() as tmp:
+            page, original = Path(tmp)/'layout.json', Path(tmp)/'scan.json'
+            page.write_text(json.dumps(dict(scan=20,width=1000,height=1400,rows=[first],
+                                            figures=[{'bbox':[100,570,800,900]}],
+                                            existingCaptionRows=[['s020-r001']])))
+            original.write_text(json.dumps(dict(scan=20,width=1000,height=1400,
+                rows=[{k:v for k,v in row.items() if k!='id'} for row in [first,last]])))
+            run = subprocess.run([sys.executable,str(script),str(page),'--source-rows',str(original)],
+                                 capture_output=True,text=True)
+            self.assertEqual(run.returncode,2,run.stderr)
+            self.assertEqual(json.loads(run.stdout)['endingCandidates'][0]['row'], 's020-r002')
+
     def test_caption_start_compares_vertical_alternatives_from_full_ocr_geometry(self):
         lines = [line('a', 240, 550, 550), line('b', 240, 578, 550)]
         source = dict(width=1000, height=1400, figures=[{'bbox':[150,100,600,500]}],
@@ -101,8 +155,8 @@ class FigureCaptionGeometryTests(unittest.TestCase):
         self.assertEqual(result['candidates'],{0:['legend1','legend2']})
         self.assertEqual(result['reviewFlags'],['conflicting-figure'])
 
-    def test_one_figure_without_text_is_valid(self):
-        self.assertEqual(layout([],[[10,10,500,500]]),{'candidates':{},'reviewFlags':[]})
+    def test_one_figure_without_ocr_text_retains_image_and_marks_source_for_review(self):
+        self.assertEqual(layout([],[[10,10,500,500]]),{'candidates':{},'reviewFlags':['empty-source-rows']})
 
     def test_bad_coordinates_and_duplicate_references_raise(self):
         with self.assertRaises(ValueError):

@@ -21,6 +21,7 @@ function fixture(){
  const review=put(r,'source-reading.json',{...proofCommon,reviewedBy:'synthetic source reader',blindToOutput:true,regions:values.map(({id,value})=>({id,state:'matched',value}))});
  const readback=put(r,'synthetic-output.json',{schema:'reader-proof-readback-v1',bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,pages:[{...proofCommon,capture:image,regions:values}]});
  m.proofInventory=put(r,'proof-inventory.json',{schema:'reader-proof-inventory-v1',bookId:m.bookId,range:m.range,readback,pages:[{scan:1,image,census,review}]});
+ require('./fixtures/reader-caption-production.cjs').addCaptionProof(r,m,{image,width:1,height:1});
  const fields=v.textFields(data),subject={bookId:m.bookId,range:m.range,artifactSha256:m.artifact.sha256,canonicalSha256:m.canonical.sha256,rawSha256:m.raw.sha256,originalIndexSha256:m.originalIndex.sha256,templateSha256:m.template.sha256,profileSha256:m.profile.sha256,loaderSha256:m.loaderSha256};
  m.inventory=put(r,'inventory.json',{pages:[{scan:1,sourceSha256:page.sha256,reviewedBy:'fixture-first',secondReviewer:'fixture-second',firstPassId:'one',secondPassId:'two',edgesChecked:true,secondViewedFirst:false,width:1,height:1,regions:[{id:'r1',box:[0,0,1,1],kind:'body',fields:Object.keys(fields)}]}]});
  m.second=put(r,'second.json',{runId:'second-run',viewedFirst:false,sourceIndexSha256:m.originalIndex.sha256,method:'independent fixture',reviewedBy:'fixture-second',fields});
@@ -134,4 +135,12 @@ test('normal route requires the per-batch proof; a separately authorized unfinis
  blocked(x,/BATCH_PROOF_PENDING/);
  const preview=result(x,'preview');assert.equal(preview.eligible,true);assert.equal(preview.contentCertified,false);
  assert.equal(preview.sourceReview.proofBatches.pendingScans,1);
+});
+
+test('all-caption production gate rejects incomplete route evidence while an unfinished preview keeps its scoped status',()=>{
+ const x=fixture();
+ x.m.captionReadbacks.shelf=[];
+ put(x.r,'manifest.json',x.m);
+ blocked(x,/CAPTION_CENSUS_PENDING/);
+ assert.equal(result(x).sourceReview.captionCensus.status,'partial');
 });

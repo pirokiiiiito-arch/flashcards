@@ -80,6 +80,7 @@ def verify_readback(receipt, bound_wh1, display, site):
         check(all(isinstance(o, dict) and o.get('mode') == 'reader-original' and o.get('route') == 'shelf' for o in originals),
               '原本表示の経路が読書プログラムと一致しません')
     if display or originals:
+        check(isinstance(site, Path), '本棚の読書プログラムがあるサイトを指定してください')
         hosts = receipt.get('hostFiles' if display else 'originalHostFiles')
         check(isinstance(hosts, dict) and SHELF_HOSTS <= hosts.keys(), '本棚の読書プログラムの版が記録されていません')
         for name, expected in hosts.items():
@@ -88,11 +89,41 @@ def verify_readback(receipt, bound_wh1, display, site):
                   '校正時と登録時の本棚の読書プログラムが異なります')
 
 
-def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None):
+def caption_index_reference(index_path, index, explicit):
+    ref = index.get('captionCensus') if index else None
+    if ref is not None:
+        path, _ = pinned(index_path.parent, ref)
+        if explicit is not None:
+            check(sha(explicit.read_bytes()) == ref['sha256'], '指定した図説台帳と本棚校正台帳の版が異なります')
+        return path
+    return explicit.resolve(strict=True) if explicit else None
+
+
+def caption_readback(receipts, path, captured, *, role, archive_sha, member, artifact_sha, site):
+    # Historical preview receipts may lack route information. They still serve
+    # the older region proof, but cannot stand in for a new full-caption readback.
+    if captured.get('route') != role:
+        return
+    check(captured.get('artifactSha256') == artifact_sha, '図説の読戻しが対象HTMLと一致しません')
+    if role == 'shelf':
+        check(isinstance(site, Path), '本棚の照合には現在のサイトが必要です')
+        check(captured.get('archiveSha256') == archive_sha and captured.get('member') == member,
+              '本棚の図説読戻しが対象ZIP・読書HTMLと一致しません')
+        hosts = captured.get('hostFiles', {})
+        check('reader/library/read.html' in hosts, '本棚経路の読書プログラムの版がありません')
+        for name, expected in hosts.items():
+            host = (site / name).resolve()
+            check(host.is_relative_to(site.resolve()) and host.is_file() and sha(host.read_bytes()) == expected,
+                  '図説の読戻し時と現在の本棚の読書プログラムが異なります')
+    receipts[role].append((path, captured))
+
+
+def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None, caption_census=None, caption_report_out=None):
     low, high = manifest['range']
     members = reading_members(manifest)
     rows = {}
     index_sha = None
+    index = None
     if index_path:
         index_path = index_path.resolve()
         index_bytes = index_path.read_bytes()
@@ -107,8 +138,13 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None)
             check(name in members and name not in rows, '校正台帳に重複または対象外の読書HTMLがあります')
             rows[name] = row
 
+    census_path = caption_index_reference(index_path, index, caption_census)
+    census_sha = sha(census_path.read_bytes()) if census_path else None
+    caption_receipts = {'part': [], 'shelf': []}
+    readback_hashes = {}
     bound_wh1 = manifest.get('readingFlow', {}).get('format') == 'wh1-bound-source-v1'
     displays = {part['display']['path'] for part in manifest.get('segments', []) if part.get('display')}
+    paired_parts = {part['part'] for part in manifest.get('segments', []) if part.get('display')}
     pending = set()
     outstanding_scopes = defaultdict(set)
     matched_regions = {}
@@ -116,6 +152,12 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None)
     sources = {}
     source_reviews = {}
     with zipfile.ZipFile(archive) as packed, tempfile.TemporaryDirectory() as tmp:
+        if census_path and manifest.get('originalScans'):
+            for key, original in manifest['originalScans'].items():
+                scan = int(key)
+                if low <= scan <= high:
+                    sources[scan] = sha(packed.read(original['path']))
+                    check(sources[scan] == original['sha256'], 'ZIP内の図説照合用原本が制作台帳と異なります')
         artifact = Path(tmp) / 'member.html'
         for name, scan_range in members.items():
             start, end = scan_range
@@ -153,11 +195,23 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None)
             if readback:
                 folder = index_path.parent if row.get('readback') else inventory.parent
                 receipt, captured = pinned(folder, readback)
+                readback_hashes[receipt] = readback['sha256']
                 verify_readback(captured, bound_wh1, name in displays, site)
                 if bound_wh1:
                     check(captured.get('archiveSha256') == archive_sha and captured.get('member') == name,
                           '画像を取得したZIP・読書画面と登録対象が違います')
+                if census_path:
+                    caption_readback(caption_receipts, receipt, captured, role='shelf' if name in displays else 'part',
+                                     archive_sha=archive_sha, member=name, artifact_sha=sha(data), site=site)
                 cmd.extend(['--readback', str(receipt)])
+            if row.get('shelfReadback') is not None:
+                check(name not in displays and name not in paired_parts and not bound_wh1, '統合表示がある本は各HTMLの固有の経路で照合してください')
+                shelf_path, shelf_capture = pinned(index_path.parent, row['shelfReadback'])
+                readback_hashes[shelf_path] = row['shelfReadback']['sha256']
+                check(shelf_capture.get('bookId') == book_id and shelf_capture.get('range') == scan_range
+                      and shelf_capture.get('route') == 'shelf', '本棚の図説読戻しの書籍・対象範囲・経路が異なります')
+                caption_readback(caption_receipts, shelf_path, shelf_capture, role='shelf', archive_sha=archive_sha,
+                                 member=name, artifact_sha=sha(data), site=site)
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             check(sha(inventory.read_bytes()) == row['inventory']['sha256'] and
                   (not readback or sha(receipt.read_bytes()) == readback['sha256']),
@@ -186,6 +240,21 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None)
             pending.update(outstanding)
             evidence.append({'member': name, 'html': sha(data), 'inventory': row['inventory']['sha256'],
                              'readback': readback['sha256'] if readback else None, 'report': digest(report)})
+    from reader_caption_census import audit as audit_captions
+    caption_report = audit_captions(census_path, book_id=book_id, scan_range=[low, high],
+                                    source_hashes=sources, readbacks=caption_receipts, index_sha256=census_sha)
+    check(all(sha(path.read_bytes()) == expected for path, expected in readback_hashes.items()),
+          '照合中に分冊または本棚の表示記録が変わりました')
+    if caption_report_out is not None:
+        caption_report_out.update(caption_report)
+    if census_path:
+        check(sha(census_path.read_bytes()) == census_sha, '照合中に図説全件台帳が変わりました')
+    caption_pending = set(caption_report['pendingScans'])
+    check(all(type(n) is int and low <= n <= high for n in caption_pending), '図説全件判定の原本番号が不正です')
+    check(caption_report['status'] == ('partial' if caption_pending else 'complete'), '図説全件判定と未確認枚数が異なります')
+    for n in caption_pending:
+        outstanding_scopes[n].update(('figure','caption'))
+    pending.update(caption_pending)
     if index_path:
         check(sha(index_path.read_bytes()) == index_sha, '照合中に本棚校正台帳が変わりました')
     batches = [[n, min(n + 19, high), sum(i in pending for i in range(n, min(n + 19, high) + 1))]
@@ -195,23 +264,36 @@ def measure(archive, archive_sha, manifest, book_id, index_path=None, site=None)
         scans = range(start, end + 1)
         scopes.append({'pending': {key: sum(key in outstanding_scopes[i] for i in scans) for key in SCOPES},
                        'matchedRegions': sum(len(matched_regions[i]) for i in scans)})
+    # The shelf stores counts and a digest. Original positions, transcriptions,
+    # paths and screenshots stay in the private source census.
+    captions = {'version': 1, 'status': caption_report['status'], 'pendingScans': len(caption_pending),
+                'batches': [[start,end,sum(n in caption_pending for n in range(start,end+1))]
+                            for start,end,_ in batches], 'report': digest(caption_report)}
     return {'version': 1, 'status': 'partial' if pending else 'complete', 'pendingScans': len(pending),
-            'batches': batches, 'scopeBatches': scopes, 'report': digest({'index': index_sha, 'members': evidence})}
+            'batches': batches, 'scopeBatches': scopes, 'captionCensus': captions,
+            'report': digest({'index': index_sha, 'members': evidence, 'captionCensus': census_sha,
+                              'captionReport': captions['report']})}
 
 
 def require_claims(summary, channel, book, manifest, reference):
+    caption = summary.get('captionCensus', {})
+    all_captions = caption.get('version') == 1 and caption.get('status') == 'complete' and caption.get('pendingScans') == 0
+    def require_scope(scope):
+        check(all(batch['pending'][scope] == 0 for batch in summary['scopeBatches']) and
+              (scope not in ('figure','caption') or all_captions), '指定した項目に原本照合が未完了のページがあります')
+    if channel == 'release':
+        check(all_captions, '正式版には全原本の図・図説台帳と分冊・本棚双方の照合が必要です')
     for doc in (book, manifest, reference):
         claim = doc.get('sourceProofClaim')
         check(claim in (None, 'partial', 'complete'), '原本校正状態が不正です')
-        check(claim != 'complete' or summary['status'] == 'complete', '全枚照合の表記と判定が違います')
+        check(claim != 'complete' or (summary['status'] == 'complete' and all_captions), '全枚照合の表記と判定が違います')
         claims = doc.get('sourceScopeClaims', {})
         check(isinstance(claims, dict) and set(claims) <= set(SCOPES), '原本照合の項目名が不正です')
         for scope, state in claims.items():
             check(state in ('partial', 'complete'), '項目別の照合状態が不正です')
             if state == 'complete':
-                check(all(batch['pending'][scope] == 0 for batch in summary['scopeBatches']),
-                      '指定した項目に原本照合が未完了のページがあります')
-    if summary['status'] == 'complete':
+                require_scope(scope)
+    if summary['status'] == 'complete' and all_captions:
         return
     check(channel != 'release', '原本と読書表示を照合できていないページがあります')
     # Preserve genuinely partial progress labels. Treat unqualified completed
@@ -243,7 +325,6 @@ def require_claims(summary, channel, book, manifest, reference):
                     named = re.search(r'((?:'+scope_pattern+r')(?:[・と＋+、及び\s]*(?:'+scope_pattern+r'))*)[のをは\s]*$',prefix)
                     if named:
                         for word in re.findall(scope_pattern,named[1]):
-                            check(all(batch['pending'][scopes[word]] == 0 for batch in summary['scopeBatches']),
-                                  '校正済みと表示する項目に未照合のページがあります')
+                            require_scope(scopes[word])
                     else:
                         check(False, '完了を示す書誌表示には全枚の原本照合が必要です')

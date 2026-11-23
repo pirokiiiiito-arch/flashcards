@@ -1,13 +1,14 @@
 // Executed in the painted reading frame. Pagination metadata selects original
 // regions; strings, ruby bases/readings and image bytes come from visible DOM.
 async scan => {
+  /*__CAPTION_VISIBILITY__*/
   const rows = new Map(), seen = new Set(), unknown = new Set(), pageIndexes = [];
   const captions = new Map(), figureNumbers = new Map();
   const codepoints = text => [...text].length;
   function visible(e) {
     if (!e || !e.getClientRects().length || e.closest('[hidden]')) throw Error('表示領域がありません');
   }
-  function readText(element) {
+  function readText(element, caption=false) {
     visible(element);
     let text = ''; const rubies = [];
     function walk(el) {
@@ -22,7 +23,7 @@ async scan => {
       }
     }
     walk(element);
-    return {text,rubies};
+    return {text,rubies,caption:caption&&measureCaptionGlyphs(element)};
   }
   function add(key, scope, value, page, more={}) {
     if (!rows.has(key)) rows.set(key,{key,scope,value,pageIndexes:[],...more});
@@ -35,9 +36,48 @@ async scan => {
     if (row.value.text.length!==offset) throw Error('非連続の表示本文 '+key);
     const previous=codepoints(row.value.text);
     row.fragments.push({page,start:previous,end:previous+codepoints(field.text)});
+    if(field.caption){
+      const v=row.value.captionVisibility||={fullyVisible:true,fragments:[]};
+      v.fragments.push({page,...field.caption});v.fullyVisible&&=field.caption.fullyVisible;
+    }
     row.value.text+=field.text;
     if (scope==='heading' && !offset) row.value.startsPage=startsPage;
     for(const r of field.rubies) row.rubies.push({...r,start:r.start+previous,end:r.end+previous,page});
+  }
+  // Whole-scan portrait sheets can contain several printed illustrations. An
+  // image digest alone cannot establish that the original edges are onscreen.
+  function imageDisplay(img) {
+    const rect=img.getBoundingClientRect(), css=getComputedStyle(img);
+    const box=[rect.left,rect.top,rect.right,rect.bottom];
+    const w=img.naturalWidth,h=img.naturalHeight;
+    const numeric=name=>parseFloat(css[name])||0;
+    const left=rect.left+numeric('borderLeftWidth')+numeric('paddingLeft');
+    const top=rect.top+numeric('borderTopWidth')+numeric('paddingTop');
+    const width=rect.right-numeric('paddingRight')-numeric('borderRightWidth')-left;
+    const height=rect.bottom-numeric('paddingBottom')-numeric('borderBottomWidth')-top;
+    const position=css.objectPosition.trim().split(/\s+/);
+    const pct=v=>/^\d+(?:\.\d+)?%$/.test(v)&&parseFloat(v)<=100;
+    const scale=Math.min(width/w,height/h,css.objectFit==='scale-down'?1:Infinity);
+    let displayRect=null, fullyVisible=false;
+    if(w>0&&h>0&&width>0&&height>0&&['contain','scale-down','fill'].includes(css.objectFit) &&
+       position.length===2&&position.every(pct)) {
+      const dw=css.objectFit==='fill'?width:w*scale,dh=css.objectFit==='fill'?height:h*scale;
+      const x=left+(width-dw)*parseFloat(position[0])/100,y=top+(height-dh)*parseFloat(position[1])/100;
+      displayRect=[x,y,x+dw,y+dh];
+      const viewport=window.visualViewport;
+      const clip=[viewport?.offsetLeft||0,viewport?.offsetTop||0,0,0];
+      clip[2]=clip[0]+(viewport?.width||innerWidth);clip[3]=clip[1]+(viewport?.height||innerHeight);
+      fullyVisible=true;
+      for(let el=img;el;el=el.parentElement){
+        const s=getComputedStyle(el),r=el.getBoundingClientRect();
+        if(s.clipPath!=='none'||(s.maskImage&&s.maskImage!=='none')||s.visibility!=='visible'||
+           Number(s.opacity)===0||s.transform!=='none')fullyVisible=false;
+        if(s.overflowX!=='visible'){const a=r.left+el.clientLeft;clip[0]=Math.max(clip[0],a);clip[2]=Math.min(clip[2],a+el.clientWidth);}
+        if(s.overflowY!=='visible'){const a=r.top+el.clientTop;clip[1]=Math.max(clip[1],a);clip[3]=Math.min(clip[3],a+el.clientHeight);}
+      }
+      fullyVisible=fullyVisible&&x>=clip[0]-.5&&y>=clip[1]-.5&&x+dw<=clip[2]+.5&&y+dh<=clip[3]+.5;
+    }
+    return {fullyVisible,naturalWidth:w,naturalHeight:h,objectFit:css.objectFit,elementRect:box,displayRect};
   }
   async function digestImage(element) {
     visible(element); await element.decode();
@@ -91,17 +131,18 @@ async scan => {
           const element=section.querySelector('img');
           add('figure-'+ordinal+'-'+k,'figure',{sha256:await digestImage(element)},i);
           const label=section.querySelector('.figure-bundle-figlabel');
-          if(label)textAt('figure-label-'+ordinal+'-'+k,'caption',readText(label),i,0,false);
+          if(label)textAt('figure-label-'+ordinal+'-'+k,'caption',readText(label,true),i,0,false);
         }
         if(tabs.length)tabs[0].click();seen.add(p.group);
       }
       const cap=section.querySelector('.figure-bundle-caption-content');
-      if(cap)textAt('caption-'+ordinal,'caption',readText(cap),i,p.partOffset||0,false);
+      if(cap)textAt('caption-'+ordinal,'caption',readText(cap,true),i,p.partOffset||0,false);
     }else if(p.type==='figure'||p.type==='image'){
       const ordinal=figureNumbers.size;figureNumbers.set(i,ordinal);
-      add('image-'+ordinal,'figure',{sha256:await digestImage(box.querySelector('img'))},i);
+      const img=box.querySelector('img');
+      add('image-'+ordinal,'figure',{sha256:await digestImage(img)},i,{imageDisplay:imageDisplay(img)});
       const caption=box.querySelector('figcaption');
-      if(caption)textAt('image-caption-'+ordinal,'caption',readText(caption),i,0,false);
+      if(caption)textAt('image-caption-'+ordinal,'caption',readText(caption,true),i,0,false);
     }else if(p.type==='toc'){
       const items=box.querySelectorAll('.toc-row');if(!items.length){unknown.add('toc');continue;}
       for(const item of items){const key='toc-'+i+'-'+Array.prototype.indexOf.call(items,item);textAt(key,'toc',readText(item),i,0,false);}

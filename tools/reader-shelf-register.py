@@ -262,7 +262,9 @@ def prepare(a):
     m,ranges,htmls=inspect_archive(a.archive,ref)
     full,root=parts_fingerprint(book,a.readback)
     check(a.archive.stat().st_size==book['totalBytes'] and sha(a.archive)==full,'検査対象のZIPとDriveの同一ID読戻しが違います')
-    proof = proof_measure(a.archive, full, m, book['id'], getattr(a, 'proof_index', None), site)
+    caption_report = {}
+    proof = proof_measure(a.archive, full, m, book['id'], getattr(a, 'proof_index', None), site,
+                          getattr(a, 'caption_census', None), caption_report_out=caption_report)
     require_claims(proof, a.channel, book, m, ref)
     claim=ref.get('rubyCoverageClaim')
     check(claim in (None,'partial','complete'),'ふりがな照合状態が不正です')
@@ -288,7 +290,14 @@ def prepare(a):
     if claim=='complete':
         check(ruby_reports,'全原本の目視確認済みと記す版には原本照合台帳を --ruby-inventory で指定してください')
     key=textsha(book['id'])
-    check(not any(r['key']==key for r in ledger['pending']),'この本の先行登録の確定または取下げが必要です')
+    prior_pending = [r for r in ledger['pending'] if r['key'] == key]
+    # A preparation signed before the new census can be rechecked and re-staged
+    # for the very same bytes and catalog identity. Other candidates stay intact.
+    if prior_pending:
+        check(len(prior_pending) == 1 and
+              prior_pending[0].get('sha256') == full and prior_pending[0].get('entry') == identity(book) and
+              'captionCensus' not in prior_pending[0].get('evidence', {}).get('sourceProof', {}),
+              'この本の先行登録の確定または取下げが必要です')
     ids=[b['id'] for b in catalog['books']]
     check(len(ids)==len(set(ids)),'本棚の書籍IDが重複しています')
     admitted = any(row.get('key') == key and row.get('sha256') == full
@@ -299,6 +308,7 @@ def prepare(a):
     detail={'pageTurns':turns,'continuity':joins,'batches':batches,'destinations':hits,'hostFiles':hosts,'sourceSha256':hashlib.sha256(ref_bytes).hexdigest(),'physicalIPhone':'not tested by this tool'}
     if ruby_reports:
         detail['sourceRubyCoverage']={'status':'complete','reports':ruby_reports}
+    detail['captionCensusReport'] = caption_report
     detail['sourceProof'] = proof
     report=digest(detail)
     evidence={'version':1,'archive':full,'source':detail['sourceSha256'],'host':digest(hosts),'report':report,'first':ref['range'][0],'last':ref['range'][1],'modes':sorted(ref['modes']),'singleScreen':bool(ref.get('singleScreen')),'batches':batches,'toc':{'kind':ref['toc']['kind'],'rows':len(ref['toc']['rows']),'landed':len(hits),'reference':digest(ref['toc']),'results':digest(hits)}}
@@ -308,7 +318,7 @@ def prepare(a):
     args=['node','--input-type=module','-e',"import fs from 'node:fs';import {parseLedger} from './reader/library/shelf-registration.mjs';await parseLedger(JSON.parse(fs.readFileSync(0)))"]
     signing="import fs from 'node:fs';import crypto from 'node:crypto';import {signingText} from './reader/library/shelf-registration.mjs';const r=JSON.parse(fs.readFileSync(0));console.log(crypto.sign('sha256',Buffer.from(signingText(r)),{key:fs.readFileSync(process.argv[1]),dsaEncoding:'ieee-p1363'}).toString('base64'));"
     record['signature']=run(['node','--input-type=module','-e',signing,str(a.key.resolve())],input=encode(record),cwd=site,check=True,capture_output=True).stdout.decode().strip()
-    ledger['pending'].append(record)
+    ledger['pending'] = [r for r in ledger['pending'] if r['key'] != key] + [record]
     run(args,input=encode(ledger),cwd=site,check=True)
     if book['id'] in ids:
         catalog['books'][ids.index(book['id'])]=book
@@ -330,6 +340,13 @@ def checked_stage(a):
     check(digest(detail)==plan['detailHash']==rec['evidence']['report'],'操作検査記録が変わりました')
     check(detail.get('sourceProof') is not None and detail['sourceProof'] == rec['evidence'].get('sourceProof'),
           '原本20枚ごとの校正判定を含む版の prepare が必要です')
+    proof = detail['sourceProof']
+    check(isinstance(proof.get('captionCensus'), dict) and proof['captionCensus'].get('version') == 1,
+          '旧候補には図・図説の全件判定がありません。同じ版を prepare で再照合してください')
+    check(isinstance(detail.get('captionCensusReport'), dict) and
+          digest(detail['captionCensusReport']) == proof['captionCensus']['report'],
+          '図・図説の全件照合記録と署名が一致しません')
+    require_claims(proof, rec['channel'], {}, {}, {})
     check('pageTurns' in detail, '分冊境界の往復検査を含む最新版の prepare が必要です')
     ranges=[row[:2] for row in rec['evidence']['batches']]
     check(turn_summary(detail['pageTurns'],ranges)==rec['evidence'].get('pageTurns'),
@@ -391,6 +408,7 @@ def main():
     q.add_argument('--channel',choices=['preview','release'],required=True)
     q.add_argument('--chromium',type=Path)
     q.add_argument('--handoff',type=Path)
+    q.add_argument('--caption-census',type=Path,help='全原本の図・図説台帳。未作成の原本は確認版で未照合として引き継ぎます')
     q.add_argument('--proof-index', type=Path, help='登録ZIPの各読書HTMLと原本別校正・読戻しを結ぶ非公開台帳')
     q.add_argument('--ruby-inventory',action='append',type=Path,help='各収録HTMLに対応する私有の全原本ルビ照合台帳。分冊順に繰り返し指定できる。')
     q.add_argument('--key',required=True,type=Path)

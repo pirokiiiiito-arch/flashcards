@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const legacy=require('./reader-quality-gate.cjs');
 const ROOT=process.env.READER_AUDIT_ROOT||path.resolve(__dirname,'..'),SCHEMA='reader-release-v2';
 const TRUST_ANCHOR='76cf9d19508fcde941c2051f7c8a617e46599abf2116ea42d983150c7f9223ca';
-const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-ruby-coverage.cjs','reader-scoped-review.cjs','reader-source-pages.cjs','reader-proof-batches.cjs','reader_shelf_readback.py','reader_shelf_readback.js','reader_template_readback.py','reader_template_readback.js','reader_shelf_proof.py','reader_shelf_caption_ruby.py','reader_shelf_wh1_parts.py','reader-shelf-prior.cjs','reader-shelf-register.py','reader_shelf_probe.py','reader_shelf_turns.py','reader_shelf_turn_frames.py'];
+const IMPLEMENTATION=['reader-release-control.cjs','reader-private-pipeline.cjs','reader-publish-stage.cjs','reader-quality-gate.cjs','reader-artifact-audit.cjs','reader-preview-consent.cjs','reader-unified-handoff.cjs','reader-ruby-coverage.cjs','reader-scoped-review.cjs','reader-source-pages.cjs','reader-proof-batches.cjs','reader_caption_visibility.js','reader_caption_work.py','reader_caption_prepare.py','reader_caption_census.py','figure_caption_geometry.py','caption_initials.py','reader_shelf_readback.py','reader_shelf_readback.js','reader_template_readback.py','reader_template_readback.js','reader_shelf_proof.py','reader_shelf_caption_ruby.py','reader_shelf_wh1_parts.py','reader-shelf-prior.cjs','reader-shelf-register.py','reader_shelf_probe.py','reader_shelf_turns.py','reader_shelf_turn_frames.py'];
 // Pre-feature identity retained only for old evidence-scoped unverified preview receipts.
 const PRE_UI_IMPLEMENTATION_SHA256='ec32213f08ac067016c51c461037feeda1ea5446c64340e82cbd8b6c501618af';
 // The 2026-11-15 Nine Stories preview-only receipt was issued before the exact mobile UI pin update.
@@ -237,6 +237,7 @@ function validateBundle(file,{phase='prepare'}={}){
   }
   const {fields}=validateSourceEvidence(root,m,pages,index,sourceReview);
   demand(sourceReview.proofBatches.status==='complete','BATCH_PROOF_PENDING');
+  demand(sourceReview.captionCensus.status==='complete','CAPTION_CENSUS_PENDING');
   const display=json(root,m.display);
   require('./reader-scoped-review.cjs').verifyNovelStarts(root,m,pages,profile,template,display,fields);
   demand(display.artifactSha256===m.artifact.sha256&&display.actualPixels===true&&objHash(display.fields)===objHash(fields),'DISPLAY_NOT_CANONICAL');

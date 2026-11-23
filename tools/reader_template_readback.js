@@ -1,5 +1,6 @@
 // Run inside the mounted, paginated StandardReader or NovelReader document.
 async scan => {
+  /*__CAPTION_VISIBILITY__*/
   const reader = window.StandardReader || window.NovelReader;
   if (!reader) throw Error('読書テンプレートを特定できません');
   const graphemes = s => [...new Intl.Segmenter('ja', {granularity:'grapheme'}).segment(s)].map(x => x.segment);
@@ -11,20 +12,20 @@ async scan => {
   function visible(el) {
     if (!el || !el.getClientRects().length || !el.checkVisibility({visibilityProperty:true,opacityProperty:true})) throw Error('表示要素を取得できません');
   }
-  function readNode(root) {
-    visible(root);
+  function readNode(root, caption=false) {
+    if(!caption)visible(root);
     let text = '';
     const rubies = [];
     function visit(el) {
       if (el.nodeType === Node.TEXT_NODE) { text += el.data; return; }
       if (el.matches('rp,rt')) return;
-      visible(el);
+      if(!caption)visible(el);
       const start = [...text].length;
       for (const child of el.childNodes) visit(child);
       if (el.tagName !== 'RUBY') return;
       const content = [...text].slice(start).join(''), units = graphemes(content);
       for (const rt of el.querySelectorAll(':scope > rt')) {
-        visible(rt);
+        if(!caption)visible(rt);
         const a = rt.hasAttribute('data-ruby-start') ? Number(rt.dataset.rubyStart) : 0;
         const b = rt.hasAttribute('data-ruby-end') ? Number(rt.dataset.rubyEnd) : units.length;
         if (!Number.isInteger(a)||!Number.isInteger(b)||a<0||a>=b||b>units.length) throw Error('ルビ位置が不正です');
@@ -33,13 +34,17 @@ async scan => {
       }
     }
     visit(root);
-    return {text,rubies};
+    return {text,rubies,caption:caption&&measureCaptionGlyphs(root)};
   }
   function addText(key, scope, field, ix, startsPage) {
     if (!rows.has(key)) rows.set(key,{key,scope,value:{text:''},rubies:[],fragments:[],pageIndexes:[]});
     const r=rows.get(key), offset=[...r.value.text].length;
     if (r.scope!==scope) throw Error('同一本文位置の種別が変化しました');
     if (!offset && scope==='heading') r.value.startsPage=startsPage;
+    if(field.caption){
+      const v=r.value.captionVisibility||={fullyVisible:true,fragments:[]};
+      v.fragments.push({page:ix,...field.caption});v.fullyVisible&&=field.caption.fullyVisible;
+    }
     r.value.text+=field.text;
     r.fragments.push({page:ix,start:offset,end:[...r.value.text].length});
     if(!r.pageIndexes.includes(ix)) r.pageIndexes.push(ix);
@@ -75,10 +80,10 @@ async scan => {
         const sha=await crypto.subtle.digest('SHA-256',await response.arrayBuffer());
         rows.set(key,{key,scope:'figure',value:{sha256:[...new Uint8Array(sha)].map(x=>x.toString(16).padStart(2,'0')).join('')},pageIndexes:[ix]});
         const label=document.querySelector('#figure-caption-label');
-        if(label?.textContent&&label.checkVisibility())addText(key+'-title','other',readNode(label),ix,false);
+        if(label?.textContent&&label.checkVisibility())addText(key+'-title','other',readNode(label,true),ix,false);
       }
       const cap=document.querySelector('#figure-caption');
-      if(cap?.textContent) addText('caption-'+page.figure,'caption',readNode(cap),ix,false);
+      if(cap?.textContent) addText('caption-'+page.figure,'caption',readNode(cap,true),ix,false);
       continue;
     }
     if(page.kind!=='text'||!page.sourceSpans.length) throw Error('対応する本文範囲がありません');

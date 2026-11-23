@@ -8,13 +8,15 @@ figure-<n>-title and caption-<n>, using the template's figure index.
 import argparse
 import functools
 import http.server
+import hashlib
+from zipfile import ZipFile
 import json
 import threading
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit
 
-from reader_shelf_probe import wait_painted
-from reader_shelf_readback import checked_census, normalize, sha
+from reader_shelf_probe import SEED, wait_painted
+from reader_shelf_readback import ArchiveServer, checked_census, normalize, readback_runner, sha
 
 
 class PrivateFiles(http.server.SimpleHTTPRequestHandler):
@@ -22,7 +24,7 @@ class PrivateFiles(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def capture(html, inventory_path, out, chromium, locations_path=None):
+def capture(html, inventory_path, out, chromium, locations_path=None, *, route='part', archive=None, site=None):
     from playwright.sync_api import sync_playwright
 
     html, out = html.resolve(strict=True), out.resolve()
@@ -34,9 +36,40 @@ def capture(html, inventory_path, out, chromium, locations_path=None):
     images.mkdir(exist_ok=True)
     report = dict(schema='reader-proof-readback-v1', bookId=inventory['bookId'], range=inventory['range'],
                   artifactSha256=sha(html.read_bytes()), member=html.name, route='part', pages=[])
+    if route not in ('part','shelf'):
+        raise ValueError('読書経路は分冊または本棚です')
+    report['route'] = route
     report['hostFiles'] = {}
-    runner = Path(__file__).with_suffix('.js').read_text()
-    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(PrivateFiles, directory=html.parent))
+    if route == 'shelf':
+        if archive is None or site is None:
+            raise ValueError('本棚経路の採取には登録用ZIPと本棚のサイトが必要です')
+        site = site.resolve(strict=True)
+        archive = archive.resolve(strict=True)
+        with ZipFile(archive) as packed:
+            manifest = json.loads(packed.read('manifest.json'))
+            if (manifest.get('format') != 'standalone-reader-html-v1' or manifest.get('entry') != 'reader.html'
+                    or manifest.get('bookId') != inventory['bookId'] or manifest.get('range') != inventory['range']
+                    or sha(packed.read(manifest['entry'])) != report['artifactSha256']
+                    or manifest.get('sha256') != report['artifactSha256']):
+                raise ValueError('本棚ZIPに収録された統合読書HTML・範囲・書籍IDが異なります')
+        report['member'] = manifest['entry']
+        with archive.open('rb') as f:
+            report['archiveSha256'] = hashlib.file_digest(f,'sha256').hexdigest()
+            f.seek(0)
+            chunk_root=hashlib.sha256()
+            while chunk:=f.read(4*1024*1024):
+                chunk_root.update(hashlib.sha256(chunk).digest())
+        # Hash the actual shell as well as the replacement document. Saving
+        # the same HTML bytes in two records does not exercise the shelf.
+        for path in ('reader/library/read.html','reader/library/storage.js','reader/library/shelf-registration.mjs'):
+            report['hostFiles'][path] = sha((site/path).read_bytes())
+    runner = readback_runner(Path(__file__).with_suffix('.js'))
+    directory = site if route == 'shelf' else html.parent
+    handler = ArchiveServer if route == 'shelf' else PrivateFiles
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(handler, directory=directory))
+    if route == 'shelf':
+        server.archive = archive
+        server.allowed = set()
     threading.Thread(target=server.serve_forever, daemon=True).start()
     origin = f'http://127.0.0.1:{server.server_port}'
     template_api = 'window.StandardReader||window.NovelReader'
@@ -47,7 +80,17 @@ def capture(html, inventory_path, out, chromium, locations_path=None):
                                       locale='ja-JP', service_workers='block')
             ctx.route('**/*', lambda route: route.continue_() if route.request.url.startswith(origin+'/') else route.abort())
             page = ctx.new_page()
-            page.goto(origin+'/'+quote(html.name))
+            shell_resources=set()
+            if route == 'shelf':
+                def remember(response):
+                    if response.url.startswith(origin+'/') and response.request.resource_type in ('script','stylesheet'):
+                        shell_resources.add(response.url)
+                page.on('response',remember)
+                page.goto(origin+'/reader/library/manifest.webmanifest',wait_until='commit')
+                page.evaluate(SEED,[manifest['bookId'],manifest['title'],chunk_root.hexdigest()])
+                page.goto(origin+'/reader/library/read.html?id='+quote(inventory['bookId']),wait_until='domcontentloaded')
+            else:
+                page.goto(origin+'/'+quote(html.name))
             wait_painted(page)
             info = page.evaluate(f'()=>({template_api}).inspect()')
             if page.evaluate(f'()=>({template_api}).bookId') != inventory['bookId']:
@@ -88,12 +131,12 @@ def capture(html, inventory_path, out, chromium, locations_path=None):
                                             captures=captures,painted=raw['rows'],unhandled=raw['unknown'],
                                             sourceBinding='embedded' if embedded else 'inventory'))
             resources = page.evaluate("()=>[...document.querySelectorAll('script[src],link[rel=stylesheet][href]')].map(e=>e.src||e.href)")
-            for url in resources:
+            for url in set(resources) | shell_resources:
                 if not url.startswith(origin+'/'):
                     raise ValueError('外部の表示プログラムを再照合できません')
                 name = unquote(urlsplit(url).path).lstrip('/')
-                path = (html.parent/name).resolve(strict=True)
-                if not path.is_relative_to(html.parent):
+                path = (directory/name).resolve(strict=True)
+                if not path.is_relative_to(directory):
                     raise ValueError('読書プログラムの保存先が不正です')
                 report['hostFiles'][name] = sha(path.read_bytes())
             browser.close()
@@ -109,5 +152,8 @@ if __name__=='__main__':
     for param in ['html','inventory','out','chromium']:
         parser.add_argument('--'+param,type=Path,required=True)
     parser.add_argument('--locations',type=Path)
+    parser.add_argument('--route',choices=('part','shelf'),default='part')
+    parser.add_argument('--archive',type=Path)
+    parser.add_argument('--site',type=Path)
     args = parser.parse_args()
-    capture(args.html,args.inventory,args.out,args.chromium,args.locations)
+    capture(args.html,args.inventory,args.out,args.chromium,args.locations,route=args.route,archive=args.archive,site=args.site)
