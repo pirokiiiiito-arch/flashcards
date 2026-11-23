@@ -75,16 +75,12 @@
     button.setAttribute('aria-label',`${book.title}を開く`);
     const wrap=document.createElement('span');wrap.className='cover-wrap';
     const cover=document.createElement('span');cover.className='cover';
-    const txt=document.createElement('span');txt.textContent=book.title;cover.append(txt);
+    // All bookshelf covers are text-only, including downloaded and offline books.
+    const txt=document.createElement('span');txt.className='cover-title';txt.textContent=book.title;cover.append(txt);
+    const titleLength=Array.from(book.title).length;
+    if(titleLength>48)cover.classList.add('cover-title-very-long');
+    else if(titleLength>26)cover.classList.add('cover-title-long');
     if(book.scans){const n=document.createElement('small');n.textContent=`全${num.format(book.scans)}枚`;cover.append(n);}
-    // The real cover is loaded privately from Drive or an on-device book ZIP.
-    // Text remains visible as a fallback, and the title below is always readable.
-    const photo=document.createElement('img');photo.className='book-cover-photo';
-    photo.alt=`${book.title}の表紙`;photo.loading='lazy';photo.decoding='async';photo.hidden=true;
-    photo.onload=()=>cover.classList.add('photo-ready');
-    photo.onerror=()=>{photo.hidden=true;cover.classList.remove('photo-ready');};
-    cover.append(photo);
-    window.BookCovers?.attach(photo,book,tokenValid()?fetchPrivateCover:null);
     wrap.append(cover);
     if(savedIds.has(book.id)){const s=document.createElement('span');s.className='cover-state';s.textContent='端末に保存済み';wrap.append(s);}
     const info=document.createElement('span');const title=document.createElement('span');title.className='book-name';title.textContent=book.title;
@@ -137,16 +133,6 @@
     catch(e){say('削除できません: '+e.message);}
   }
   const tokenValid=()=>!!accessToken&&Date.now()<expiry;
-  async function fetchPrivateCover(id){
-    // No publicly accessible cover URL and no book bytes are sent to GitHub.
-    if(!tokenValid() || !/^[A-Za-z0-9_-]{12,128}$/.test(id))return null;
-    const res=await driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media`);
-    const contentLength=Number(res.headers.get('content-length'));
-    if(contentLength>15000000)throw Error('表紙の画像サイズが大きすぎます');
-    const image=await res.blob();
-    if(image.size>15000000)throw Error('表紙の画像サイズが大きすぎます');
-    return image;
-  }
   async function loadGoogleScript(){if(window.google?.accounts?.oauth2)return;
     await new Promise((resolve,reject)=>{
       const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.defer=true;
