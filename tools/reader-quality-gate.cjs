@@ -28,6 +28,19 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='0182b40ed502f6b6546777d39afc8da432b77171'){
+    // Restore the exact shell before bound-book heading pagination and early input resumption.
+    const lines=data.toString('utf8').split('\n');
+    const changes=[
+      [1530,1," getManifest:()=>manifest,getActiveSegment:()=>activeSegment,getScan:()=>currentState.scan,"],
+      [1282,8,"   for(const part of m.segments)byPath.set(part.part,await book.readText(part.display.path));","   book.readingFlow={byPath,locate:(index,destination)=>({index,destination})};"],
+      [1225,19],
+      [960,5,"   if(reuse){requested=true;post('sectionTarget',{direction});return;}"]
+    ];
+    for(const [at,count,...prior] of changes)lines.splice(at,count,...prior);
+    data=Buffer.from(lines.join('\n'));
+    if(blobSHA(data)!=='67973fcc50fb28fe192b4007fa4e43bd4196ac2a')throw Error('WH1_BOUND_HEADING_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='67973fcc50fb28fe192b4007fa4e43bd4196ac2a'){
     // Restore the host before source-labelled sheets signalled their completed paint.
     const lines=data.toString('utf8').split('\n');

@@ -958,7 +958,11 @@ function turnSection(direction,repeat,preparing=false){
  window.addEventListener('message',message);
  (async()=>{
   try{
-   if(reuse){requested=true;post('sectionTarget',{direction});return;}
+   if(reuse){
+    // Accept the next touch as soon as the retained sheet becomes visible.
+    if(!structured&&keepNeighbour)post('sectionResume');
+    requested=true;post('sectionTarget',{direction});return;
+   }
    let rendered;
    if(structured){
     const [layout,archive]=await Promise.all([wh3Layout(),wh3DisplayArchive(book,index)]);
@@ -1219,6 +1223,25 @@ function writeLegacyNineEpigraph(bytes){
  document.write(tail.slice(0,engineStart)+centered);
 }
 // END Nine Stories legacy epigraph layout
+// Bound WH1 books share these display documents with the full-book page counter.
+function startWh1HeadingPages(html){
+ const loop='  let remain=b.text,offset=0;\n  while(remain.length){';
+ const split="  if(b.type==='heading'&&parts.some(part=>part.type!=='heading'))flush();";
+ const lookup='    if(dest?.key) idx=pages.findIndex(p=>p.key===dest.key);';
+ const anchor=String.raw`
+    if(idx<0 && typeof dest?.key==='string'){
+     const saved=/^text:(\d+):(\d+)$/.exec(dest.key);
+     if(saved){
+      const block=Number(saved[1]),offset=Number(saved[2]);
+      idx=pages.findIndex(page=>page.parts?.some(part=>part.block===block&&
+       part.offset<=offset&&offset<part.offset+part.text.length));
+     }
+    }`;
+ if(!html.includes(loop)||!html.includes(lookup))throw Error('見出しの改ページ位置を特定できません');
+ if(!html.includes(split))html=html.replace(loop,()=>split+'\n'+loop);
+ if(!html.includes(anchor))html=html.replace(lookup,()=>lookup+anchor);
+ return html;
+}
 async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
@@ -1257,8 +1280,14 @@ async function loadBook(file,shouldSave=true){
     const url=new URL('read-wh1-v9.html',location.href);url.search=location.search;location.replace(url);return;
    }
    const byPath=new Map();
-   for(const part of m.segments)byPath.set(part.part,await book.readText(part.display.path));
-   book.readingFlow={byPath,locate:(index,destination)=>({index,destination})};
+   for(const part of m.segments){
+    const html=await book.readText(part.display.path);
+    byPath.set(part.part,startWh1HeadingPages(html));
+   }
+   // The exact pager keys its counts by the edition's creation tag. A new layout
+   // has its own count cache while bookmarks keep their original book and source keys.
+   const paginationManifest={...m,created:(m.created||'')+':heading-start-v1'};
+   book.readingFlow={byPath,paginationManifest,locate:(index,destination)=>({index,destination})};
   }
   if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){
    book.readingFlow=await window.WH1ExactPager.continuousReading(book,m);
@@ -1499,7 +1528,7 @@ async function handlePrepare(index){
 
 const wh1ExactPager=window.WH1ExactPager?.create({
  getReader:()=>$('reader'),getBook:()=>bookZip,getSegments:()=>SEGMENTS,
- getManifest:()=>manifest,getActiveSegment:()=>activeSegment,getScan:()=>currentState.scan,
+ getManifest:()=>bookZip?.readingFlow?.paginationManifest||manifest,getActiveSegment:()=>activeSegment,getScan:()=>currentState.scan,
  useExactPagination:usesPresidentsTemplate
 });
 

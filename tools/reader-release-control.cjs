@@ -59,7 +59,7 @@ const BOOKSHELF_NAV_UI_GIT_BLOBS=Object.freeze({
 // Pin both public WH1 hosts separately from private book content.
 const SHARED_SHELF_UI_GIT_BLOBS=Object.freeze({
  'reader/wh1/all/index.html':'1e931004f0a0619cc2940287181fceb8daf5d054',
- 'reader/library/read.html':'67973fcc50fb28fe192b4007fa4e43bd4196ac2a'
+ 'reader/library/read.html':'0182b40ed502f6b6546777d39afc8da432b77171'
 });
 // Exact public-only bookshelf ordering assets. Private ZIP/OCR files are never authorized.
 const BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS=Object.freeze({
