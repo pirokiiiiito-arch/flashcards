@@ -489,7 +489,7 @@ function admittedBookshelfNavUI(root,policy){
   if(registration){
     const files={
       "reader/library/storage.js": "af781a3639386a04402ad2c07a7dee579bc94cd218307ef5ab5f7fb42196f961",
-      "reader/library/shelf-registration.mjs": "bcde0f40f34d5634d327ac078bc37497fb8a9b14a48da25882e2293d526f91d7",
+      "reader/library/shelf-registration.mjs": "92ca2508786e603519d9b5d427ab715a5f284dd5f1e5dc96c6e53f23c7bf812d",
       "reader/library/wh1-caption-ruby.js": captionFit ? "54e6296d91724811fe357bb5da6884b4827eb26fc0939339dca7f8e2cec675a6" : "81898e2e602327606e2369b333c726793f2eab1869e27a0438fc2d6fd107fcd6",
       "reader/wh1/full/index.html": "389750d3d6cd32459a8af698595ae1e48e5819aef79aa3c1f8754fa2883ba381"
 };
