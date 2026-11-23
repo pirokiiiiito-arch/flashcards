@@ -76,10 +76,41 @@
     return html;
   }
 
+  // The legacy fitting search reserves 10px below every caption probe. A
+  // complete remainder can use that margin if all of its actual lines fit.
+  function wholeCaptionVisible(box, content) {
+    const bounds = box.getBoundingClientRect();
+    const fits = rect => rect.left >= bounds.left && rect.right <= bounds.right &&
+      rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+    if (!fits(content.getBoundingClientRect())) return false;
+    const range = document.createRange();
+    range.selectNodeContents(content);
+    return Array.from(range.getClientRects()).every(fits);
+  }
+
+  function prepareCaptionFit(html) {
+    const marker = '/* WH1 complete caption fit v1 */';
+    const oldFunction = 'function illustrationFits(base,txt){';
+    if (html.includes(marker) || !html.includes(oldFunction) ||
+        !/^const ILLUSTRATION_GROUPS=\[\{/m.test(html)) return html;
+    const height = 'content.getBoundingClientRect().height<=d.clientHeight-10';
+    const remainder = 'if(!illustrationFits(base,remaining)){';
+    for (const anchor of [oldFunction, height, remainder]) {
+      if (html.split(anchor).length !== 2) throw Error('図説の改ページ計測処理を一意に特定できません');
+    }
+    return html.replace(oldFunction, () => marker + '\n' + wholeCaptionVisible.toString() +
+      '\nfunction illustrationFits(base,txt,wholeRemainder=false){')
+      .replace(height, '(' + height + '||(wholeRemainder&&wholeCaptionVisible(d,content)))')
+      .replace(remainder, 'if(!illustrationFits(base,remaining,true)){');
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { prepare, captionRubyRanges, captionRubyBoundary };
-    if (require.main === module) process.stdout.write(prepare(require('node:fs').readFileSync(0, 'utf8')));
+    module.exports = { prepare, prepareCaptionFit, wholeCaptionVisible, captionRubyRanges, captionRubyBoundary };
+    if (require.main === module) {
+      const transform = process.argv[2] === '--fit' ? prepareCaptionFit : prepare;
+      process.stdout.write(transform(require('node:fs').readFileSync(0, 'utf8')));
+    }
   } else {
-    window.WH1CaptionRuby = Object.freeze({ prepare });
+    window.WH1CaptionRuby = Object.freeze({ prepare, prepareCaptionFit });
   }
 })();

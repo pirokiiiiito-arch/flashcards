@@ -42,3 +42,30 @@ test('only referenced figure notes opt in and unverifiable base offsets fail',()
   assert.equal(prepare(elsewhere),elsewhere);
   assert.throws(()=>captionRubyRanges([{text:'同文',ruby:[{start:0,end:1,base:'別',reading:'べつ'}]}]),/親文字/);
 });
+
+test('a complete remainder can use the reserved margin only when every line of text and ruby is visible',()=>{
+  const {wholeCaptionVisible}=require('../reader/library/wh1-caption-ruby.js');
+  const bounds={left:10,top:30,right:130,bottom:70};
+  const el={getBoundingClientRect:()=>bounds};
+  const rects=[{left:10,top:31,right:125,bottom:69}];
+  const fakeRange={selectNodeContents(){},getClientRects:()=>rects};
+  const visible=vm.runInNewContext('('+wholeCaptionVisible+')',{document:{createRange:()=>fakeRange}});
+  assert.equal(visible(el,el),true);
+  rects.push({left:12,top:64,right:31,bottom:70.5}); // clipped reading or text
+  assert.equal(visible(el,el),false);
+});
+
+test('WH1 uses exact bounds for a whole caption, keeps the legacy fit for split probes and preserves the CSS',()=>{
+  const {prepareCaptionFit}=require('../reader/library/wh1-caption-ruby.js');
+  const html=style+'\nconst ILLUSTRATION_GROUPS=[{"desc":[0]}];\n'+
+    'function illustrationFits(base,txt){const fits=content.getBoundingClientRect().height<=d.clientHeight-10;return fits;}\n'+
+    'function appendIllustrationPages(){if(!illustrationFits(base,remaining)){while(lo<hi){if(illustrationFits(base,remaining.slice(0,mid)))lo=mid;else hi=mid-1;}}}';
+  const fixed=prepareCaptionFit(html);
+  assert.equal(fixed.slice(0,style.length),style);
+  assert.ok(fixed.includes('if(!illustrationFits(base,remaining,true))'));
+  assert.ok(fixed.includes('if(illustrationFits(base,remaining.slice(0,mid)))'));
+  assert.ok(fixed.includes('wholeRemainder&&wholeCaptionVisible(d,content)'));
+  assert.equal(prepareCaptionFit(fixed),fixed);
+  const noFigures=html.replace('[{"desc":[0]}]','[]');
+  assert.equal(prepareCaptionFit(noFigures),noFigures);
+});

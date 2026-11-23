@@ -1281,16 +1281,18 @@ async function loadBook(file,shouldSave=true){
     const url=new URL('read-wh1-v9.html',location.href);url.search=location.search;location.replace(url);return;
    }
    const byPath=new Map();
-   let captionRuby=false;
+   let captionRuby=false,captionFit=false;
    for(const part of m.segments){
     const html=await book.readText(part.display.path);
     const prepared=html.includes('"ruby"')?window.WH1CaptionRuby.prepare(html):html;
     if(prepared.includes("/* WH1 source caption ruby v1 */"))captionRuby=true;
-    byPath.set(part.part,startWh1HeadingPages(prepared));
+    const fitted=prepared.includes('function illustrationFits(base,txt){')?window.WH1CaptionRuby.prepareCaptionFit(prepared):prepared;
+    if(fitted.includes('/* WH1 complete caption fit v1 */'))captionFit=true;
+    byPath.set(part.part,startWh1HeadingPages(fitted));
    }
    // The exact pager keys its counts by the edition's creation tag. A new layout
    // has its own count cache while bookmarks keep their original book and source keys.
-   const paginationManifest={...m,created:(m.created||'')+':heading-start-v1'+(captionRuby?':caption-ruby-v1':'')};
+   const paginationManifest={...m,created:(m.created||'')+':heading-start-v1'+(captionRuby?':caption-ruby-v1':'')+(captionFit?':caption-fit-v1':'')};
    book.readingFlow={byPath,paginationManifest,locate:(index,destination)=>({index,destination})};
   }
   if(m.bookId==='us-presidents-south'&&window.WH1ExactPager?.continuousReading){

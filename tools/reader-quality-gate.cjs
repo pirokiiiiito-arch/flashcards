@@ -28,6 +28,16 @@ const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
 function priorNativeInputReader(data){
+  if(blobSHA(data)==='eab3edc8d7eaf6cbf2d4ebd73bed805aaa903236'){
+    // Reconstruct the previously reviewed shell exactly before walking prior revisions.
+    const prior=data.toString('utf8')
+      .replace('let captionRuby=false,captionFit=false;', 'let captionRuby=false;')
+      .replace(/    const fitted=prepared\.includes[^\n]+\n    if\(fitted\.includes[^\n]+\n    byPath\.set\(part\.part,startWh1HeadingPages\(fitted\)\);/,
+               '    byPath.set(part.part,startWh1HeadingPages(prepared));')
+      .replace("+(captionFit?':caption-fit-v1':'')",'');
+    data=Buffer.from(prior);
+    if(blobSHA(data)!=='57714085f7bc76e85ff7a0dab54e34823b3ee69e')throw Error('CAPTION_FIT_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='57714085f7bc76e85ff7a0dab54e34823b3ee69e'){
     // Reverse only the reviewed caption-ruby loader, invocation and pagination cache key.
     const lines=data.toString('utf8').split('\n');

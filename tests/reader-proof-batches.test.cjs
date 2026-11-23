@@ -167,3 +167,23 @@ test('an independently-starting heading cannot be redefined as mid-page by both 
   census.regions[0].placement='inline';x.save(1);assert.equal(x.report().status,'partial');
   census.regions[0].placementReason='原本の段落内小見出しと採用書式を照合';x.save(1);assert.equal(x.report().status,'complete');
 });
+
+test('a verified opening cannot certify a truncated caption or its last line misfiled in body',t=>{
+  const x=fixture(t,1),{census,review,actual}=x.evidence[0];
+  const body='春に調査を行った。', whole='写真は春に撮影されたもの。';
+  census.regions.push({id:'photo-caption',scope:'caption',box:[0,0,1,1]});
+  review.regions[0].value={text:body};
+  review.regions.push({id:'photo-caption',state:'matched',value:{text:whole}});
+  actual.regions[0].value={text:body};
+  // textAt in the live collector joins actual paginated DOM fragments for one caption.
+  const chunks=['写真は春に','撮影されたも','の。'];
+  actual.regions.push({id:'photo-caption',scope:'caption',value:{text:chunks.join('')}});
+  x.save(1);assert.equal(x.report().status,'complete');
+  for(const fragments of [chunks.slice(0,-1),chunks.slice(0,1),[],[chunks[0],chunks[2],chunks[1]]]){
+    actual.regions[1].value.text=fragments.join('');x.save();
+    assert.deepEqual(x.report().queue[0].pendingScopes,['caption']);
+  }
+  actual.regions[1].value.text=chunks.join('');actual.regions[0].value.text=body+chunks[2];x.save();
+  assert.deepEqual(x.report().queue[0].pendingScopes,['body']);
+  actual.regions[0].value.text=body;x.save();assert.equal(x.report().status,'complete');
+});

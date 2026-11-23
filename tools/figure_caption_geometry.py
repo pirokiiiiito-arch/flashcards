@@ -6,7 +6,8 @@ Input: {"width":..., "height":..., "rows":[{"box":[x1,y1,x2,y2],"text":"...","id
 Use rows for candidate horizontal lines outside art, and sourceRows for ALL raw
 OCR rows including text whose orientation may have been misdetected. Existing
 caption source order is optional. sourceRows uses the same IDs and rectangles.
-The JSON result lists candidate row IDs and review flags. Nonempty flags require
+The JSON result lists candidate row IDs and review flags. endingCandidates
+links an unassigned short source row to the preceding printed caption line. Nonempty flags require
 a source-verified assignment or retention of the original image for this page.
 """
 from caption_initials import candidates as initial_candidates
@@ -139,6 +140,36 @@ def caption_assignments(rows, figures, width):
 
 
 
+def caption_end_candidates(orders, source, figures):
+    """Locate short, unassigned OCR boxes on the next baseline of a caption.
+
+    The preceding row's actual type size defines the search window. Return
+    competing observations for inspection without assigning or deleting text.
+    """
+    owned = {key for _, order in orders for key in order}
+    found = []
+    for figure, order in orders:
+        if not order:
+            continue
+        last = source[order[-1]]
+        left, top, _, bottom = last['box']
+        size = bottom - top
+        for row in source.values():
+            if (row['id'] in owned or not row.get('text', '').strip() or
+                    row.get('kind') in ('block_folio', 'block_pillar', 'block_rubi')):
+                continue
+            x, y, right, end = row['box']
+            width, height = right - x, end - y
+            if not (abs(x-left) <= size and 0 <= y-bottom <= 1.8*size and
+                    .55*size <= height <= 1.6*size and width <= 3.5*size):
+                continue
+            if any(intersects(row['box'], f['bbox'], 0)*intersects(row['box'], f['bbox'], 1)
+                   >= .5*width*height for f in figures):
+                continue
+            found.append({'figure': figure, 'after': last['id'], 'row': row['id'], 'box': row['box']})
+    return found
+
+
 def inspect_input(data):
     rows, figures = data['rows'], data['figures']
     width, height = data['width'], data['height']
@@ -168,7 +199,7 @@ def inspect_input(data):
             if alternating_columns([by_id[key] for key in sequence], width, height):
                 flags.append('interleaved-column-order')
     assigned = {i:[r['id'] for r in group] for i,group in sorted(groups.items())}
-    orders = enumerate(previous) if previous is not None else assigned.items()
+    orders = list(enumerate(previous) if previous is not None else assigned.items())
     source_rows = data.get('sourceRows', rows)
     source = {row['id']: row for row in source_rows}
     if len(source) != len(source_rows):
@@ -182,10 +213,15 @@ def inspect_input(data):
             raise ValueError(f'Invalid original OCR region {row["id"]}')
     initials = [dict(figure=i, **zone) for i, ids in orders
                 for zone in initial_candidates(ids, source_rows)]
-    result = {'candidates': assigned, 'reviewFlags': sorted(set(flags))}
+    ends = caption_end_candidates(orders, source, figures) if 'sourceRows' in data else []
+    result = {'candidates': assigned}
+    if ends:
+        result['endingCandidates'] = ends
+        flags.append('caption-ending-review')
     if initials:
         result['initialCandidates'] = initials
-        result['reviewFlags'] = sorted(set(flags) | {'caption-initial-review'})
+        flags.append('caption-initial-review')
+    result['reviewFlags'] = sorted(set(flags))
     return result
 
 

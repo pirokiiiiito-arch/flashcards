@@ -191,3 +191,17 @@ python tools/reader_shelf_readback.py --archive PRIVATE/book.zip --inventory PRI
 ```sh
 python tools/reader_template_readback.py --html PRIVATE/reader.html --inventory PRIVATE/proof-inventory.json --out PRIVATE/readback.json --chromium CHROMIUM
 ```
+
+### 図説の短い最終行を確かめる
+
+原本で図説の先頭から最後の句読点までを読み、末尾の短い行と、その近くの本文・注の所属を確かめる。図説が複数段に続く場合は段順を記録し、複数の図に共通する説明は、その説明を使う全図のIDを記録する。
+
+新規制作・補修とも、図説候補行 `rows` に加えて、原本のOCR全行を `sourceRows` として渡す。`endingCandidates` は、直前の図説行、末尾に続く可能性がある未割当行、原画像内の座標を返す。`caption-ending-review` が付いた原本では、画像から読み取った文字と元の本文をそれぞれ照合し、戻す行と取り除く混入行を原本上で特定する。OCR自体が落とした行もあるため、候補0件の図説も原画像で最終行を確認する。
+
+合成例では `short-line` が末行候補となり、原本照合を求める終了コード2を返す。
+
+```sh
+python tools/figure_caption_geometry.py templates/reader/v2/caption-ending-geometry.example.json
+```
+
+読書画面では、図説が複数ページになる場合も次画面へ進み、全ての断片が順にそろい、原本どおりに終わることを確かめる。原本画像・矩形・対応する図と本文・訂正後の実表示に証拠を結び、確認できた領域を所属する20枚の進捗に反映する。

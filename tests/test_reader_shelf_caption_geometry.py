@@ -39,6 +39,33 @@ class FigureCaptionGeometryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'original OCR geometry'):
             inspect_input(source)
 
+    def test_short_original_caption_end_is_flagged_in_new_and_saved_geometry(self):
+        preceding = [line('first',100,510,420,'写真の解説'), line('second',100,540,420,'撮影したも')]
+        tail = dict(id='end',box=[100,575,127,595],text='の。',kind='line_main')
+        doc = dict(width=1000,height=1400,rows=preceding,sourceRows=[*preceding,tail],
+                   figures=[{'bbox':[100,640,800,1100]}])
+        for saved in [False, True]:
+            if saved:
+                doc['existingCaptionRows'] = [['first','second']]
+            result = inspect_input(doc)
+            self.assertEqual(result['endingCandidates'],[{'figure':0,'after':'second','row':'end','box':tail['box']}])
+            self.assertIn('caption-ending-review', result['reviewFlags'])
+            self.assertEqual(result['candidates'][0], ['first','second'], 'candidate discovery never moves or deletes source text')
+
+    def test_reviewed_tail_and_unrelated_short_boxes_do_not_reopen_a_caption(self):
+        lines = [line('first',100,510,420),line('second',100,540,420),
+                 dict(id='printed-end',box=[100,575,127,595],text='の。')]
+        variations = [
+            dict(id='inside-art',box=[100,610,126,630],text='図'),
+            dict(id='other-column',box=[350,611,380,630],text='編'),
+            dict(id='folio',box=[100,607,127,626],text='20',kind='block_folio'),
+            dict(id='overprint',box=[102,580,118,594],text='の')
+        ]
+        doc = dict(width=1000,height=1400,rows=lines,sourceRows=[*lines,*variations],
+                   existingCaptionRows=[['first','second','printed-end']],figures=[{'bbox':[80,610,800,1100]}])
+        self.assertNotIn('endingCandidates',inspect_input(doc))
+        self.assertNotIn('caption-ending-review',inspect_input(doc)['reviewFlags'])
+
     def test_distant_body_does_not_become_caption_of_only_figure(self):
         rows=[line('body',100,40,850),line('legend',100,1030,850)]
         result=layout(rows,[[100,410,900,1000]])

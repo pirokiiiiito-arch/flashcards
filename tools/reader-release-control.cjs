@@ -353,8 +353,13 @@ function admittedBookshelfNavUI(root,policy){
   demand(digest==='61679bc1a67577ddcb0209ccfeb3e02031777e2641d20d15608cc4d4a01c26d6'&&html.includes('<!--WH3_PRIVATE_DATA-->')&&html.includes('<!--WH3_PRIVATE_STRUCTURE-->')&&!/data:image\/[^;]+;base64,/.test(html),'WH3_PUBLIC_LAYOUT_NOT_REVIEWED');
   approved[wh3Layout]=digest;
  }
+ // Each shell revision admits one exact combination of reader, cache and
+ // caption runtime. An older review may still verify its own original host.
+ const captionFit=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8').includes("const CACHE='private-bookshelf-shell-v31-registration-20261122';");
+ const sharedPins=captionFit?{...SHARED_SHELF_UI_GIT_BLOBS,
+  'reader/library/read.html':'eab3edc8d7eaf6cbf2d4ebd73bed805aaa903236'}:SHARED_SHELF_UI_GIT_BLOBS;
  let sharedChanged=0;
- for(const [f,pin] of Object.entries(SHARED_SHELF_UI_GIT_BLOBS)){
+ for(const [f,pin] of Object.entries(sharedPins)){
   const base=policy.baseline.files[f];demand(hex(base),'SHARED_SHELF_BASELINE_MISSING '+f);
   const data=fs.readFileSync(safe(root,f)),sha=hash(data);
   if(sha===base)continue;
@@ -434,8 +439,10 @@ function admittedBookshelfNavUI(root,policy){
  }
  // The sort revision changes only the publicly served bookshelf UI and cache.
  // Require all three exact files together; never waive frozen book readers.
+ const sortPins=captionFit?{...BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS,
+  'reader/library/sw.js':'51eb5303c9949fa89baaa1eb27ce0207a18207cb'}:BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS;
  let sortChanged=0;
- for(const [f,pin] of Object.entries(BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS)){
+ for(const [f,pin] of Object.entries(sortPins)){
   const baseline=policy.baseline.files[f];demand(hex(baseline),'BOOKSHELF_SORT_BASELINE_MISSING '+f);
   const data=fs.readFileSync(safe(root,f)),sha=hash(data);
   if(sha===baseline)continue;
@@ -477,12 +484,12 @@ function admittedBookshelfNavUI(root,policy){
     sw.includes('private-bookshelf-shell-v22-reader-input-20261121')&&sw.includes('app.js?v=bookshelf-reader-input-20261121');
   const deviceSave=index.includes('app.js?v=bookshelf-device-save-20261121')&&
     sw.includes('private-bookshelf-shell-v23-device-save-20261121')&&sw.includes('app.js?v=bookshelf-device-save-20261121');
-  const registration=index.includes('app.js?v=bookshelf-registration-20261122')&&sw.includes("const CACHE='private-bookshelf-shell-v30-registration-20261122';")&&sw.includes('shelf-registration.mjs');
+  const registration=index.includes('app.js?v=bookshelf-registration-20261122')&&(captionFit||sw.includes("const CACHE='private-bookshelf-shell-v30-registration-20261122';"))&&sw.includes('shelf-registration.mjs');
   if(registration){
     const files={
       "reader/library/storage.js": "af781a3639386a04402ad2c07a7dee579bc94cd218307ef5ab5f7fb42196f961",
       "reader/library/shelf-registration.mjs": "bcde0f40f34d5634d327ac078bc37497fb8a9b14a48da25882e2293d526f91d7",
-      "reader/library/wh1-caption-ruby.js": "81898e2e602327606e2369b333c726793f2eab1869e27a0438fc2d6fd107fcd6",
+      "reader/library/wh1-caption-ruby.js": captionFit ? "54e6296d91724811fe357bb5da6884b4827eb26fc0939339dca7f8e2cec675a6" : "81898e2e602327606e2369b333c726793f2eab1869e27a0438fc2d6fd107fcd6",
       "reader/wh1/full/index.html": "389750d3d6cd32459a8af698595ae1e48e5819aef79aa3c1f8754fa2883ba381"
 };
     for(const [name,pin] of Object.entries(files)){

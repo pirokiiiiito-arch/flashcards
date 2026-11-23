@@ -1,0 +1,15 @@
+{
+  "width": 1000,
+  "height": 1400,
+  "figures": [{"bbox": [150, 700, 850, 1150]}],
+  "rows": [
+    {"id": "caption-1", "box": [160, 595, 525, 624], "text": "写真は春に"},
+    {"id": "caption-2", "box": [160, 637, 525, 665], "text": "撮影されたも"}
+  ],
+  "existingCaptionRows": [["caption-1", "caption-2"]],
+  "sourceRows": [
+    {"id": "caption-1", "box": [160, 595, 525, 624], "kind": "line_main", "text": "写真は春に"},
+    {"id": "caption-2", "box": [160, 637, 525, 665], "kind": "line_main", "text": "撮影されたも"},
+    {"id": "short-line", "box": [160, 677, 194, 697], "kind": "line_main", "text": "の。"}
+  ]
+}
