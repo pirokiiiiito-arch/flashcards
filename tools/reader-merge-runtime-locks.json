@@ -1,7 +1,7 @@
 {
-  "releaseId": "20261123-caption-consistent-v9-2-12",
+  "releaseId": "20261124-text-review-v9-2-13",
   "packages": {
-    "integration": "0dd16a950fc03342cac019b3ac77946cc5c4c1c6f6dedefc9efa33b067fcf247",
-    "production": "4eea918a9f7394d36f3decc19d052ba52e70ac5465e8dbe63e44dbe52dc3dd99"
+    "integration": "a9efd24b2d97d34c614b543e2e9a666f6c13a6aa8e858cab5391204bf8dab609",
+    "production": "8056070e65e331a05df9bcc7eb37c19d3d757c12453e215d695da589c1cfef1a"
   }
 }
