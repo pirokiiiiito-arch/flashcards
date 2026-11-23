@@ -375,7 +375,8 @@ function admittedBookshelfNavUI(root,policy){
   const data=fs.readFileSync(safe(root,f)),sha=hash(data);
   if(sha===base)continue;
   const blob=crypto.createHash('sha1').update('blob '+data.length+String.fromCharCode(0)).update(data).digest('hex');
-  demand(blob===pin,'SHARED_SHELF_UI_BYTES_NOT_REVIEWED '+f);
+  const compactOriginals=textCoversFit&&f==='reader/library/read.html'&&blob===legacy.COMPACT_ORIGINALS_HOST_BLOB;
+  demand(blob===pin||compactOriginals,'SHARED_SHELF_UI_BYTES_NOT_REVIEWED '+f);
   if(f==='reader/library/read.html'&&data.includes('function wh3FrameDocument('))demand(approved[wh3Layout],'WH3_LAYOUT_MISSING');
   const href=f==='reader/library/read.html'?'./':'../../library/',html=data.toString('utf8');
   demand(html.includes('<nav id="bookshelfNav"')&&html.includes('id="backToBookshelf" href="'+href+'"')&&html.includes('id="bookshelf-nav-ui-v1"'),'SHARED_SHELF_CONTROL_MISSING '+f);

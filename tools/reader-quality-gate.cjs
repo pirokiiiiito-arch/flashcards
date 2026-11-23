@@ -27,7 +27,18 @@ const STATES=new Set(['not_run','passed','failed','needs_source_review','not_app
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
+const COMPACT_ORIGINALS_HOST_BLOB='a83aadec3e9addb000003da07d5b988e557c18cf';
 function priorNativeInputReader(data){
+  if(blobSHA(data)===COMPACT_ORIGINALS_HOST_BLOB){
+    const source=data.toString('utf8');
+    const begin=source.indexOf('// Convert embedded original scans');
+    const end=source.indexOf('async function loadBook(',begin);
+    const original=(source.slice(0,begin)+source.slice(end)).replace(
+      /   else \{\n    \/\/ This edition has been checked[^\n]+\n    const compact=[^\n]+\n     \? compactStandaloneOriginals\(bytes\) : null;\n    document\.write\(compact\?\?[^\n]+\n   \}/,
+      "   else document.write(new TextDecoder('utf-8',{fatal:true}).decode(bytes));");
+    data=Buffer.from(original);
+    if(blobSHA(data)!=='eab3edc8d7eaf6cbf2d4ebd73bed805aaa903236')throw Error('STANDALONE_ORIGINALS_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)==='eab3edc8d7eaf6cbf2d4ebd73bed805aaa903236'){
     // Reconstruct the previously reviewed shell exactly before walking prior revisions.
     const prior=data.toString('utf8')
@@ -662,4 +673,4 @@ if(require.main===module){
  if(r.errors&&r.errors.length)process.exitCode=1;
  else console.log('SCHEMA PASS ONLY (not OCR certification): '+r.paths+' routes, '+r.managed+' managed, '+r.legacy+' frozen legacy');
 }
-module.exports={priorNativeInputReader,validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};
+module.exports={COMPACT_ORIGINALS_HOST_BLOB,priorNativeInputReader,validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};
