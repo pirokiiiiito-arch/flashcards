@@ -372,7 +372,7 @@ function admittedBookshelfNavUI(root,policy){
  // Each shell revision admits one exact combination of reader, cache and
  // caption runtime. An older review may still verify its own original host.
  const shelfWorker=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8');
- const poetryRubyFit=shelfWorker.includes("const CACHE='private-bookshelf-shell-v36-poetry-ruby-alignment-20261124';");
+ const poetryRubyFit=shelfWorker.includes("const CACHE='private-bookshelf-shell-v36-saved-edition-20261124';");
  const editorialCounterFit=poetryRubyFit||shelfWorker.includes("const CACHE='private-bookshelf-shell-v35-saved-edition-20261124';");
  const editorialFit=editorialCounterFit||shelfWorker.includes("const CACHE='private-bookshelf-shell-v34-saved-edition-20261124';");
  const savedEditionFit=editorialFit||shelfWorker.includes("const CACHE='private-bookshelf-shell-v33-saved-edition-20261124';");
@@ -466,7 +466,7 @@ function admittedBookshelfNavUI(root,policy){
  // The sort revision changes only the publicly served bookshelf UI and cache.
  // Require all three exact files together; never waive frozen book readers.
  const savedEditionPins=editorialFit?{...SAVED_EDITION_UI_GIT_BLOBS,
-  'reader/library/sw.js':poetryRubyFit?'46e206d77a2b5bce51815c386f51faebca6a86d5':
+  'reader/library/sw.js':poetryRubyFit?'87c1cb57df4c4be1d590be81406aca4f14c45c4e':
    editorialCounterFit?'e84245ac9374ba9987da1a68057e2c8cc4a75494':'e130064400531605a4d4ef8aebeda68d5204aebf'}:SAVED_EDITION_UI_GIT_BLOBS;
  const sortPins=savedEditionFit?savedEditionPins:textCoversFit?BOOKSHELF_TEXT_COVER_UI_GIT_BLOBS:captionFit?{...BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS,
   'reader/library/sw.js':'51eb5303c9949fa89baaa1eb27ce0207a18207cb'}:BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS;
