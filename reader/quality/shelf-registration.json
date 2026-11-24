@@ -9877,5 +9877,603 @@
       "signature": "0oT0nNSeikfPp6lHjzTH/O87mYYxcH2EamCoLGeHQESJySAdTho5hckqCT0V39io2V1vJuiozUo5+5YjMhuSFQ=="
     }
   ],
-  "pending": []
+  "pending": [
+    {
+      "key": "a4687a2b1c504cbb34979b38a5d68c147ef10c2c1ec090d24ae6ceab40047cbc",
+      "entry": "4367310b12bcadf8cceb5eafc1476967aa513fcecaddbac7346744898719007c",
+      "bytes": 11691684,
+      "sha256": "764db5865be10f47df122c92d8f9c4e82d6d673ed20af87abf4a3bfd2f8f5a00",
+      "chunkRoot": "d68da91128fe31420986945864f1edc7b49a74a3f7c17ff493c4ac73929145ae",
+      "channel": "preview",
+      "evidence": {
+        "version": 1,
+        "archive": "764db5865be10f47df122c92d8f9c4e82d6d673ed20af87abf4a3bfd2f8f5a00",
+        "source": "7fd6d48103122f05bf83b7a33b6add88d40437b682a8836b04e50b25dd96dd6b",
+        "host": "0b3aa1aa47f1a05ebdb5c7c4499b5ca3cc86ecd2bad8818e37d49d5a6c434dfd",
+        "report": "3c284b1693f8e4f2e9d88187b3136d36c26e60261cee36ba20ddf4284da81766",
+        "first": 1,
+        "last": 144,
+        "modes": [
+          "contents",
+          "figure",
+          "original",
+          "text"
+        ],
+        "singleScreen": true,
+        "batches": [
+          [
+            1,
+            20,
+            [
+              [
+                "text",
+                10,
+                1,
+                5,
+                -47,
+                -59,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "contents",
+                2,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "figure",
+                16,
+                1,
+                5,
+                -45,
+                -56,
+                1,
+                0,
+                1,
+                -1
+              ],
+              [
+                "original",
+                9,
+                1,
+                5,
+                -45,
+                -56,
+                1,
+                0,
+                0,
+                0
+              ]
+            ]
+          ],
+          [
+            21,
+            40,
+            [
+              [
+                "text",
+                30,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            41,
+            60,
+            [
+              [
+                "text",
+                50,
+                1,
+                5,
+                -46,
+                -59,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            61,
+            80,
+            [
+              [
+                "text",
+                70,
+                1,
+                5,
+                -43,
+                -53,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            81,
+            100,
+            [
+              [
+                "text",
+                90,
+                1,
+                5,
+                -46,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            101,
+            120,
+            [
+              [
+                "text",
+                110,
+                1,
+                5,
+                -46,
+                -58,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            121,
+            140,
+            [
+              [
+                "text",
+                130,
+                1,
+                5,
+                -44,
+                -55,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ],
+          [
+            141,
+            144,
+            [
+              [
+                "text",
+                142,
+                1,
+                5,
+                -45,
+                -57,
+                1,
+                0,
+                1,
+                -1
+              ]
+            ]
+          ]
+        ],
+        "toc": {
+          "kind": "source",
+          "rows": 43,
+          "landed": 43,
+          "reference": "6b43b4ca9af6b696bd05c26bb2cd25c8ac7025965f2f95698e39e23757d7e880",
+          "results": "e562d92746ebfdd61a455d15c84f0ee375e89bca160ca3fd33e3445931a052fc"
+        },
+        "pageTurns": {
+          "version": 1,
+          "report": "833e2ac45210ed000f1add4d9efdee05ff4f2504c20357d0d2244fd7099115b1",
+          "boundaries": [
+            [
+              20,
+              21,
+              "shared-page"
+            ],
+            [
+              40,
+              41,
+              "shared-page"
+            ],
+            [
+              60,
+              61,
+              "within-document"
+            ],
+            [
+              80,
+              81,
+              "within-document"
+            ],
+            [
+              100,
+              101,
+              "shared-page"
+            ],
+            [
+              120,
+              121,
+              "shared-page"
+            ],
+            [
+              140,
+              141,
+              "within-document"
+            ]
+          ],
+          "sectionCount": 1,
+          "sections": []
+        },
+        "sourceProof": {
+          "version": 1,
+          "status": "partial",
+          "pendingScans": 144,
+          "batches": [
+            [
+              1,
+              20,
+              20
+            ],
+            [
+              21,
+              40,
+              20
+            ],
+            [
+              41,
+              60,
+              20
+            ],
+            [
+              61,
+              80,
+              20
+            ],
+            [
+              81,
+              100,
+              20
+            ],
+            [
+              101,
+              120,
+              20
+            ],
+            [
+              121,
+              140,
+              20
+            ],
+            [
+              141,
+              144,
+              4
+            ]
+          ],
+          "scopeBatches": [
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 20,
+                "heading": 20,
+                "caption": 20,
+                "note": 20,
+                "ruby": 20,
+                "figure": 20,
+                "toc": 20,
+                "other": 20
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            },
+            {
+              "pending": {
+                "body": 4,
+                "heading": 4,
+                "caption": 4,
+                "note": 4,
+                "ruby": 4,
+                "figure": 4,
+                "toc": 4,
+                "other": 4
+              },
+              "matchedRegions": 0,
+              "matchedScopeRegions": {
+                "body": 0,
+                "heading": 0,
+                "caption": 0,
+                "note": 0,
+                "ruby": 0,
+                "figure": 0,
+                "toc": 0,
+                "other": 0
+              }
+            }
+          ],
+          "captionCensus": {
+            "version": 1,
+            "status": "partial",
+            "pendingScans": 144,
+            "batches": [
+              [
+                1,
+                20,
+                20
+              ],
+              [
+                21,
+                40,
+                20
+              ],
+              [
+                41,
+                60,
+                20
+              ],
+              [
+                61,
+                80,
+                20
+              ],
+              [
+                81,
+                100,
+                20
+              ],
+              [
+                101,
+                120,
+                20
+              ],
+              [
+                121,
+                140,
+                20
+              ],
+              [
+                141,
+                144,
+                4
+              ]
+            ],
+            "report": "c69696fd0fa4bb694e27f6708f56eb15cfdfea5a09fdc0bb7f45779cf432eda8"
+          },
+          "report": "c0eb87849b8312d46aacdd04c9f3eb753f44edf101d8b98ace4c588ea791841c",
+          "textDisagreements": {
+            "version": 1,
+            "status": "complete",
+            "pending": 0,
+            "detected": 341,
+            "resolved": 341,
+            "batches": [
+              [
+                1,
+                20,
+                34,
+                34
+              ],
+              [
+                21,
+                40,
+                49,
+                49
+              ],
+              [
+                41,
+                60,
+                40,
+                40
+              ],
+              [
+                61,
+                80,
+                38,
+                38
+              ],
+              [
+                81,
+                100,
+                39,
+                39
+              ],
+              [
+                101,
+                120,
+                59,
+                59
+              ],
+              [
+                121,
+                140,
+                82,
+                82
+              ],
+              [
+                141,
+                144,
+                0,
+                0
+              ]
+            ],
+            "report": "407f97054e91436c158d95c0ffd6f55dce49eab185fc55c79f2d28077dabdb8b"
+          }
+        }
+      },
+      "signature": "DQzy9hNwflTOr2QzYtpWhpwNwZMmXI54aYlzMGI7OVqSfOWJO5jVKuvGWEttLz/IpbosFwJdaef8PkJqW7hV3g=="
+    }
+  ]
 }
