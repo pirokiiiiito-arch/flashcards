@@ -271,7 +271,8 @@ def standalone_reviews(m, read_bytes):
             n = b.get('scan', e.get('scan'))
             if 'ruby' in b:
                 expected = original_sha(n) if b['ruby'] else None
-                validate_source_ruby(dict(b, scan=n, type=b.get('type','body')), expected)
+                validate_source_ruby(dict(b, scan=n, type=b.get('type','body')), expected,
+                                     poetry=m.get('template_variant') == 'poetry')
             if not records:
                 continue
             i = counts.get(n, 0)

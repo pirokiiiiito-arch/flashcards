@@ -4,7 +4,8 @@ body.poetry-reading .text-flow .poetry-line{
  text-indent:0;
 }
 body.poetry-reading .text-flow .poetry-line::before,
-body.poetry-reading .text-flow .printed-contents::before{content:none!important}
+body.poetry-reading .text-flow .printed-contents::before,
+body.poetry-reading .text-flow .printed-separator::before{content:none!important}
 .poetry-word{
  display:inline-block;
  white-space:pre!important;
@@ -17,6 +18,20 @@ body.poetry-reading .text-flow .printed-contents::before{content:none!important}
  position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;
  writing-mode:vertical-rl;text-orientation:mixed;inline-size:max-content;white-space:pre;
 }
-body.poetry-reading .text-flow .printed-contents{display:block!important;cursor:pointer;width:1.5em;white-space:nowrap!important}
-.printed-label,.printed-number{display:inline-block;vertical-align:top}
-.printed-number{margin-inline-start:1em;font-size:.82em}
+body.poetry-reading .text-flow .printed-contents{
+ display:flex!important;align-items:center;box-sizing:border-box;
+ inline-size:100%;block-size:1.75em;padding-inline:.2em;cursor:pointer;white-space:nowrap!important;
+}
+/* Center the native ruby line box on the leader while keeping the title's hit area one column wide. */
+.printed-label{flex:none;block-size:1em;line-height:3;align-content:unsafe center;white-space:nowrap}
+.printed-leader{flex:1;block-size:0;border-block-start:1px dotted currentColor;margin-inline:.35em}
+.printed-number{flex:none;writing-mode:horizontal-tb;line-height:1;font-size:.82em;font-variant-numeric:tabular-nums}
+.printed-section{color:inherit;text-decoration:none}
+body.poetry-reading .text-flow .printed-separator{display:block!important;text-align:center;inline-size:100%}
+.printed-contents:focus-visible,.printed-section:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
+#menu-items .poetry-menu-item{display:flex;justify-content:space-between;align-items:baseline;gap:.8em}
+.poetry-menu-item small{white-space:nowrap}
+#menu-items .poetry-menu-section{margin:.8em 0 .25em;font-size:1em}
+.poetry-menu-section .menu-item{font-weight:700}
+#menu-items details{margin-block-start:1em}
+#menu-items summary{padding:.5em 0;cursor:pointer}

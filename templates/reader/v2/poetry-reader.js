@@ -16,13 +16,19 @@ const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{gran
 const split=x=>segmenter?Array.from(segmenter.segment(String(x||'')),v=>v.segment):Array.from(String(x||''));
 const poetry=book.templateVariant==='poetry'?window.PoetryLayout.create(book):null;
 const sourceBlocks=Array.isArray(book.blocks)?book.blocks:[];
-let blocks=window.NovelDialogue.expandBlocks(sourceBlocks)
- .map(b=>({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':'body',
-   text:b.text,scan:b.scan,units:split(b.text),
-   ruby:sourceRubyFor(sourceBlocks[b.sourceBlockIndex],b.sourceStart,b.sourceEnd,b.scan),
-   id:sourceBlocks[b.sourceBlockIndex]?.id,sourceHeadingId:sourceBlocks[b.sourceBlockIndex]?.sourceHeadingId||sourceBlocks[b.sourceBlockIndex]?.source_heading_id,
-   // Only the first visual segment of an explicitly marked source continuation joins.
-   sourceJoined:b.sourceStart===0&&!!sourceBlocks[b.sourceBlockIndex]?.joinPrevious&&b.type!=='dialogue'}));
+function expandTextBlock(b,scan){
+ if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
+ // Printed contents, including quoted titles, form one source entry.
+ const segments=b.type==='toc'?[{type:'toc',text:b.text,sourceStart:0,sourceEnd:b.text.length}]:
+  window.NovelDialogue.expandBlocks([{...b,scan}]);
+ return segments.filter(part=>part.text.length).map(part=>({
+  type:part.type,text:part.text,scan,units:split(part.text),id:b.id,
+  sourceHeadingId:b.sourceHeadingId||b.source_heading_id,
+  ruby:sourceRubyFor(b,part.sourceStart,part.sourceEnd,scan),
+  sourceJoined:part.sourceStart===0&&!!b.joinPrevious&&!['dialogue','toc'].includes(part.type)
+ }));
+}
+let blocks=sourceBlocks.flatMap(b=>expandTextBlock(b,Number(b.scan)));
 let figures=(Array.isArray(book.figures)?book.figures:[]).map((f,i)=>({
  id:String(f.id||'figure-'+(i+1)),title:String(f.title||'図版 '+(i+1)),
  alt:String(f.alt||f.title||'原本画像'),scan:Number(f.scan)||1,
@@ -36,20 +42,8 @@ if(mode==='mixed'){
  for(const entry of entries){
   if(entry?.kind==='text'){
    const group=Array.isArray(entry.blocks)?entry.blocks:[entry];
-   const segments=group.filter(b=>b&&typeof b.text==='string').flatMap(b=>{
-    const scan=Number(b.scan||entry.scan);
-    // TOC rows are atomic and must never be merged into narration.
-    if(b.type==='toc')return [{...b,type:'toc',scan,sourceJoined:false}];
-    return window.NovelDialogue.expandBlocks([{...b,scan}]).map(segment=>({
-     ...segment,ruby:sourceRubyFor(b,segment.sourceStart,segment.sourceEnd,scan),id:b.id,sourceHeadingId:b.sourceHeadingId||b.source_heading_id,sourceJoined:segment.sourceStart===0&&!!b.joinPrevious&&segment.type!=='dialogue'
-    }));
-   });
-   for(const b of segments){
-    if(!b.text.length)continue;
-    const scan=Number(b.scan);
-    if(!Number.isInteger(scan)||scan<1)throw Error('本文の原本番号が不正です');
-    blocks.push({type:b.type==='heading'?'heading':b.type==='dialogue'?'dialogue':b.type==='toc'?'toc':'body',
-     text:b.text,scan,units:split(b.text),ruby:b.type==='toc'?undefined:b.ruby,id:b.id,sourceHeadingId:b.sourceHeadingId||b.source_heading_id,sourceJoined:!!b.sourceJoined});
+   for(const b of group.filter(b=>b&&typeof b.text==='string').flatMap(b=>expandTextBlock(b,Number(b.scan||entry.scan)))){
+    blocks.push(b);
     flow.push({kind:'text',block:blocks.length-1});
    }
   }else if(entry?.kind==='break'){
@@ -112,11 +106,10 @@ $('book-title').textContent=String(book.title||'標準読書テンプレート')
 $('shelf-status').textContent=String(book.status||'見本・原本未登録');
 $('text-flow').hidden=mode==='image';$('measure-text').hidden=mode==='image';
 $('figure-stage').hidden=mode!=='image';$('measure-figure').hidden=mode!=='image';
-function readPoint(){const p=readStored()||initialPosition;return Math.max(0,Number(p?.point)||0)}
 function persist(){
  if(!shownPage)return;
  const p=shownPage,v={schema:'standard-reader-position-v2',bookId,
-   point:p?.start||0,scan:p?.scan||1,font,updatedAt:Date.now()};
+   point:p?.start||0,scan:selectedSourceScan||p?.scan||1,font,updatedAt:Date.now()};
  try{localStorage.setItem(key,JSON.stringify(v))}catch(_){}
  postHost('reader-position-v1',{position:v});
 }
@@ -428,7 +421,7 @@ function partNode(p){
   el.dataset.headingTo=String(p.headingFrom+Array.from(p.text).length);
  }else el.dataset.bodyId=p.id;
  if(p.verse)poetry.paint(el,p,split,setVerticalText,rubySlice);
- else if(!poetry?.paintContents(el,p,setVerticalText,gotoScan))setVerticalText(el,p.text,p);
+ else if(!poetry?.paintContents(el,p,setVerticalText,gotoContents))setVerticalText(el,p.text,p);
  return el;
 }
 function fitsParts(existing,additional){
@@ -647,6 +640,15 @@ function paginateBlocks(group,start){
   let off=0;
   while(off<b.units.length){
    const remaining=b.units.length-off,whole=textPart(b,off,remaining);
+   const next=group[bi+1];
+   if(!off&&current.length&&next?.type==='toc'&&poetry){
+    const lastPair=bi===group.length-2&&current.length>1&&poetry.contents.has(b.id)&&
+     !poetry.prefaces.has(current.at(-1).id);
+    if(poetry.prefaces.has(b.id)||lastPair){
+     const nextPart=textPart(next,0,next.units.length);
+     if(!fitsParts([...current,whole],nextPart)&&fitsParts([whole],nextPart)){flush();continue;}
+    }
+   }
    if(b.type==='toc'&&!fitsParts(current,whole)){
     if(current.length){flush();continue;}
     throw Error('目次項目が一列に収まりません：'+b.text);
@@ -722,7 +724,7 @@ function paginateAll(){
   if(item.kind==='break'){flush();continue}
   if(item.kind==='text'){
    const block=blocks[item.block];
-   if(block.type==='heading')flush();
+   if(block.type==='heading'&&!poetry?.prefaces.has(block.id))flush();
    pending.push(block);
    continue;
   }
@@ -737,12 +739,12 @@ function pageAt(point){
  for(let i=0;i<pages.length;i++)if(pages[i].start<=point)result=i;else break;
  return result;
 }
-let shownPage=null,pendingPaint=null;
+let shownPage=null,pendingPaint=null,selectedSourceScan=null;
 function currentSource(){
  const p=shownPage;if(!p)return null;
  if(p.kind==='image')return figures[p.figure]?.ownedURL||figures[p.figure]?.source||null;
  const originals=Array.isArray(book.originals)?book.originals:[];
- return sourceURL||originals.find(x=>Number(x.scan)===Number(p.scan))?.src||null;
+ return sourceURL||originals.find(x=>Number(x.scan)===(selectedSourceScan||p.scan))?.src||null;
 }
 function setFigure(p,image){
  const f=figures[p.figure],src=f.ownedURL||f.source||null;
@@ -794,7 +796,7 @@ function render(target=index){
 function commitPage(target,image){
  index=target;
  const p=pages[index];
- shownPage=p;
+ shownPage=p;selectedSourceScan=null;
  if(!p){
   $('page-major').textContent='0 / 0';$('page-minor').textContent='読書データ未登録';
   $('progress-fill').style.width='0%';$('prev').disabled=true;$('next').disabled=true;
@@ -827,13 +829,58 @@ function gotoPage(n){
  }
  if(target!==index||pendingPaint||!shownPage)render(target);
 }
+function containsScan(page,scan){
+ return page?.scan===scan||page?.parts?.some(part=>part.sourceSpans.some(span=>span.scan===scan));
+}
+function selectPageSource(scan){
+ selectedSourceScan=scan;
+ $('page-minor').textContent='原本 '+scan+' / '+(Number(book.totalScans)||1);
+ $('original').disabled=!currentSource();persist();
+}
 function gotoScan(scan){
- const target=pages.findIndex(p=>p.scan===scan||p.parts?.some(part=>part.scan===scan));
- if(target>=0)gotoPage(target);
+ const target=pages.findIndex(page=>containsScan(page,scan));
+ if(target<0)return;
+ gotoPage(target);
+ if(shownPage===pages[target]&&shownPage.kind==='text')selectPageSource(scan);
+}
+function gotoContents(row){
+ // A heading can share its original scan with other text. Prefer its named start.
+ const target=pages.findIndex(page=>page.parts?.some(part=>part.type==='heading'&&
+  !part.headingFrom&&part.scan===row.target&&part.text===row.label));
+ if(target<0){gotoScan(row.target);return;}
+ gotoPage(target);selectPageSource(row.target);
 }
 function stepPage(delta){gotoPage((pendingPaint?.target??index)+delta)}
 function menuRefresh(){
  const list=$('menu-items');list.replaceChildren();
+ if(poetry?.contents.size){
+  for(const row of poetry.contents.values()){
+   const btn=document.createElement('button');btn.type='button';btn.className='menu-item poetry-menu-item';
+   const label=document.createElement('span');label.textContent=row.label;btn.append(label);
+   if(!row.section){
+    const number=document.createElement('small');number.textContent=row.number+'ページ';btn.append(number);
+   }
+   btn.addEventListener('click',()=>{gotoContents(row);closeDialogs()});
+   if(row.section){
+    const heading=document.createElement('h3');heading.className='poetry-menu-section';heading.append(btn);list.append(heading);
+   }else list.append(btn);
+  }
+  const sources=document.createElement('details'),summary=document.createElement('summary');
+  summary.textContent='原本ページ';sources.append(summary);
+  const scans=new Map();
+  for(const page of pages){
+   if(!scans.has(page.scan))scans.set(page.scan,page.kind);
+   for(const part of page.parts||[])for(const span of part.sourceSpans){
+    if(!scans.has(span.scan))scans.set(span.scan,'text');
+   }
+  }
+  for(const [scan,kind] of scans){
+   const btn=document.createElement('button');btn.type='button';btn.className='menu-item';
+   btn.textContent='原本 '+scan+(kind==='image'?'・画像':'・本文');
+   btn.addEventListener('click',()=>{gotoScan(scan);closeDialogs()});sources.append(btn);
+  }
+  list.append(sources);return;
+ }
  if(mode==='image'){
   figures.forEach((f,i)=>{
    const btn=document.createElement('button');btn.type='button';btn.className='menu-item';
@@ -858,13 +905,27 @@ function menuRefresh(){
 }
 function rebuild(){
  try{
-  const point=pages[index]?.start??readPoint();
+  const stored=readStored()||initialPosition;
+  const point=pages[index]?.start??Math.max(0,Number(stored?.point)||0);
+  const scan=selectedSourceScan||(!pages.length&&stored?.scan);
   syncMeasure();
   pages=paginateAll();
   const unresolved=g404Audit.filter(x=>x.exception);
   warning=unresolved.length?'G4-04要確認：未確定境界 '+unresolved.length+'件':'';
   $('shelf-status').textContent=warning?warning:String(book.status||'見本・原本未登録');
-  index=pageAt(point);render();menuRefresh();
+  index=pageAt(point);
+  // An earlier edition's character offsets can shift when the printed index is corrected.
+  if(poetry?.contents.size&&Number.isInteger(scan)&&!containsScan(pages[index],scan)){
+   let closest=-1;
+   pages.forEach((page,i)=>{
+    if(containsScan(page,scan)&&(closest<0||Math.abs(i-index)<Math.abs(closest-index)))closest=i;
+   });
+   if(closest>=0)index=closest;
+  }
+  render();
+  if(Number.isInteger(scan)&&shownPage===pages[index]&&shownPage?.kind==='text'&&
+     shownPage.scan!==scan&&containsScan(shownPage,scan))selectPageSource(scan);
+  menuRefresh();
  }catch(e){
   warning=String(e?.message||e);$('shelf-status').textContent='組版要確認';
   $('page-minor').textContent=warning;console.error('Reader layout:',e);
@@ -961,7 +1022,7 @@ $('smaller').disabled=font<=16;$('larger').disabled=font>=30;
 window.NovelReader=Object.freeze({version:'novel-v1',kind:mode,bookId,inspect:()=>({
  pages:pages.length,index,font,warning,paintPending:!!pendingPaint,originalReady:!!currentSource(),
  zoomed:zoomed(),hostKnown,hostScale,
- currentKind:shownPage?.kind,scan:shownPage?.scan,
+ currentKind:shownPage?.kind,scan:selectedSourceScan||shownPage?.scan,
  g404Exceptions:g404Audit.filter(x=>x.exception).length,
  g404Pass:!g404Audit.some(x=>x.exception)&&!warning,
  textIntegrity:pages.filter(p=>p.kind==='text').flatMap(p=>p.parts.map(x=>x.text)).join('')===

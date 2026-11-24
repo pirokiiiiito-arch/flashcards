@@ -2,12 +2,17 @@
 (function (root) {
  'use strict';
  function create(book) {
-  const lines=new Map(), contents=new Map(), fittedSizes=new Map();
+  const lines=new Map(), contents=new Map(), prefaces=new Set(), separators=new Set(), fittedSizes=new Map();
   let meter, capacity=0, fontSize=20, fontFamily='';
   const rows=book.kind==='text' ? book.blocks : (book.entries||[]).flatMap(e=>e.kind==='text'?(e.blocks||[e]):[]);
   rows.forEach((row,i)=>{
    if(!row.id)row.id='poetry-source-'+i;
    if(row.type==='toc' && row.printedContents)contents.set(row.id,row.printedContents);
+   if(row.type==='heading' && row.printedSection){
+    contents.set(row.id,{...row.printedSection,section:true});
+    prefaces.add(row.id);
+   }
+   if(row.type==='toc' && row.printedSeparator){separators.add(row.id);prefaces.add(row.id);}
    if(!['body','dialogue'].includes(row.type||'body') || row.lineRole==='prose')return;
    row.quoteMode='inline';
    lines.set(row.id,{ends:row.poetryWordEnds,stanza:row.stanzaBefore||0});
@@ -42,22 +47,22 @@
    }
    Object.assign(meter.style,{fontFamily:fontFamily,fontSize:size+'px',lineHeight:style.lineHeight});
   }
-  function fitLongWord(word,text,measureAlways=false) {
+  function fitLongWord(word,text,measureAlways=false,limit=capacity) {
    if(!meter||capacity<=0||(!measureAlways&&text.length*fontSize*2<capacity&&!word.querySelector('ruby')))return;
    // A very long name can exceed even a completely empty vertical column.
-   const key=word.className+'|'+word.innerHTML;
+   const key=limit+'|'+word.className+'|'+word.innerHTML;
    if(!fittedSizes.has(key)){
     const clone=word.cloneNode(true);
     Object.assign(clone.style,{display:'inline-block',inlineSize:'max-content',whiteSpace:'nowrap'});
     meter.replaceChildren(clone);
     let size=fontSize;
-    if(clone.getBoundingClientRect().height>capacity){
+    if(clone.getBoundingClientRect().height>limit){
      // Some vertical glyph advances round to a whole pixel at each character.
      // Measure the fitted size on the same browser instead of scaling by a ratio.
      let low=0,high=fontSize;
      for(let i=0;i<12;i++){
       const trial=(low+high)/2;clone.style.fontSize=trial+'px';
-      if(clone.getBoundingClientRect().height<=capacity)low=trial;
+      if(clone.getBoundingClientRect().height<=limit)low=trial;
       else high=trial;
      }
      size=low;
@@ -90,17 +95,30 @@
    }
    if(cursor!==original.length)throw Error('詩行の末尾を描画できません：'+p.id);
   }
-  function paintContents(el,p,write,openScan) {
+  function paintContents(el,p,write,openEntry) {
+   if(separators.has(p.id)){
+    el.classList.add('printed-separator');write(el,p.text,p);return true;
+   }
    const row=contents.get(p.id);
-   if(p.type!=='toc'||!row)return false;
-   el.classList.add('printed-contents');el.setAttribute('role','link');el.tabIndex=0;
-   el.setAttribute('aria-label',row.label+'　'+row.number+'ページ');
-   const label=document.createElement('span'),number=document.createElement('span');
-   label.className='printed-label';number.className='printed-number';
-   write(label,row.label);write(number,row.number);el.append(label,number);
-   fitLongWord(el,row.label+row.number,true);
-   el.addEventListener('click',()=>openScan(row.target));
-   el.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openScan(row.target);}});
+   if(!row)return false;
+   const link=row.section?document.createElement('a'):el;
+   if(row.section){
+    link.className='printed-section';link.href='#scan-'+row.target;
+    write(link,p.text,p);el.append(link);
+   }else{
+    link.classList.add('printed-contents');link.setAttribute('role','link');link.tabIndex=0;
+    link.setAttribute('aria-label',row.label+'　'+row.number+'ページ');
+    const label=document.createElement('span'),leader=document.createElement('span'),number=document.createElement('span');
+    label.className='printed-label';leader.className='printed-leader';number.className='printed-number';
+    leader.setAttribute('aria-hidden','true');number.textContent=row.number;
+    write(label,row.label,{ruby:p.ruby});
+    fitLongWord(label,row.label,true,Math.max(1,capacity-3*fontSize));
+    link.append(label,leader,number);
+   }
+   link.addEventListener('click',event=>{event.preventDefault();openEntry(row);});
+   link.addEventListener('keydown',event=>{
+    if(event.key===' '||(!row.section&&event.key==='Enter')){event.preventDefault();openEntry(row);}
+   });
    return true;
   }
   function bestPageEnd(ends,offset,fits) {
@@ -112,7 +130,7 @@
    }
    return low?Math.max(0,ends[low-1]-offset):0;
   }
-  return {lines,boundaries,measureColumn,paint,paintContents,bestPageEnd};
+  return {lines,contents,prefaces,boundaries,measureColumn,paint,paintContents,bestPageEnd};
  }
  root.PoetryLayout=Object.freeze({create});
 })(window);

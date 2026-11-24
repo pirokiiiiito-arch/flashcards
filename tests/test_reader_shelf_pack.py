@@ -156,6 +156,40 @@ class Pack(unittest.TestCase):
         with zipfile.ZipFile(archive) as z:
             self.assertEqual(z.read('reader.html'), compiled)
 
+    def test_poetry_contents_ruby_remains_bound_to_the_title_through_repacking(self):
+        from reader_shelf_template import TemplateSource, template_html
+        manifest = dict(self.manifest, range=[1,1], template_profile='novel', template_variant='poetry',
+                        segments=[{'start':1,'end':1,'part':'first.json'}])
+        annotation = {'start':0, 'end':1, 'base':'森', 'reading':'もり', 'sourceScan':1,
+                      'sourceImageSha256':hashlib.sha256(b'b').hexdigest(), 'sourceBox':[2,3,4,6],
+                      'reviewStatus':'verified'}
+        row = {'type':'toc', 'scan':1, 'text':'森　7', 'ruby':[annotation],
+               'printedContents':{'label':'森', 'number':'7', 'target':1}}
+        source = {'id':'sample-new', 'kind':'text', 'blocks':[row],
+                  'originals':[{'scan':1,'src':'data:image/png;base64,Yg=='}]}
+        def render(changes, profile=manifest):
+            content = {**source, 'blocks':[{**row, **changes}]}
+            return template_html(profile, lambda _: json.dumps(content).encode())
+        with self.assertRaisesRegex(ValueError, 'ルビ'):
+            render({}, {k:v for k,v in manifest.items() if k != 'template_variant'})
+        for change in ({'printedContents':None}, {'text':'林　7'},
+                       {'ruby':[{**annotation,'start':2,'end':3,'base':'7'}]}):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'ルビ'):
+                render(change)
+        compiled = render({})
+        standalone = {k:v for k,v in manifest.items() if k != 'segments'}
+        standalone['entry'] = 'reader.html'
+        manifest_file = self.root/'manifest.json'
+        manifest_file.write_text(json.dumps(standalone))
+        (self.root/'reader.html').write_bytes(compiled)
+        archive = self.root/'checked.zip'
+        pack(manifest_file, archive)
+        with zipfile.ZipFile(archive) as z:
+            parser = TemplateSource()
+            parser.feed(z.read('reader.html').decode())
+            parser.close()
+            self.assertEqual(parser.data['blocks'][0]['ruby'], [annotation])
+
     def test_premerged_review_still_binds_the_real_html(self):
         self.manifest.pop('segments')
         self.manifest['entry']='existing.html'

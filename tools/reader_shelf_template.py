@@ -18,7 +18,10 @@ ASSET_BINDINGS = (';for(const row of [...READER_BOOK.originals,...(READER_BOOK.e
 # Accept prior canonical assets when repacking an old source volume. Do not
 # replace custom presentation code just because a newer reader is available.
 PREVIOUS_ASSET_SHA = {
-    'poetry.css': {'12a88e6f18017ddbe195d991e3382a4bb5033bc35fb13dd971ce14e21eb42107'},
+    'poetry.css': {'12a88e6f18017ddbe195d991e3382a4bb5033bc35fb13dd971ce14e21eb42107',
+                   '64e27db9b6ecb25b40ba0a0a94f9f4d06dc08561af7898fd20b17fff86bffefe'},
+    'poetry.js': {'2dab1f7935ca8a40096e6a0d640ecac5cddc2481522a9cb7f897c8d8fe12175f'},
+    'poetry-reader.js': {'30925d6f6bce0bbdd80cd17ddb6c8eddf4c7b16e1149600c353dff6d7cb4fdd0'},
     'standard.js': {'aa50214094838cff85f5ace542e03d55d7703886d42557e44e4308d83a39f31c',
                     'b1e1fa8389b602934131725b9e6cfab85687ef24fd24977e4e262a4bc3960769'},
     'novel.js': {'bb3e9d9674e9edc6fa440528ccfcc4b746a371c572fa55004c3dce0e49cac250',
@@ -219,13 +222,25 @@ def arrange(entries, text, links):
     return result
 
 
-def validate_source_ruby(block, original_sha):
+def validate_source_ruby(block, original_sha, *, poetry=False):
     """Ruby uses code-point offsets local to one original block, also after a join."""
     if 'ruby' not in block:
         return
     rubies = block['ruby']
-    if not isinstance(rubies, list) or rubies and block['type'] not in ('body', 'dialogue', 'heading'):
-        raise ValueError('ルビは本文・会話・見出しの注記配列で指定してください')
+    if not isinstance(rubies, list):
+        raise ValueError('ルビは原本位置を含む注記の配列で指定してください')
+    text = block['text']
+    if rubies and block['type'] == 'toc' and poetry:
+        contents = block.get('printedContents')
+        label = contents.get('label') if isinstance(contents, dict) else None
+        if (not isinstance(label, str) or not label.strip() or not text.startswith(label)
+                or not isinstance(contents.get('number'), str) or not contents['number'].strip()
+                or text[len(label):].strip() not in ('', contents['number'])
+                or type(contents.get('target')) is not int or contents['target'] < 1):
+            raise ValueError('目次のルビには本文と一致する原本目次の項目名・番号・移動先が必要です')
+        text = label
+    elif rubies and block['type'] not in ('body', 'dialogue', 'heading'):
+        raise ValueError('ルビは本文・会話・見出し・詩の原本目次に指定してください')
     ends = {'left': 0, 'right': 0}
     previous_start = 0
     for ruby in rubies:
@@ -234,8 +249,8 @@ def validate_source_ruby(block, original_sha):
         side = ruby.get('side', 'right')
         start, end = ruby.get('start'), ruby.get('end')
         if (type(start) is not int or type(end) is not int
-                or side not in ('left', 'right') or not max(ends[side], previous_start) <= start < end <= len(block['text'])
-                or ruby.get('base') != block['text'][start:end] or not ruby['base'].strip()):
+                or side not in ('left', 'right') or not max(ends[side], previous_start) <= start < end <= len(text)
+                or ruby.get('base') != text[start:end] or not ruby['base'].strip()):
             raise ValueError('ルビの親文字・範囲・順序が本文と一致しません')
         box = ruby.get('sourceBox')
         if (ruby.get('reviewStatus') != 'verified' or type(ruby.get('sourceScan')) is not int
@@ -346,7 +361,7 @@ def template_html(manifest, read_bytes):
         raise ValueError('原本範囲に対応する原本画像が不足または重複しています')
     original_hashes = {idx: digest.hex() for digest, idx in image_indexes.items()}
     for (scan, _), block in text.items():
-        validate_source_ruby(block, original_hashes[originals[scan]])
+        validate_source_ruby(block, original_hashes[originals[scan]], poetry=poetry)
     from reader_shelf_pack import review_seams
     bodies, ids, edges = {}, {}, set()
     for link in links:
