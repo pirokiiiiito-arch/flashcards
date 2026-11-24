@@ -16,6 +16,21 @@ class Sequences(unittest.TestCase):
     old = ('old-body', 'first-number')
     new = ('new-body', 'next-number')
 
+    def test_compositor_frames_follow_swap_time_and_retain_invalid_intermediate_frames(self):
+        film=TurnFrames(None,None,None,None)
+        a,b=self.old,self.new
+        film.pending=[(1,a),(3,b),(2,a),(4,b)]
+        ordered=film._presentation_order()
+        self.assertEqual(ordered,[a,a,b,b])
+        self.assertEqual(_verify(ordered,[a,b],'forward',False)['frames'],4)
+        film.pending.append((3.5,('invalid','paper')))
+        with self.assertRaises(ValueError):
+            _verify(film._presentation_order(),[a,b],'forward',False)
+        for timing in [None,float('nan'),1]:
+            film.pending=[(1,a),(timing,b)]
+            with self.assertRaises(ValueError):
+                film._presentation_order()
+
     def test_rounding_uses_a_per_channel_bound_in_every_pixel(self):
         reference = Image.new('RGB', (64, 16), (253, 200, 120))
         rounded = reference.copy()

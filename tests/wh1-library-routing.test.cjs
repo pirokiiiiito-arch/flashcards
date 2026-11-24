@@ -203,7 +203,7 @@ test('all bookshelf covers use written book titles and never fetch or display ph
   assert.match(css, /\.cover-title\{/);
   assert.doesNotMatch(index, /<script src="\.\/book-covers\.js"><\/script>/);
   assert.doesNotMatch(sw, /'\.\/book-covers\.js'/);
-  assert.match(sw, /private-bookshelf-shell-v34-saved-edition-20261124/);
+  assert.match(sw, /private-bookshelf-shell-v35-saved-edition-20261124/);
 });
 
 test('versioned shelf helper/app and fresh service-worker updates leave generic reader storage contracts intact', () => {

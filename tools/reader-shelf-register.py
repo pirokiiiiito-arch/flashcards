@@ -138,6 +138,9 @@ def registration_flow(archive, m, ref, admitted):
     """Classify the bytes that will be signed, before probing the actual saved-book reader."""
     if m.get('bookId') is not None and not admitted:
         check(m['bookId']==ref['bookId'], '本棚で検査する書籍のIDが違います')
+    if 'editorialEdition' in m or 'editorial' in ref:
+        from reader_shelf_editorial import verify_archive
+        return verify_archive(archive,m,ref)
     segments = m.get('segments', [])
     from reader_shelf_wh1_parts import FORMAT as wh1_format, verify as verify_wh1
     if not admitted and m.get('readingFlow', {}).get('format') == wh1_format:
@@ -290,7 +293,16 @@ def prepare(a):
         check(full in covered or set(htmls).issubset(covered),'正式な納品判定がこの実体に対応していません')
     if claim=='complete':
         check(ruby_reports,'全原本の目視確認済みと記す版には原本照合台帳を --ruby-inventory で指定してください')
-    proof['textDisagreements'] = audit_text_disagreements(a.archive, full, m, book['id'], getattr(a, 'proof_index', None), site)
+    editorial='editorialEdition' in m
+    if editorial:
+        from reader_shelf_editorial import partial_evidence
+        check(a.channel=='preview' and book.get('status') in (m['status'],'OCR編集版・一部省略・本文校正中'),
+              '校閲版に同意した表示名・状態が本棚書誌と違います')
+    proof_index=getattr(a,'proof_index',None)
+    if not editorial or (proof_index and 'textDisagreements' in read(proof_index)):
+        proof['textDisagreements'] = audit_text_disagreements(a.archive, full, m, book['id'], proof_index, site)
+    if editorial:
+        partial_evidence(a.channel,proof)
     key=textsha(book['id'])
     prior_pending = [r for r in ledger['pending'] if r['key'] == key]
     # A preparation signed before the current source audit can be rechecked and re-staged
@@ -312,10 +324,14 @@ def prepare(a):
         detail['sourceRubyCoverage']={'status':'complete','reports':ruby_reports}
     detail['captionCensusReport'] = caption_report
     detail['sourceProof'] = proof
+    if editorial:
+        from reader_shelf_editorial import bind_readback
+        detail['editorial']=bind_readback(m['editorialEvidence'],joins,continuation['expectedDisplayReadback'])
     report=digest(detail)
     evidence={'version':1,'archive':full,'source':detail['sourceSha256'],'host':digest(hosts),'report':report,'first':ref['range'][0],'last':ref['range'][1],'modes':sorted(ref['modes']),'singleScreen':bool(ref.get('singleScreen')),'batches':batches,'toc':{'kind':ref['toc']['kind'],'rows':len(ref['toc']['rows']),'landed':len(hits),'reference':digest(ref['toc']),'results':digest(hits)}}
     evidence['pageTurns']=turn_summary(turns,ranges)
     evidence['sourceProof'] = proof
+    if editorial:evidence['editorial']=detail['editorial']
     record={'key':key,'entry':identity(book),'bytes':book['totalBytes'],'sha256':full,'chunkRoot':root,'channel':a.channel,'evidence':evidence}
     args=['node','--input-type=module','-e',"import fs from 'node:fs';import {parseLedger} from './reader/library/shelf-registration.mjs';await parseLedger(JSON.parse(fs.readFileSync(0)))"]
     signing="import fs from 'node:fs';import crypto from 'node:crypto';import {signingText} from './reader/library/shelf-registration.mjs';const r=JSON.parse(fs.readFileSync(0));console.log(crypto.sign('sha256',Buffer.from(signingText(r)),{key:fs.readFileSync(process.argv[1]),dsaEncoding:'ieee-p1363'}).toString('base64'));"
@@ -343,7 +359,11 @@ def checked_stage(a):
     check(detail.get('sourceProof') is not None and detail['sourceProof'] == rec['evidence'].get('sourceProof'),
           '原本20枚ごとの校正判定を含む版の prepare が必要です')
     proof = detail['sourceProof']
-    check_text_disagreements(proof.get('textDisagreements'), rec['evidence']['first'], rec['evidence']['last'])
+    if 'editorial' in rec['evidence']:
+        from reader_shelf_editorial import recheck_staged
+        recheck_staged(a.readback,rec,detail)
+    else:
+        check_text_disagreements(proof.get('textDisagreements'), rec['evidence']['first'], rec['evidence']['last'])
     check(isinstance(proof.get('captionCensus'), dict) and proof['captionCensus'].get('version') == 1,
           '旧候補には図・図説の全件判定がありません。同じ版を prepare で再照合してください')
     check(isinstance(detail.get('captionCensusReport'), dict) and

@@ -142,7 +142,8 @@ class TurnFrames:
 
     def _receive(self, event):
         if self.pending is not None:
-            self.pending.append(event['data'])
+            stamp = event['metadata'].get('timestamp')
+            self.pending.append((stamp,event['data']))
         self.cdp.send('Page.screencastFrameAck', {'sessionId': event['sessionId']})
 
     def _paint_fence(self):
@@ -157,6 +158,17 @@ class TurnFrames:
                 raise ValueError('Chromiumの合成フレームを取得できませんでした')
             self.page.wait_for_timeout(20)
 
+    def _presentation_order(self):
+        # Screencast PNGs can finish encoding out of order. CDP supplies each
+        # frame's swap time independently of delivery. Retain every frame.
+        if any(not isinstance(stamp, (float,int)) or not math.isfinite(stamp)
+               for stamp,_ in self.pending):
+            raise ValueError('Chromiumの描画時刻がないため合成順序を確認できません')
+        ordered=sorted(self.pending,key=lambda record:record[0])
+        if any(a[0]==b[0] and a[1]!=b[1] for a,b in zip(ordered,ordered[1:])):
+            raise ValueError('異なる合成画像の描画時刻が重複しています')
+        return [data for _,data in ordered]
+
     def _sign(self, encoded):
         return _signature(base64.b64decode(encoded), self.boxes, self.viewport, self.marker)
 
@@ -168,7 +180,7 @@ class TurnFrames:
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline:
                 self._wait_frames(2)
-                previous, latest = map(self._sign, self.pending[-2:])
+                previous, latest = map(self._sign, self._presentation_order()[-2:])
                 if previous == latest:
                     return latest
             raise ValueError('参照紙面の描画が確定しませんでした')
@@ -183,7 +195,7 @@ class TurnFrames:
             action()
             self._paint_fence()
             self._wait_frames(2)
-            frames = (self._sign(data) for data in self.pending)
+            frames = (self._sign(data) for data in self._presentation_order())
             return _verify(frames, references, label, optional_middle)
         finally:
             self.pending = None

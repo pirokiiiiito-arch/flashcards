@@ -132,6 +132,8 @@ class Reader:
             }''', scan)
             check(ix >= 0, f'原本{scan}の通常の画像ページが見つかりません')
             wait_painted(f, ix)
+        elif mode=='original' and self.manifest.get('readingFlow',{}).get('format')=='wh1-editorial-source-v1':
+            check(self.state()[1]==scan, '校閲画像が指定された原本位置で開けません')
         elif not self.ui.get('position'):
             ix=f.evaluate('''([lo,hi,scan,mode])=>{const a=window.StandardReader||window.NovelReader||window.WH1BookReader,pp=a.pageManifest();
              const candidates=pp.map((p,i)=>({p,i})).filter(({p,i})=>p.scan>=lo&&p.scan<=hi&&(mode==='figure'?p.kind==='image':mode==='text'?p.kind==='text':mode==='contents'&&window.WH1BookReader?p.kind==='contents':true));
@@ -211,6 +213,8 @@ class Reader:
         if not plan or plan['route'] == 'without-prose':
             return {'route': plan['route'] if plan else 'existing-or-whole'}
         page = self.page
+        if plan['route'] == 'wh1-editorial-source-v1':
+            return trace_editorial(self, plan)
         if plan['route'] == 'merged-template-flow-v1':
             frame = self.open(self.manifest['range'][0])
             return trace_template(frame, plan)
@@ -336,6 +340,121 @@ class Reader:
         return out
 
 
+def trace_editorial(reader, plan):
+    """Trace the approved edited text through the live WH1 pager and its comparison dialog."""
+    frame = reader.open(reader.manifest['range'][0])
+    trace = frame.evaluate("""plan => {
+        const api = window.WH1BookReader;
+        const expected = new Map(), sheetMap = api.pageManifest();
+        const check = (ok, message) => { if (!ok) throw Error(message); };
+        const key = ref => ref.join('/');
+        const cuts = plan.sourceRanges.slice(1).map(r => r[0]);
+        const edges = new Set(plan.edges.map(e => key(e.from)+'>'+key(e.to)));
+        for (const [index, block] of blocks.entries()) {
+            if (block.type !== 'body') continue;
+            let offset = 0, prior;
+            for (const s of block.sourceSpans || []) {
+                const id = key(s.sourceRef);
+                check(s.sourceRef[0]===s.scan && !expected.has(id) && s.start===offset &&
+                      s.end > s.start && s.end<=block.text.length, '本文の出典範囲が不連続です');
+                if (prior && cuts.some(n => prior.scan<n && s.scan>=n))
+                    check(edges.has(key(prior.sourceRef)+'>'+id), '未照合の本文接続があります');
+                expected.set(id, {block:index, start:s.start, end:s.end, offset:0,
+                                  text:block.text.slice(s.start,s.end)});
+                prior=s;
+                offset=s.end;
+            }
+            check(offset===block.text.length, '本文に出典を照合できない文字があります');
+        }
+        const order=[];
+        for (const [i, sheet] of sheetMap.entries()) {
+            if (pages[i].type==='text') {
+                api.gotoPage(i);
+                const rendered=[...document.querySelectorAll('#reader-page .text-flow > *')];
+                check(rendered.length===pages[i].parts.length, '組版結果と読書画面の行数が一致しません');
+                for (const [j,el] of rendered.entries()) {
+                    const clean=el.cloneNode(true);
+                    clean.querySelectorAll('rt,rp').forEach(x=>x.remove());
+                    check(clean.textContent===pages[i].parts[j].text, '組版結果と読書画面の本文が一致しません');
+                }
+            }
+            for (const s of sheet.bodySpans) {
+                const id=key(s.ref), rec=expected.get(id);
+                check(rec && rec.offset===s.start && s.end>s.start &&
+                      s.text===rec.text.slice(s.start,s.end),'表示した本文と原本ブロックの文字位置が一致しません');
+                if (!s.start) { rec.first=i; order.push(id); }
+                rec.last=i;
+                rec.offset=s.end;
+            }
+        }
+        check(order.length===expected.size && [...expected].every(([id,r],i)=>
+            id===order[i] && r.offset===r.text.length), '本文の表示順または出典範囲が一致しません');
+        const boundaries=[], joins=[];
+        for (const [isJoin,rows] of [[true,plan.edges],[false,plan.breaks]]) for (const row of rows) {
+            const l=expected.get(key(row.from)), r=expected.get(key(row.to));
+            const cut=cuts.filter(n=>row.from[0]<n && n<=row.to[0]);
+            check(l && r && cut.length===1, '組版した本文に分冊接続の両端がありません');
+            if (isJoin) {
+                check(l.block===r.block && l.end===r.start && r.first-l.last>=0 &&
+                      r.first-l.last<=1, '分冊で文章が分断されています');
+                if (r.first>l.last) {
+                    const words=new Intl.Segmenter('ja',{granularity:'word'});
+                    check([...words.segment(blocks[l.block].text)].some(w=>w.index===r.start),
+                          '分冊の境界で単語が切れています');
+                }
+                joins.push({from:row.from,to:row.to,pages:[l.last,r.first]});
+            } else {
+                check(l.block<r.block && l.last<=r.first, '原本で確認した段落の区切りがありません');
+            }
+            boundaries.push({cut:cut[0],from:row.from,to:row.to,joined:isJoin,pages:[l.last,r.first]});
+        }
+        check(boundaries.length===cuts.length && new Set(boundaries.map(b=>b.cut)).size===cuts.length,
+              '分冊境界の照合が不足しています');
+        return {route:plan.route, joins, boundaries:boundaries.sort((a,b)=>a.cut-b.cut),
+                pages:sheetMap.length,bodyBlocks:expected.size,sourceRanges:plan.sourceRanges};
+    }""",plan)
+    displays = reader.ref['editorialDisplay']
+    lo,hi = reader.manifest['range']
+    check(set(displays)=={str(i) for i in range(lo,hi+1)}, '校閲版の画像照合表の範囲が違います')
+    rows = reader.page.evaluate("""async ({expected,ui})=>{
+        const child=document.querySelector(ui.frame).contentWindow, reader=child.WH1BookReader;
+        const button=child.document.querySelector(ui.originalButton);
+        const dialog=document.querySelector(ui.originalModal), image=document.querySelector(ui.originalSelector);
+        const close=document.querySelector('#close'), title=document.querySelector('#dialogTitle');
+        const captions={'original':'原本画像','redacted-source':'一部を伏せた校閲画像','review-notice':'校閲版の収録案内'};
+        const until=async test=>{
+            const deadline=performance.now()+5000;
+            while (!test()) {
+                if(performance.now()>deadline) throw Error('照合画像の表示切替が完了しません');
+                await new Promise(r=>setTimeout(r,8));
+            }
+        };
+        const result=[];
+        for (const [id,entry] of Object.entries(expected)) {
+            const scan=Number(id), caption=captions[entry.kind]+'　'+scan+'枚目';
+            if (!(entry.kind in captions)) throw Error('照合画像の種別が不明です');
+            reader.gotoScan(scan);
+            if (reader.inspect().scan!==scan) throw Error('指定した原本に移動できません: '+scan);
+            button.click();
+            await until(()=>dialog.open && image.getAttribute('src') && !image.hidden);
+            await image.decode();
+            if(title.textContent!==caption || image.alt!==caption || !image.naturalWidth || !image.naturalHeight ||
+               !image.currentSrc.startsWith('blob:')) throw Error('照合画像の表示・説明と原本位置が違います: '+scan);
+            const data=await fetch(image.currentSrc).then(r=>r.arrayBuffer());
+            const sha=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',data)),
+                                 n=>n.toString(16).padStart(2,'0')).join('');
+            if (sha!==entry.sha256) throw Error('表示した照合画像のハッシュが原本照合記録と違います: '+scan);
+            result.push([scan,entry.kind,sha]);
+            close.click();
+            await until(()=>!dialog.open && !image.hasAttribute('src'));
+        }
+        return result;
+    }""",{'expected':displays,'ui':reader.ui})
+    counts = {kind:sum(r[1]==kind for r in rows) for kind in {r[1] for r in rows}}
+    trace['editorialDisplay'] = {'count':len(rows),'counts':counts,'report':digest(rows)}
+    return trace
+
+
 def trace_template(frame, plan):
     """Follow every displayed span back to the contiguous source-entry stream, including dialogue."""
     results = frame.evaluate("""plan=>{
@@ -440,6 +559,8 @@ def measure(site,archive,entry,manifest,reference,ranges,root,chromium,continuat
             page.goto(base+'/__stage')
             page.evaluate(SEED,[entry['id'],entry['title'],root])
             page.goto(base+'/'+shell+'?id='+quote(entry['id']))
+            if continuation and continuation['route']=='wh1-editorial-source-v1':
+                page.locator('#overlay #scanImage').wait_for(state='attached')
             reader=Reader(page,manifest,reference)
             cdp=ctx.new_cdp_session(page)
             batches=[]

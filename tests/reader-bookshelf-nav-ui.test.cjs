@@ -22,6 +22,29 @@ test('a saved standalone book must match both its registered identity and its ex
  await assert.rejects(check({...manifest,sha256:'0'.repeat(64)}),/本棚に登録した/);
  await assert.rejects(check(manifest,'wh1'),/本棚に登録した/);
 });
+test('only a verified WH1 editorial standalone book installs the whole-book page counter',async()=>{
+ const host=fs.readFileSync(path.join(root,'reader/library/read.html'),'utf8');
+ const route=host.split('// BEGIN verified standalone bookshelf edition')[1].split('// END verified standalone bookshelf edition')[0];
+ const markup='<p>Page fixture</p>',bytes=Buffer.from(markup);
+ const base={schema:1,format:'standalone-reader-html-v1',bookId:'fixture',entry:'reader.html',range:[1,2],
+  sha256:crypto.createHash('sha256').update(bytes).digest('hex')};
+ const editorial={format:'wh1-editorial-source-v1'},history={template_profile:'world_history_1'};
+ async function open(overrides){
+  const events=[];
+  await vm.runInNewContext('(async()=>{'+route+'})()',{m:{...base,...overrides},BOOK_ID:base.bookId,
+   file:new Blob([bytes]),shouldSave:false,crypto:crypto.webcrypto,TextDecoder,
+   book:{readBytes:async()=>bytes},LibraryDB:{isRegisteredRead:()=>true},
+   useEditorialWholeBookCounter:total=>events.push('counter:'+total),
+   document:{open:()=>events.push('open'),write:html=>events.push(html),close:()=>events.push('close')}
+  });
+  return events;
+ }
+ for(const normal of [{},history,{...history,editorialEdition:editorial},{...history,readingFlow:editorial},
+                      {template_profile:'novel',editorialEdition:editorial,readingFlow:editorial}]){
+  assert.deepEqual(await open(normal),['open',markup,'close']);
+ }
+ assert.deepEqual(await open({...history,editorialEdition:editorial,readingFlow:editorial}),['open','counter:2',markup,'close']);
+});
 test('all six existing furniture host readers expose a persistent native bookshelf link',()=>{
  const approved=gate.admittedBookshelfNavUI(root,policy);
  assert.deepEqual(Object.keys(approved).filter(f=>paths.includes(f)).sort(),paths.slice().sort());

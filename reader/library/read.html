@@ -1286,6 +1286,32 @@ function compactStandaloneOriginals(bytes){
  }
 }
 
+// A single WH1 document already knows the book-wide page count when it paints.
+// Its multi-part bridge would otherwise replace that count a message later.
+function useEditorialWholeBookCounter(scanTotal){
+ document.addEventListener('load',event=>{
+  const frame=event.target;
+  if(frame.tagName!=='IFRAME'||frame.id!=='reader')return;
+  const child=frame.contentWindow,doc=frame.contentDocument;
+  const counter=doc?.getElementById('location'),position=doc?.getElementById('position');
+  const style=doc?.getElementById('wh1-exact-page-css');
+  if(!counter||!position||!style||!child.WH1BookReader)return;
+  style.textContent='#location{white-space:nowrap;min-width:14ch;font-variant-numeric:tabular-nums}';
+  function sync(){
+   const state=child.WH1BookReader.inspect();
+   if(!state.pages)return;
+   counter.removeAttribute('data-wh1-global');
+   if(counter.getAttribute('aria-label')!==counter.textContent)counter.setAttribute('aria-label',counter.textContent);
+   const label=position.textContent.split(' ｜ 原本 ')[0]+' ｜ 原本 '+state.scan+' / '+scanTotal;
+   if(position.textContent!==label)position.textContent=label;
+  }
+  const observer=new child.MutationObserver(sync);
+  observer.observe(counter,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','data-wh1-global']});
+  observer.observe(position,{subtree:true,childList:true,characterData:true});
+  sync();
+ },true);
+}
+
 async function loadBook(file,shouldSave=true){
  setBusy('統合書籍の目録を確認しています…');
  try{
@@ -1307,6 +1333,9 @@ async function loadBook(file,shouldSave=true){
     return;
    }
    document.open();
+   if(m.editorialEdition?.format==='wh1-editorial-source-v1'&&m.readingFlow?.format==='wh1-editorial-source-v1'&&m.template_profile==='world_history_1'){
+    useEditorialWholeBookCounter(m.range[1]);
+   }
    if(inherited)writeLegacyNineEpigraph(bytes);
    else {
     // This edition has been checked with blob-backed original scans on the saved-book route.
