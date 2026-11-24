@@ -1,0 +1,22 @@
+body.poetry-reading .text-flow .poetry-line{
+ display:block!important;
+ margin-block-start:var(--stanza-space,0px)!important;
+ text-indent:0;
+}
+body.poetry-reading .text-flow .poetry-line::before,
+body.poetry-reading .text-flow .printed-contents::before{content:none!important}
+.poetry-word{
+ display:inline-block;
+ white-space:pre!important;
+ overflow-wrap:normal!important;
+ word-break:keep-all!important;
+ line-height:inherit;
+ vertical-align:top;
+}
+.poetry-word-meter{
+ position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;
+ writing-mode:vertical-rl;text-orientation:mixed;inline-size:max-content;white-space:pre;
+}
+body.poetry-reading .text-flow .printed-contents{display:block!important;cursor:pointer;width:1.5em;white-space:nowrap!important}
+.printed-label,.printed-number{display:inline-block;vertical-align:top}
+.printed-number{margin-inline-start:1em;font-size:.82em}

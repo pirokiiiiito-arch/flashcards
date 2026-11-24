@@ -35,6 +35,8 @@ python tools/reader-shelf-register.py pack \
 
 私有の目録には `schema: 1`、`bookId`、`title`、`template_profile`、`range: [1, 最終原本番号]` を指定する。各分冊は `segments` の `start`、`end`、`part` で元のファイルに対応づける。すべてのファイルパスは目録を置いたフォルダからの相対パス。原本を別ファイルに保管している場合、`originalScans` の原本番号ごとに `path` と記録済みであれば `sha256` を指定する。
 
+詩集は小説基準の詩用形式を選ぶ。目録に `template_profile: novel` と `template_variant: poetry` を指定する。原本の詩行・連と、語を分断しない折り返しの入力形式は[詩の制作手順](../../templates/reader/v2/README.md#詩のテンプレート)を参照する。
+
 - 歴史書の分冊に `bookdata.pages` と `reader-verified-structure` がある場合、`pack` は本文・図版・目次と原本番号を保持し、`structured-scan-flow-v1` の目録を作る。扉は `pageType: "portrait"` または `readingFlow.portraitScans`、原本に固有の並べ替えは `readingFlow.scanOrder` に全巻の順番で記録する。
 - 通常の標準テンプレート・小説テンプレートは、各分冊の `window.READER_BOOK` に入っているリテラルJSON、同じ形式の `script#bookdata`、またはJSONファイルを直接読める。`kind` は `text`、`mixed`、`image`。選択したテンプレートの本文・見出し・図版を全巻の順番で組み、同じエンジンで開く自己完結HTMLとして梱包する。全巻の読書HTMLがすでにある場合には `entry` に指定できる。
 - 歴史書・小説ともに、四工程で統合した原稿では `mergeReport` に `merged/merge_report.json` を指定する。同じフォルダの `merged_bookdata.json` と `reader_logical_stream.json` を統合記録のSHAと照合し、確定した境界判断を利用する。目録の横に `merge_report.json` があるときは自動で見つける。図版・注記・目次など配置を保存する本には、照合済みの読書分冊も渡す。

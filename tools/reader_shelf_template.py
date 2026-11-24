@@ -78,9 +78,14 @@ class TemplateSource(HTMLParser):
 
 def verified_template(html, profile, part, read_bytes):
     # Accept literal data or the canonical shell with its original assets.
-    novel = profile == 'novel'
+    poetry = profile == 'poetry'
+    novel = profile in ('novel','poetry')
     styles = ('standard.css','novel.css') if novel else ('standard.css',)
     scripts = ('novel-dialogue.js','novel.js') if novel else ('standard.js',)
+
+    if poetry:
+        styles += ('poetry.css',)
+        scripts = ('novel-dialogue.js','poetry.js','poetry-reader.js')
 
     def canonical_markup(value):
         def script(match):
@@ -103,7 +108,7 @@ def verified_template(html, profile, part, read_bytes):
     metadata_only = re.sub(r'</?(?:head|body|title)>|</?html(?: +lang=["\x27][^"\x27]*["\x27])?>|<!doctype html>|<meta (?:charset|name)=["\x27][^>]*>', '',shape,flags=re.I)
     if not metadata_only.strip():
         return
-    templates = ('novel.html',) if novel else ('mixed.html', 'image.html')
+    templates = ('poetry.html',) if poetry else ('novel.html',) if novel else ('mixed.html', 'image.html')
     if all(shape != canonical_markup((TEMPLATE / name).read_text()) for name in templates):
         raise ValueError('個別の読書画面は標準テンプレートに置換できません。書式を保った全巻HTMLを指定してください')
     for file in styles + scripts:
@@ -246,6 +251,10 @@ def template_html(manifest, read_bytes):
     if profile not in ('novel','world_history_1'):
         raise ValueError('読書テンプレートを特定できません')
     novel = profile == 'novel'
+    variant = manifest.get('template_variant')
+    if variant is not None and (variant != 'poetry' or not novel):
+        raise ValueError('詩用テンプレートの基準プロファイルが一致しません')
+    poetry = variant == 'poetry'
     roles = {'heading','body','toc'} | ({'dialogue'} if novel else {'note','footnote','caption'})
     entries, text = [], {}
     images, image_indexes, originals = [], {}, {}
@@ -281,7 +290,7 @@ def template_html(manifest, read_bytes):
         if any(row.get(k) for k in rich_fields) or (not text_block and row.get('ruby')):
             raise ValueError('ルビ・注記・図版切り抜き等を含む書式は、対応する構造付き原本または全巻HTMLを指定してください')
     for part in manifest['segments']:
-        src = read_part(part, read_bytes, profile)
+        src = read_part(part, read_bytes, 'poetry' if poetry else profile)
         require_supported(src)
         kinds.add(src['kind'])
         book_id = manifest['bookId']
@@ -368,15 +377,20 @@ def template_html(manifest, read_bytes):
     links = [{'from':a,'to':b} for a,b in edges]
     mode = next(iter(kinds)) if len(kinds) == 1 else 'mixed'
     stream = arrange(entries,text,links)
+    if poetry:
+        from reader_poetry import prepare_verses
+        prepare_verses(stream)
     field = {'text':'blocks','image':'figures','mixed':'entries'}[mode]
     book = {'id':manifest['bookId'], 'title':manifest['title'], 'totalScans':manifest['range'][1],
             'kind':mode, 'status':manifest.get('status') or '読書版', field:stream,
             'originals':[{'scan':n,'assetIndex':i} for n,i in sorted(originals.items())]}
+    if poetry:
+        book['templateVariant'] = 'poetry'
     # Store each private image only once even when it serves as both a plate and an original.
     def js(obj):
         return json.dumps(obj,ensure_ascii=False,separators=(',',':')).replace('<',r'\u003c')
     source = 'window.READER_BOOK='+js(book)+ASSET_TABLE+js(images)+ASSET_BINDINGS
-    shell = (TEMPLATE/('novel.html' if novel else 'mixed.html')).read_text()
+    shell = (TEMPLATE/('poetry.html' if poetry else 'novel.html' if novel else 'mixed.html')).read_text()
     shell, count = re.subn(r'<script>window\.READER_BOOK=.*?</script>',
                            lambda _:'<script>'+source+'</script>', shell, flags=re.S)
     if count != 1:
@@ -388,10 +402,14 @@ def template_html(manifest, read_bytes):
     shell = re.sub(r'(<output class="shelf-status" id="shelf-status">)[^<]*(</output>)',
                    lambda m:m[1]+escape(book['status'])+m[2],shell,count=1)
     shell = shell.replace('href="../../../reader/library/"','href="./"')
-    for f in (('standard.css','novel.css') if novel else ('standard.css',)):
+    styles = ('standard.css','novel.css') if novel else ('standard.css',)
+    for f in styles + (('poetry.css',) if poetry else ()):
         shell = shell.replace(f'<link rel="stylesheet" href="./{f}">',
                               '<style>\n'+(TEMPLATE/f).read_text()+'\n</style>')
-    for f in (('novel-dialogue.js','novel.js') if novel else ('standard.js',)):
+    scripts = ('novel-dialogue.js','novel.js') if novel else ('standard.js',)
+    if poetry:
+        scripts = ('novel-dialogue.js','poetry.js','poetry-reader.js')
+    for f in scripts:
         shell = shell.replace(f'<script src="./{f}"></script>',
                               '<script>\n'+(TEMPLATE/f).read_text()+'\n</script>')
     return shell.encode()

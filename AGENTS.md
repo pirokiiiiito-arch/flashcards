@@ -170,6 +170,8 @@ Resume by restoring the entire private workspace, inspecting manifest and correc
 
 ## Japanese fiction dialogue — separate layout, unchanged source
 
+For poetry, select the named poetry template with `template_profile: "novel"` and `template_variant: "poetry"` when packing. Keep each original verse line and its stanza spacing. Wrap a long verse only between whole words, including across reader pages. Mark prose separately. See `templates/reader/v2/README.md` and the demonstration in `poetry.html`.
+
 For novels (including Nine Stories), prefer the isolated `templates/reader/v2/novel.html` plus `novel-dialogue.js`, `novel.css`, and `novel.js`, keeping WH1's 20px, 1.50 line height, vertical right-to-left layout and all navigation. Every *top-level spoken* opening `「` starts a **new vertical column** with no dialogue indentation. Do not change literal OCR/canonical characters merely to create line breaks. Distinguish embedded terms/quoted titles that are not speech (`quoteMode:"inline"` with source-grounded justification). Confirm source-block round-trip equality and visual column starts with version-specific tests. Never migrate preexisting book files or resume paused scans just because the public fiction demo was built; use the complete evidence gates and a new, reviewed private artifact for actual book application.
 
 
