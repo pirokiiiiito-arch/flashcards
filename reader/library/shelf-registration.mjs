@@ -111,6 +111,29 @@ function validateTextDisagreements(record) {
   requireValue(Number.isSafeInteger(total) && total === review.detected && total === review.resolved,
     'OCR不一致の合計と原本で確定した件数が一致しません');
 }
+// The owner approved this specific private OCR edition for partial reference images.
+const editorialPreview = {
+  key: '49d4d2e5531929cd1ddd2ed7a87a1dffaedc48fa5ee72eeb6e41ad2405f45cf8',
+  reader: '452f6be56dbe006c68648b0b166706b1aa9b9a7a97be580c1dcec3d488ca07f2'
+};
+function validateEditorial(record) {
+  const {editorial, sourceProof, toc, pageTurns, first, last} = record.evidence;
+  if (editorial === undefined) return;
+  requireValue(editorial?.format === 'wh1-editorial-source-v1' && editorial.version === 1 &&
+    record.key === editorialPreview.key && editorial.readerSha256 === editorialPreview.reader &&
+    record.channel === 'preview' && first === 1 && last === 375 &&
+    sourceProof?.status === 'partial' && positive(sourceProof.pendingScans) &&
+    editorial.textDisagreements === 'not-certified' && sourceProof.textDisagreements === undefined,
+    '承認されたOCR編集版と照合記録が一致しません');
+  const hashes = ['sourceManifestSha256', 'sourceRecordsSha256', 'sourceInventorySha256',
+    'sourceTocSha256', 'boundaryReviewsSha256', 'selectionSha256', 'displayReadbackSha256'];
+  requireValue(hashes.every(k => typeof editorial[k] === 'string' && hex.test(editorial[k])) &&
+    editorial.originalScans === 332 && editorial.redactedScans === 40 && editorial.noticeScans === 3 &&
+    editorial.rubyCount === 762 && editorial.tocRows === 157 && editorial.tocRows === toc.rows &&
+    editorial.sourceRanges === 19 && editorial.sourceRanges === record.evidence.batches.length &&
+    editorial.verifiedBoundaries === 18 && editorial.verifiedBoundaries === pageTurns.boundaries.length &&
+    editorial.verifiedContinuations === 4, 'OCR編集版の出典、画像区分または表示の照合記録が不正です');
+}
 function validatePageTurns(record) {
   const {pageTurns: t, batches} = record.evidence;
   if (t === undefined && previousSignatures.has(record.signature)) return;
@@ -159,6 +182,7 @@ export function validateEvidence(r) {
   validatePageTurns(r);
   validateSourceProof(r);
   validateTextDisagreements(r);
+  validateEditorial(r);
   return r;
 }
 const publicSPKI = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIplDryA9HQEYXBj+RKvCmS9F7Plv8h/csCzjJ938ax3Z07ikPuA5+d80bYUAl2MUdh/zVVFRDsqfmVpz17K/YA==';
@@ -178,7 +202,7 @@ async function signed(record, previouslyAdmitted = false) {
   requireValue(record.evidence.sourceProof || beforeSourceProof.has(record.signature), '原本20枚ごとの照合記録がありません');
   requireValue(record.evidence.sourceProof?.captionCensus || beforeCaptionCensus.has(record.signature),
     '今回の版の図説全件照合の結果がありません');
-  requireValue(record.evidence.sourceProof?.textDisagreements ||
+  requireValue(record.evidence.sourceProof?.textDisagreements || record.evidence.editorial !== undefined ||
     (previouslyAdmitted && beforeTextReview.has(record.signature)), '今回の版の本文OCR不一致の解決記録がありません');
   requireValue(typeof record.signature==='string' && /^[A-Za-z0-9+/]{85}[AQgw]==$/.test(record.signature),'登録検査の署名がありません');
   publicKey ||= crypto.subtle.importKey('spki',unbase64(publicSPKI),{name:'ECDSA',namedCurve:'P-256'},false,['verify']);

@@ -372,7 +372,8 @@ function admittedBookshelfNavUI(root,policy){
  // Each shell revision admits one exact combination of reader, cache and
  // caption runtime. An older review may still verify its own original host.
  const shelfWorker=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8');
- const savedEditionFit=shelfWorker.includes("const CACHE='private-bookshelf-shell-v33-saved-edition-20261124';");
+ const editorialFit=shelfWorker.includes("const CACHE='private-bookshelf-shell-v34-saved-edition-20261124';");
+ const savedEditionFit=editorialFit||shelfWorker.includes("const CACHE='private-bookshelf-shell-v33-saved-edition-20261124';");
  const textCoversFit=savedEditionFit||shelfWorker.includes("const CACHE='private-bookshelf-shell-v32-textcovers-20261123';");
  const captionFit=textCoversFit||shelfWorker.includes("const CACHE='private-bookshelf-shell-v31-registration-20261122';");
  const sharedPins=captionFit?{...SHARED_SHELF_UI_GIT_BLOBS,
@@ -460,7 +461,9 @@ function admittedBookshelfNavUI(root,policy){
  }
  // The sort revision changes only the publicly served bookshelf UI and cache.
  // Require all three exact files together; never waive frozen book readers.
- const sortPins=savedEditionFit?SAVED_EDITION_UI_GIT_BLOBS:textCoversFit?BOOKSHELF_TEXT_COVER_UI_GIT_BLOBS:captionFit?{...BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS,
+ const savedEditionPins=editorialFit?{...SAVED_EDITION_UI_GIT_BLOBS,
+  'reader/library/sw.js':'e130064400531605a4d4ef8aebeda68d5204aebf'}:SAVED_EDITION_UI_GIT_BLOBS;
+ const sortPins=savedEditionFit?savedEditionPins:textCoversFit?BOOKSHELF_TEXT_COVER_UI_GIT_BLOBS:captionFit?{...BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS,
   'reader/library/sw.js':'51eb5303c9949fa89baaa1eb27ce0207a18207cb'}:BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS;
  let sortChanged=0;
  for(const [f,pin] of Object.entries(sortPins)){
@@ -520,7 +523,7 @@ function admittedBookshelfNavUI(root,policy){
   if(registration){
     const files={
       "reader/library/storage.js": savedEditionFit ? "31863fa05967c715a7ce348b751727e0fc20d5a9ebb17cb0f3216f60eac9cab3" : "af781a3639386a04402ad2c07a7dee579bc94cd218307ef5ab5f7fb42196f961",
-      "reader/library/shelf-registration.mjs": "11e3ec6ff89c69ce1df25a5197e09d9052c8b7e567e43b7fd3a85428e8e06a4c",
+      "reader/library/shelf-registration.mjs": editorialFit ? "52fc18703284a53edc03d3d38118fe0758c50d70e4e6d2ad5ab8523759764714" : "11e3ec6ff89c69ce1df25a5197e09d9052c8b7e567e43b7fd3a85428e8e06a4c",
       "reader/library/wh1-caption-ruby.js": captionFit ? "54e6296d91724811fe357bb5da6884b4827eb26fc0939339dca7f8e2cec675a6" : "81898e2e602327606e2369b333c726793f2eab1869e27a0438fc2d6fd107fcd6",
       "reader/wh1/full/index.html": "389750d3d6cd32459a8af698595ae1e48e5819aef79aa3c1f8754fa2883ba381"
 };
