@@ -21,15 +21,23 @@ const BOOKSHELF_NAV_UI_BLOBS=Object.freeze({
  'reader/library/read.html':'88b1139241b1131a9cdc1fc1af0b181454ac26a3'
 });
 // Narrow, byte-exact admission for the independently reviewed bookshelf title-order UI.
-const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976','ef6bedffc87bfe7038121a19e43fb496c65837b8','206460fae3840f4aec53707ad6ef2afc9903d304','6a8ab86575d7a6b77eecd1450043d9e0b49daa00','5b19a109330eaf43f8cf0ea469297ae716618094','53a8097dff6490590949dee8d6fa33942443e6d9','5278def2a0ef742bfc416e6461fef5476ee4754c','ac34360b49cad7f1f4c2f10af57d848ba926a790']);
+const BOOKSHELF_TITLE_ORDER_INDEX_BLOBS=Object.freeze(['0b0362b78bd36762b725dcca458cf714af57653b','927aaa137c9c12c555c98a191413528984077a30','299fa919db5a07ad65be0de2f5464168691b5f90','7518756ad3378fdad4aad26e02a26ede1a05a1b0','6f8333db3e42489f1a89bb031bebed42001d8976','ef6bedffc87bfe7038121a19e43fb496c65837b8','206460fae3840f4aec53707ad6ef2afc9903d304','6a8ab86575d7a6b77eecd1450043d9e0b49daa00','5b19a109330eaf43f8cf0ea469297ae716618094','53a8097dff6490590949dee8d6fa33942443e6d9','5278def2a0ef742bfc416e6461fef5476ee4754c','ac34360b49cad7f1f4c2f10af57d848ba926a790','a7dc638c67d199479d5ff778741c057a245f9bae']);
 const STAGES=new Set(['draft','ready_for_publication','completed','iphone_verified']);
 const STATES=new Set(['not_run','passed','failed','needs_source_review','not_applicable']);
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
+const SAVED_EDITION_HOST_BLOB='9a9450d58f7427459a403d9e23c09ad047ae1723';
 const MANIFEST_ORIGINALS_HOST_BLOB='f83259c8f29cfbc7ddc8bd55c4ea912b09d1dac4';
 const COMPACT_ORIGINALS_HOST_BLOB='a83aadec3e9addb000003da07d5b988e557c18cf';
 function priorNativeInputReader(data){
+  if(blobSHA(data)===SAVED_EDITION_HOST_BLOB){
+    const prior=data.toString('utf8')
+      .replace(/async function openSavedEdition\(saved\)\{[\s\S]*?(?=async function recoverSavedBook\(\)\{)/,'')
+      .replaceAll('await openSavedEdition(saved);','await loadBook(saved.blob,false);');
+    data=Buffer.from(prior);
+    if(blobSHA(data)!==MANIFEST_ORIGINALS_HOST_BLOB)throw Error('SAVED_EDITION_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)===MANIFEST_ORIGINALS_HOST_BLOB){
     const source=data.toString('utf8');
     const restored=source.replace(/const compact=\(m\.originalImageHandling==='blob-v1'\|\|(m\.sha256==='[a-f0-9]{64}')\)/, 'const compact=$1');
@@ -578,7 +586,8 @@ function validate(root=ROOT){
      data.includes(Buffer.from('app.js?v=bookshelf-reader-input-20261121'))||
      data.includes(Buffer.from('app.js?v=bookshelf-device-save-20261121'))||
      data.includes(Buffer.from('app.js?v=bookshelf-registration-20261122'))||
-     data.includes(Buffer.from('app.js?v=bookshelf-textcovers-20261123')));
+     data.includes(Buffer.from('app.js?v=bookshelf-textcovers-20261123'))||
+     data.includes(Buffer.from('app.js?v=bookshelf-saved-edition-20261124')));
   // Admit only the exact 2026-11-15 public presentation layer for the shared shelf.
   // Inverse-transform its layout-only additions and verify the untouched
   // historical engine's original frozen Git blob byte-for-byte.
@@ -680,4 +689,4 @@ if(require.main===module){
  if(r.errors&&r.errors.length)process.exitCode=1;
  else console.log('SCHEMA PASS ONLY (not OCR certification): '+r.paths+' routes, '+r.managed+' managed, '+r.legacy+' frozen legacy');
 }
-module.exports={MANIFEST_ORIGINALS_HOST_BLOB,COMPACT_ORIGINALS_HOST_BLOB,priorNativeInputReader,validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};
+module.exports={SAVED_EDITION_HOST_BLOB,MANIFEST_ORIGINALS_HOST_BLOB,COMPACT_ORIGINALS_HOST_BLOB,priorNativeInputReader,validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};

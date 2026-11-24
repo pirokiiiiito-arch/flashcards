@@ -1,10 +1,10 @@
 /* Offline cache for the app shell only. Never cache private Drive book content. */
 'use strict';
-const CACHE='private-bookshelf-shell-v32-textcovers-20261123';
+const CACHE='private-bookshelf-shell-v33-saved-edition-20261124';
 const REVISION='wh1-library-v9-20261110';
 const local=path=>new URL(path,self.registration.scope).href;
 const ASSETS=[
-  './index.html','./app.css?v=bookshelf-textcovers-20261123','./app.js?v=bookshelf-textcovers-20261123',
+  './index.html','./app.css?v=bookshelf-saved-edition-20261124','./app.js?v=bookshelf-saved-edition-20261124',
   './wh1-reader-routing.js?v='+REVISION,'./wh1-caption-ruby.js',
   './storage.js','./shelf-registration.mjs','../quality/shelf-registration.json','./read.html','./wh3-format.html','./wh1-exact-pagination.js',
   './read-wh1-v9.html','./wh1-pager-v9.js?v='+REVISION,
@@ -27,6 +27,9 @@ self.addEventListener('fetch', event => {
   if(req.method!=='GET'||url.origin!==scope.origin||(!url.pathname.startsWith(scope.pathname)&&!CURRENT.has(url.pathname)))return;
   const fallback=url.pathname===scope.pathname?INDEX:CURRENT.get(url.pathname);
   if(!fallback)return;
+  if(url.pathname===new URL(local('../quality/shelf-registration.json')).pathname&&url.searchParams.get('current')==='1'){
+    event.respondWith(fetch(req,{cache:'no-store'}));return;
+  }
   // Match by application pathname, not the book id in the query. A reader
   // navigation keeps its original URL/id while receiving the right HTML shell.
   event.respondWith(fetch(req,{cache:'no-cache'}).then(response=>{

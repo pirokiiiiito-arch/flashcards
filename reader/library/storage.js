@@ -18,6 +18,28 @@ const LibraryDB = (() => {
     }
     return admitted;
   }
+  async function savedEditionState(meta,requireCurrent=false) {
+    if(!meta?.id)return 'unknown';
+    try {
+      const policy=await import(rulesURL);
+      let registry;
+      if(requireCurrent){
+        // A previously cached ledger can identify an obsolete edition, but cannot confirm freshness.
+        if(!navigator.onLine)return 'unknown';
+        const url=new URL('../quality/shelf-registration.json?current=1',rulesURL);
+        const response=await fetch(url,{cache:'no-store'});
+        if(!response.ok)return 'unknown';
+        registry=await policy.parseLedger(await response.json());
+      }else{registry=await policy.ledger();}
+      const records=registry.get(await policy.textHash(meta.id));
+      if(!records?.length)return 'unknown';
+      if(meta.registrationRoot){
+        return records.some(row=>row.chunkRoot===meta.registrationRoot)?'current':'changed';
+      }
+      // Records saved before admission tracking have sizes but no verified root.
+      return records.every(row=>row.bytes!==meta.size)?'changed':'unknown';
+    } catch (_) {return 'unknown';}
+  }
   const CHUNK = 4 * 1024 * 1024;
   const SAFE_ID = /^[a-zA-Z0-9_-]{1,90}$/;
   function checkId(id) { if (!SAFE_ID.test(id)) throw new Error('書籍IDが不正です'); return id; }
@@ -201,5 +223,5 @@ const LibraryDB = (() => {
     const legacy=await legacyWh1();if(legacy){await authorizeFile({id},legacy.blob);admittedReads.set(legacy.blob,id);}
     return legacy;
   }
-  return {CHUNK,authorizeFile,catalogFilter,isRegisteredRead:(id,blob)=>admittedReads.get(blob)===id,getMeta,listMeta,newWriter,readBlob,findBlob,legacyWh1,hasBook,removeBook,saveBlob};
+  return {CHUNK,authorizeFile,catalogFilter,savedEditionState,isRegisteredRead:(id,blob)=>admittedReads.get(blob)===id,getMeta,listMeta,newWriter,readBlob,findBlob,legacyWh1,hasBook,removeBook,saveBlob};
 })();

@@ -17,6 +17,8 @@
   const $ = id => document.getElementById(id);
   let books=[PREVIEW,UK_PREVIEW,NINE_STORIES], savedIds=new Set(), selected=null, accessToken=null, expiry=0, pendingDownload=null;
   let connectForBook=null;
+  const updateParam=new URLSearchParams(location.search).get('update');
+  const requestedUpdate=updateParam&&/^[a-zA-Z0-9_-]{1,90}$/.test(updateParam)?updateParam:null;
   let tokenClient=null, connected=false, isRefreshing=false;
   const num = new Intl.NumberFormat('ja-JP');
   // Sort visible book titles by Japanese reading, independent of Drive/catalog insertion order.
@@ -94,9 +96,14 @@
     $('bookCount').textContent=String(books.length);$('emptyState').hidden=matching.length!==0;
   }
   async function hasNewEdition(book){
-    if(!book?.registrationRoot||!book.parts.length||!tokenValid()||!savedIds.has(book.id))return false;
+    if(!book||!savedIds.has(book.id))return false;
     const meta=await LibraryDB.getMeta(book.id);
-    return !!meta && (meta.registrationRoot ? meta.registrationRoot!==book.registrationRoot : book.registrationChannel!=='existing'||meta.subtitle!==book.subtitle||meta.size!==book.totalBytes);
+    if(!meta)return false;
+    if(book.registrationRoot&&book.parts.length&&tokenValid()){
+      if(meta.registrationRoot&&meta.registrationRoot!==book.registrationRoot)return true;
+      if(!meta.registrationRoot&&(book.registrationChannel!=='existing'||meta.subtitle!==book.subtitle||meta.size!==book.totalBytes))return true;
+    }
+    return await LibraryDB.savedEditionState?.(meta)==='changed';
   }
   async function showBook(book){selected=book; $('detailTitle').textContent=book.title;
     const proof=book.sourceProof;
@@ -108,20 +115,52 @@
     const unavailable=!local&&signedIn&&!book.parts.length;
     $('detailStatus').textContent=local?'この端末に保存されています。通信なしで開けます。':signedIn?'Google Driveから初回だけ書籍データを保存します。':'Google Driveに接続すると、この端末に保存して読めます。';
     $('primaryBookAction').textContent=local?'続きを読む':signedIn?'Google Driveから保存して読む':'Google Driveを接続する';
+    $('readSavedBook').hidden=!local;
+    $('primaryBookAction').disabled=unavailable||local;
+    $('removeBook').hidden=!local;
+    $('downloadProgress').hidden=true;openSheet('book');
     const update=await hasNewEdition(book);
-    if(selected!==book)return;
+    if(selected!==book||$('bookPanel').hidden)return;
+    const repairLink=local&&requestedUpdate===book.id;
+    let revisionKnown=false;
+    if(repairLink&&!update)revisionKnown=await LibraryDB.savedEditionState?.(await LibraryDB.getMeta(book.id),true)==='current';
+    if(selected!==book||$('bookPanel').hidden)return;
+    $('readSavedBook').hidden=!local||(!update&&!(repairLink&&!revisionKnown));
     if(update){
-      $('detailStatus').textContent='修正版を保存すると、前回の読書位置から再開できます。';
-      $('primaryBookAction').textContent='修正版を保存して読む';
+      $('detailStatus').textContent='この端末には旧版が保存されています。修正版でも前回の読書位置を引き継ぎます。';
+      $('primaryBookAction').textContent=signedIn?'修正版を保存して読む':'Google Driveに接続して修正版を取得';
+    }else if(repairLink){
+      if(revisionKnown){
+        $('detailStatus').textContent='この端末には現在の登録版が保存されています。';
+      }else{
+        $('detailStatus').textContent='保存版の更新状況を確認できません。Google Driveに接続して本棚を確認できます。';
+        $('primaryBookAction').textContent=signedIn?'本棚を更新して確認':'Google Driveに接続して確認';
+      }
     }
     if(unavailable)$('detailStatus').textContent='Google Driveに書籍データが見つかりません。本棚に戻って「更新」を押してください。';
     $('removeBook').hidden=!local || book.id==='wh1' && !(await LibraryDB.getMeta('wh1'));
-    $('downloadProgress').hidden=true; $('primaryBookAction').disabled=unavailable;openSheet('book');
+    $('primaryBookAction').disabled=unavailable;
   }
   async function primaryAction(){if(!selected)return;
     const book=selected,update=await hasNewEdition(book);
     if(book!==selected||pendingDownload)return;
-    if(update){await download(book);return;}
+    if(update){
+      if(!tokenValid()){connectForBook=book.id;closeSheet('book');openSettings();return;}
+      const meta=await LibraryDB.getMeta(book.id);
+      if(book.parts.length&&book.registrationRoot&&book.registrationRoot!==meta?.registrationRoot){await download(book);return;}
+      if(await refreshCloud()&&selected?.id===book.id){
+        const refreshed=books.find(row=>row.id===book.id);
+        if(refreshed?.parts.length&&refreshed.registrationRoot!==meta?.registrationRoot)await showBook(refreshed);
+        else say('Driveの修正版を取得できませんでした。接続先を確認してもう一度更新してください。');
+      }
+      return;
+    }
+    if(savedIds.has(book.id)&&requestedUpdate===book.id&&
+       await LibraryDB.savedEditionState?.(await LibraryDB.getMeta(book.id),true)!=='current'){
+      if(!tokenValid()){connectForBook=book.id;closeSheet('book');openSettings();}
+      else if(await refreshCloud()&&selected?.id===book.id)await showBook(books.find(row=>row.id===book.id)||book);
+      return;
+    }
     if(savedIds.has(selected.id)){location.href=readerHref(selected);return;}
     if(!tokenValid()){connectForBook=book.id;closeSheet('book');openSettings();return;}
     if(book.parts.length)await download(book);
@@ -161,9 +200,10 @@
       accessToken=result.access_token;expiry=Date.now()+Math.max(30,Number(result.expires_in||3600)-60)*1000;
       const bookId=connectForBook;
       closeSettings();setCloud('Google Driveに接続済み','書籍データは非公開のままです',true);
-      if(await refreshCloud()&&bookId&&selected?.id===bookId&&$('bookPanel').hidden&&$('settingsPanel').hidden){
+      if(await refreshCloud()&&bookId&&(!selected||selected.id===bookId)&&$('bookPanel').hidden&&$('settingsPanel').hidden){
         const refreshed=books.find(book=>book.id===bookId);
         if(refreshed)await showBook(refreshed);
+        else say('接続したGoogle Driveの本棚にこの本が見つかりません。');
       }
     }catch(e){setCloud('Google Driveと未接続',e.message||'接続できません');say('Google連携: '+(e.message||String(e)));}
   }
@@ -228,7 +268,12 @@
       if(!books.some(x=>x.id===UK_PREVIEW.id))books.push(UK_PREVIEW);
       if(!books.some(x=>x.id===NINE_STORIES.id))books.push(NINE_STORIES);
       // The shelf renderer applies the same title order for cloud, offline and search results.
-      await refreshSaved();setCloud('Google Driveに接続済み',`${books.length}冊の書籍を同期しました`,true);
+      await refreshSaved();
+      if(selected&&!pendingDownload&&!$('bookPanel').hidden){
+        const refreshed=books.find(row=>row.id===selected.id);
+        if(refreshed)await showBook(refreshed);
+      }
+      setCloud('Google Driveに接続済み',`${books.length}冊の書籍を同期しました`,true);
       return true;
     }catch(e){setCloud('同期できませんでした',e.message||'再接続をお試しください');say('同期エラー: '+(e.message||String(e)));}
     finally{isRefreshing=false;$('refreshButton').disabled=false;}
@@ -295,10 +340,18 @@
   $('bookClose').onclick=()=>{if(pendingDownload){say('保存を中止してから閉じてください');return;}closeSheet('book');};
   $('bookBackdrop').onclick=()=>{if(!pendingDownload)closeSheet('book');};
   $('primaryBookAction').onclick=primaryAction;
+  $('readSavedBook').onclick=()=>{if(selected&&!pendingDownload&&savedIds.has(selected.id))location.href=readerHref(selected);};
   $('cancelDownload').onclick=()=>pendingDownload?.abort();
   $('removeBook').onclick=deleteLocal;
   window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pendingDownload){closeSettings();closeSheet('book');}});
-  renderShelf();refreshSaved().catch(()=>{});registerSW();
+  async function openRequestedUpdate(){
+    await refreshSaved();
+    if(!requestedUpdate)return;
+    const book=books.find(row=>row.id===requestedUpdate);
+    if(book){await showBook(book);return;}
+    connectForBook=requestedUpdate;openSettings();
+  }
+  renderShelf();openRequestedUpdate().catch(()=>{});registerSW();
   if(localStorage.getItem(CLIENT_KEY)||SHARED_CLIENT_ID)setCloud('フラッシュカードのGoogle設定を利用','「接続する」で書籍フォルダの読み取り権限を許可してください');
   if(!navigator.onLine)setCloud('オフライン','端末に保存済みの本は読めます');
 })();

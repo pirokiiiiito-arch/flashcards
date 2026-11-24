@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="私の本棚">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>私の本棚｜Google Drive連携</title>
-<link rel="stylesheet" href="./app.css?v=bookshelf-textcovers-20261123">
+<link rel="stylesheet" href="./app.css?v=bookshelf-saved-edition-20261124">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <style id="browser-page-pinch-shell-v2">html,body,body *{touch-action:pan-x pan-y pinch-zoom!important}</style></head>
@@ -47,6 +47,7 @@
   <div class="sheet-handle"></div><div class="sheet-title"><h2 id="detailTitle">書籍</h2><button id="bookClose" class="close" type="button" aria-label="書籍の詳細を閉じる">×</button></div>
   <p id="detailSub">全巻読書</p><p id="detailStatus" class="detail-status"></p>
   <button id="primaryBookAction" type="button" class="primary-button">この本を読む</button>
+  <button id="readSavedBook" type="button" class="secondary-button" hidden>端末の保存版を読む</button>
   <button id="removeBook" type="button" class="secondary-button" hidden>端末に保存したデータを削除</button>
   <div id="downloadProgress" class="download-progress" hidden><div class="progress-track"><div id="progressBar"></div></div><p id="progressLabel" role="status" aria-live="polite">準備中</p><button id="cancelDownload" class="text-button" type="button">ダウンロードを中止</button></div>
   <p class="tiny">書籍画像・OCR本文はGoogle Driveから端末へ直接転送されます。大容量の本はWi-Fiで保存してください。Safari等の保存領域には上限があります。</p>
@@ -55,7 +56,7 @@
 <script src="../../drive-config.js"></script>
 <script src="./storage.js"></script>
 <script src="./wh1-reader-routing.js?v=wh1-library-v9-20261110"></script>
-<script src="./app.js?v=bookshelf-textcovers-20261123"></script>
+<script src="./app.js?v=bookshelf-saved-edition-20261124"></script>
 </body>
 </html>
 

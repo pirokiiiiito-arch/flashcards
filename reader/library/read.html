@@ -1666,7 +1666,7 @@ async function openOriginal(scan){
 function setOriginalScale(){const viewer=$('originalViewer'),img=$('originalImage');const width=viewer.clientWidth-20;img.style.width=(Math.max(200,width)*originalScale)+'px';}
 function closeOriginal(){$('originalOverlay').hidden=true;}
 $('zipInput').addEventListener('change',async()=>{if(!$('zipInput').files?.length)return;try{await loadBook(pickedArchive($('zipInput').files),true);}catch(e){console.warn(e);setHint(e.message||String(e));}finally{$('zipInput').value='';}});
-$('resume').onclick=async()=>{try{const saved=await dbRead();if(!saved?.blob)throw Error('保存された書籍がありません');await loadBook(saved.blob,false);}catch(e){setHint(e.message||String(e));clearBusy();}};
+$('resume').onclick=async()=>{try{const saved=await dbRead();if(!saved?.blob)throw Error('保存された書籍がありません');await openSavedEdition(saved);}catch(e){setHint(e.message||String(e));clearBusy();}};
 $('goToBookStart').addEventListener('click',goToBookStart);
 $('menuClose').onclick=closeMenu;$('menuReturn').onclick=closeMenu;$('shelfReturn').onclick=()=>{location.href='./';};
 $('partGo').onclick=()=>{const i=Number($('partChoice').value),scan=manifest.segments[i].start;closeMenu();openSegment(bookZip.wh3Flow?segmentForScan(scan):i,{scan});};
@@ -1681,6 +1681,18 @@ $('originalClose').onclick=closeOriginal;
 $('zoomOut').onclick=()=>{originalScale=Math.max(0.7,Math.round((originalScale-.25)*100)/100);setOriginalScale();};
 $('zoomIn').onclick=()=>{originalScale=Math.min(5,Math.round((originalScale+.25)*100)/100);setOriginalScale();};
 window.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();closeOriginal();}});
+async function openSavedEdition(saved){
+ const edition=LibraryDB.savedEditionState?.(saved.meta);
+ await loadBook(saved.blob,false);
+ if(await edition!=='changed'||document.getElementById('savedEditionNotice'))return;
+ const panel=document.createElement('aside');
+ panel.id='savedEditionNotice';panel.setAttribute('aria-label','保存版の更新');panel.setAttribute('role','status');
+ panel.style.cssText='position:fixed;z-index:2147483647;top:env(safe-area-inset-top,0px);left:0;right:0;background:#fff9df;color:#292719;padding:.65em;display:flex;align-items:center;gap:.65em;font:16px/1.35 system-ui;writing-mode:horizontal-tb';
+ const message=document.createElement('span');message.textContent='この端末で旧版を開いています。';
+ const link=document.createElement('a');link.href='./?update='+encodeURIComponent(saved.meta.id);link.textContent='本棚で修正版を取得';
+ const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='閉じる';dismiss.onclick=()=>panel.remove();
+ panel.append(message,link,dismiss);document.body.append(panel);
+}
 async function recoverSavedBook(){
  if((BOOK_ID==='us-presidents-south'||BOOK_ID==='wh6')&&location.pathname.endsWith('/read.html')){
   const route=new URL('read-wh1-v9.html',location.href);
@@ -1689,7 +1701,7 @@ async function recoverSavedBook(){
  }
  const replacement=window.WH1ReaderRouting?.compatibilityHref({pathname:location.pathname,id:BOOK_ID});
  if(replacement){location.replace(replacement);return;}
- try{const saved=await dbRead();if(saved?.blob){$('resume').hidden=false;await loadBook(saved.blob,false);}}
+ try{const saved=await dbRead();if(saved?.blob){$('resume').hidden=false;await openSavedEdition(saved);}}
  catch(e){setHint('保存済みデータが見つからないか、読み込めませんでした。「このiPhone内」に保存したZIPから再読込できます。');}
 }
 window.addEventListener('pageshow',recoverSavedBook);

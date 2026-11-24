@@ -16,7 +16,7 @@ const between = (text, start, end) => {
   return text.slice(from, to);
 };
 const loadCode = between(read, 'async function loadBook(', 'function positionText(');
-const recoverCode = between(read, 'async function recoverSavedBook()', "window.addEventListener('pageshow',recoverSavedBook)");
+const recoverCode = between(read, 'async function openSavedEdition(saved)', "window.addEventListener('pageshow',recoverSavedBook)");
 const positionCode = between(read, "const POSITION_KEY='BOOK_POSITION_'+BOOK_ID;", '// Offline book storage:');
 const dbReadCode = read.match(/async function dbRead\(\)\{[^\n]+\}/)[0];
 const hrefCode = app.match(/function readerHref\(book\)\{[^\n]+\}/)[0];
@@ -33,7 +33,7 @@ function readerHarness({id, pathname = '/flashcards/reader/library/read.html', t
     SEGMENTS: Array(14).fill({}), currentState: {segment: 0, key: '', scan: 1, size: 20}, bookZip: null, $,
     localStorage: {getItem: key => {reads.push(key); return values.get(key) || null;},
       setItem: (key, value) => writes.push([key, value]), removeItem() {throw Error('Position deletion is forbidden');}},
-    LibraryDB: {authorizeFile:async b=>{calls.push(['admitFile',b.id]);},findBlob: async key => {calls.push(['findBlob', key]); return {blob: new Blob(['saved']), meta: {id: key}};}},
+    LibraryDB: {savedEditionState:async ()=>'current',authorizeFile:async b=>{calls.push(['admitFile',b.id]);},findBlob: async key => {calls.push(['findBlob', key]); return {blob: new Blob(['saved']), meta: {id: key}};}},
     setBusy: () => {}, clearBusy: () => {}, setHint: text => calls.push(['hint', text]),
     fillManifest: () => calls.push(['fillManifest']),
     saveCurrentBook: async () => calls.push(['saveCurrentBook']),
@@ -133,7 +133,7 @@ test('both actual bookshelf saved-open and completed-download paths use routing 
     const selected = {...book, parts: [{id: 'fixture_file', size: 4}], totalBytes: 4};
     const location = {};
     const c = {window: {WH1ReaderRouting: routing}, selected, savedIds: new Set([book.id]), location,
-      $, pendingDownload: null, hasNewEdition:async()=>false, Blob, Uint8Array, AbortController, DOMException,
+      $, requestedUpdate:null, pendingDownload: null, hasNewEdition:async()=>false, Blob, Uint8Array, AbortController, DOMException,
       nice: String, renderShelf() {}, say() {}, closeSheet() {}, openSettings() {},
       LibraryDB: {CHUNK: 4, newWriter: async target => {
         assert.equal(target.id, book.id);
@@ -203,7 +203,7 @@ test('all bookshelf covers use written book titles and never fetch or display ph
   assert.match(css, /\.cover-title\{/);
   assert.doesNotMatch(index, /<script src="\.\/book-covers\.js"><\/script>/);
   assert.doesNotMatch(sw, /'\.\/book-covers\.js'/);
-  assert.match(sw, /private-bookshelf-shell-v32-textcovers-20261123/);
+  assert.match(sw, /private-bookshelf-shell-v33-saved-edition-20261124/);
 });
 
 test('versioned shelf helper/app and fresh service-worker updates leave generic reader storage contracts intact', () => {
