@@ -17,7 +17,8 @@ ASSET_BINDINGS = (';for(const row of [...READER_BOOK.originals,...(READER_BOOK.e
 
 # Accept prior canonical assets when repacking an old source volume. Do not
 # replace custom presentation code just because a newer reader is available.
-PREVIOUS_ENGINE_SHA = {
+PREVIOUS_ASSET_SHA = {
+    'poetry.css': {'12a88e6f18017ddbe195d991e3382a4bb5033bc35fb13dd971ce14e21eb42107'},
     'standard.js': {'aa50214094838cff85f5ace542e03d55d7703886d42557e44e4308d83a39f31c',
                     'b1e1fa8389b602934131725b9e6cfab85687ef24fd24977e4e262a4bc3960769'},
     'novel.js': {'bb3e9d9674e9edc6fa440528ccfcc4b746a371c572fa55004c3dce0e49cac250',
@@ -25,8 +26,8 @@ PREVIOUS_ENGINE_SHA = {
 }
 
 
-def known_previous_engine(file, source):
-    return file in PREVIOUS_ENGINE_SHA and sha256(source.strip()).hexdigest() in PREVIOUS_ENGINE_SHA[file]
+def known_previous_asset(file, source):
+    return file in PREVIOUS_ASSET_SHA and sha256(source.strip()).hexdigest() in PREVIOUS_ASSET_SHA[file]
 
 
 
@@ -94,13 +95,17 @@ def verified_template(html, profile, part, read_bytes):
                 return ''
             for file in scripts:
                 if not attrs.strip() and (code.strip() == (TEMPLATE/file).read_text().strip()
-                                          or known_previous_engine(file, code.encode())):
+                                          or known_previous_asset(file, code.encode())):
                     return '<script src="./'+file+'"></script>'
             return match[0]
         value = re.sub(r'<script\b([^>]*)>(.*?)</script\s*>', script, value, flags=re.I|re.S)
-        for file in styles:
-            css = (TEMPLATE/file).read_text().strip()
-            value = re.sub(r'<style>\s*'+re.escape(css)+r'\s*</style>',lambda _:'<link rel="stylesheet" href="./'+file+'">', value)
+        def stylesheet(match):
+            css = match.group(1).strip()
+            for file in styles:
+                if css == (TEMPLATE/file).read_text().strip() or known_previous_asset(file, css.encode()):
+                    return '<link rel="stylesheet" href="./'+file+'">'
+            return match[0]
+        value = re.sub(r'<style>(.*?)</style>', stylesheet, value, flags=re.S)
         value = re.sub(r'<title>.*?</title>','<title></title>',value,flags=re.I|re.S)
         value = re.sub(r'(<output class="shelf-status" id="shelf-status">)[^<]*(</output>)',r'\1\2',value)
         return re.sub(r'>\s+<','><',value.strip())
@@ -116,7 +121,7 @@ def verified_template(html, profile, part, read_bytes):
             asset = read_bytes(str(PurePosixPath(part['part']).parent / file))
         except (FileNotFoundError, KeyError):
             continue
-        if asset != (TEMPLATE/file).read_bytes() and not known_previous_engine(file, asset):
+        if asset != (TEMPLATE/file).read_bytes() and not known_previous_asset(file, asset):
             raise ValueError(f'個別の表示処理 {file} を含むため、書式を保った全巻HTMLを指定してください')
 
 

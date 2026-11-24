@@ -27,11 +27,19 @@ const STATES=new Set(['not_run','passed','failed','needs_source_review','not_app
 const NON_NA=new Set(['G1-01','G1-02','G2-05','G3-01','G4-03','G7-01','G7-02','G7-03','G7-04','G8-01','G8-02','G8-03','G8-04','G8-05','G8-07','G8-08']);
 function allowed(p){return typeof p==='string'&&/^reader\/[A-Za-z0-9_./-]+$/.test(p)&&!p.includes('..');}
 // Restore only the exact opted-in public input shell before validating the frozen legacy engine.
+const POETRY_RUBY_HOST_BLOB='35992ab2c1ff758d688732d0e5d4c9fd71105322';
 const EDITORIAL_COUNTER_HOST_BLOB='9b635001923cc6ff140545a0d3cfba2196671721';
 const SAVED_EDITION_HOST_BLOB='9a9450d58f7427459a403d9e23c09ad047ae1723';
 const MANIFEST_ORIGINALS_HOST_BLOB='f83259c8f29cfbc7ddc8bd55c4ea912b09d1dac4';
 const COMPACT_ORIGINALS_HOST_BLOB='a83aadec3e9addb000003da07d5b988e557c18cf';
 function priorNativeInputReader(data){
+  if(blobSHA(data)===POETRY_RUBY_HOST_BLOB){
+    const prior=data.toString('utf8').replace(
+      /    let markup=compact\?\?new TextDecoder[^\n]+\n    if\(m\.template_profile==='novel'&&m\.template_variant==='poetry'\)\{[\s\S]*?\n    document\.write\(markup\);/,
+      "    document.write(compact??new TextDecoder('utf-8',{fatal:true}).decode(bytes));");
+    data=Buffer.from(prior);
+    if(blobSHA(data)!==EDITORIAL_COUNTER_HOST_BLOB)throw Error('POETRY_RUBY_REVERSE_CHECK_FAILED');
+  }
   if(blobSHA(data)===EDITORIAL_COUNTER_HOST_BLOB){
     const prior=data.toString('utf8')
       .replace(/\n\/\/ A single WH1 document[\s\S]*?(?=\nasync function loadBook\()/,'')
@@ -697,4 +705,4 @@ if(require.main===module){
  if(r.errors&&r.errors.length)process.exitCode=1;
  else console.log('SCHEMA PASS ONLY (not OCR certification): '+r.paths+' routes, '+r.managed+' managed, '+r.legacy+' frozen legacy');
 }
-module.exports={EDITORIAL_COUNTER_HOST_BLOB,SAVED_EDITION_HOST_BLOB,MANIFEST_ORIGINALS_HOST_BLOB,COMPACT_ORIGINALS_HOST_BLOB,priorNativeInputReader,validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};
+module.exports={POETRY_RUBY_HOST_BLOB,EDITORIAL_COUNTER_HOST_BLOB,SAVED_EDITION_HOST_BLOB,MANIFEST_ORIGINALS_HOST_BLOB,COMPACT_ORIGINALS_HOST_BLOB,priorNativeInputReader,validate,standardCheck,reportCheck,blobSHA,approvedUKWh1GeometryUI,entryPaths,RULES,ID};

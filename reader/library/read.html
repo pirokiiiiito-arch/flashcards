@@ -1341,7 +1341,18 @@ async function loadBook(file,shouldSave=true){
     // This edition has been checked with blob-backed original scans on the saved-book route.
     const compact=(m.originalImageHandling==='blob-v1'||m.sha256==='7bec7d5ef409cc65ff30bc5b33f6618c2d1c2e42743c841966d2815f55a9f385')
      ? compactStandaloneOriginals(bytes) : null;
-    document.write(compact??new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+    let markup=compact??new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+    if(m.template_profile==='novel'&&m.template_variant==='poetry'){
+     // Older poetry ZIPs aligned a word's outer ruby box to the column edge.
+     // Align the base glyphs before the reader measures or paints its first page.
+     const end=markup.indexOf('</head>');
+     if(end>=0){
+      const head=markup.slice(0,end);
+      const aligned=head.replace(/(\.poetry-word\s*\{[^{}]*?\bvertical-align:\s*)top(?=\s*;\s*\})/,'$1baseline');
+      if(aligned!==head)markup=aligned+markup.slice(end);
+     }
+    }
+    document.write(markup);
    }
    document.close();
    return;

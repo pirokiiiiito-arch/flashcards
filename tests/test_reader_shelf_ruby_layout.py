@@ -114,7 +114,7 @@ class SourceRubyLayout(unittest.TestCase):
         cls.page.on('pageerror', lambda e: cls.errors.append(str(e)))
 
     def load(self, profile, book):
-        name = 'novel.html' if profile == 'novel' else 'mixed.html'
+        name = {'standard': 'mixed.html', 'novel': 'novel.html', 'poetry': 'poetry.html'}[profile]
         html, count = re.subn(r'<script>window\.READER_BOOK=.*?</script>',
                               lambda _: '<script>window.READER_BOOK=' + json.dumps(book) + ';</script>',
                               (TEMPLATES / name).read_text(), flags=re.S)
@@ -182,6 +182,52 @@ class SourceRubyLayout(unittest.TestCase):
                 annotation(block, boundary-1, boundary+1, 'ためし')
                 self.load(profile, build_book([block], 'text'))
                 self.assertNotIn(boundary, self.observe([block])['boundaries'])
+
+    def test_poetry_ruby_keeps_base_text_on_the_column_axis(self):
+        words = ['静かな', '山道を', '歩いて', '夕空を', '見上げる'] * 3
+        block = {'id': 'verse', 'kind': 'text', 'type': 'body', 'scan': 1,
+                 'text': ''.join(words), 'poetryWordEnds': []}
+        offset = 0
+        for word in words:
+            if word in ('山道を', '夕空を'):
+                annotation(block, offset, offset + 2, 'やまみち' if word == '山道を' else 'ゆうぞら')
+                if word == '夕空を':
+                    block['ruby'][-1]['side'] = 'left'
+            offset += len(word)
+            block['poetryWordEnds'].append(offset)
+        book = build_book([block], 'text')
+        book['templateVariant'] = 'poetry'
+        self.page.set_viewport_size({'width': 390, 'height': 650})
+        self.load('poetry', book)
+        line = self.page.locator('#text-flow [data-body-id="verse"]')
+        glyphs = line.locator('.poetry-word').evaluate_all("""words => words.map(word => {
+            const walker = document.createTreeWalker(word, NodeFilter.SHOW_TEXT);
+            const range = document.createRange(), glyphs = [];
+            while (walker.nextNode()) {
+                const node = walker.currentNode;
+                if (node.parentElement.closest('rt,rp')) continue;
+                for (let i = 0; i < node.length; ++i) {
+                    range.setStart(node, i);
+                    range.setEnd(node, i + 1);
+                    const rect = range.getBoundingClientRect();
+                    glyphs.push([node.data[i], (rect.left + rect.right) / 2, rect.top]);
+                }
+            }
+            return glyphs;
+        })""")
+        self.assertEqual([''.join(c for c, _, _ in word) for word in glyphs], words)
+        self.assertEqual(line.locator('rt').count(), len(block['ruby']))
+        columns = 0
+        previous_top = float('inf')
+        for word in glyphs:
+            for index, (char, center, top) in enumerate(word):
+                if top < previous_top - 1:
+                    self.assertEqual(index, 0, 'A word was split across columns')
+                    column_center = center
+                    columns += 1
+                self.assertAlmostEqual(center, column_center, delta=1, msg=f'Misaligned base glyph {char}')
+                previous_top = top
+        self.assertGreater(columns, 1, 'The fixture must also exercise a wrapped line')
 
     def test_printed_readings_on_both_sides_share_the_base(self):
         for profile in ('novel', 'standard'):
