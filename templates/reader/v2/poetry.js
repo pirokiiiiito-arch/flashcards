@@ -50,8 +50,19 @@
     const clone=word.cloneNode(true);
     Object.assign(clone.style,{display:'inline-block',inlineSize:'max-content',whiteSpace:'nowrap'});
     meter.replaceChildren(clone);
-    const height=clone.getBoundingClientRect().height;
-    fittedSizes.set(key,height>capacity?fontSize*capacity/height*.985:fontSize);
+    let size=fontSize;
+    if(clone.getBoundingClientRect().height>capacity){
+     // Some vertical glyph advances round to a whole pixel at each character.
+     // Measure the fitted size on the same browser instead of scaling by a ratio.
+     let low=0,high=fontSize;
+     for(let i=0;i<12;i++){
+      const trial=(low+high)/2;clone.style.fontSize=trial+'px';
+      if(clone.getBoundingClientRect().height<=capacity)low=trial;
+      else high=trial;
+     }
+     size=low;
+    }
+    fittedSizes.set(key,size);
    }
    const size=fittedSizes.get(key);
    if(size<fontSize)word.style.fontSize=size+'px';

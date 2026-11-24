@@ -45,7 +45,8 @@ def word_ends(text):
         if pos[0] == '接頭辞' or after[0] in ('助詞','助動詞','接尾辞'):
             continue
         if (after[0] in ('動詞','形容詞') and after[1] == '非自立可能' and
-                (pos[0] in ('動詞','形容詞','助動詞') or pos[1] in ('接続助詞','サ変可能','サ変形状詞可能'))):
+                (pos[0] in ('動詞','形容詞','助動詞') or pos[1] in ('サ変可能','サ変形状詞可能')
+                 or pos[1] == '接続助詞' and a in ('て', 'で', 'つつ'))):
             continue
         if ((KANA.fullmatch(a) and KANA.fullmatch(b))
                 or (LATIN.fullmatch(a) and LATIN.fullmatch(b))
