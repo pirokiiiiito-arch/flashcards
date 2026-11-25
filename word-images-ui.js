@@ -265,8 +265,8 @@
       if (file && at >= 0) enqueue(() => saveFiles([file], at));
     };
     dismiss.onclick = () => report('');
-    const nativeHint = '下の欄を長押しして「ペースト」を選んでください。';
-    const missingImage = 'この貼り付けでは画像データを読み取れませんでした。';
+    const nativeHint = '下の欄を長押しして「ペースト」を選ぶか、「画像を追加」でファイルを選んでください。';
+    const missingImage = 'クリップボードから画像データを取得できませんでした。';
     function revealPasteZone() {
       root.requestAnimationFrame(() => {
         if (alive && pasteZone.isConnected) pasteZone.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -294,13 +294,65 @@
     function isLocalImageSource(src) {
       return /^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(src) || /^blob:/i.test(src);
     }
+    function isRemoteImageSource(src) {
+      if (!/^https:\/\//i.test(src || '')) return false;
+      try {
+        const url = new root.URL(src);
+        return url.protocol === 'https:' && !!url.hostname && !url.username && !url.password;
+      } catch (_) { return false; }
+    }
+    function isImageSource(src) { return isLocalImageSource(src) || isRemoteImageSource(src); }
+    function extractSources(html, text = '') {
+      const sources = fromHTML(html).filter(isImageSource);
+      if (sources.length) return sources;
+      const plain = (text || '').trim();
+      return isImageSource(plain) ? [plain] : [];
+    }
+    const remoteUnavailable = '画像の提供元から直接取得できませんでした。画像を端末に保存し、「画像を追加」から選択してください。';
+    async function readRemoteImage(src) {
+      let response;
+      try {
+        response = await root.fetch(src, { mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' });
+      } catch (_) { throw Error(remoteUnavailable); }
+      if (!response.ok || response.type === 'opaque') throw Error(remoteUnavailable);
+      const type = (response.headers?.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (!/^image\/(?:png|jpeg|webp|gif)$/.test(type))
+        throw Error('貼り付けたリンクは対応する画像ファイルではありません。「画像を追加」から選択してください。');
+      const max = root.WordImages.MAX_BYTES;
+      if (Number(response.headers?.get('content-length') || 0) > max)
+        throw Error('画像は1枚20MB以下にしてください。');
+      const reader = response.body?.getReader?.();
+      if (!reader) {
+        let blob;
+        try { blob = await response.blob(); } catch (_) { throw Error(remoteUnavailable); }
+        if (blob.size > max) throw Error('画像は1枚20MB以下にしてください。');
+        return new root.Blob([blob], { type });
+      }
+      const chunks = [];
+      let bytes = 0;
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          bytes += value.byteLength;
+          if (bytes > max) {
+            await reader.cancel();
+            throw Error('画像は1枚20MB以下にしてください。');
+          }
+          chunks.push(value);
+        }
+      } catch (error) {
+        if (error?.message?.includes('20MB')) throw error;
+        throw Error(remoteUnavailable);
+      } finally { reader.releaseLock?.(); }
+      return new root.Blob(chunks, { type });
+    }
     async function readImageSources(sources) {
-      const images = await Promise.all(sources.filter(isLocalImageSource).map(async src => {
+      const images = await Promise.all(sources.filter(isImageSource).map(async src => {
         const blob = fromDataURL(src);
         if (blob) return blob;
-        if (new root.URL(src).protocol !== 'blob:') return null;
-        // Blob URLs resolve through the browser's own store and access checks.
-        // Never fetch an http(s) URL from pasted HTML, or re-encode the picture.
+        if (isRemoteImageSource(src)) return readRemoteImage(src);
+        // Blob URLs resolve only through the browser's own URL store.
         const response = await root.fetch(src, { credentials: 'omit' });
         if (!response.ok) throw Error(missingImage);
         return response.blob();
@@ -343,13 +395,20 @@
         catch (_) { report(nativeHint); revealPasteZone(); return; }
         const files = [];
         for (const item of items) {
-          const type = item.types.find(type => /^image\/(png|jpeg|webp|gif)$/i.test(type));
+          const types = Array.from(item.types || []);
+          const type = types.find(type => /^image\/(png|jpeg|webp|gif)$/i.test(type));
           if (type) {
-            try { files.push(await item.getType(type)); } catch (_) { report(nativeHint); revealPasteZone(); return; }
-          } else if (item.types.includes('text/html')) {
-            try { files.push(...await readImageSources(fromHTML(await (await item.getType('text/html')).text()))); }
+            try { files.push(await item.getType(type)); }
             catch (_) { report(nativeHint); revealPasteZone(); return; }
+            continue;
           }
+          let html = '', plain = '';
+          try {
+            if (types.includes('text/html')) html = await (await item.getType('text/html')).text();
+            const textType = types.find(type => type === 'text/uri-list' || type === 'text/plain');
+            if (textType) plain = await (await item.getType(textType)).text();
+          } catch (_) { report(nativeHint); revealPasteZone(); return; }
+          files.push(...await readImageSources(extractSources(html, plain)));
         }
         if (!files.length) { report(missingImage + ' ' + nativeHint); revealPasteZone(); return; }
         await saveFiles(files);
@@ -366,16 +425,22 @@
         enqueue(() => saveFiles(files)); return;
       }
       const html = readText(data, 'text/html');
-      if (html) {
-        let sources;
-        try { sources = fromHTML(html).filter(isLocalImageSource); }
-        catch (error) {
-          event.preventDefault(); event.stopPropagation(); report(error.message); return;
-        }
-        if (sources.length) {
-          event.preventDefault(); event.stopPropagation();
-          queueImageSources(sources); return;
-        }
+      const plain = readText(data, 'text/uri-list') || readText(data, 'text/plain');
+      // Chrome on iPhone can expose an image item before getAsFile() is usable.
+      // Allow the native editor to paste it instead of preemptively rejecting it.
+      if (inZone && Array.from(data?.items || []).some(item => item.kind === 'file')) {
+        event.stopPropagation();
+        consumeNativeInsertion();
+        root.setTimeout(() => {
+          if (alive && generation === pasteGeneration && !pasteZone.querySelectorAll('img').length)
+            report(missingImage + ' ' + nativeHint);
+        }, 900);
+        return;
+      }
+      const sources = extractSources(html, plain);
+      if (sources.length) {
+        event.preventDefault(); event.stopPropagation();
+        queueImageSources(sources); return;
       }
       if (!inZone) return; // Ordinary text paste in the meaning field is unchanged.
       const text = readText(data, 'text/plain') || readText(data, 'text/uri-list');
@@ -384,7 +449,7 @@
       }
       // Some iOS clipboard paths provide no readable DataTransfer. Allow native
       // insertion only in the dedicated field, then extract its local image bytes.
-      // A pasted external URL is never fetched by this application.
+      // Images are fetched only from an explicit paste, without credentials or referrer.
       event.stopPropagation();
       root.setTimeout(() => { if (alive && generation === pasteGeneration) report(nativeHint); }, 350);
     }
@@ -403,8 +468,9 @@
       const sources = pictures.map(img => img.getAttribute('src').trim());
       if (!sources.length && !pasteZone.textContent.trim()) return; // Ignore caret BRs.
       pasteGeneration++;
-      // Begin reading before removing the browser-created image elements.
-      if (sources.some(isLocalImageSource)) queueImageSources(sources);
+      // Start reading before removing the browser-created image elements.
+      const candidates = sources.length ? sources : extractSources('', pasteZone.textContent);
+      if (candidates.some(isImageSource)) queueImageSources(candidates);
       else report(missingImage + ' ' + nativeHint);
       pasteZone.replaceChildren();
     }
