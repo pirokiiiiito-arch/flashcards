@@ -231,3 +231,13 @@ test('image entry is in a dedicated footer after the stage and never inside the 
   assert.ok(!html.includes('back.append(bl,backContent,imageEntry)'));
   assert.ok(!html.includes('backContent.append(bt,imageArea,imageEntry)'));
 });
+
+
+test('opening image editing never opens the file picker automatically; explicit selection remains available', () => {
+  const html = read('index.html');
+  assert.ok(html.includes('imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit()};'));
+  assert.ok(!html.includes('startEdit();imageEditor?.choose()'));
+  const ui = read('word-images-ui.js');
+  assert.ok(ui.includes('add.onclick = choose;'));
+  assert.ok(ui.includes("pasteTarget.addEventListener('paste', pastedImages)"));
+});

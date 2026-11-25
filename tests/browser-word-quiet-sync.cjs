@@ -70,7 +70,17 @@ async function scenario(width,height){
   await until(()=>evaluate("!!document.querySelector('dialog [data-connect]')&&!document.querySelector('dialog [data-connect]').disabled"),'connect enabled');
   await evaluate("document.querySelector('dialog [data-connect]').click()");
   await until(()=>evaluate("WordDriveSync.status().status==='同期済み'&&!!document.querySelector('#wordNetworkProgress')&&!!window.WordDriveRecovery"),'initial sync');
-  await evaluate("document.querySelector('dialog [data-close]').click();const tail=document.createElement('div');tail.style.height='700px';document.body.append(tail);order=cards.map((_,i)=>i).reverse();isShuffled=true;pos=5;render();stage.querySelector('.card').classList.add('show-back');stage.querySelector('.back').scrollTop=60;stage.querySelectorAll('.card-actions button')[1].focus({preventScroll:true});window.scrollTo(0,180)");
+  // Count attempted native file input clicks without allowing a real file chooser
+  // to open. The footer must enter edit mode only; the separate picker remains explicit.
+  await evaluate("document.querySelector('dialog [data-close]').click();stage.querySelector('.card').classList.add('show-back');window.__wordPickerClicks=0;window.__wordPickerProbe=e=>{if(e.target.matches('input[type=file]')){__wordPickerClicks++;e.preventDefault()}};document.addEventListener('click',__wordPickerProbe,true);window.__wordBefore=JSON.stringify(cards);document.querySelector('.word-image-entry').click()");
+  await sleep(80);
+  assert.equal(await evaluate("editing&&!!stage.querySelector('.word-image-editor')&&!!stage.querySelector('.word-image-toolbar')"),true,'footer opens the image editor');
+  assert.equal(await evaluate("__wordPickerClicks"),0,'footer must not open a native file chooser');
+  await evaluate("stage.querySelector('.word-image-add').click()");
+  assert.equal(await evaluate("__wordPickerClicks"),1,'the explicit file selection button remains functional');
+  await evaluate("document.removeEventListener('click',__wordPickerProbe,true);[...stage.querySelectorAll('.card-actions button')].find(b=>b.textContent==='取消').click()");
+  assert.equal(await evaluate("!editing&&JSON.stringify(cards)===__wordBefore"),true,'cancel preserves original cards');
+  await evaluate("const tail=document.createElement('div');tail.style.height='700px';document.body.append(tail);order=cards.map((_,i)=>i).reverse();isShuffled=true;pos=5;render();stage.querySelector('.card').classList.add('show-back');stage.querySelector('.back').scrollTop=60;stage.querySelectorAll('.card-actions button')[1].focus({preventScroll:true});window.scrollTo(0,180)");
   await sleep(150);
   // The image button must be outside the visible card border, on the right,
   // without covering the hint. Exercise the real generated app on both widths.

@@ -529,7 +529,7 @@ function renderCard(item){
    side.onclick=e=>{e.stopPropagation();card.classList.toggle("show-back");label()};card.append(side);
    updateNav();setTimeout(()=>{if(card.isConnected)(card.classList.contains("show-back")?be:fe).focus()},30);
  }
- imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit();imageEditor?.choose()};
+ imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit()};
  async function saveEdit(){
    if(saving)return;
    saving=true;edit.disabled=true;del.disabled=true;
