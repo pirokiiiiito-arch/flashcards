@@ -261,8 +261,9 @@ test('native image paste field is real editable content and retains text paste i
   assert.ok(ui.includes('reportUnreadable(reason)'), 'clipboard diagnostics are available without persisting contents');
   assert.ok(ui.includes('recordClipboardItems(items)'), 'rich clipboard read path records only MIME types');
   assert.ok(ui.includes('pickInstead.onclick = () => choose()'), 'image file chooser is accessible after paste failures');
-  assert.ok(ui.includes("const PASTE_VERSION = 'paste7'"), 'paste build identifies a fresh script');
+  assert.ok(ui.includes("const PASTE_VERSION = 'paste8'"), 'paste build identifies a fresh script');
+  assert.ok(ui.includes("isIOSChrome ? 'ペースト欄へ' : '画像を貼り付け'"), 'iPhone Chrome action reflects native paste requirement');
   assert.ok(ui.includes('function clearPasteDiagnostic()'), 'diagnostic resets only explicitly');
   assert.ok(!/dismiss.hidden = !error;\s*pasteDiagnostic.hidden = true/.test(ui), 'status updates must not hide diagnostics');
-  assert.ok(html.includes('word-images-ui.js?v=20261126-paste7'));
+  assert.ok(html.includes('word-images-ui.js?v=20261126-paste8'));
 });
