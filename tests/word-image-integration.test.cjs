@@ -342,3 +342,48 @@ test('word back flip: tapping, editing and both save flows use the shared top-re
     'no old unguarded face switches should remain');
   assert.match(html, /if\(openBack\)resetWordBackScroll\(card\)/);
 });
+
+
+test('word back: native touch pan is not captured by card navigation in scroll content', () => {
+  const html = read('index.html');
+  assert.ok(html.includes('touch-action:pan-y;-webkit-overflow-scrolling:touch'));
+  const start = html.indexOf('card.addEventListener("pointerdown",e=>{');
+  const end = html.indexOf('\n card.addEventListener("pointermove"', start);
+  assert.ok(start > 0 && end > start, 'use the app’s actual card pointer handler');
+
+  let listener, captures = 0;
+  const context = {
+    editing: false, swipePointerId: null, touchTapHandled: true,
+    swipeStartX: 0, swipeStartY: 0, swipeMoved: false,
+    card: {
+      classList: { contains: name => name === 'show-back' },
+      addEventListener(name, fn) { if (name === 'pointerdown') listener = fn; },
+      setPointerCapture() { captures++; }
+    }
+  };
+  vm.runInNewContext(html.slice(start, end), context);
+  assert.equal(typeof listener, 'function');
+  const insideScroll = {
+    pointerType: 'touch', pointerId: 1, clientX: 30, clientY: 200,
+    target: {
+      closest(selector) { return selector === '.back-content' ? {} : null; }
+    }
+  };
+  listener(insideScroll);
+  assert.equal(captures, 0, 'native vertical scrolling owns back-content gestures');
+  assert.equal(context.swipePointerId, null);
+  assert.equal(context.touchTapHandled, false, 'a normal tap still reaches click');
+  listener({
+    ...insideScroll, pointerId: 2,
+    target: { closest() { return null; } }
+  });
+  assert.equal(captures, 1, 'card navigation outside the scroll region still works');
+  assert.equal(context.swipePointerId, 2);
+});
+
+test('word back: vertical touch pan is never cancelled as a tap', () => {
+  const html = read('index.html');
+  assert.ok(html.includes('if(isTouch&&(horizontal||simpleTap))e.preventDefault();'));
+  assert.ok(!html.includes('if(isTouch)e.preventDefault();'),
+    'unconditional preventDefault on touch pointerup disrupts iPhone scroll');
+});
