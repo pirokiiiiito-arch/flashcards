@@ -259,5 +259,7 @@ test('native image paste field is real editable content and retains text paste i
   assert.ok(ui.includes('await reader.cancel()'), 'oversized streamed images must be aborted');
   assert.ok(ui.includes('normalizeClipboardFile(file)'), 'unknown image MIME is inspected by signature');
   assert.ok(ui.includes('reportUnreadable(reason)'), 'clipboard diagnostics are available without persisting contents');
-  assert.ok(html.includes('word-images-ui.js?v=20261126-paste5'));
+  assert.ok(ui.includes('recordClipboardItems(items)'), 'rich clipboard read path records only MIME types');
+  assert.ok(ui.includes('pickInstead.onclick = () => choose()'), 'image file chooser is accessible after paste failures');
+  assert.ok(html.includes('word-images-ui.js?v=20261126-paste6'));
 });
