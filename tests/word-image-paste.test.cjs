@@ -250,7 +250,7 @@ test('clipboard.read() permissions error shows specific diagnostic', async () =>
   app.editor.destroy();
 });
 
-test('clipboard.read() image success leaves diagnostic hidden', async () => {
+test('clipboard.read() image success leaves version marker without failure message', async () => {
   const app = setup(async () => { throw Error('unexpected network'); }, {
     clipboard: { async read() {
       return [{ types: ['image/png'], async getType(type) { return new Blob(['synthetic fixture'], { type }); } }];
@@ -259,8 +259,36 @@ test('clipboard.read() image success leaves diagnostic hidden', async () => {
   app.panel.children.find(x => x.className === 'word-image-toolbar').children[1].onclick();
   await app.editor.ready();
   const diagnostic = app.panel.children.find(x => x.className.includes('word-image-paste-diagnostic'));
-  assert.equal(diagnostic.hidden, true);
+  assert.equal(diagnostic.hidden, false);
+  assert.match(diagnostic.textContent, /貼り付け機能 paste7/);
+  assert.doesNotMatch(diagnostic.textContent, /利用できる画像データが0件/);
   assert.equal(app.result.saves.length, 1);
   assert.equal(app.editor.getImages().length, 1);
+  app.editor.destroy();
+});
+
+test('paste7 build and device API capability are visible before any clipboard operation', async () => {
+  const app = setup(async () => { throw Error('unexpected network'); });
+  const diagnostic = app.panel.children.find(x => x.className.includes('word-image-paste-diagnostic'));
+  assert.equal(diagnostic.hidden, false);
+  assert.match(diagnostic.textContent, /貼り付け機能 paste7/);
+  assert.match(diagnostic.textContent, /画像API:非対応/);
+  assert.match(diagnostic.textContent, /文字API:非対応/);
+  assert.equal(app.result.saves.length, 0);
+  app.editor.destroy();
+});
+
+test('failed clipboard read keeps a visible diagnostic when ready() is called repeatedly', async () => {
+  const app = setup(async () => { throw Error('unexpected network'); }, {
+    clipboard: { async read() { return []; } }
+  });
+  app.panel.children.find(x => x.className === 'word-image-toolbar').children[1].onclick();
+  await app.editor.ready();
+  const diagnostic = app.panel.children.find(x => x.className.includes('word-image-paste-diagnostic'));
+  assert.match(diagnostic.textContent, /貼り付け診断 paste7/);
+  assert.equal(diagnostic.hidden, false);
+  await app.editor.ready();
+  assert.equal(diagnostic.hidden, false);
+  assert.match(diagnostic.textContent, /画像データが0件/);
   app.editor.destroy();
 });
