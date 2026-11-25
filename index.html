@@ -415,6 +415,24 @@ function stopSyncLoop(){if(syncTimer){clearInterval(syncTimer);syncTimer=null}}
 window.addEventListener("focus",()=>syncPull(false).catch(()=>{}));
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")syncPull(false).catch(()=>{})});
 
+/* Reset the scrollable back face every time it becomes visible.
+   A second reset after layout avoids restored hidden-element scroll offsets
+   on iPhone WebKit without changing the document's main scroll position. */
+function resetWordBackScroll(card){
+  const backContent=card.querySelector(".back-content"),back=card.querySelector(".back");
+  if(backContent)backContent.scrollTop=0;
+  if(back)back.scrollTop=0;
+  requestAnimationFrame(()=>{
+    if(!card.isConnected||!card.classList.contains("show-back"))return;
+    if(backContent)backContent.scrollTop=0;
+    if(back)back.scrollTop=0;
+  });
+}
+function flipWordCardFace(card){
+  const openBack=!card.classList.contains("show-back");
+  card.classList.toggle("show-back",openBack);
+  if(openBack)resetWordBackScroll(card);
+}
 function renderCard(item){
  const idx=currentIndex(),card=document.createElement("article");card.className="card";
  card.classList.toggle("with-images",!!item.images?.length);
@@ -479,7 +497,7 @@ function renderCard(item){
    }else if(isTouch&&simpleTap&&!editing){
      suppressClickUntil=Date.now()+900;
      touchTapHandled=true;
-     card.classList.toggle("show-back");
+     flipWordCardFace(card);
    }else if(swipeMoved){
      suppressClickUntil=Date.now()+500;
    }
@@ -495,7 +513,7 @@ function renderCard(item){
    if(editing||Date.now()<suppressClickUntil||touchTapHandled)return;
    if(e.target.closest("button,textarea,input,[data-image-ui]"))return;
    if(!allowAction("card-click-toggle",320))return;
-   card.classList.toggle("show-back");
+   flipWordCardFace(card);
  });
  card.addEventListener("selectstart",e=>{
    if(!editing&&!e.target.closest("textarea,input,[data-image-ui]"))e.preventDefault();
@@ -527,7 +545,7 @@ function renderCard(item){
    edit.textContent="保存";edit.classList.add("save");del.textContent="取消";add.hidden=true;
    const side=document.createElement("button");side.type="button";side.className="small card-face-switch";
    const label=()=>{side.textContent=card.classList.contains("show-back")?"表面を編集":"裏面を編集"};label();
-   side.onclick=e=>{e.stopPropagation();card.classList.toggle("show-back");label()};card.append(side);
+   side.onclick=e=>{e.stopPropagation();flipWordCardFace(card);label()};card.append(side);
    updateNav();if(focusImages)imageEditor.revealPasteZone();else setTimeout(()=>{if(card.isConnected)(card.classList.contains("show-back")?be:fe).focus()},30);
  }
  imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit(true)};
@@ -546,7 +564,7 @@ function renderCard(item){
      }
      const previous=cards[idx],keepBack=card.classList.contains("show-back");cards[idx]=changed;
      try{saveCards()}catch(err){cards[idx]=previous;throw err}
-     lastCloudFingerprint="";render();if(keepBack)stage.querySelector(".card")?.classList.add("show-back");
+     lastCloudFingerprint="";render();if(keepBack){const shown=stage.querySelector(".card");if(shown){shown.classList.add("show-back");resetWordBackScroll(shown)}}
    }catch(err){alert(err.message)}finally{saving=false;edit.disabled=false;del.disabled=false}
  }
 }
@@ -564,7 +582,7 @@ function showDraft(){
  let saving=false;
  const imageEditor=WordImageUI.edit(imageArea,[],{pasteTarget:back,onBusy:busy=>{s.disabled=busy||saving}});disposeCardImages=()=>imageEditor.destroy();
  const side=document.createElement("button");side.type="button";side.className="small card-face-switch";side.textContent="裏面を編集";
- const flip=()=>{card.classList.toggle("show-back");side.textContent=card.classList.contains("show-back")?"表面を編集":"裏面を編集"};
+ const flip=()=>{flipWordCardFace(card);side.textContent=card.classList.contains("show-back")?"表面を編集":"裏面を編集"};
  side.onclick=e=>{e.stopPropagation();flip()};card.append(side);
  be.oninput=()=>applyBackClasses(back,be.value);card.onclick=e=>{if(!e.target.closest("button,textarea,input,[data-image-ui]"))flip()};
  s.onclick=async e=>{
@@ -577,7 +595,7 @@ function showDraft(){
      if(cloudSession&&!wordDrivePrimary()){const ins=await cloudInsert([item]);if(ins?.[0])item={id:ins[0].id,word:ins[0].word,meaning:ins[0].meaning,sort_order:Number(ins[0].sort_order)||item.sort_order,updated_at:ins[0].updated_at||item.updated_at}}
      const keepBack=card.classList.contains("show-back");cards.push(item);
      try{saveCards()}catch(err){cards.pop();throw err}
-     rebuildOrder();pos=cards.length-1;lastCloudFingerprint="";render();if(keepBack)stage.querySelector(".card")?.classList.add("show-back");
+     rebuildOrder();pos=cards.length-1;lastCloudFingerprint="";render();if(keepBack){const shown=stage.querySelector(".card");if(shown){shown.classList.add("show-back");resetWordBackScroll(shown)}}
    }catch(err){alert(err.message)}finally{saving=false;s.disabled=false;c.disabled=false}
  };
  c.onclick=e=>{e.stopPropagation();render()};updateNav();setTimeout(()=>fe.focus(),30)
