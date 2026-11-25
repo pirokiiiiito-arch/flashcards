@@ -39,8 +39,8 @@ class Element {
     walk(this);
     return out;
   }
-  focus() {}
-  scrollIntoView() {}
+  focus() { this.focused = true; }
+  scrollIntoView() { this.scrolledIntoView = true; }
   remove() {}
   click() {}
 }
@@ -54,11 +54,11 @@ class Template extends Element {
     };
   }
 }
-function setup(fetchImage, { clipboard } = {}) {
+function setup(fetchImage, { clipboard, userAgent } = {}) {
   const result = { saves: [], network: [] };
   const root = {
     Blob, URL, atob,
-    navigator: clipboard ? { clipboard } : {},
+    navigator: { ...(clipboard ? { clipboard } : {}), ...(userAgent ? { userAgent } : {}) },
     WordImages: {
       MAX_BYTES: 20 * 1024 * 1024,
       normalizeImages: images => images || [],
@@ -290,5 +290,42 @@ test('failed clipboard read keeps a visible diagnostic when ready() is called re
   await app.editor.ready();
   assert.equal(diagnostic.hidden, false);
   assert.match(diagnostic.textContent, /画像データが0件/);
+  app.editor.destroy();
+});
+
+test('iPhone Chrome button focuses native paste field, avoiding unsupported automatic clipboard reads', async () => {
+  let readCalls = 0;
+  const app = setup(async () => { throw Error('No network requests expected'); }, {
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1',
+    clipboard: { async read() { readCalls++; throw Error('iOS denied image clipboard'); } }
+  });
+  const pasteButton = app.panel.children.find(el => el.className === 'word-image-toolbar').children[1];
+  assert.equal(pasteButton.textContent, 'ペースト欄へ');
+  pasteButton.onclick();
+  await app.editor.ready();
+  const status = app.panel.children.find(el => el.className === 'word-image-feedback').children[0];
+  assert.match(status.textContent, /長押しし、「ペースト」/);
+  assert.equal(app.zone.focused, true);
+  assert.equal(app.zone.scrolledIntoView, true);
+  assert.equal(readCalls, 0, 'iOS Chrome must use native paste rather than a denied clipboard API');
+  assert.equal(app.editor.getImages().length, 0, 'tapping shortcut does not fake image insertion');
+  const diagnostic = app.panel.children.find(el => el.className.includes('word-image-paste-diagnostic'));
+  assert.doesNotMatch(diagnostic.textContent, /読み取りが拒否されました|画像データが0件/);
+  app.editor.destroy();
+});
+
+test('native paste still saves an image after tapping the iPhone Chrome paste-field shortcut', async () => {
+  const app = setup(async () => { throw Error('No network request expected'); }, {
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) CriOS/130.0 Safari/604.1',
+    clipboard: { async read() { throw Error('Direct read must not be invoked'); } }
+  });
+  const button = app.panel.children.find(el => el.className === 'word-image-toolbar').children[1];
+  button.onclick();
+  const file = new Blob(['synthetic image data'], { type: 'image/png' });
+  const prevented = app.paste({ items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }] });
+  await app.editor.ready();
+  assert.equal(prevented(), true);
+  assert.equal(app.result.saves.length, 1);
+  assert.equal(app.editor.getImages().length, 1);
   app.editor.destroy();
 });
