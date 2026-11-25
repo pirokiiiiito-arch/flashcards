@@ -235,9 +235,23 @@ test('image entry is in a dedicated footer after the stage and never inside the 
 
 test('opening image editing never opens the file picker automatically; explicit selection remains available', () => {
   const html = read('index.html');
-  assert.ok(html.includes('imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit()};'));
+  assert.ok(html.includes('imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit(true)};'));
   assert.ok(!html.includes('startEdit();imageEditor?.choose()'));
   const ui = read('word-images-ui.js');
   assert.ok(ui.includes('add.onclick = choose;'));
   assert.ok(ui.includes("pasteTarget.addEventListener('paste', pastedImages)"));
+});
+
+
+test('native image paste field is real editable content and retains text paste in the meaning field', () => {
+  const html = read('index.html'), ui = read('word-images-ui.js'), css = read('word-images.css');
+  assert.ok(html.includes('startEdit(true)'));
+  assert.ok(html.includes('if(focusImages)imageEditor.revealPasteZone()'));
+  assert.ok(ui.includes("pasteZone.contentEditable = 'true'"));
+  assert.ok(ui.includes("pasteZone.addEventListener('input', consumeNativeInsertion)"));
+  assert.ok(ui.includes("pasteObserver.observe(pasteZone"));
+  assert.ok(ui.includes("if (!inZone) return;"));
+  assert.ok(ui.includes("document.createElement('template')"));
+  assert.ok(css.includes('-webkit-touch-callout:default'));
+  assert.ok(html.includes('word-images-ui.js?v=20261126-paste2'));
 });

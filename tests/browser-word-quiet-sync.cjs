@@ -76,6 +76,21 @@ async function scenario(width,height){
   await sleep(80);
   assert.equal(await evaluate("editing&&!!stage.querySelector('.word-image-editor')&&!!stage.querySelector('.word-image-toolbar')"),true,'footer opens the image editor');
   assert.equal(await evaluate("__wordPickerClicks"),0,'footer must not open a native file chooser');
+  // Simulate the clipboard payloads in Chromium, including a denied async read.
+  // This is not a physical iPhone or a native iOS paste-menu test.
+  assert.equal(await evaluate("!!stage.querySelector('.word-image-paste-zone')?.isContentEditable"),true);
+  await evaluate("(async()=>{const c=document.createElement('canvas');c.width=c.height=2;c.getContext('2d').fillRect(0,0,2,2);window.__pasteDataURL=c.toDataURL('image/png');const blob=await new Promise(r=>c.toBlob(r,'image/png'));const dt=new DataTransfer();dt.items.add(new File([blob],'fixture.png',{type:'image/png'}));stage.querySelector('.word-image-paste-zone').dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
+  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===1&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'"),'image file paste');
+  await evaluate("(()=>{const dt=new DataTransfer();dt.setData('text/html','<img src=\"'+__pasteDataURL+'\">');stage.querySelector('.word-image-paste-zone').dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
+  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===2&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'"),'embedded HTML image paste');
+  await evaluate("(()=>{const zone=stage.querySelector('.word-image-paste-zone'),img=document.createElement('img');img.src=__pasteDataURL;zone.append(img);zone.dispatchEvent(new InputEvent('input',{inputType:'insertFromPaste',bubbles:true}))})()");
+  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===3&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'"),'native inserted image recovery');
+  await evaluate("(()=>{const zone=stage.querySelector('.word-image-paste-zone'),dt=new DataTransfer();dt.setData('text/plain','https://example.invalid/picture.png');zone.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
+  assert.equal(await evaluate("stage.querySelectorAll('.word-image-edit-item').length===3&&stage.querySelector('.word-image-status').textContent.includes('画像本体がありません')"),true,'URL alone is not an image');
+  await evaluate("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{read:()=>Promise.reject(new DOMException('denied','NotAllowedError'))}});stage.querySelector('.word-image-paste-button').click()");
+  await until(()=>evaluate("stage.querySelector('.word-image-status').textContent.includes('長押し')&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'"),'permission denial fallback');
+  await evaluate("delete navigator.clipboard");
+
   await evaluate("stage.querySelector('.word-image-add').click()");
   assert.equal(await evaluate("__wordPickerClicks"),1,'the explicit file selection button remains functional');
   await evaluate("document.removeEventListener('click',__wordPickerProbe,true);[...stage.querySelectorAll('.card-actions button')].find(b=>b.textContent==='取消').click()");

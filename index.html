@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#2f66e8">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
-<link rel="stylesheet" href="./word-images.css?v=20261126-images1">
+<link rel="stylesheet" href="./word-images.css?v=20261126-paste2">
 <script src="./word-images.js?v=20261126-images1"></script>
-<script src="./word-images-ui.js?v=20261126-images1"></script>
+<script src="./word-images-ui.js?v=20261126-paste2"></script>
 <title>単語帳</title>
 <style>
 :root{--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--border:#d9e1ec;--accent:#2f66e8;--soft:#edf2f8;--green:#2e9d57}
@@ -514,7 +514,7 @@ function renderCard(item){
    }
  };
  let fe=null,be=null,saving=false;
- function startEdit(){
+ function startEdit(focusImages=false){
    if(imageError){alert(imageError.message);return}
    editing=true;card.classList.add("is-editing","with-images");
    fe=document.createElement("textarea");fe.className="editor";fe.value=item.word;fe.setAttribute("aria-label","表の単語");
@@ -527,9 +527,9 @@ function renderCard(item){
    const side=document.createElement("button");side.type="button";side.className="small card-face-switch";
    const label=()=>{side.textContent=card.classList.contains("show-back")?"表面を編集":"裏面を編集"};label();
    side.onclick=e=>{e.stopPropagation();card.classList.toggle("show-back");label()};card.append(side);
-   updateNav();setTimeout(()=>{if(card.isConnected)(card.classList.contains("show-back")?be:fe).focus()},30);
+   updateNav();if(focusImages)imageEditor.revealPasteZone();else setTimeout(()=>{if(card.isConnected)(card.classList.contains("show-back")?be:fe).focus()},30);
  }
- imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit()};
+ imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit(true)};
  async function saveEdit(){
    if(saving)return;
    saving=true;edit.disabled=true;del.disabled=true;

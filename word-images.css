@@ -44,3 +44,11 @@
  .word-image-dialog{padding:12px;width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:14px}
  .word-image-dialog-bar{top:-12px;margin:-12px -12px 12px;padding:10px 12px}
 }
+
+/* The iPhone native paste target must remain selectable despite the card's
+   study-mode gesture suppression. It contains no permanent pasted markup. */
+.card.is-editing,.card.is-editing .editor,.word-image-paste-zone{-webkit-touch-callout:default}
+.word-image-paste-zone{display:block;min-height:52px;width:100%;margin:8px 0 12px;padding:13px 12px;border:2px dashed #96b4ed;border-radius:12px;background:#fff;color:#2458b3;font-size:16px;font-weight:600;line-height:1.4;text-align:center;overflow-wrap:anywhere;cursor:text;user-select:text;-webkit-user-select:text;-webkit-touch-callout:default;touch-action:auto}
+.word-image-paste-zone:empty::before{content:attr(data-placeholder);color:#63758d;pointer-events:none}
+.word-image-paste-zone:focus{outline:2px solid #2f66e8;outline-offset:2px;border-style:solid}
+.word-image-paste-zone img{max-width:100%;max-height:100px;object-fit:contain}

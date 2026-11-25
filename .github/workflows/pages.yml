@@ -261,7 +261,7 @@ jobs:
         uses: actions/deploy-pages@v4
       - name: Checkout the exact deployed source for public URL evidence
         uses: actions/checkout@v4
-      - name: Verify published word image editor opens without an automatic file picker
+      - name: Verify published word image editor and native paste field
         run: |
           python3 - <<'PY'
           import time
@@ -271,17 +271,19 @@ jobs:
           # Verify the actual deployed entries, not just the repository source.
           expected = [
               'data-word-image-footer="outside-v1"',
+              'word-images-ui.js?v=20261126-paste2',
               'back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);',
-              'imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit()};',
+              'imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit(true)};',
           ]
-          for path in ('', 'word-sync-v2.html'):
+          for path in ('', 'word-sync-v2.html', 'word-images-ui.js'):
               url = 'https://pirokiiiiito-arch.github.io/flashcards/' + path + '?release=' + environ['GITHUB_SHA']
               for attempt in range(10):
                   try:
                       req = urllib.request.Request(url, headers={'Cache-Control': 'no-cache'})
                       with urllib.request.urlopen(req, timeout=15) as res:
                           html = res.read().decode('utf-8')
-                          if res.status == 200 and all(marker in html for marker in expected) and 'startEdit();imageEditor?.choose()' not in html:
+                          markers = expected if path != 'word-images-ui.js' else ["pasteZone.contentEditable = 'true'", 'function consumeNativeInsertion()', 'function pastedImages(event)']
+                          if res.status == 200 and all(marker in html for marker in markers) and 'startEdit();imageEditor?.choose()' not in html:
                               print('PASS published word footer:', url)
                               break
                   except Exception as exc:
