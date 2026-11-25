@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
+  const PASTE_VERSION = 'paste7';
   const copy = images => root.WordImages.normalizeImages(images).map(image => ({ ...image }));
   const stop = event => event.stopPropagation();
   const make = (tag, className, text) => {
@@ -178,8 +179,12 @@
     status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
     const dismiss = button('閉じる', 'word-image-dismiss'); dismiss.hidden = true;
     feedback.append(status, dismiss);
+    const apiAvailability = '画像API:' + (typeof root.navigator?.clipboard?.read === 'function' ? '利用可' : '非対応')
+      + ' ／ 文字API:' + (typeof root.navigator?.clipboard?.readText === 'function' ? '利用可' : '非対応');
     const pasteDiagnostic = make('p', 'word-image-help word-image-paste-diagnostic');
-    pasteDiagnostic.hidden = true;
+    // Show the build marker throughout editing so stale WebView cache is visible.
+    pasteDiagnostic.textContent = '貼り付け機能 ' + PASTE_VERSION + ' ／ ' + apiAvailability + ' ／ コピーした内容は記録しません';
+    pasteDiagnostic.hidden = false;
     const pickInstead = button('写真・ファイルから追加', 'word-image-add word-image-pick-instead');
     pickInstead.hidden = true;
     pickInstead.onclick = () => choose();
@@ -189,10 +194,15 @@
     function report(message, error = null) {
       if (!alive) return;
       lastError = error;
-      status.textContent = message;
+      // Never erase a diagnostic merely because another async status update arrived.
+      status.textContent = message && message.includes('クリップボードから画像データを取得できませんでした')
+        ? message + ' ［' + PASTE_VERSION + '］' : message;
       status.classList.toggle('word-image-error', !!error);
       dismiss.hidden = !error;
-      pasteDiagnostic.hidden = true;
+    }
+    function clearPasteDiagnostic() {
+      pasteDiagnostic.textContent = '貼り付け機能 ' + PASTE_VERSION + ' ／ ' + apiAvailability + ' ／ コピーした内容は記録しません';
+      pasteDiagnostic.hidden = false;
       pickInstead.hidden = true;
     }
     function updateBusy() {
@@ -253,12 +263,13 @@
       if (!alive) return;
       if (at >= 0) draft = draft.map((image, index) => index === at ? stored[0] : image);
       else draft = draft.concat(stored);
+      clearPasteDiagnostic();
       report((at >= 0 ? '画像を差し替えました。' : stored.length + '枚の画像を追加しました。') + '「保存」で確定します。');
       redraw(); options.onChange?.(copy(draft));
     }
     function choose() {
       if (!alive || busy) return;
-      picker.value = ''; picker.click();
+      clearPasteDiagnostic(); picker.value = ''; picker.click();
     }
     add.onclick = choose;
     picker.onchange = () => {
@@ -271,7 +282,7 @@
       replaceAt = -1; replacePicker.value = '';
       if (file && at >= 0) enqueue(() => saveFiles([file], at));
     };
-    dismiss.onclick = () => report('');
+    dismiss.onclick = () => { clearPasteDiagnostic(); report(''); };
     const nativeHint = '下の欄を長押しして「ペースト」を選ぶか、「画像を追加」でファイルを選んでください。';
     const missingImage = 'クリップボードから画像データを取得できませんでした。';
     let lastClipboardTypes = '取得できた形式情報なし';
@@ -283,7 +294,7 @@
     }
     function reportUnreadable(reason) {
       report(missingImage + ' ' + nativeHint);
-      pasteDiagnostic.textContent = '貼り付け診断（内容は記録しません）：' + lastClipboardTypes + ' ／ ' + reason;
+      pasteDiagnostic.textContent = '貼り付け診断 ' + PASTE_VERSION + '（内容は記録しません）：' + apiAvailability + ' ／ ' + lastClipboardTypes + ' ／ ' + reason;
       pasteDiagnostic.hidden = false;
       pickInstead.hidden = false;
     }
@@ -433,6 +444,7 @@
     }
     paste.onclick = () => {
       if (!alive || busy) return;
+      clearPasteDiagnostic();
       pasteGeneration++;
       if (!root.navigator.clipboard?.read) {
         let textRead;
@@ -491,6 +503,7 @@
       const generation = ++pasteGeneration;
       const inZone = pasteZone.contains(event.target);
       const data = event.clipboardData;
+      if (inZone) clearPasteDiagnostic();
       rememberClipboardTypes(data);
       const files = clipboardFiles(data);
       if (files.length) {
