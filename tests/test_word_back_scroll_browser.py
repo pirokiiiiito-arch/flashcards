@@ -1,0 +1,132 @@
+"""Real mobile Chromium regression for the word-card back's native scrolling.
+
+Synthetic cards only. Uses the app's actual inline stylesheet and pointerdown
+listener, never a user's locally stored cards or remote services.
+"""
+import re
+import shutil
+import unittest
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def fixture_html():
+    source = (ROOT / "index.html").read_text(encoding="utf-8")
+    css = re.search(r"<style>(.*?)</style>", source, re.S)
+    if not css:
+        raise AssertionError("Missing actual word-card inline stylesheet")
+    start = source.index("function resetWordBackScroll(card){")
+    end = source.index("\nfunction renderCard(item){", start)
+    flip_helpers = source[start:end]
+    start = source.index('card.addEventListener("pointerdown",e=>{')
+    end = source.index('\n card.addEventListener("pointermove"', start)
+    pointer_handler = source[start:end]
+    cards = "\n".join(
+        '<figure class="word-image-item"><button type="button" '
+        'class="word-image-button word-image-open">'
+        '<div class="word-image-picture" '
+        'style="width:100%;height:260px;background:#dde4ed"></div>'
+        '<span class="word-image-zoom-hint">タップで拡大</span>'
+        '</button></figure>'
+        for _ in range(3)
+    )
+    script = """
+const card = document.querySelector('#test-card');
+let editing=false, swipePointerId=null, swipeStartX=0, swipeStartY=0;
+let swipeMoved=false, touchTapHandled=true;
+window.__captures=0;
+const nativeCapture=card.setPointerCapture.bind(card);
+card.setPointerCapture=id=>{__captures++;return nativeCapture(id)};
+""" + flip_helpers + "\n" + pointer_handler
+    return f"""<!doctype html><html lang="ja"><head>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>{css.group(1)}</style>
+<link rel="stylesheet" href="data:text/css,.word-image-picture{{height:260px}}">
+<style>
+#test-back-content{{padding-left:14px;padding-right:8px}}
+</style></head><body><div class="wrap">
+<div class="stage"><article id="test-card" class="card with-images show-back">
+<div class="face front"><div class="card-text">表面</div></div>
+<div class="face back"><div class="face-label">裏・意味</div>
+<div class="back-content" id="test-back-content">
+<div class="card-text" style="font-size:20px">画像が3枚あるカード</div>
+<div data-image-ui class="word-image-gallery">{cards}</div>
+</div></div></article></div></div><script>{script}</script></body></html>"""
+
+
+def swipe_up(page, cdp):
+    box = page.locator("#test-back-content").bounding_box()
+    assert box is not None, "scroll container has no layout box"
+    x = box["x"] + 5  # Touch the scroll container, not an image button.
+    y = box["y"] + box["height"] * 0.72
+    cdp.send("Input.dispatchTouchEvent", {
+        "type": "touchStart", "touchPoints": [{"x": x, "y": y, "id": 1}]
+    })
+    for step in range(1, 8):
+        cdp.send("Input.dispatchTouchEvent", {
+            "type": "touchMove",
+            "touchPoints": [{"x": x, "y": y - step * 35, "id": 1}]
+        })
+        page.wait_for_timeout(35)
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+    page.wait_for_timeout(350)
+    return page.evaluate("document.querySelector('#test-back-content').scrollTop")
+
+
+class WordBackNativeScrollTest(unittest.TestCase):
+    def test_native_swipe_remains_available_after_back_is_reset(self):
+        with sync_playwright() as playwright:
+            chrome = shutil.which("google-chrome") or shutil.which("chromium")
+            launch_options = {"headless": True, "args": ["--no-sandbox"]}
+            if chrome:
+                launch_options["executable_path"] = chrome
+            browser = playwright.chromium.launch(**launch_options)
+            try:
+                context = browser.new_context(
+                    viewport={"width": 390, "height": 760},
+                    device_scale_factor=1, is_mobile=True, has_touch=True,
+                )
+                page = context.new_page()
+                page.set_content(fixture_html(), wait_until="load")
+                dimensions = page.evaluate("""() => {
+                  const el=document.querySelector('#test-back-content');
+                  return {
+                    client:el.clientHeight, scroll:el.scrollHeight,
+                    touchAction:getComputedStyle(el).touchAction
+                  };
+                }""")
+                self.assertGreater(dimensions["scroll"] - dimensions["client"], 200)
+                self.assertEqual(dimensions["touchAction"], "pan-y")
+
+                # A touch on empty space inside the scrollable face must NOT
+                # start the card-wide swipe handler or capture its pointer.
+                cdp = context.new_cdp_session(page)
+                first = swipe_up(page, cdp)
+                self.assertGreater(first, 40, "first native vertical swipe must scroll")
+                self.assertEqual(page.evaluate("__captures"), 0)
+
+                page.evaluate("flipWordCardFace(card);flipWordCardFace(card)")
+                page.wait_for_timeout(70)
+                self.assertEqual(
+                    page.evaluate("document.querySelector('#test-back-content').scrollTop"),
+                    0, "front-to-back must reopen at the beginning",
+                )
+                second = swipe_up(page, cdp)
+                self.assertGreater(second, 40, "second native swipe must still scroll")
+                self.assertEqual(page.evaluate("__captures"), 0)
+                page.evaluate("flipWordCardFace(card);flipWordCardFace(card)")
+                page.wait_for_timeout(70)
+                self.assertEqual(
+                    page.evaluate("document.querySelector('#test-back-content').scrollTop"),
+                    0, "every later front-to-back flip must also reset",
+                )
+            finally:
+                browser.close()
+
+
+if __name__ == "__main__":
+    unittest.main()
