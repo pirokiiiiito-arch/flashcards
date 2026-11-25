@@ -170,7 +170,7 @@
     pasteZone.setAttribute('role', 'textbox');
     pasteZone.setAttribute('aria-label', '画像専用の貼り付け欄');
     pasteZone.setAttribute('data-placeholder', 'ここを長押ししてペースト');
-    pasteZone.setAttribute('inputmode', 'none');
+    // Do not force inputmode=none: iOS WebKit sometimes suppresses its native Paste action.
     pasteZone.spellcheck = false;
     pasteZone.tabIndex = 0;
     const feedback = make('div', 'word-image-feedback');
@@ -178,8 +178,10 @@
     status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
     const dismiss = button('閉じる', 'word-image-dismiss'); dismiss.hidden = true;
     feedback.append(status, dismiss);
+    const pasteDiagnostic = make('p', 'word-image-help word-image-paste-diagnostic');
+    pasteDiagnostic.hidden = true;
     const gallery = make('div', 'word-image-edit-gallery');
-    panel.append(heading, toolbar, picker, replacePicker, pasteHint, pasteZone, hint, feedback, gallery);
+    panel.append(heading, toolbar, picker, replacePicker, pasteHint, pasteZone, hint, feedback, pasteDiagnostic, gallery);
     container.appendChild(panel);
     function report(message, error = null) {
       if (!alive) return;
@@ -187,6 +189,7 @@
       status.textContent = message;
       status.classList.toggle('word-image-error', !!error);
       dismiss.hidden = !error;
+      pasteDiagnostic.hidden = true;
     }
     function updateBusy() {
       if (!alive) return;
@@ -267,6 +270,18 @@
     dismiss.onclick = () => report('');
     const nativeHint = '下の欄を長押しして「ペースト」を選ぶか、「画像を追加」でファイルを選んでください。';
     const missingImage = 'クリップボードから画像データを取得できませんでした。';
+    let lastClipboardTypes = '取得できた形式情報なし';
+    function rememberClipboardTypes(data) {
+      const types = new Set(Array.from(data?.types || []));
+      for (const item of Array.from(data?.items || []))
+        types.add((item.kind || '不明') + ':' + (item.type || '種類不明'));
+      lastClipboardTypes = Array.from(types).slice(0, 8).join(', ') || '取得できた形式情報なし';
+    }
+    function reportUnreadable(reason) {
+      report(missingImage + ' ' + nativeHint);
+      pasteDiagnostic.textContent = '貼り付け診断（内容は記録しません）：' + lastClipboardTypes + ' ／ ' + reason;
+      pasteDiagnostic.hidden = false;
+    }
     function revealPasteZone() {
       root.requestAnimationFrame(() => {
         if (alive && pasteZone.isConnected) pasteZone.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -372,8 +387,28 @@
     }
     function clipboardFiles(data) {
       const entries = Array.from(data?.items || []).filter(item => item.kind === 'file');
-      const files = entries.map(item => item.getAsFile()).filter(file => file && /^image\//i.test(file.type));
-      return files.length ? files : Array.from(data?.files || []).filter(file => /^image\//i.test(file.type));
+      const files = entries.map(item => {
+        try { return item.getAsFile?.(); } catch (_) { return null; }
+      }).filter(file => file && (!file.type || /^image\//i.test(file.type) || file.type === 'application/octet-stream'));
+      return files.length ? files : Array.from(data?.files || [])
+        .filter(file => file && (!file.type || /^image\//i.test(file.type) || file.type === 'application/octet-stream'));
+    }
+    async function normalizeClipboardFile(file) {
+      if (/^image\/(?:png|jpeg|webp|gif)$/i.test(file.type || '')) return file;
+      // Preserve original bytes. Some iOS clipboard PNGs have an empty MIME type.
+      const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+      const ascii = start => String.fromCharCode(...header.subarray(start, start + 4));
+      let type = '';
+      if (header.length >= 8 && [137, 80, 78, 71, 13, 10, 26, 10].every((b, i) => header[i] === b)) type = 'image/png';
+      else if (header.length >= 3 && header[0] === 255 && header[1] === 216 && header[2] === 255) type = 'image/jpeg';
+      else if (ascii(0) === 'GIF8' && (header[4] === 55 || header[4] === 57) && header[5] === 97) type = 'image/gif';
+      else if (ascii(0) === 'RIFF' && ascii(8) === 'WEBP') type = 'image/webp';
+      if (!type) throw Error('コピーされた画像の形式を読み取れません。画像を端末に保存して「画像を追加」から選択してください。');
+      const ext = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/gif': '.gif' }[type];
+      const name = (file.name || '').trim() || ('貼り付け画像' + ext);
+      return typeof root.File === 'function'
+        ? new root.File([file], name, { type })
+        : new root.Blob([file], { type });
     }
     function readText(data, type) {
       try { return data?.getData(type) || ''; } catch (_) { return ''; }
@@ -382,7 +417,24 @@
       if (!alive || busy) return;
       pasteGeneration++;
       if (!root.navigator.clipboard?.read) {
-        pasteZone.focus({ preventScroll: true }); revealPasteZone(); report(nativeHint);
+        let textRead;
+        try { textRead = root.navigator.clipboard?.readText?.(); } catch (_) {}
+        if (!textRead) {
+          pasteZone.focus({ preventScroll: true }); revealPasteZone(); report(nativeHint);
+          return;
+        }
+        enqueue(async () => {
+          let value;
+          try { value = await textRead; }
+          catch (_) { pasteZone.focus({ preventScroll: true }); revealPasteZone(); report(nativeHint); return; }
+          const sources = extractSources('', value);
+          if (!sources.length) {
+            lastClipboardTypes = '文字列のみ、または空';
+            reportUnreadable('Chromeから画像本体が渡されていません');
+            pasteZone.focus({ preventScroll: true }); revealPasteZone(); return;
+          }
+          await saveFiles(await readImageSources(sources));
+        });
         return;
       }
       // Start within the original button gesture; no delayed clipboard read.
@@ -419,10 +471,11 @@
       const generation = ++pasteGeneration;
       const inZone = pasteZone.contains(event.target);
       const data = event.clipboardData;
+      rememberClipboardTypes(data);
       const files = clipboardFiles(data);
       if (files.length) {
         event.preventDefault(); event.stopPropagation();
-        enqueue(() => saveFiles(files)); return;
+        enqueue(async () => saveFiles(await Promise.all(files.map(normalizeClipboardFile)))); return;
       }
       const html = readText(data, 'text/html');
       const plain = readText(data, 'text/uri-list') || readText(data, 'text/plain');
@@ -433,7 +486,7 @@
         consumeNativeInsertion();
         root.setTimeout(() => {
           if (alive && generation === pasteGeneration && !pasteZone.querySelectorAll('img').length)
-            report(missingImage + ' ' + nativeHint);
+            reportUnreadable('画像ファイル項目はありますが、画像の中身を取得できません')
         }, 900);
         return;
       }
@@ -443,15 +496,15 @@
         queueImageSources(sources); return;
       }
       if (!inZone) return; // Ordinary text paste in the meaning field is unchanged.
-      const text = readText(data, 'text/plain') || readText(data, 'text/uri-list');
-      if (html || text || (data && (data.files?.length || data.items?.length))) {
-        event.preventDefault(); event.stopPropagation(); report(missingImage); return;
-      }
-      // Some iOS clipboard paths provide no readable DataTransfer. Allow native
-      // insertion only in the dedicated field, then extract its local image bytes.
-      // Images are fetched only from an explicit paste, without credentials or referrer.
+      // Unknown clipboard types can still contain a native image on iOS.
+      // Allow the editable host to receive that image before reporting failure.
       event.stopPropagation();
-      root.setTimeout(() => { if (alive && generation === pasteGeneration) report(nativeHint); }, 350);
+      root.setTimeout(() => {
+        if (!alive || generation !== pasteGeneration) return;
+        readNativeInsertion();
+        if (generation === pasteGeneration)
+          reportUnreadable('標準の貼り付けでも画像本体が挿入されません');
+      }, 900);
     }
     let nativeInsertionTimer = null;
     function consumeNativeInsertion() {
@@ -471,13 +524,13 @@
       // Start reading before removing the browser-created image elements.
       const candidates = sources.length ? sources : extractSources('', pasteZone.textContent);
       if (candidates.some(isImageSource)) queueImageSources(candidates);
-      else report(missingImage + ' ' + nativeHint);
+      else {
+        const scheme = sources.length ? sources[0].split(':', 1)[0] : '画像要素なし';
+        reportUnreadable('ブラウザーが取り出せない形式: ' + scheme);
+      }
       pasteZone.replaceChildren();
     }
-    function restrictTyping(event) {
-      if (event.inputType && !event.inputType.startsWith('insertFromPaste')) event.preventDefault();
-    }
-    pasteZone.addEventListener('beforeinput', restrictTyping);
+    // Do not block beforeinput: iOS may label an image insertion as insertText.
     pasteZone.addEventListener('input', consumeNativeInsertion);
     const pasteObserver = new root.MutationObserver(consumeNativeInsertion);
     pasteObserver.observe(pasteZone, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
@@ -518,7 +571,6 @@
         root.clearTimeout(nativeInsertionTimer);
         pasteTarget.removeEventListener('paste', pastedImages);
         pasteObserver.disconnect();
-        pasteZone.removeEventListener('beforeinput', restrictTyping);
         pasteZone.removeEventListener('input', consumeNativeInsertion);
         panel.removeEventListener('dragover', dragOver);
         panel.removeEventListener('dragleave', dragLeave);
