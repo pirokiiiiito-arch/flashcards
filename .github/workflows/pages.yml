@@ -273,6 +273,8 @@ jobs:
               'data-word-image-footer="outside-v1"',
               'word-images-ui.js?v=20261126-paste8',
               'back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);',
+              'function resetWordBackScroll(card){',
+              'function flipWordCardFace(card){',
               'imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit(true)};',
           ]
           for path in ('', 'word-sync-v2.html', 'word-images-ui.js'):
