@@ -179,9 +179,11 @@
     status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
     const dismiss = button('閉じる', 'word-image-dismiss'); dismiss.hidden = true;
     feedback.append(status, dismiss);
+    const apiAvailability = '画像API:' + (typeof root.navigator?.clipboard?.read === 'function' ? '利用可' : '非対応')
+      + ' ／ 文字API:' + (typeof root.navigator?.clipboard?.readText === 'function' ? '利用可' : '非対応');
     const pasteDiagnostic = make('p', 'word-image-help word-image-paste-diagnostic');
     // Show the build marker throughout editing so stale WebView cache is visible.
-    pasteDiagnostic.textContent = '貼り付け機能 ' + PASTE_VERSION + ' ／ コピーした内容は記録しません';
+    pasteDiagnostic.textContent = '貼り付け機能 ' + PASTE_VERSION + ' ／ ' + apiAvailability + ' ／ コピーした内容は記録しません';
     pasteDiagnostic.hidden = false;
     const pickInstead = button('写真・ファイルから追加', 'word-image-add word-image-pick-instead');
     pickInstead.hidden = true;
@@ -199,7 +201,7 @@
       dismiss.hidden = !error;
     }
     function clearPasteDiagnostic() {
-      pasteDiagnostic.textContent = '貼り付け機能 ' + PASTE_VERSION + ' ／ コピーした内容は記録しません';
+      pasteDiagnostic.textContent = '貼り付け機能 ' + PASTE_VERSION + ' ／ ' + apiAvailability + ' ／ コピーした内容は記録しません';
       pasteDiagnostic.hidden = false;
       pickInstead.hidden = true;
     }
@@ -292,7 +294,7 @@
     }
     function reportUnreadable(reason) {
       report(missingImage + ' ' + nativeHint);
-      pasteDiagnostic.textContent = '貼り付け診断 ' + PASTE_VERSION + '（内容は記録しません）：' + lastClipboardTypes + ' ／ ' + reason;
+      pasteDiagnostic.textContent = '貼り付け診断 ' + PASTE_VERSION + '（内容は記録しません）：' + apiAvailability + ' ／ ' + lastClipboardTypes + ' ／ ' + reason;
       pasteDiagnostic.hidden = false;
       pickInstead.hidden = false;
     }
