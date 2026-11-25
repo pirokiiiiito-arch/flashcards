@@ -110,21 +110,47 @@ class WordBackNativeScrollTest(unittest.TestCase):
                 self.assertGreater(first, 40, "first native vertical swipe must scroll")
                 self.assertEqual(page.evaluate("__captures"), 0)
 
-                page.evaluate("flipWordCardFace(card);flipWordCardFace(card)")
+                # The reverse face must still have layout while hidden.
+                # Clear the old position BEFORE hiding so WebKit cannot restore it.
+                page.evaluate("flipWordCardFace(card)")
+                hidden = page.evaluate("""() => {
+                  const el=document.querySelector('#test-back-content');
+                  const face=el.closest('.back');
+                  return { scrollTop:el.scrollTop, clientHeight:el.clientHeight,
+                           visibility:getComputedStyle(face).visibility,
+                           overflow:getComputedStyle(el).overflowY };
+                }""")
+                self.assertEqual(hidden["scrollTop"], 0, "closing back clears previous offset")
+                self.assertGreater(hidden["clientHeight"], 100, "hidden back remains measurable")
+                self.assertEqual(hidden["visibility"], "hidden")
+                self.assertEqual(hidden["overflow"], "hidden")
+
+                page.wait_for_timeout(130)
+                page.evaluate("flipWordCardFace(card)")
                 page.wait_for_timeout(70)
                 self.assertEqual(
                     page.evaluate("document.querySelector('#test-back-content').scrollTop"),
                     0, "front-to-back must reopen at the beginning",
                 )
+                self.assertEqual(
+                    page.evaluate("getComputedStyle(document.querySelector('#test-back-content')).overflowY"),
+                    "auto", "visible back must regain native scrolling",
+                )
                 second = swipe_up(page, cdp, start_on_image=False)
                 self.assertGreater(second, 40, "second native swipe must still scroll")
                 self.assertEqual(page.evaluate("__captures"), 0)
-                page.evaluate("flipWordCardFace(card);flipWordCardFace(card)")
+                page.evaluate("flipWordCardFace(card)")
+                page.wait_for_timeout(130)
+                # Simulate the browser trying to restore an old hidden offset.
+                page.evaluate("document.querySelector('#test-back-content').scrollTop=250")
+                page.evaluate("flipWordCardFace(card)")
                 page.wait_for_timeout(70)
                 self.assertEqual(
                     page.evaluate("document.querySelector('#test-back-content').scrollTop"),
                     0, "every later front-to-back flip must also reset",
                 )
+                third = swipe_up(page, cdp, start_on_image=True)
+                self.assertGreater(third, 40, "scroll must keep working after repeated flips")
             finally:
                 browser.close()
 

@@ -313,7 +313,7 @@ test('word back flip: after scrolling two-plus pictures, flipping back always st
   assert.equal(back.scrollTop, 0);
   content.scrollTop = 850;
   flipWordCardFace(card); // back to front
-  assert.equal(content.scrollTop, 850, 'leaving the back alone does not jump its scroll');
+  assert.equal(content.scrollTop, 0, 'closing the back clears its old position while still visible');
   flipWordCardFace(card); // front to back again
   assert.equal(content.scrollTop, 0, 'every new back reveal resets scroll, not just the first');
 });
@@ -322,7 +322,9 @@ test('word back flip: delayed reset never affects disconnected cards or already-
   const { flipWordCardFace, card, content, frames } = setupCardBackFlipTest();
   flipWordCardFace(card);
   content.scrollTop = 345;
-  flipWordCardFace(card); // show front before queued callback
+  flipWordCardFace(card); // show front, clears the old scroll immediately
+  assert.equal(content.scrollTop, 0);
+  content.scrollTop = 345; // synthetic offset to ensure stale callback cannot reset the hidden face
   frames.shift()();
   assert.equal(content.scrollTop, 345);
   flipWordCardFace(card);
@@ -341,6 +343,12 @@ test('word back flip: tapping, editing and both save flows use the shared top-re
   assert.ok(!html.includes('card.classList.toggle("show-back");'),
     'no old unguarded face switches should remain');
   assert.match(html, /if\(openBack\)resetWordBackScroll\(card\)/);
+  assert.match(html, /if\(!openBack\)resetWordBackScroll\(card\)/, 'reset before hiding back too');
+  assert.ok(html.includes('.back{display:flex;visibility:hidden;pointer-events:none;'),
+    'back must stay laid out to prevent iPhone WebKit restoring a display:none scroll position');
+  assert.ok(html.includes('.card:not(.show-back) .back-content{overflow-y:hidden}'),
+    'hidden back must stop kinetic scrolling without affecting visible scrolling');
+  assert.ok(html.includes('.card.show-back .back{visibility:visible;pointer-events:auto}'));
 });
 
 
