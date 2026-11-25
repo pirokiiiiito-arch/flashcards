@@ -162,7 +162,7 @@
     replacePicker.type = 'file'; replacePicker.accept = ACCEPT; replacePicker.hidden = true;
     replacePicker.setAttribute('aria-label', '差し替える画像');
     const hint = make('p', 'word-image-help', 'PNG・JPEG・WebP・GIF ／ 1枚20MBまで');
-    const pasteHint = make('p', 'word-image-help', 'iPhoneのChromeでは、下の欄を長押しして「ペースト」を選べます。PCはCtrl+V／⌘Vでも貼り付けできます。');
+    const pasteHint = make('p', 'word-image-help', '画像をコピーして、下の欄にペーストします。PCはCtrl+V／⌘Vでも貼り付けできます。');
     // A real rich-text editing host exposes the system paste menu and can receive
     // image data even when the browser does not allow navigator.clipboard.read().
     const pasteZone = make('div', 'word-image-paste-zone');
@@ -265,8 +265,8 @@
       if (file && at >= 0) enqueue(() => saveFiles([file], at));
     };
     dismiss.onclick = () => report('');
-    const nativeHint = '画像専用欄を長押しして「ペースト」を選んでください。PCではCtrl+V／⌘Vも使えます。';
-    const missingImage = 'コピーした内容に画像本体がありません。コピー元で「画像をコピー」を選んでから貼り付けてください。';
+    const nativeHint = '下の欄を長押しして「ペースト」を選んでください。';
+    const missingImage = 'この貼り付けでは画像データを読み取れませんでした。';
     function revealPasteZone() {
       root.requestAnimationFrame(() => {
         if (alive && pasteZone.isConnected) pasteZone.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -285,10 +285,38 @@
     }
     function fromHTML(html) {
       if (!html || !/<img\b/i.test(html)) return [];
-      // A template is inert: never insert arbitrary pasted markup or fetch image URLs.
+      // WebKit can expose clipboard images as blob URLs as well as data URLs.
+      // A template is inert: never insert arbitrary pasted markup into the page.
       const template = document.createElement('template');
       template.innerHTML = html;
-      return Array.from(template.content.querySelectorAll('img[src]')).map(img => fromDataURL(img.getAttribute('src'))).filter(Boolean);
+      return Array.from(template.content.querySelectorAll('img[src]')).map(img => img.getAttribute('src').trim());
+    }
+    function isLocalImageSource(src) {
+      return /^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(src) || /^blob:/i.test(src);
+    }
+    async function readImageSources(sources) {
+      const images = await Promise.all(sources.filter(isLocalImageSource).map(async src => {
+        const blob = fromDataURL(src);
+        if (blob) return blob;
+        if (new root.URL(src).protocol !== 'blob:') return null;
+        // Blob URLs resolve through the browser's own store and access checks.
+        // Never fetch an http(s) URL from pasted HTML, or re-encode the picture.
+        const response = await root.fetch(src, { credentials: 'omit' });
+        if (!response.ok) throw Error(missingImage);
+        return response.blob();
+      }));
+      return images.filter(Boolean);
+    }
+    function queueImageSources(sources) {
+      // Start reads while clipboard Blob URLs are available, even if another
+      // image is still saving. Attach rejection handling before joining the queue.
+      const reading = readImageSources(sources).then(images => ({ images }), error => ({ error }));
+      enqueue(async () => {
+        const result = await reading;
+        if (result.error) throw result.error;
+        if (!result.images.length) { report(missingImage + ' ' + nativeHint); return; }
+        await saveFiles(result.images);
+      });
     }
     function clipboardFiles(data) {
       const entries = Array.from(data?.items || []).filter(item => item.kind === 'file');
@@ -300,6 +328,7 @@
     }
     paste.onclick = () => {
       if (!alive || busy) return;
+      pasteGeneration++;
       if (!root.navigator.clipboard?.read) {
         pasteZone.focus({ preventScroll: true }); revealPasteZone(); report(nativeHint);
         return;
@@ -318,7 +347,7 @@
           if (type) {
             try { files.push(await item.getType(type)); } catch (_) { report(nativeHint); revealPasteZone(); return; }
           } else if (item.types.includes('text/html')) {
-            try { files.push(...fromHTML(await (await item.getType('text/html')).text())); }
+            try { files.push(...await readImageSources(fromHTML(await (await item.getType('text/html')).text()))); }
             catch (_) { report(nativeHint); revealPasteZone(); return; }
           }
         }
@@ -338,14 +367,14 @@
       }
       const html = readText(data, 'text/html');
       if (html) {
-        let images;
-        try { images = fromHTML(html); }
+        let sources;
+        try { sources = fromHTML(html).filter(isLocalImageSource); }
         catch (error) {
           event.preventDefault(); event.stopPropagation(); report(error.message); return;
         }
-        if (images.length) {
+        if (sources.length) {
           event.preventDefault(); event.stopPropagation();
-          enqueue(() => saveFiles(images)); return;
+          queueImageSources(sources); return;
         }
       }
       if (!inZone) return; // Ordinary text paste in the meaning field is unchanged.
@@ -359,26 +388,25 @@
       event.stopPropagation();
       root.setTimeout(() => { if (alive && generation === pasteGeneration) report(nativeHint); }, 350);
     }
+    let nativeInsertionTimer = null;
     function consumeNativeInsertion() {
+      root.clearTimeout(nativeInsertionTimer);
+      nativeInsertionTimer = root.setTimeout(readNativeInsertion, 50);
+    }
+    function readNativeInsertion() {
+      nativeInsertionTimer = null;
       if (!alive || !pasteZone.childNodes.length) return;
+      const pictures = Array.from(pasteZone.querySelectorAll('img'));
+      // Native editors may create the element before assigning its image URL.
+      // A later src mutation will retry; don't erase the unfinished insertion.
+      if (pictures.some(img => !img.getAttribute('src')?.trim())) return;
+      const sources = pictures.map(img => img.getAttribute('src').trim());
+      if (!sources.length && !pasteZone.textContent.trim()) return; // Ignore caret BRs.
       pasteGeneration++;
-      const sources = Array.from(pasteZone.querySelectorAll('img[src]')).map(img => img.getAttribute('src') || '');
+      // Begin reading before removing the browser-created image elements.
+      if (sources.some(isLocalImageSource)) queueImageSources(sources);
+      else report(missingImage + ' ' + nativeHint);
       pasteZone.replaceChildren();
-      if (!sources.length) { report(missingImage); return; }
-      enqueue(async () => {
-        const images = [];
-        for (const src of sources) {
-          const blob = fromDataURL(src);
-          if (blob) images.push(blob);
-          else if (src.startsWith('blob:' + root.location.origin + '/')) {
-            // Browser-generated same-origin Blob URL, never a remote URL.
-            const response = await root.fetch(src);
-            if (response.ok) images.push(await response.blob());
-          }
-        }
-        if (!images.length) { report(missingImage + ' ' + nativeHint); return; }
-        await saveFiles(images);
-      });
     }
     function restrictTyping(event) {
       if (event.inputType && !event.inputType.startsWith('insertFromPaste')) event.preventDefault();
@@ -386,7 +414,7 @@
     pasteZone.addEventListener('beforeinput', restrictTyping);
     pasteZone.addEventListener('input', consumeNativeInsertion);
     const pasteObserver = new root.MutationObserver(consumeNativeInsertion);
-    pasteObserver.observe(pasteZone, { childList: true, subtree: true });
+    pasteObserver.observe(pasteZone, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
     function hasFiles(event) { return Array.from(event.dataTransfer?.types || []).includes('Files'); }
     function dragOver(event) {
       if (!hasFiles(event)) return;
@@ -409,6 +437,10 @@
     return {
       getImages: () => copy(draft),
       async ready() {
+        if (Array.from(pasteZone.querySelectorAll('img')).some(img => !img.getAttribute('src')?.trim()))
+          throw Error('画像の貼り付けが完了するまでお待ちください。');
+        root.clearTimeout(nativeInsertionTimer);
+        readNativeInsertion();
         await queue;
         if (!alive) throw Error('画像の編集は取り消されました。');
         if (lastError) throw lastError;
@@ -417,6 +449,7 @@
       destroy() {
         if (!alive) return;
         alive = false;
+        root.clearTimeout(nativeInsertionTimer);
         pasteTarget.removeEventListener('paste', pastedImages);
         pasteObserver.disconnect();
         pasteZone.removeEventListener('beforeinput', restrictTyping);

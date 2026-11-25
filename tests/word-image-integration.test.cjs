@@ -253,5 +253,5 @@ test('native image paste field is real editable content and retains text paste i
   assert.ok(ui.includes("if (!inZone) return;"));
   assert.ok(ui.includes("document.createElement('template')"));
   assert.ok(css.includes('-webkit-touch-callout:default'));
-  assert.ok(html.includes('word-images-ui.js?v=20261126-paste2'));
+  assert.ok(html.includes('word-images-ui.js?v=20261126-paste3'));
 });

@@ -271,7 +271,7 @@ jobs:
           # Verify the actual deployed entries, not just the repository source.
           expected = [
               'data-word-image-footer="outside-v1"',
-              'word-images-ui.js?v=20261126-paste2',
+              'word-images-ui.js?v=20261126-paste3',
               'back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);',
               'imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit(true)};',
           ]
@@ -282,7 +282,7 @@ jobs:
                       req = urllib.request.Request(url, headers={'Cache-Control': 'no-cache'})
                       with urllib.request.urlopen(req, timeout=15) as res:
                           html = res.read().decode('utf-8')
-                          markers = expected if path != 'word-images-ui.js' else ["pasteZone.contentEditable = 'true'", 'function consumeNativeInsertion()', 'function pastedImages(event)']
+                          markers = expected if path != 'word-images-ui.js' else ["pasteZone.contentEditable = 'true'", 'function consumeNativeInsertion()', 'function pastedImages(event)', 'function readImageSources(sources)', "attributeFilter: ['src']"]
                           if res.status == 200 and all(marker in html for marker in markers) and 'startEdit();imageEditor?.choose()' not in html:
                               print('PASS published word footer:', url)
                               break

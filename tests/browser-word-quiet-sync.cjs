@@ -48,7 +48,7 @@ async function scenario(width,height){
  });
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  const chrome=cp.spawn(process.env.CHROME_PATH||'google-chrome',['--headless=new','--no-sandbox','--disable-dev-shm-usage','--no-first-run','--disable-background-networking','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
- let ws,evaluate;const errors=[];
+ let ws,evaluate;const errors=[];let remoteImageRequests=0;
  try{
   await until(()=>fs.existsSync(path.join(profile,'DevToolsActivePort')),'Chrome startup');
   const port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];
@@ -59,7 +59,7 @@ async function scenario(width,height){
   ws.addEventListener('message',event=>{
    const m=JSON.parse(event.data);if(m.id){const p=pending.get(m.id);pending.delete(m.id);if(m.error)p?.reject(Error(m.error.message));else p?.resolve(m.result);return;}
    if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);
-   if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;send(request.url.startsWith(origin+'/')?'Fetch.continueRequest':'Fetch.failRequest',request.url.startsWith(origin+'/')?{requestId}:{requestId,errorReason:'Aborted'}).catch(()=>{});}
+   if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;if(request.url==='https://example.invalid/pasted-remote.png')remoteImageRequests++;send(request.url.startsWith(origin+'/')?'Fetch.continueRequest':'Fetch.failRequest',request.url.startsWith(origin+'/')?{requestId}:{requestId,errorReason:'Aborted'}).catch(()=>{});}
   });
   evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression:'{'+expression+'}',awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
   await send('Runtime.enable');await send('Page.enable');await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<600});
@@ -85,8 +85,31 @@ async function scenario(width,height){
   await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===2&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'"),'embedded HTML image paste');
   await evaluate("(()=>{const zone=stage.querySelector('.word-image-paste-zone'),img=document.createElement('img');img.src=__pasteDataURL;zone.append(img);zone.dispatchEvent(new InputEvent('input',{inputType:'insertFromPaste',bubbles:true}))})()");
   await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===3&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'"),'native inserted image recovery');
+
+  // WebKit can expose an embedded clipboard image through a local blob URL.
+  // Exercise both entry paths with real bytes, not a stubbed image importer.
+  await evaluate("(async()=>{window.__pasteBlobURL=URL.createObjectURL(await(await fetch(__pasteDataURL)).blob());const dt=new DataTransfer();dt.setData('text/html','<p><img src=\"'+__pasteBlobURL+'\"></p>');stage.querySelector('.word-image-paste-zone').dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
+  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===4&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'&&stage.querySelector('.word-image-status').textContent.includes('追加しました')"),'blob URL in clipboard HTML');
+  await evaluate("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{read:async()=>[{types:['text/html'],getType:async()=>new Blob(['<img src=\"'+__pasteBlobURL+'\">'],{type:'text/html'})}]}});stage.querySelector('.word-image-paste-button').click()");
+  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===5&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'&&stage.querySelector('.word-image-status').textContent.includes('追加しました')"),'blob URL from async HTML clipboard read');
+  await evaluate("delete navigator.clipboard");
+
+  // A native editor may create the image before assigning its source. Do not
+  // discard the unfinished node at the first child-list mutation.
+  await evaluate("(()=>{const zone=stage.querySelector('.word-image-paste-zone'),img=document.createElement('img');zone.append(img);setTimeout(()=>{img.src=__pasteBlobURL;zone.dispatchEvent(new InputEvent('input',{inputType:'insertFromPaste',bubbles:true}))},40)})()");
+  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'&&stage.querySelector('.word-image-status').textContent.includes('追加しました')"),'delayed native image source');
+  await evaluate("window.__pasteSuccess=stage.querySelector('.word-image-status').textContent;const zone=stage.querySelector('.word-image-paste-zone');zone.append(document.createElement('br'));zone.dispatchEvent(new InputEvent('input',{inputType:'insertFromPaste',bubbles:true}))");
+  await sleep(450);
+  assert.equal(await evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-status').textContent===__pasteSuccess"),true,'empty native editing filler does not overwrite successful paste');
+
   await evaluate("(()=>{const zone=stage.querySelector('.word-image-paste-zone'),dt=new DataTransfer();dt.setData('text/plain','https://example.invalid/picture.png');zone.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
-  assert.equal(await evaluate("stage.querySelectorAll('.word-image-edit-item').length===3&&stage.querySelector('.word-image-status').textContent.includes('画像本体がありません')"),true,'URL alone is not an image');
+  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-status').textContent.includes('読み取れませんでした')"),'URL alone does not add an image');
+  await evaluate("(()=>{const dt=new DataTransfer();dt.setData('text/html','<img src=\"https://example.invalid/pasted-remote.png\">');stage.querySelector('.word-image-paste-zone').dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
+  await sleep(450);
+  assert.equal(await evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-status').textContent.includes('読み取れませんでした')"),true,'unsupported remote HTML reports that the app could not read the image');
+  assert.equal(remoteImageRequests,0,'pasted remote image URLs are not fetched');
+  assert.equal(await evaluate("(()=>{const dt=new DataTransfer();dt.setData('text/plain','通常の意味を貼り付け');const event=new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true});stage.querySelector('.back textarea').dispatchEvent(event);return !event.defaultPrevented})()"),true,'ordinary meaning text paste keeps its native default behavior');
+  await evaluate("URL.revokeObjectURL(__pasteBlobURL)");
   await evaluate("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{read:()=>Promise.reject(new DOMException('denied','NotAllowedError'))}});stage.querySelector('.word-image-paste-button').click()");
   await until(()=>evaluate("stage.querySelector('.word-image-status').textContent.includes('長押し')&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'"),'permission denial fallback');
   await evaluate("delete navigator.clipboard");

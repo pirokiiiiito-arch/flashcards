@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#2f66e8">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
-<link rel="stylesheet" href="./word-images.css?v=20261126-paste2">
+<link rel="stylesheet" href="./word-images.css?v=20261126-paste3">
 <script src="./word-images.js?v=20261126-images1"></script>
-<script src="./word-images-ui.js?v=20261126-paste2"></script>
+<script src="./word-images-ui.js?v=20261126-paste3"></script>
 <title>単語帳</title>
 <style>
 :root{--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--border:#d9e1ec;--accent:#2f66e8;--soft:#edf2f8;--green:#2e9d57}
@@ -57,6 +57,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .card.with-images{height:clamp(360px,calc(100dvh - 250px),660px)}
 .card.with-images .back,.card.is-editing .back{align-items:flex-start;padding-top:78px;padding-bottom:66px;overflow:hidden}
 .card.with-images .back-content,.card.is-editing .back-content{height:100%}
+.card.is-editing .card-number{display:none}
 .card.is-editing .back .editor{min-height:100px;width:100%;max-width:100%;text-align:left;margin:0;padding:2px 4px}
 /* Independent footer below the card border; never inside the scrolling face. */
 .word-card-footer{width:min(670px,100%);margin:8px auto 0;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:8px;min-height:44px;padding:0 24px}
