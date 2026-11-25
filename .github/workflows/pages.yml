@@ -239,6 +239,7 @@ jobs:
           if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
             "$qa_python" -m playwright install chromium
           fi
+          "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_back_scroll_browser.py"
           "$qa_python" -m unittest discover -v -s tests -p 'test_reader_template_readback.py'
           timeout --signal=ABRT --kill-after=10s 8m "$qa_python" -u -X faulthandler -m unittest discover -v --durations 10 -s tests -p 'test_reader_shelf*.py'
       - name: Configure Pages
