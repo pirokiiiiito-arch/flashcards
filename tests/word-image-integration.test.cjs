@@ -217,3 +217,13 @@ test('image integration: a malformed saved image does not turn every locally sto
   assert.deepEqual(plain(loaded[0].images), stored[0].images); assert.deepEqual(plain(loaded[1].images), stored[1].images);
   assert.equal(state.saved.get(state.context.KEY), JSON.stringify(stored));
 });
+
+
+test('image entry stays at the bottom right of the back face, outside its scrolling content', () => {
+  const html = read('index.html');
+  assert.match(html, /\.word-image-entry\{position:absolute;right:24px;bottom:18px;/);
+  assert.match(html, /@media\(max-width:560px\)\{\.word-image-entry\{right:16px;bottom:14px\}\}/);
+  assert.ok(html.includes('backContent.append(bt,imageArea);front.append(fl,ft);back.append(bl,backContent,imageEntry);'));
+  assert.ok(html.includes('imageView.destroy();imageView=null;imageEntry.remove();'));
+  assert.ok(!html.includes('backContent.append(bt,imageArea,imageEntry)'));
+});

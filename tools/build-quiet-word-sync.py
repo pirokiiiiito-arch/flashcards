@@ -70,7 +70,7 @@ for path in ['index.html','word-sync-v2.html']:
     s=one(s,'<script src="./drive-sync.js?v=20261028-quiet1"></script>','<script src="./word-quiet-sync.js?v=20261028-quiet1"></script>\n<script src="./drive-sync.js?v=20261028-quiet1"></script>')
     write(path,s)
 s=read('service-worker.js')
-s,n=re.subn(r"const CACHE = '[^']+';","const CACHE = 'flashcards-v23-word-images';",s,count=1)
+s,n=re.subn(r"const CACHE = '[^']+';","const CACHE = 'flashcards-v24-word-image-corner';",s,count=1)
 if n!=1:raise RuntimeError('Root worker cache declaration changed')
 s,n=re.subn(r"const BUILD = '[^']+';","const BUILD = '20261028-quiet1';",s,count=1)
 if n!=1:raise RuntimeError('Root worker build declaration changed')
