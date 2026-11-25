@@ -35,7 +35,7 @@ jobs:
         run: |
           node --check word-images.js
           node --check word-images-ui.js
-          node --test tests/word-images.test.cjs tests/word-image-integration.test.cjs
+          node --test tests/word-images.test.cjs tests/word-image-integration.test.cjs tests/word-image-paste.test.cjs
           node --check drive-sync.js
           node --check word-network-recovery.js
           node --test tests/word-network*.test.cjs
