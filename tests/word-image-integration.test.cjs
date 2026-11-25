@@ -267,3 +267,78 @@ test('native image paste field is real editable content and retains text paste i
   assert.ok(!/dismiss.hidden = !error;\s*pasteDiagnostic.hidden = true/.test(ui), 'status updates must not hide diagnostics');
   assert.ok(html.includes('word-images-ui.js?v=20261126-paste8'));
 });
+
+function setupCardBackFlipTest() {
+  const html = read('index.html');
+  const begin = html.indexOf('function resetWordBackScroll(card){');
+  const end = html.indexOf('\nfunction renderCard(item){', begin);
+  assert.ok(begin >= 0 && end > begin, 'the back-scroll helper exists before renderCard');
+  const frames = [];
+  const context = { requestAnimationFrame(callback) { frames.push(callback); } };
+  const functions = vm.runInNewContext(html.slice(begin, end) + '\n({resetWordBackScroll,flipWordCardFace})', context);
+  const names = new Set(), content = { scrollTop: 0 }, back = { scrollTop: 0 };
+  const card = {
+    isConnected: true,
+    classList: {
+      contains: name => names.has(name),
+      toggle(name, forced) {
+        const enabled = forced === undefined ? !names.has(name) : !!forced;
+        if (enabled) names.add(name); else names.delete(name);
+        return enabled;
+      }
+    },
+    querySelector(selector) {
+      if (selector === '.back-content') return content;
+      if (selector === '.back') return back;
+      return null;
+    }
+  };
+  return { ...functions, card, content, back, frames };
+}
+
+test('word back flip: after scrolling two-plus pictures, flipping back always starts at the top', () => {
+  const { flipWordCardFace, card, content, back, frames } = setupCardBackFlipTest();
+  content.scrollTop = 970;
+  back.scrollTop = 450;
+  flipWordCardFace(card);
+  assert.equal(card.classList.contains('show-back'), true);
+  assert.equal(content.scrollTop, 0);
+  assert.equal(back.scrollTop, 0);
+  // WebKit can restore a hidden scrolling element's old offset during layout.
+  content.scrollTop = 920;
+  back.scrollTop = 240;
+  assert.equal(frames.length, 1);
+  frames.shift()();
+  assert.equal(content.scrollTop, 0);
+  assert.equal(back.scrollTop, 0);
+  content.scrollTop = 850;
+  flipWordCardFace(card); // back to front
+  assert.equal(content.scrollTop, 850, 'leaving the back alone does not jump its scroll');
+  flipWordCardFace(card); // front to back again
+  assert.equal(content.scrollTop, 0, 'every new back reveal resets scroll, not just the first');
+});
+
+test('word back flip: delayed reset never affects disconnected cards or already-hidden backs', () => {
+  const { flipWordCardFace, card, content, frames } = setupCardBackFlipTest();
+  flipWordCardFace(card);
+  content.scrollTop = 345;
+  flipWordCardFace(card); // show front before queued callback
+  frames.shift()();
+  assert.equal(content.scrollTop, 345);
+  flipWordCardFace(card);
+  content.scrollTop = 678;
+  card.isConnected = false;
+  frames.shift()();
+  assert.equal(content.scrollTop, 678);
+});
+
+test('word back flip: tapping, editing and both save flows use the shared top-reset path', () => {
+  const html = read('index.html');
+  assert.equal((html.match(/flipWordCardFace\(card\);/g) || []).length, 4,
+    'normal touch, normal click, existing-card editor and new-card editor');
+  assert.equal((html.match(/resetWordBackScroll\(shown\)/g) || []).length, 2,
+    'both save paths restore the new back at its top');
+  assert.ok(!html.includes('card.classList.toggle("show-back");'),
+    'no old unguarded face switches should remain');
+  assert.match(html, /if\(openBack\)resetWordBackScroll\(card\)/);
+});
