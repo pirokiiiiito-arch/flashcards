@@ -92,7 +92,7 @@ function setup(fetchImage, { clipboard } = {}) {
     });
     return () => prevented;
   }
-  return { result, editor, zone, paste };
+  return { result, editor, zone, paste, panel: container.children[0] };
 }
 const imageResponse = {
   ok: true, type: 'cors', body: null,
@@ -204,5 +204,63 @@ test('unsupported iPhone clipboard image format returns an actionable error with
   await assert.rejects(app.editor.ready(), /コピーされた画像の形式を読み取れません/);
   assert.equal(prevented(), true);
   assert.equal(app.result.saves.length, 0);
+  app.editor.destroy();
+});
+
+test('clipboard.read() with no items shows diagnostic and file-picker fallback', async () => {
+  const app = setup(async () => { throw Error('unexpected network'); }, {
+    clipboard: { async read() { return []; } }
+  });
+  app.panel.children.find(x => x.className === 'word-image-toolbar').children[1].onclick();
+  await app.editor.ready();
+  const diagnostic = app.panel.children.find(x => x.className.includes('word-image-paste-diagnostic'));
+  const picker = app.panel.children.find(x => x.className.includes('word-image-pick-instead'));
+  assert.equal(diagnostic.hidden, false);
+  assert.match(diagnostic.textContent, /クリップボードの項目が0件/);
+  assert.match(diagnostic.textContent, /画像データが0件/);
+  assert.equal(picker.hidden, false);
+  assert.equal(app.editor.getImages().length, 0);
+  app.editor.destroy();
+});
+
+test('clipboard.read() with text-only data reports MIME type but not copied content', async () => {
+  const secret = 'secret token in copied page';
+  const app = setup(async () => { throw Error('unexpected network'); }, {
+    clipboard: { async read() { return [{ types: ['text/plain'], async getType() { return new Blob([secret], { type: 'text/plain' }); } }]; } }
+  });
+  app.panel.children.find(x => x.className === 'word-image-toolbar').children[1].onclick();
+  await app.editor.ready();
+  const diagnostic = app.panel.children.find(x => x.className.includes('word-image-paste-diagnostic'));
+  assert.equal(diagnostic.hidden, false);
+  assert.match(diagnostic.textContent, /text\/plain/);
+  assert.doesNotMatch(diagnostic.textContent, /secret token/);
+  assert.equal(app.result.saves.length, 0);
+  app.editor.destroy();
+});
+
+test('clipboard.read() permissions error shows specific diagnostic', async () => {
+  const app = setup(async () => { throw Error('unexpected network'); }, {
+    clipboard: { async read() { throw Error('NotAllowedError'); } }
+  });
+  app.panel.children.find(x => x.className === 'word-image-toolbar').children[1].onclick();
+  await app.editor.ready();
+  const diagnostic = app.panel.children.find(x => x.className.includes('word-image-paste-diagnostic'));
+  assert.equal(diagnostic.hidden, false);
+  assert.match(diagnostic.textContent, /アクセス制限/);
+  app.editor.destroy();
+});
+
+test('clipboard.read() image success leaves diagnostic hidden', async () => {
+  const app = setup(async () => { throw Error('unexpected network'); }, {
+    clipboard: { async read() {
+      return [{ types: ['image/png'], async getType(type) { return new Blob(['synthetic fixture'], { type }); } }];
+    } }
+  });
+  app.panel.children.find(x => x.className === 'word-image-toolbar').children[1].onclick();
+  await app.editor.ready();
+  const diagnostic = app.panel.children.find(x => x.className.includes('word-image-paste-diagnostic'));
+  assert.equal(diagnostic.hidden, true);
+  assert.equal(app.result.saves.length, 1);
+  assert.equal(app.editor.getImages().length, 1);
   app.editor.destroy();
 });

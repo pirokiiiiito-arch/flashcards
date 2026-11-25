@@ -180,8 +180,11 @@
     feedback.append(status, dismiss);
     const pasteDiagnostic = make('p', 'word-image-help word-image-paste-diagnostic');
     pasteDiagnostic.hidden = true;
+    const pickInstead = button('写真・ファイルから追加', 'word-image-add word-image-pick-instead');
+    pickInstead.hidden = true;
+    pickInstead.onclick = () => choose();
     const gallery = make('div', 'word-image-edit-gallery');
-    panel.append(heading, toolbar, picker, replacePicker, pasteHint, pasteZone, hint, feedback, pasteDiagnostic, gallery);
+    panel.append(heading, toolbar, picker, replacePicker, pasteHint, pasteZone, hint, feedback, pasteDiagnostic, pickInstead, gallery);
     container.appendChild(panel);
     function report(message, error = null) {
       if (!alive) return;
@@ -190,6 +193,7 @@
       status.classList.toggle('word-image-error', !!error);
       dismiss.hidden = !error;
       pasteDiagnostic.hidden = true;
+      pickInstead.hidden = true;
     }
     function updateBusy() {
       if (!alive) return;
@@ -281,6 +285,20 @@
       report(missingImage + ' ' + nativeHint);
       pasteDiagnostic.textContent = '貼り付け診断（内容は記録しません）：' + lastClipboardTypes + ' ／ ' + reason;
       pasteDiagnostic.hidden = false;
+      pickInstead.hidden = false;
+    }
+    function recordClipboardItems(items) {
+      const summary = [];
+      for (const item of Array.from(items || [])) {
+        const types = Array.from(item?.types || []).filter(type => typeof type === 'string');
+        summary.push(types.length ? types.slice(0, 8).join(', ') : '形式不明');
+      }
+      lastClipboardTypes = summary.length ? summary.slice(0, 8).join(' | ') : 'クリップボードの項目が0件';
+    }
+    function diagnoseReadFailure(reason) {
+      reportUnreadable(reason);
+      pasteZone.focus({ preventScroll: true });
+      revealPasteZone();
     }
     function revealPasteZone() {
       root.requestAnimationFrame(() => {
@@ -381,7 +399,7 @@
       enqueue(async () => {
         const result = await reading;
         if (result.error) throw result.error;
-        if (!result.images.length) { report(missingImage + ' ' + nativeHint); return; }
+        if (!result.images.length) { reportUnreadable('画像データが取得できませんでした'); return; }
         await saveFiles(result.images);
       });
     }
@@ -420,13 +438,14 @@
         let textRead;
         try { textRead = root.navigator.clipboard?.readText?.(); } catch (_) {}
         if (!textRead) {
-          pasteZone.focus({ preventScroll: true }); revealPasteZone(); report(nativeHint);
+          lastClipboardTypes = 'Clipboard APIが利用できません';
+          diagnoseReadFailure('直接読み取りに非対応。下の欄の長押しを試してください');
           return;
         }
         enqueue(async () => {
           let value;
           try { value = await textRead; }
-          catch (_) { pasteZone.focus({ preventScroll: true }); revealPasteZone(); report(nativeHint); return; }
+          catch (_) { lastClipboardTypes = '文字列の読み取りが拒否されました'; diagnoseReadFailure('ブラウザーのアクセス制限'); return; }
           const sources = extractSources('', value);
           if (!sources.length) {
             lastClipboardTypes = '文字列のみ、または空';
@@ -440,18 +459,19 @@
       // Start within the original button gesture; no delayed clipboard read.
       let reading;
       try { reading = root.navigator.clipboard.read(); }
-      catch (_) { pasteZone.focus({ preventScroll: true }); revealPasteZone(); report(nativeHint); return; }
+      catch (_) { lastClipboardTypes = 'Clipboard APIが拒否しました'; diagnoseReadFailure('ブラウザーのアクセス制限'); return; }
       enqueue(async () => {
         let items;
         try { items = await reading; }
-        catch (_) { report(nativeHint); revealPasteZone(); return; }
+        catch (_) { lastClipboardTypes = 'Clipboard APIの読み取りが拒否されました'; diagnoseReadFailure('ブラウザーのアクセス制限'); return; }
+        recordClipboardItems(items);
         const files = [];
         for (const item of items) {
           const types = Array.from(item.types || []);
           const type = types.find(type => /^image\/(png|jpeg|webp|gif)$/i.test(type));
           if (type) {
             try { files.push(await item.getType(type)); }
-            catch (_) { report(nativeHint); revealPasteZone(); return; }
+            catch (_) { diagnoseReadFailure('画像形式はありますが、画像本体の読み取りが拒否されました'); return; }
             continue;
           }
           let html = '', plain = '';
@@ -459,11 +479,11 @@
             if (types.includes('text/html')) html = await (await item.getType('text/html')).text();
             const textType = types.find(type => type === 'text/uri-list' || type === 'text/plain');
             if (textType) plain = await (await item.getType(textType)).text();
-          } catch (_) { report(nativeHint); revealPasteZone(); return; }
+          } catch (_) { diagnoseReadFailure('コピー内容の読み取りが拒否されました'); return; }
           files.push(...await readImageSources(extractSources(html, plain)));
         }
-        if (!files.length) { report(missingImage + ' ' + nativeHint); revealPasteZone(); return; }
-        await saveFiles(files);
+        if (!files.length) { diagnoseReadFailure('利用できる画像データが0件でした'); return; }
+        await saveFiles(await Promise.all(files.map(normalizeClipboardFile)));
       });
     };
     let pasteGeneration = 0;
