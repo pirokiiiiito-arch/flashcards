@@ -257,5 +257,7 @@ test('native image paste field is real editable content and retains text paste i
   assert.ok(ui.includes("const sources = extractSources(html, plain)"), 'image URLs from copied HTML/text are handled');
   assert.ok(ui.includes("mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer'"), 'remote image reads omit credentials/referrer');
   assert.ok(ui.includes('await reader.cancel()'), 'oversized streamed images must be aborted');
-  assert.ok(html.includes('word-images-ui.js?v=20261126-paste4'));
+  assert.ok(ui.includes('normalizeClipboardFile(file)'), 'unknown image MIME is inspected by signature');
+  assert.ok(ui.includes('reportUnreadable(reason)'), 'clipboard diagnostics are available without persisting contents');
+  assert.ok(html.includes('word-images-ui.js?v=20261126-paste5'));
 });

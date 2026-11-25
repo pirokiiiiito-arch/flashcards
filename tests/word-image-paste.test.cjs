@@ -54,11 +54,11 @@ class Template extends Element {
     };
   }
 }
-function setup(fetchImage) {
+function setup(fetchImage, { clipboard } = {}) {
   const result = { saves: [], network: [] };
   const root = {
     Blob, URL, atob,
-    navigator: {},
+    navigator: clipboard ? { clipboard } : {},
     WordImages: {
       MAX_BYTES: 20 * 1024 * 1024,
       normalizeImages: images => images || [],
@@ -152,5 +152,57 @@ test('ordinary meaning field text paste is not intercepted', async () => {
   await app.editor.ready();
   assert.equal(prevented(), false);
   assert.equal(app.result.network.length, 0);
+  app.editor.destroy();
+});
+
+test('iPhone clipboard PNG with an empty MIME type is preserved and added', async () => {
+  const bytes = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3, 4]);
+  const blob = new Blob([bytes], { type: '' });
+  const app = setup(async () => { throw Error('must not fetch'); });
+  const prevented = app.paste({ items: [{ kind: 'file', type: '', getAsFile: () => blob }] });
+  await app.editor.ready();
+  assert.equal(prevented(), true);
+  assert.equal(app.result.saves.length, 1);
+  assert.equal(app.result.saves[0].type, 'image/png');
+  assert.deepEqual(Buffer.from(await app.result.saves[0].arrayBuffer()), Buffer.from(bytes));
+  app.editor.destroy();
+});
+
+test('paste with unrecognized clipboard text allows iOS native insertion, then reports MIME-only diagnostics', async () => {
+  const app = setup(async () => { throw Error('must not fetch'); });
+  const prevented = app.paste({ plain: 'website copied rich content', items: [{ kind: 'string', type: 'text/plain' }] });
+  assert.equal(prevented(), false);
+  assert.equal(app.zone.attrs.inputmode, undefined);
+  const node = new Element('span');
+  node.textContent = 'native pasted content';
+  app.zone.appendChild(node);
+  app.zone.textContent = 'native pasted content';
+  await app.editor.ready();
+  const diagnostic = app.zone.parent.children.find(x => x.className.includes('word-image-paste-diagnostic'));
+  assert.equal(diagnostic.hidden, false);
+  assert.match(diagnostic.textContent, /text\/plain/);
+  assert.equal(app.editor.getImages().length, 0);
+  app.editor.destroy();
+});
+
+test('paste button reads image URL text if browser lacks rich clipboard.read()', async () => {
+  const app = setup(async () => imageResponse, {
+    clipboard: { async readText() { return 'https://images.example.test/copied.png'; } }
+  });
+  const toolbar = app.zone.parent.children.find(x => x.className === 'word-image-toolbar');
+  toolbar.children[1].onclick();
+  await app.editor.ready();
+  assert.equal(app.result.saves.length, 1);
+  assert.equal(app.editor.getImages().length, 1);
+  app.editor.destroy();
+});
+
+test('unsupported iPhone clipboard image format returns an actionable error without saving', async () => {
+  const blob = new Blob([Uint8Array.from([73, 73, 42, 0, 1, 2])], { type: 'image/tiff' });
+  const app = setup(async () => { throw Error('must not fetch'); });
+  const prevented = app.paste({ items: [{ kind: 'file', type: 'image/tiff', getAsFile: () => blob }] });
+  await assert.rejects(app.editor.ready(), /コピーされた画像の形式を読み取れません/);
+  assert.equal(prevented(), true);
+  assert.equal(app.result.saves.length, 0);
   app.editor.destroy();
 });
