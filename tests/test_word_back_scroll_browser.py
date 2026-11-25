@@ -58,10 +58,11 @@ card.setPointerCapture=id=>{__captures++;return nativeCapture(id)};
 </div></div></article></div></div><script>{script}</script></body></html>"""
 
 
-def swipe_up(page, cdp):
+def swipe_up(page, cdp, *, start_on_image=False):
     box = page.locator("#test-back-content").bounding_box()
     assert box is not None, "scroll container has no layout box"
-    x = box["x"] + 5  # Touch the scroll container, not an image button.
+    # Exercise both the actual photograph and the padding around it.
+    x = box["x"] + (box["width"] * 0.5 if start_on_image else 5)
     y = box["y"] + box["height"] * 0.72
     cdp.send("Input.dispatchTouchEvent", {
         "type": "touchStart", "touchPoints": [{"x": x, "y": y, "id": 1}]
@@ -105,7 +106,7 @@ class WordBackNativeScrollTest(unittest.TestCase):
                 # A touch on empty space inside the scrollable face must NOT
                 # start the card-wide swipe handler or capture its pointer.
                 cdp = context.new_cdp_session(page)
-                first = swipe_up(page, cdp)
+                first = swipe_up(page, cdp, start_on_image=True)
                 self.assertGreater(first, 40, "first native vertical swipe must scroll")
                 self.assertEqual(page.evaluate("__captures"), 0)
 
@@ -115,7 +116,7 @@ class WordBackNativeScrollTest(unittest.TestCase):
                     page.evaluate("document.querySelector('#test-back-content').scrollTop"),
                     0, "front-to-back must reopen at the beginning",
                 )
-                second = swipe_up(page, cdp)
+                second = swipe_up(page, cdp, start_on_image=False)
                 self.assertGreater(second, 40, "second native swipe must still scroll")
                 self.assertEqual(page.evaluate("__captures"), 0)
                 page.evaluate("flipWordCardFace(card);flipWordCardFace(card)")
