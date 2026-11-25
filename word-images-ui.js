@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
-  const PASTE_VERSION = 'paste7';
+  const PASTE_VERSION = 'paste8';
   const copy = images => root.WordImages.normalizeImages(images).map(image => ({ ...image }));
   const stop = event => event.stopPropagation();
   const make = (tag, className, text) => {
@@ -154,7 +154,12 @@
     const heading = make('div', 'word-image-editor-title', '裏面の画像');
     const toolbar = make('div', 'word-image-toolbar');
     const add = button('画像を追加', 'word-image-add');
-    const paste = button('画像を貼り付け', 'word-image-paste-button');
+    // iOS Chrome can accept an image through native Paste even when its
+    // asynchronous Clipboard API cannot read the same picture.
+    const isIOSChrome = /(?:iPhone|iPad|iPod)/i.test(root.navigator?.userAgent || '')
+      && /CriOS\//i.test(root.navigator?.userAgent || '');
+    const paste = button(isIOSChrome ? 'ペースト欄へ' : '画像を貼り付け', 'word-image-paste-button');
+    if (isIOSChrome) paste.setAttribute('aria-label', 'ペースト欄に移動し、長押ししてペースト');
     toolbar.append(add, paste);
     const picker = make('input');
     picker.type = 'file'; picker.accept = ACCEPT; picker.multiple = true; picker.hidden = true;
@@ -163,7 +168,9 @@
     replacePicker.type = 'file'; replacePicker.accept = ACCEPT; replacePicker.hidden = true;
     replacePicker.setAttribute('aria-label', '差し替える画像');
     const hint = make('p', 'word-image-help', 'PNG・JPEG・WebP・GIF ／ 1枚20MBまで');
-    const pasteHint = make('p', 'word-image-help', '画像をコピーして、下の欄にペーストします。PCはCtrl+V／⌘Vでも貼り付けできます。');
+    const pasteHint = make('p', 'word-image-help', isIOSChrome
+      ? 'iPhoneのChromeでは、下の点線枠を長押しして「ペースト」を選んでください。ボタンから画像を直接取り出せない場合があります。'
+      : '画像をコピーして、下の欄にペーストします。PCはCtrl+V／⌘Vでも貼り付けできます。');
     // A real rich-text editing host exposes the system paste menu and can receive
     // image data even when the browser does not allow navigator.clipboard.read().
     const pasteZone = make('div', 'word-image-paste-zone');
@@ -446,6 +453,15 @@
       if (!alive || busy) return;
       clearPasteDiagnostic();
       pasteGeneration++;
+      if (isIOSChrome) {
+        // A button cannot open iOS's native Paste menu or grant access to the
+        // image clipboard. Focus the already-working editable paste field.
+        // No fake paste event, failed read(), or misleading error is generated.
+        report('点線の枠を長押しし、「ペースト」を選んでください。');
+        pasteZone.focus({ preventScroll: true });
+        revealPasteZone();
+        return;
+      }
       if (!root.navigator.clipboard?.read) {
         let textRead;
         try { textRead = root.navigator.clipboard?.readText?.(); } catch (_) {}
