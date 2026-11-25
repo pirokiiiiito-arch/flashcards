@@ -261,6 +261,34 @@ jobs:
         uses: actions/deploy-pages@v4
       - name: Checkout the exact deployed source for public URL evidence
         uses: actions/checkout@v4
+      - name: Verify word image action is outside the card in the published entry
+        run: |
+          python3 - <<'PY'
+          import time
+          import urllib.request
+          from pathlib import Path
+          from os import environ
+          # Verify the actual deployed entries, not just the repository source.
+          expected = [
+              'data-word-image-footer="outside-v1"',
+              'back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);',
+          ]
+          for path in ('', 'word-sync-v2.html'):
+              url = 'https://pirokiiiiito-arch.github.io/flashcards/' + path + '?release=' + environ['GITHUB_SHA']
+              for attempt in range(10):
+                  try:
+                      req = urllib.request.Request(url, headers={'Cache-Control': 'no-cache'})
+                      with urllib.request.urlopen(req, timeout=15) as res:
+                          html = res.read().decode('utf-8')
+                          if res.status == 200 and all(marker in html for marker in expected):
+                              print('PASS published word footer:', url)
+                              break
+                  except Exception as exc:
+                      print(type(exc).__name__, str(exc))
+                  time.sleep(4)
+              else:
+                  raise SystemExit('Published word footer not verified: ' + url)
+          PY
       - name: Verify the public generic layout QA program exact deployed bytes
         run: node tools/verify-layout-qa-pages.cjs "$RUNNER_TEMP/reader-layout-qa-public-evidence.json"
       - name: Preserve generic layout QA publication evidence even on verification failure

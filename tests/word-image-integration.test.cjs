@@ -219,11 +219,15 @@ test('image integration: a malformed saved image does not turn every locally sto
 });
 
 
-test('image entry stays at the bottom right of the back face, outside its scrolling content', () => {
+test('image entry is in a dedicated footer after the stage and never inside the card border', () => {
   const html = read('index.html');
-  assert.match(html, /\.word-image-entry\{position:absolute;right:24px;bottom:18px;/);
-  assert.match(html, /@media\(max-width:560px\)\{\.word-image-entry\{right:16px;bottom:14px\}\}/);
-  assert.ok(html.includes('backContent.append(bt,imageArea);front.append(fl,ft);back.append(bl,backContent,imageEntry);'));
+  assert.match(html, /<div id="stage" class="stage"><\/div>\s*<div class="word-card-footer" data-word-image-footer="outside-v1">/);
+  assert.match(html, /<div id="wordImageAction" class="word-image-action"><\/div>/);
+  assert.ok(html.includes('.word-image-action{display:none}'));
+  assert.ok(html.includes('.stage:has(>.card.show-back:not(.is-editing)):not([inert])+.word-card-footer .word-image-action:has(.word-image-entry){display:block'));
+  assert.ok(html.includes('back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);'));
   assert.ok(html.includes('imageView.destroy();imageView=null;imageEntry.remove();'));
+  assert.ok(html.includes('disposeCardImages=()=>{imageView?.destroy();imageEditor?.destroy();imageEntry.remove()}'));
+  assert.ok(!html.includes('back.append(bl,backContent,imageEntry)'));
   assert.ok(!html.includes('backContent.append(bt,imageArea,imageEntry)'));
 });

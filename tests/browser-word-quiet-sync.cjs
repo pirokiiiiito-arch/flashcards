@@ -72,6 +72,13 @@ async function scenario(width,height){
   await until(()=>evaluate("WordDriveSync.status().status==='同期済み'&&!!document.querySelector('#wordNetworkProgress')&&!!window.WordDriveRecovery"),'initial sync');
   await evaluate("document.querySelector('dialog [data-close]').click();const tail=document.createElement('div');tail.style.height='700px';document.body.append(tail);order=cards.map((_,i)=>i).reverse();isShuffled=true;pos=5;render();stage.querySelector('.card').classList.add('show-back');stage.querySelector('.back').scrollTop=60;stage.querySelectorAll('.card-actions button')[1].focus({preventScroll:true});window.scrollTo(0,180)");
   await sleep(150);
+  // The image button must be outside the visible card border, on the right,
+  // without covering the hint. Exercise the real generated app on both widths.
+  const footer=await evaluate("(()=>{const c=stage.querySelector('.card'),f=c.querySelector('.back').getBoundingClientRect(),button=document.querySelector('.word-image-entry'),b=button.getBoundingClientRect(),h=document.querySelector('.word-card-footer .hint').getBoundingClientRect();return {outside:!stage.contains(button),gap:b.top-f.bottom,right:f.right-b.right,visible:b.width>0&&b.height>0,separate:h.right<=b.left||h.bottom<=b.top}})()");
+  assert.equal(footer.outside,true);assert.equal(footer.visible,true);assert.ok(footer.gap>=0&&footer.gap<=32,'button below border');assert.ok(footer.right>=0&&footer.right<=26,'right aligned');assert.equal(footer.separate,true,'hint does not overlap button');
+  assert.equal(await evaluate("stage.querySelector('.card').classList.remove('show-back');document.querySelector('.word-image-entry').getClientRects().length"),0,'hidden on the front');
+  await evaluate("stage.querySelector('.card').classList.add('show-back')");
+  assert.equal(await evaluate("document.querySelector('.word-image-entry').getClientRects().length"),1,'visible again on the back');
   const baseline=await evaluate("({y:scrollY,top:stage.getBoundingClientRect().top,bar:document.querySelector('.topbar').getBoundingClientRect().height,face:stage.querySelector('.back').scrollTop,id:cards[currentIndex()].id})");
   await evaluate("window.__card=stage.querySelector('.card');window.__focus=document.activeElement;window.__order=order.map(i=>cards[i].id);window.__frames=[];window.__sampling=true;(function sample(){if(!__sampling)return;__frames.push({y:scrollY,top:stage.getBoundingClientRect().top,bar:document.querySelector('.topbar').getBoundingClientRect().height});requestAnimationFrame(sample)})()");
   await evaluate("(async()=>{for(let i=0;i<4;i++)await WordDriveSync.sync()})()");

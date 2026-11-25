@@ -58,8 +58,14 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .card.with-images .back,.card.is-editing .back{align-items:flex-start;padding-top:78px;padding-bottom:66px;overflow:hidden}
 .card.with-images .back-content,.card.is-editing .back-content{height:100%}
 .card.is-editing .back .editor{min-height:100px;width:100%;max-width:100%;text-align:left;margin:0;padding:2px 4px}
-.word-image-entry{position:absolute;right:24px;bottom:18px;z-index:3;margin:0;display:block;color:var(--accent);background:#fff;border:1px solid #bfd0fb;border-radius:12px;padding:10px 14px;font-size:15px}
-@media(max-width:560px){.word-image-entry{right:16px;bottom:14px}}
+/* Independent footer below the card border; never inside the scrolling face. */
+.word-card-footer{width:min(670px,100%);margin:8px auto 0;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:8px;min-height:44px;padding:0 24px}
+.word-card-footer .hint{margin:0;min-width:0}
+.word-image-action{display:none}
+.stage:has(>.card.show-back:not(.is-editing)):not([inert])+.word-card-footer:has(.word-image-entry){grid-template-columns:minmax(0,1fr) auto}
+.stage:has(>.card.show-back:not(.is-editing)):not([inert])+.word-card-footer .word-image-action:has(.word-image-entry){display:block;justify-self:end;align-self:start}
+.word-image-entry{margin:0;display:block;color:var(--accent);background:#fff;border:1px solid #bfd0fb;border-radius:12px;padding:10px 14px;font-size:15px;min-height:42px;white-space:nowrap}
+@media(max-width:560px){.word-card-footer{padding:0 16px}.word-card-footer .hint{font-size:12px}.word-image-entry{font-size:14px;padding:9px 12px}}
 .card-face-switch{position:absolute;bottom:16px;right:20px;z-index:6}
 @media(max-width:560px){.card.with-images{height:clamp(340px,calc(100dvh - 245px),600px)}.card-face-switch{right:16px;bottom:14px}.card.is-editing .face-label{font-size:14px}}
 @media(max-width:360px){.card-actions{gap:5px;right:12px}.card-actions .small{padding:8px 9px;font-size:14px}.face-label{left:16px;font-size:14px}}
@@ -109,7 +115,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 <button id="prevBtn">← 戻る</button><button id="modeBtn" class="mode normal">通常</button><button id="nextBtn">次へ →</button>
 </div>
 <div id="stage" class="stage"></div>
-<div class="hint">タップで表・裏を切替。スマホは左スワイプで次へ、右スワイプで戻ります。</div>
+<div class="word-card-footer" data-word-image-footer="outside-v1"><div class="hint">タップで表・裏を切替。スマホは左スワイプで次へ、右スワイプで戻ります。</div><div id="wordImageAction" class="word-image-action"></div></div>
 </div>
 <script>
 
@@ -156,7 +162,7 @@ function bindSingleAction(el,name,handler,{touchLock=90,clickLock=220}={}){
     handler(e);
   });
 }
-const stage=document.getElementById("stage"),countText=document.getElementById("countText");
+const stage=document.getElementById("stage"),countText=document.getElementById("countText"),wordImageAction=document.getElementById("wordImageAction");
 const syncBtn=document.getElementById("syncBtn"),syncBtnText=document.getElementById("syncBtnText");
 const syncModalWrap=document.getElementById("syncModalWrap"),signedOutBox=document.getElementById("signedOutBox"),signedInBox=document.getElementById("signedInBox");
 const syncEmail=document.getElementById("syncEmail"),syncPassword=document.getElementById("syncPassword"),syncMsg=document.getElementById("syncMsg"),accountLine=document.getElementById("accountLine");
@@ -417,13 +423,13 @@ function renderCard(item){
  const backContent=document.createElement("div");backContent.className="back-content";
  const imageArea=document.createElement("div");imageArea.dataset.imageUi="";
  const imageEntry=document.createElement("button");imageEntry.type="button";imageEntry.className="word-image-entry";imageEntry.textContent=item.images?.length?"画像を編集":"画像を追加";
- backContent.append(bt,imageArea);front.append(fl,ft);back.append(bl,backContent,imageEntry);card.append(front,back);
+ backContent.append(bt,imageArea);front.append(fl,ft);back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);
  let imageView=null,imageEditor=null,imageError=null;
  try{
    if(!window.WordImageUI||!window.WordImages)throw Error("画像機能を読み込めませんでした。ページを再読込してください。カードのデータは保持しています。");
    imageView=WordImageUI.render(imageArea,item.images);
  }catch(err){imageError=err;imageArea.textContent=err.message;imageArea.className="word-image-error";imageEntry.disabled=true}
- disposeCardImages=()=>{imageView?.destroy();imageEditor?.destroy()};
+ disposeCardImages=()=>{imageView?.destroy();imageEditor?.destroy();imageEntry.remove()};
  const actions=document.createElement("div");actions.className="card-actions";
  const add=document.createElement("button");add.className="small add";add.textContent="＋追加";
  const edit=document.createElement("button");edit.className="small";edit.textContent="編集";
@@ -523,7 +529,7 @@ function renderCard(item){
    side.onclick=e=>{e.stopPropagation();card.classList.toggle("show-back");label()};card.append(side);
    updateNav();setTimeout(()=>{if(card.isConnected)(card.classList.contains("show-back")?be:fe).focus()},30);
  }
- imageEntry.onclick=e=>{e.stopPropagation();startEdit();imageEditor.choose()};
+ imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit();imageEditor?.choose()};
  async function saveEdit(){
    if(saving)return;
    saving=true;edit.disabled=true;del.disabled=true;
