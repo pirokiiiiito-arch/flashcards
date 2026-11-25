@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#2f66e8">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
+<link rel="stylesheet" href="./word-images.css?v=20261126-images1">
+<script src="./word-images.js?v=20261126-images1"></script>
+<script src="./word-images-ui.js?v=20261126-images1"></script>
 <title>単語帳</title>
 <style>
 :root{--bg:#f4f7fb;--text:#1f2937;--muted:#6b7280;--border:#d9e1ec;--accent:#2f66e8;--soft:#edf2f8;--green:#2e9d57}
@@ -47,6 +50,18 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .sync-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sync-row button{flex:1;min-width:120px}
 .sync-msg{margin-top:10px;color:var(--muted);font-size:13px;min-height:1.4em;white-space:pre-wrap}
 .account-line{font-size:13px;color:var(--muted);margin-bottom:10px}
+
+.back-content{width:100%;max-height:100%;overflow-y:auto;overscroll-behavior-y:contain;min-height:0}
+.back.longtext{overflow:hidden;padding-bottom:70px}
+.back.longtext .back-content{align-self:stretch}
+.card.with-images{height:clamp(360px,calc(100dvh - 250px),660px)}
+.card.with-images .back,.card.is-editing .back{align-items:flex-start;padding-top:78px;padding-bottom:66px;overflow:hidden}
+.card.with-images .back-content,.card.is-editing .back-content{height:100%}
+.card.is-editing .back .editor{min-height:100px;width:100%;max-width:100%;text-align:left;margin:0;padding:2px 4px}
+.word-image-entry{margin:18px auto 0;display:block;color:var(--accent);background:#fff;border:1px solid #bfd0fb;border-radius:12px;padding:10px 14px;font-size:15px}
+.card-face-switch{position:absolute;bottom:16px;right:20px;z-index:6}
+@media(max-width:560px){.card.with-images{height:clamp(340px,calc(100dvh - 245px),600px)}.card-face-switch{right:16px;bottom:14px}.card.is-editing .face-label{font-size:14px}}
+@media(max-width:360px){.card-actions{gap:5px;right:12px}.card-actions .small{padding:8px 9px;font-size:14px}.face-label{left:16px;font-size:14px}}
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -102,9 +117,17 @@ const SESSION_KEY="flashcards_supabase_session_v1";
 const SUPABASE_URL="https://himtyybslzzwsfmgdivx.supabase.co";
 const SUPABASE_KEY="sb_publishable_tUa2O6wln22qdUk97worCg_Z3vL5bZO";
 let cards=loadCards(),order=cards.map((_,i)=>i),pos=0,editing=false,isShuffled=false;
+let disposeCardImages=()=>{};
 let cloudSession=loadSession(),syncTimer=null,syncBusy=false,lastCloudFingerprint="";
 const legacyRequests=new Set();
 function wordDrivePrimary(){return localStorage.getItem('word_drive_primary_v1')==='1'}
+async function prepareImageSave(images){
+  if(!images.length||wordDrivePrimary())return;
+  // The retired text-only backend cannot retain images. Use the existing local
+  // Drive queue immediately; authentication is only needed for cross-device sync.
+  localStorage.setItem('word_drive_primary_v1','1');stopSyncLoop();
+  await Promise.allSettled([...legacyRequests]);updateSyncUI();
+}
 const actionLocks=new Map();
 function allowAction(name,ms=280){
   const now=performance.now();
@@ -148,6 +171,9 @@ function loadCards(){
       id:typeof x.id==="string"?x.id:null,
       word:x.word,
       meaning:x.meaning,
+      // Keep image metadata intact even if one image is damaged. Image validation
+      // must never turn a populated word list into an empty list on reload.
+      images:x.images==null?[]:x.images,
       sort_order:Number.isFinite(Number(x.sort_order))?Number(x.sort_order):0,
       updated_at:x.updated_at||null
     })):[];
@@ -277,7 +303,8 @@ function currentIndex(){return order.length?order[pos]:-1}
 function updateMode(){const b=document.getElementById("modeBtn");b.textContent=isShuffled?"シャッフル":"通常";b.classList.toggle("normal",!isShuffled)}
 function updateNav(){const d=!cards.length||editing;prevBtn.disabled=d;nextBtn.disabled=d;modeBtn.disabled=cards.length<2||editing;[prevBtn,nextBtn,modeBtn].forEach(b=>{b.style.opacity=b.disabled?".45":"1"})}
 function applyBackClasses(back,text){const n=text.length;back.classList.toggle("multiline",text.includes("\n"));back.classList.toggle("size-medium",n>160&&n<=300);back.classList.toggle("size-small",n>300&&n<=500);back.classList.toggle("size-xsmall",n>500);back.classList.toggle("longtext",n>160)}
-function render(){editing=false;stage.innerHTML="";countText.textContent=cards.length+"件"+(cloudSession?.access_token?"":"（未同期）");if(!cards.length){const e=document.createElement("div");e.className="empty";e.innerHTML="<strong>カードがありません</strong><div>カードを追加してください。</div>";const b=document.createElement("button");b.className="btn";b.textContent="＋ カード追加";b.onclick=showDraft;e.appendChild(b);stage.appendChild(e);updateNav();updateMode();return}renderCard(cards[currentIndex()]);updateNav();updateMode()}
+function clearCardImages(){disposeCardImages();disposeCardImages=()=>{}}
+function render(){clearCardImages();editing=false;stage.innerHTML="";countText.textContent=cards.length+"件"+(cloudSession?.access_token?"":"（未同期）");if(!cards.length){const e=document.createElement("div");e.className="empty";e.innerHTML="<strong>カードがありません</strong><div>カードを追加してください。</div>";const b=document.createElement("button");b.className="btn";b.textContent="＋ カード追加";b.onclick=showDraft;e.appendChild(b);stage.appendChild(e);updateNav();updateMode();return}renderCard(cards[currentIndex()]);updateNav();updateMode()}
 
 function maxSortOrder(){return cards.reduce((m,x)=>Math.max(m,Number(x.sort_order)||0),0)}
 function nextSortOrder(){return Math.max(maxSortOrder()+1,Date.now()*1000)}
@@ -382,10 +409,20 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 
 function renderCard(item){
  const idx=currentIndex(),card=document.createElement("article");card.className="card";
+ card.classList.toggle("with-images",!!item.images?.length);
  const front=document.createElement("div");front.className="face front";const back=document.createElement("div");back.className="face back";
  const fl=document.createElement("div");fl.className="face-label";fl.textContent="表・単語";const bl=document.createElement("div");bl.className="face-label";bl.textContent="裏・意味";
  const ft=document.createElement("div");ft.className="card-text";ft.textContent=item.word;const bt=document.createElement("div");bt.className="card-text";bt.textContent=item.meaning;applyBackClasses(back,item.meaning);
- front.append(fl,ft);back.append(bl,bt);card.append(front,back);
+ const backContent=document.createElement("div");backContent.className="back-content";
+ const imageArea=document.createElement("div");imageArea.dataset.imageUi="";
+ const imageEntry=document.createElement("button");imageEntry.type="button";imageEntry.className="word-image-entry";imageEntry.textContent=item.images?.length?"画像を編集":"画像を追加";
+ backContent.append(bt,imageArea,imageEntry);front.append(fl,ft);back.append(bl,backContent);card.append(front,back);
+ let imageView=null,imageEditor=null,imageError=null;
+ try{
+   if(!window.WordImageUI||!window.WordImages)throw Error("画像機能を読み込めませんでした。ページを再読込してください。カードのデータは保持しています。");
+   imageView=WordImageUI.render(imageArea,item.images);
+ }catch(err){imageError=err;imageArea.textContent=err.message;imageArea.className="word-image-error";imageEntry.disabled=true}
+ disposeCardImages=()=>{imageView?.destroy();imageEditor?.destroy()};
  const actions=document.createElement("div");actions.className="card-actions";
  const add=document.createElement("button");add.className="small add";add.textContent="＋追加";
  const edit=document.createElement("button");edit.className="small";edit.textContent="編集";
@@ -394,7 +431,7 @@ function renderCard(item){
  const num=document.createElement("div");num.className="card-number";num.textContent=(pos+1)+" / "+cards.length;card.appendChild(num);stage.appendChild(card);
  let swipeStartX=0,swipeStartY=0,swipePointerId=null,swipeMoved=false,suppressClickUntil=0,touchTapHandled=false;
  card.addEventListener("pointerdown",e=>{
-   if(editing||e.pointerType==="mouse"||e.target.closest("button,textarea,input"))return;
+   if(editing||e.pointerType==="mouse"||e.target.closest("button,textarea,input,[data-image-ui]"))return;
    swipePointerId=e.pointerId;
    swipeStartX=e.clientX;
    swipeStartY=e.clientY;
@@ -448,15 +485,15 @@ function renderCard(item){
  });
  card.addEventListener("click",e=>{
    if(editing||Date.now()<suppressClickUntil||touchTapHandled)return;
-   if(e.target.closest("button,textarea,input"))return;
+   if(e.target.closest("button,textarea,input,[data-image-ui]"))return;
    if(!allowAction("card-click-toggle",320))return;
    card.classList.toggle("show-back");
  });
  card.addEventListener("selectstart",e=>{
-   if(!editing&&!e.target.closest("textarea,input"))e.preventDefault();
+   if(!editing&&!e.target.closest("textarea,input,[data-image-ui]"))e.preventDefault();
  });
  card.addEventListener("dblclick",e=>{
-   if(!editing&&!e.target.closest("textarea,input"))e.preventDefault();
+   if(!editing&&!e.target.closest("textarea,input,[data-image-ui]"))e.preventDefault();
  });
  add.onclick=e=>{e.stopPropagation();if(!editing)showDraft()};
  edit.onclick=e=>{e.stopPropagation();if(editing){saveEdit()}else startEdit()};
@@ -469,34 +506,71 @@ function renderCard(item){
      lastCloudFingerprint="";
    }
  };
- let fe=null,be=null;
- function startEdit(){editing=true;fe=document.createElement("textarea");fe.className="editor";fe.value=item.word;be=document.createElement("textarea");be.className="editor";be.value=item.meaning;ft.replaceWith(fe);bt.replaceWith(be);applyBackClasses(back,be.value);be.oninput=()=>applyBackClasses(back,be.value);[fe,be].forEach(x=>x.onclick=e=>e.stopPropagation());edit.textContent="保存";edit.classList.add("save");del.textContent="取消";updateNav();setTimeout(()=>{(card.classList.contains("show-back")?be:fe).focus()},30)}
+ let fe=null,be=null,saving=false;
+ function startEdit(){
+   if(imageError){alert(imageError.message);return}
+   editing=true;card.classList.add("is-editing","with-images");
+   fe=document.createElement("textarea");fe.className="editor";fe.value=item.word;fe.setAttribute("aria-label","表の単語");
+   be=document.createElement("textarea");be.className="editor";be.value=item.meaning;be.placeholder="意味を入力（画像だけでも保存できます）";be.setAttribute("aria-label","裏の意味");
+   ft.replaceWith(fe);bt.replaceWith(be);applyBackClasses(back,be.value);be.oninput=()=>applyBackClasses(back,be.value);
+   [fe,be].forEach(x=>x.onclick=e=>e.stopPropagation());
+   imageView.destroy();imageView=null;imageEntry.remove();
+   imageEditor=WordImageUI.edit(imageArea,item.images,{pasteTarget:back,onBusy:busy=>{edit.disabled=busy||saving}});
+   edit.textContent="保存";edit.classList.add("save");del.textContent="取消";add.hidden=true;
+   const side=document.createElement("button");side.type="button";side.className="small card-face-switch";
+   const label=()=>{side.textContent=card.classList.contains("show-back")?"表面を編集":"裏面を編集"};label();
+   side.onclick=e=>{e.stopPropagation();card.classList.toggle("show-back");label()};card.append(side);
+   updateNav();setTimeout(()=>{if(card.isConnected)(card.classList.contains("show-back")?be:fe).focus()},30);
+ }
+ imageEntry.onclick=e=>{e.stopPropagation();startEdit();imageEditor.choose()};
  async function saveEdit(){
-   const w=fe.value.trim(),m=be.value.trim();if(!w||!m){alert("単語と意味の両方を入力してください。");return}
-   const changed={...item,word:w,meaning:m,updated_at:new Date().toISOString()};
+   if(saving)return;
+   saving=true;edit.disabled=true;del.disabled=true;
    try{
+     await imageEditor.ready();if(!card.isConnected)return;
+     const w=fe.value.trim(),m=be.value.trim(),images=imageEditor.getImages();
+     if(!w||(!m&&!images.length)){alert("単語と、意味または画像を入力してください。");return}
+     await prepareImageSave(images);if(!card.isConnected)return;
+     const changed={...cards[idx],word:w,meaning:m,images,updated_at:new Date().toISOString()};
      if(cloudSession&&!wordDrivePrimary()){
        if(!changed.id){const ins=await cloudInsert([changed]);if(ins?.[0])Object.assign(changed,ins[0])}
        else await cloudUpdate(changed);
      }
-     cards[idx]=changed;saveCards();lastCloudFingerprint="";render();
-   }catch(err){alert(err.message)}
+     const previous=cards[idx],keepBack=card.classList.contains("show-back");cards[idx]=changed;
+     try{saveCards()}catch(err){cards[idx]=previous;throw err}
+     lastCloudFingerprint="";render();if(keepBack)stage.querySelector(".card")?.classList.add("show-back");
+   }catch(err){alert(err.message)}finally{saving=false;edit.disabled=false;del.disabled=false}
  }
 }
 
 function showDraft(){
- editing=true;stage.innerHTML="";const card=document.createElement("article");card.className="card";const front=document.createElement("div");front.className="face front",back=document.createElement("div");back.className="face back";
+ if(!window.WordImageUI||!window.WordImages){alert("画像機能を読み込めませんでした。ページを再読込してください。カードのデータは保持しています。");return}
+ clearCardImages();editing=true;stage.innerHTML="";const card=document.createElement("article");card.className="card with-images is-editing";const front=document.createElement("div");front.className="face front",back=document.createElement("div");back.className="face back";
  const fl=document.createElement("div");fl.className="face-label";fl.textContent="表・単語";const bl=document.createElement("div");bl.className="face-label";bl.textContent="裏・意味";
- const fe=document.createElement("textarea");fe.className="editor";fe.placeholder="単語を入力";const be=document.createElement("textarea");be.className="editor";be.placeholder="意味を入力";front.append(fl,fe);back.append(bl,be);card.append(front,back);
+ const fe=document.createElement("textarea");fe.className="editor";fe.placeholder="単語を入力";fe.setAttribute("aria-label","表の単語");
+ const be=document.createElement("textarea");be.className="editor";be.placeholder="意味を入力（画像だけでも保存できます）";be.setAttribute("aria-label","裏の意味");
+ const backContent=document.createElement("div");backContent.className="back-content";
+ const imageArea=document.createElement("div");imageArea.dataset.imageUi="";backContent.append(be,imageArea);
+ front.append(fl,fe);back.append(bl,backContent);card.append(front,back);
  const a=document.createElement("div");a.className="card-actions";const s=document.createElement("button");s.className="small save";s.textContent="保存";const c=document.createElement("button");c.className="small";c.textContent="取消";a.append(s,c);card.appendChild(a);stage.appendChild(card);
- be.oninput=()=>applyBackClasses(back,be.value);card.onclick=e=>{if(e.target!==fe&&e.target!==be)card.classList.toggle("show-back")};
+ let saving=false;
+ const imageEditor=WordImageUI.edit(imageArea,[],{pasteTarget:back,onBusy:busy=>{s.disabled=busy||saving}});disposeCardImages=()=>imageEditor.destroy();
+ const side=document.createElement("button");side.type="button";side.className="small card-face-switch";side.textContent="裏面を編集";
+ const flip=()=>{card.classList.toggle("show-back");side.textContent=card.classList.contains("show-back")?"表面を編集":"裏面を編集"};
+ side.onclick=e=>{e.stopPropagation();flip()};card.append(side);
+ be.oninput=()=>applyBackClasses(back,be.value);card.onclick=e=>{if(!e.target.closest("button,textarea,input,[data-image-ui]"))flip()};
  s.onclick=async e=>{
-   e.stopPropagation();const w=fe.value.trim(),m=be.value.trim();if(!w||!m){alert("単語と意味の両方を入力してください。");return}
-   let item={word:w,meaning:m,sort_order:nextSortOrder(),updated_at:new Date().toISOString()};
+   e.stopPropagation();if(saving)return;saving=true;s.disabled=true;c.disabled=true;
    try{
+     await imageEditor.ready();if(!card.isConnected)return;
+     const w=fe.value.trim(),m=be.value.trim(),images=imageEditor.getImages();if(!w||(!m&&!images.length)){alert("単語と、意味または画像を入力してください。");return}
+     await prepareImageSave(images);if(!card.isConnected)return;
+     let item={word:w,meaning:m,images,sort_order:nextSortOrder(),updated_at:new Date().toISOString()};
      if(cloudSession&&!wordDrivePrimary()){const ins=await cloudInsert([item]);if(ins?.[0])item={id:ins[0].id,word:ins[0].word,meaning:ins[0].meaning,sort_order:Number(ins[0].sort_order)||item.sort_order,updated_at:ins[0].updated_at||item.updated_at}}
-     cards.push(item);saveCards();rebuildOrder();pos=cards.length-1;lastCloudFingerprint="";render();
-   }catch(err){alert(err.message)}
+     const keepBack=card.classList.contains("show-back");cards.push(item);
+     try{saveCards()}catch(err){cards.pop();throw err}
+     rebuildOrder();pos=cards.length-1;lastCloudFingerprint="";render();if(keepBack)stage.querySelector(".card")?.classList.add("show-back");
+   }catch(err){alert(err.message)}finally{saving=false;s.disabled=false;c.disabled=false}
  };
  c.onclick=e=>{e.stopPropagation();render()};updateNav();setTimeout(()=>fe.focus(),30)
 }
@@ -505,21 +579,34 @@ bindSingleAction(prevBtn,"prev",()=>{if(!cards.length||editing)return;pos=(pos-1
 bindSingleAction(nextBtn,"next",()=>{if(!cards.length||editing)return;pos=(pos+1)%order.length;render()});
 bindSingleAction(modeBtn,"mode",()=>{if(cards.length<2||editing)return;if(isShuffled){order=cards.map((_,i)=>i);pos=0;isShuffled=false}else{order=cards.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]]}pos=0;isShuffled=true}render()},{touchLock:120,clickLock:350});
 
-exportBtn.onclick=()=>{const simple=cards.map(x=>({word:x.word,meaning:x.meaning}));const blob=new Blob([JSON.stringify(simple,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tangocho-data.json";a.click();URL.revokeObjectURL(u)};
+exportBtn.onclick=async()=>{
+  if(exportBtn.disabled)return;exportBtn.disabled=true;exportBtn.textContent="保存ファイルを準備中…";
+  try{
+    const snapshot=structuredClone(cards),simple=await WordImages.exportCards(snapshot);
+    const blob=new Blob([JSON.stringify(simple,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=u;a.download="tangocho-data.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
+  }catch(err){alert("データ保存ができませんでした。画像を含めた保存を完了するには、"+(err?.message||"接続や端末の空き容量を確認してください。"))}
+  finally{exportBtn.disabled=false;exportBtn.textContent="データ保存"}
+};
 importBtn.onclick=()=>importFile.click();
 importFile.onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
+  const wasEditing=editing;let applied=false;
+  editing=true;stage.inert=true;importBtn.disabled=true;excelBtn.disabled=true;importBtn.textContent="読込中…";updateNav();
   try{
-    const d=JSON.parse(await f.text());if(!Array.isArray(d))throw 0;
-    const incoming=d.filter(x=>x&&typeof x.word==="string"&&typeof x.meaning==="string").map((x,i)=>({word:x.word.trim(),meaning:x.meaning.trim(),sort_order:Date.now()*1000+i})).filter(x=>x.word&&x.meaning);
+    const d=JSON.parse(await f.text());
+    const imported=await WordImages.importCards(d);
+    const incoming=imported.map((x,i)=>({...x,sort_order:Date.now()*1000+i,updated_at:new Date().toISOString()}));
+    await prepareImageSave(incoming.flatMap(x=>x.images||[]));
+    const previous=cards;
     if(cloudSession&&!wordDrivePrimary()){
       await api("/rest/v1/flashcards_sync?user_id=eq."+encodeURIComponent(cloudSession.user.id),{method:"DELETE",headers:{"Prefer":"return=minimal"}});
       const ins=await cloudInsert(incoming);
       cards=(ins||[]).map(x=>({id:x.id,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||0,updated_at:x.updated_at||null}));
     }else cards=incoming;
-    saveCards();rebuildOrder();pos=0;lastCloudFingerprint="";render();
+    try{saveCards()}catch(err){cards=previous;throw err}rebuildOrder();pos=0;lastCloudFingerprint="";applied=true;render();
   }catch(err){alert(err?.message||"読み込めないファイルです。")}
-  e.target.value="";
+  finally{if(!applied)editing=wasEditing;stage.inert=false;importBtn.disabled=false;excelBtn.disabled=false;importBtn.textContent="データ読込";e.target.value="";updateNav()}
 };
 
 excelBtn.onclick=()=>excelFile.click();

@@ -31,6 +31,33 @@ test('explicit deletion selects a remaining card without resurrecting it',()=>{
 test('malformed and duplicate input is rejected before changing cards',()=>{
  const a=[card('a')],before=JSON.stringify(a);assert.throws(()=>Q.plan(a,[card('a'),card('a')],{order:[0],pos:0}));assert.throws(()=>Q.plan(a,[{}],{order:[0],pos:0}));assert.equal(JSON.stringify(a),before);
 });
+const image=(name='図.png',hash='a'.repeat(64))=>({ref:'gdrive:synthetic-image:'+hash,name,type:'image/png'});
+test('image: legacy absence and an empty image list describe the same card',()=>{
+ const before=[card('a')],after=[{...before[0],images:[]}];
+ assert.equal(Q.signature(before),Q.signature(after));
+ assert.equal(Q.plan(before,after,{order:[0],pos:0}),null);
+});
+test('image: addition, replacement and removal redraw the visible card without changing its selection',()=>{
+ const plain=card('a'),withImage={...plain,images:[image()]},replacement={...plain,images:[image('変更.png','b'.repeat(64))]};
+ for(const [before,after] of [[plain,withImage],[withImage,replacement],[withImage,{...plain,images:[]}]]){
+  const originals=JSON.stringify({before,after});
+  const result=Q.plan([before],[after],{order:[0],pos:0,shuffled:true});
+  assert.equal(result.redraw,true);assert.equal(result.sameCard,true);assert.equal(result.pos,0);assert.equal(result.shuffled,true);
+  assert.equal(JSON.stringify({before,after}),originals,'planning must not mutate image metadata');
+ }
+});
+test('image: another card image edit preserves the visible DOM and shuffle order',()=>{
+ const before=[{...card('a'),images:[image()]},card('b',1)],after=structuredClone(before);
+ after[1].images=[image('別カード.png','b'.repeat(64))];
+ const result=Q.plan(before,after,{order:[1,0],pos:1,shuffled:true});
+ assert.equal(result.redraw,false);assert.equal(result.sameCard,true);assert.equal(result.pos,1);assert.deepEqual(result.order,[1,0]);
+});
+test('image: identical metadata is a no-op while image order and filename changes are visible edits',()=>{
+ const before=[{...card('a'),images:[image('一枚目.png'),image('二枚目.png','b'.repeat(64))]}];
+ assert.equal(Q.plan(before,structuredClone(before),{order:[0],pos:0}),null);
+ for(const images of [[...before[0].images].reverse(),[{...before[0].images[0],name:'別名.png'},before[0].images[1]]])
+  assert.equal(Q.plan(before,[{...before[0],images}],{order:[0],pos:0}).redraw,true);
+});
 test('build retains existing URLs and loads quiet UI before the adapter',()=>{
  for(const p of ['index.html','word-sync-v2.html']){const h=read(p);assert.ok(h.includes('id="wordQuietStyle"'));assert.ok(h.indexOf('./word-quiet-sync.js?v=20261028-quiet1')<h.indexOf('./drive-sync.js?v=20261028-quiet1'));assert.ok(h.includes('const KEY="simple_vocab_cards_v1";'));}
  const adapter=read('drive-sync.js');assert.ok(adapter.includes('if(!plan)return;'));assert.ok(adapter.includes('if(editing)throw'));assert.ok(adapter.includes('Q.restore(stage,viewport'));assert.ok(read('word-recovery.js').includes('wordRecoveryResult'));

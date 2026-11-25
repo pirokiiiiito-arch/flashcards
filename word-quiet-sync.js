@@ -1,7 +1,7 @@
 /* Word UI only. No authentication, network, persistence, or user-data migration. */
 (function(root){
   'use strict';
-  const record=c=>c?[c.id,c.word,c.meaning,Number(c.sort_order)||0,c.updated_at||null]:null;
+  const record=c=>c?[c.id,c.word,c.meaning,Number(c.sort_order)||0,c.updated_at||null,(c.images||[]).map(i=>[i.ref,i.name||'',i.type])]:null;
   const signature=list=>JSON.stringify(list.map(record));
   function plan(current,next,state){
     if(!Array.isArray(next)||next.some(c=>!c||typeof c.id!=='string'||typeof c.word!=='string'||typeof c.meaning!=='string')||new Set(next.map(c=>c.id)).size!==next.length)throw Error('受信した単語の形式を確認できません。端末データは保持しています。');
@@ -25,11 +25,13 @@
     const active=document.activeElement;
     return {x:root.scrollX,y:root.scrollY,back:!!stage.querySelector('.show-back'),
       faceScroll:[...stage.querySelectorAll('.face')].map(el=>({top:el.scrollTop,left:el.scrollLeft})),
+      contentScroll:[...stage.querySelectorAll('.back-content')].map(el=>({top:el.scrollTop,left:el.scrollLeft})),
       focus:stage.contains(active)?[...stage.querySelectorAll('button')].indexOf(active):-1};
   }
   function restore(stage,before,redraw,sameCard){
     if(sameCard){
       [...stage.querySelectorAll('.face')].forEach((el,i)=>{const p=before.faceScroll[i];if(p){el.scrollTop=p.top;el.scrollLeft=p.left;}});
+      [...stage.querySelectorAll('.back-content')].forEach((el,i)=>{const p=before.contentScroll?.[i];if(p){el.scrollTop=p.top;el.scrollLeft=p.left;}});
       if(redraw&&before.focus>=0)stage.querySelectorAll('button')[before.focus]?.focus({preventScroll:true});
     }
     // Restore synchronously, never schedule a later scroll that could fight a swipe.

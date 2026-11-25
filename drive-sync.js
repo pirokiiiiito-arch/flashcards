@@ -4,10 +4,12 @@
   if (window.WordDriveSync) return;
   const F = window.FlashcardsDrive;
   const key = c => 'card:' + c.id;
-  const clean = c => ({ id: c.id, word: c.word, meaning: c.meaning, sort_order: Number(c.sort_order) || 0, updated_at: c.updated_at || null });
+  const clean = c => ({ id: c.id, word: c.word, meaning: c.meaning, images: window.WordImages.normalizeImages(c.images), sort_order: Number(c.sort_order) || 0, updated_at: c.updated_at || null });
   function values(list) { return Object.fromEntries(list.map(c => [key(c), clean(c)])); }
   function timestamps(list) { return Object.fromEntries(list.filter(c => c.updated_at).map(c => [key(c), c.updated_at])); }
   async function read() {
+    // Validate images before assigning IDs or writing any local card metadata.
+    for (const c of cards) window.WordImages.normalizeImages(c.images);
     const used = new Set();
     let normalized = false;
     for (const c of cards) {
@@ -32,6 +34,7 @@
     return networkLoader;
   }
   function statusChanged(status, message) {
+    if (status === '接続済み' || status === '同期済み') window.dispatchEvent(new Event('word-images-ready'));
     window.WordDriveRecovery?.refresh();
     const p = document.getElementById('wordNetworkProgress');
     if (p && status === '同期済み') {
@@ -53,7 +56,7 @@
     },
     timestamps: () => ({ ...Object.fromEntries(Object.entries(oldMeta().updated || {}).map(([k, v]) => ['card:' + k, v])), ...timestamps(cards) }),
     tombstones: () => Object.fromEntries(Object.entries(oldMeta().deleted || {}).map(([k, v]) => ['card:' + k, v])),
-    toCloudValue: async (k, v) => v,
+    toCloudValue: async (k, v, api) => k.startsWith('card:') ? { ...v, images: await window.WordImages.toCloudImages(v.images, api) } : v,
     legacy: [{ file: 'word-flashcards-sync-v2.json', convert: async raw => {
       if (raw.schema !== 'word-flashcards-drive-sync-v2' || !Array.isArray(raw.cards)) throw new Error('旧単語同期ファイルの形式を確認できません。');
       const list = raw.cards.map(c => ({ ...c }));
@@ -87,7 +90,7 @@
       }
       return Object.keys(data).length ? { data, timestamps: times } : null;
     },
-    prepareApply: async view => Object.entries(view.data).filter(([k]) => k.startsWith('card:')).map(([, c]) => c).sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)),
+    prepareApply: async view => Object.entries(view.data).filter(([k]) => k.startsWith('card:')).map(([, c]) => clean(c)).sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)),
     apply: list => {
       const id = cards[currentIndex()]?.id, back = !!stage.querySelector('.show-back'), shuffled = isShuffled, oldOrder = order.map(i => cards[i]?.id);
       cards = list; saveCards();
