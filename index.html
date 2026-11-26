@@ -10,6 +10,7 @@
 <meta name="word-meaning-photo-gap-build" content="20261126-meaning-gap1">
 <meta name="word-card-number-build" content="20261126-number-right1">
 <meta name="word-text-number-build" content="20261126-textnum-top1">
+<meta name="word-image-number-build" content="20261126-imagenum-near1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <link rel="stylesheet" href="./word-images.css?v=20261126-normalview2">
@@ -76,6 +77,8 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
    A front with photos must have exactly the same height as a text-only card. */
 .card.with-images.show-back,.card.is-editing{height:clamp(360px,calc(100dvh - 250px),660px)}
 .card.with-images .back,.card.is-editing .back{align-items:flex-start;padding-top:78px;padding-bottom:66px;overflow:hidden}
+/* In study mode, line the photo card's progress number up just beneath Delete. */
+.card.with-images.show-back:not(.is-editing) .back{padding-top:66px}
 .card.with-images .back-content,.card.is-editing .back-content{height:100%}
 /* Reserve exactly two computed text line-heights between a nonempty meaning and its first picture. */
 .card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}
@@ -91,6 +94,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 @media(max-width:560px){.word-card-footer{padding:0 16px}.word-card-footer .hint{font-size:12px}.word-image-entry{font-size:14px;padding:9px 12px}}
 .card-face-switch{position:absolute;bottom:16px;right:20px;z-index:6}
 @media(max-width:560px){.card.with-images.show-back,.card.is-editing{height:clamp(340px,calc(100dvh - 245px),600px)}.card-face-switch{right:16px;bottom:14px}.card.is-editing .face-label{font-size:14px}}
+@media(max-width:560px){.card.with-images.show-back:not(.is-editing) .back{padding-top:60px}}
 @media(max-width:360px){.card-actions{gap:5px;right:12px}.card-actions .small{padding:8px 9px;font-size:14px}.face-label{left:16px;font-size:14px}}
 
 </style>

@@ -563,3 +563,27 @@ test('text-only reverse number is top-right below delete, with vertically center
   assert.ok(!html.includes('.card-number-back{position:absolute'),
     'text-only counter must not cover a long explanation');
 });
+
+
+test('image-card progress sits immediately below Delete while text-only card layout remains unchanged', () => {
+  const html=read('index.html');
+  assert.ok(html.includes(
+    '.card.with-images.show-back:not(.is-editing) .back{padding-top:66px}'),
+    'desktop image study backs pull the right-aligned number directly below Delete');
+  assert.ok(html.includes(
+    '@media(max-width:560px){.card.with-images.show-back:not(.is-editing) .back{padding-top:60px}}'),
+    'phone image study backs keep a compact gap under Delete');
+  assert.ok(html.includes(
+    '.card.with-images .back,.card.is-editing .back{align-items:flex-start;padding-top:78px;padding-bottom:66px;overflow:hidden}'),
+    'the image editor retains its existing layout');
+  assert.ok(html.includes(
+    '.card:not(.with-images):not(.is-editing) .back-content{height:100%;display:flex;flex-direction:column}'),
+    'text-only right-side number and centered meaning remain unchanged');
+  assert.ok(html.includes(
+    '.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
+    'progress stays in document flow above the meaning without overlap');
+  assert.ok(html.includes(
+    '.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}'),
+    'the two-line separation of explanation and image stays in place');
+  assert.ok(html.includes('name="word-image-number-build" content="20261126-imagenum-near1"'));
+});
