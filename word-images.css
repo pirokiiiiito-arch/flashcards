@@ -6,8 +6,9 @@
 .word-image-button:focus-visible{outline:3px solid #759cff;outline-offset:3px}
 .word-image-button:disabled{opacity:.55;cursor:wait}
 .word-image-button[hidden],.word-image-load-status[hidden]{display:none!important}
-.word-image-open{position:relative;display:block;width:100%;padding:8px;border-color:#e4ddd5;border-radius:14px;background:rgba(255,255,255,.8);overflow:hidden}
-.word-image-picture{display:block;width:100%;height:auto;max-height:300px;object-fit:contain;border-radius:8px;margin:0 auto;background:transparent}
+.word-image-open{position:relative;display:block;width:100%;padding:8px;border:1px solid #e4ddd5;border-radius:14px;background:rgba(255,255,255,.8);overflow:hidden;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.word-image-open[hidden]{display:none!important}
+.word-image-picture{display:block;width:100%;height:auto;max-height:300px;object-fit:contain;border-radius:8px;margin:0 auto;background:transparent;touch-action:pan-y;transform-origin:center center;will-change:transform;-webkit-user-drag:none}
 .word-image-zoom-hint{display:block;margin-top:7px;color:var(--muted,#6b7280);font-size:12px;font-weight:500;text-align:center}
 .word-image-load-status{margin:10px 0;font-size:14px;font-weight:400;line-height:1.55;overflow-wrap:anywhere;text-align:left}
 .word-image-editor{width:100%;min-width:0;padding:16px 0 0;border-top:1px solid #e4ddd5;text-align:left;cursor:auto;user-select:text;-webkit-user-select:text}
@@ -32,19 +33,11 @@
 .word-image-edit-item .word-image-open{border:0;padding:5px}
 .word-image-empty{margin:4px 0 8px;color:var(--muted,#6b7280);font-size:14px;font-weight:400;line-height:1.5}
 .word-image-dragover{outline:3px dashed #759cff;outline-offset:6px;border-radius:10px;background:#eef4ff}
-.word-image-dialog{width:calc(100% - 24px);max-width:1100px;max-height:calc(100dvh - 24px);padding:16px;border:1px solid #d9e1ec;border-radius:18px;background:#fff;color:#1f2937;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;touch-action:pan-x pan-y pinch-zoom}
-.word-image-dialog::backdrop{background:rgba(16,24,40,.72)}
-.word-image-dialog-bar{position:sticky;top:-16px;z-index:1;display:flex;align-items:center;gap:12px;margin:-16px -16px 16px;padding:12px 16px;background:rgba(255,255,255,.97);border-bottom:1px solid #e5e7eb}
-.word-image-dialog-title{flex:1;min-width:0;font-size:16px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
-.word-image-dialog-bar .word-image-button{flex:0 0 auto}
-.word-image-full{display:block;width:auto;max-width:100%;height:auto;margin:0 auto;object-fit:contain;user-select:auto;-webkit-user-select:auto;-webkit-touch-callout:default}
 @media(max-width:560px){
  .word-image-picture{max-height:260px}
  .word-image-toolbar .word-image-button{flex:1;min-width:100px}
  .word-image-editor{padding-top:12px}
  .word-image-edit-item{padding:8px}
- .word-image-dialog{padding:12px;width:calc(100% - 16px);max-height:calc(100dvh - 16px);border-radius:14px}
- .word-image-dialog-bar{top:-12px;margin:-12px -12px 12px;padding:10px 12px}
 }
 
 /* The iPhone native paste target must remain selectable despite the card's

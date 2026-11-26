@@ -35,7 +35,7 @@ jobs:
         run: |
           node --check word-images.js
           node --check word-images-ui.js
-          node --test tests/word-images.test.cjs tests/word-image-integration.test.cjs tests/word-image-paste.test.cjs
+          node --test tests/word-images.test.cjs tests/word-image-integration.test.cjs tests/word-image-paste.test.cjs tests/word-image-pinch.test.cjs
           node --check drive-sync.js
           node --check word-network-recovery.js
           node --test tests/word-network*.test.cjs
@@ -240,6 +240,7 @@ jobs:
             "$qa_python" -m playwright install chromium
           fi
           "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_back_scroll_browser.py"
+          "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_image_pinch_browser.py"
           "$qa_python" -m unittest discover -v -s tests -p 'test_reader_template_readback.py'
           timeout --signal=ABRT --kill-after=10s 8m "$qa_python" -u -X faulthandler -m unittest discover -v --durations 10 -s tests -p 'test_reader_shelf*.py'
       - name: Configure Pages
@@ -272,7 +273,7 @@ jobs:
           # Verify the actual deployed entries, not just the repository source.
           expected = [
               'data-word-image-footer="outside-v1"',
-              'word-images-ui.js?v=20261126-paste8',
+              'word-images-ui.js?v=20261126-pinch1',
               'back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);',
               'function resetWordBackScroll(card){',
               'function flipWordCardFace(card){',
@@ -288,7 +289,7 @@ jobs:
                       req = urllib.request.Request(url, headers={'Cache-Control': 'no-cache'})
                       with urllib.request.urlopen(req, timeout=15) as res:
                           html = res.read().decode('utf-8')
-                          markers = expected if path != 'word-images-ui.js' else ["pasteZone.contentEditable = 'true'", 'function consumeNativeInsertion()', 'function pastedImages(event)', 'function readImageSources(sources)', "attributeFilter: ['src']", 'Chrome on iPhone can expose an image item', 'readRemoteImage(src)', 'クリップボードから画像データを取得できませんでした。', 'normalizeClipboardFile(file)', 'reportUnreadable(reason)', 'recordClipboardItems(items)', '写真・ファイルから追加', "const PASTE_VERSION = 'paste8'", 'apiAvailability', 'const isIOSChrome', 'clearPasteDiagnostic()']
+                          markers = expected if path != 'word-images-ui.js' else ["pasteZone.contentEditable = 'true'", 'function consumeNativeInsertion()', 'function pastedImages(event)', 'function readImageSources(sources)', "attributeFilter: ['src']", 'Chrome on iPhone can expose an image item', 'readRemoteImage(src)', 'クリップボードから画像データを取得できませんでした。', 'normalizeClipboardFile(file)', 'reportUnreadable(reason)', 'recordClipboardItems(items)', '写真・ファイルから追加', "const PASTE_VERSION = 'paste8'", 'apiAvailability', 'const isIOSChrome', 'clearPasteDiagnostic()', 'function enablePinchZoom(viewport, picture)', 'ピンチで拡大・縮小']
                           if res.status == 200 and all(marker in html for marker in markers) and 'startEdit();imageEditor?.choose()' not in html:
                               print('PASS published word footer:', url)
                               break
