@@ -461,7 +461,29 @@ function renderCard(item){
  actions.append(add,edit,del);card.appendChild(actions);
  const num=document.createElement("div");num.className="card-number";num.textContent=(pos+1)+" / "+cards.length;card.appendChild(num);stage.appendChild(card);
  let swipeStartX=0,swipeStartY=0,swipePointerId=null,swipeMoved=false,suppressClickUntil=0,touchTapHandled=false;
+ let imageTapBlocked=false,imageTouchOrigin=null;
+ // Observe gesture type passively: native page pinch and vertical scroll must
+ // not accidentally flip the card, but neither gesture is cancelled.
+ card.addEventListener("touchstart",e=>{
+   if(e.touches.length>1){imageTapBlocked=true;imageTouchOrigin=null;return}
+   if(!e.target.closest(".word-image-open")||e.touches.length!==1)return;
+   const t=e.touches[0];
+   imageTapBlocked=false;
+   imageTouchOrigin={x:t.clientX,y:t.clientY};
+   touchTapHandled=false;suppressClickUntil=0;
+ },{passive:true});
+ card.addEventListener("touchmove",e=>{
+   if(e.touches.length>1){imageTapBlocked=true;imageTouchOrigin=null;return}
+   if(!imageTouchOrigin||e.touches.length!==1)return;
+   const t=e.touches[0];
+   if(Math.hypot(t.clientX-imageTouchOrigin.x,t.clientY-imageTouchOrigin.y)>12){
+     imageTapBlocked=true;imageTouchOrigin=null;
+   }
+ },{passive:true});
  card.addEventListener("pointerdown",e=>{
+   // The next primary press begins a new interaction, rather than the
+   // synthetic click from a previous swipe. This includes photo taps.
+   if(e.isPrimary!==false){touchTapHandled=false;suppressClickUntil=0}
    if(editing||e.pointerType==="mouse"||e.target.closest("button,textarea,input,[data-image-ui]"))return;
    // Let the scrollable back own vertical pan gestures: do not capture the pointer.
    if(card.classList.contains("show-back")&&e.target.closest(".back-content")){
@@ -521,7 +543,9 @@ function renderCard(item){
  });
  card.addEventListener("click",e=>{
    if(editing||Date.now()<suppressClickUntil||touchTapHandled)return;
-   if(e.target.closest("button,textarea,input,[data-image-ui]"))return;
+   const photoTap=!!e.target.closest(".word-image-open");
+   if(photoTap&&imageTapBlocked)return; // Never flip as a side effect of pinch/drag.
+   if(!photoTap&&e.target.closest("button,textarea,input,[data-image-ui]"))return;
    if(!allowAction("card-click-toggle",320))return;
    flipWordCardFace(card);
  });
