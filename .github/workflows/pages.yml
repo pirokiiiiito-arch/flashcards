@@ -285,6 +285,8 @@ jobs:
               'word-back-scroll-build" content="20261126-top2',
               'word-page-zoom-build" content="20261126-normalview2',
               'word-front-height-build" content="20261126-frontmatch1',
+              'word-meaning-photo-gap-build" content="20261126-meaning-gap1',
+              '.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}',
               '.card.with-images.show-back,.card.is-editing{height:clamp(360px,calc(100dvh - 250px),660px)}',
               '.card.with-images.show-back,.card.is-editing{height:clamp(340px,calc(100dvh - 245px),600px)}',
               '.back{display:flex;visibility:hidden;pointer-events:none;',

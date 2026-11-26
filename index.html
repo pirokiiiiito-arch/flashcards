@@ -7,6 +7,7 @@
 <meta name="word-back-scroll-build" content="20261126-top2">
 <meta name="word-page-zoom-build" content="20261126-normalview2">
 <meta name="word-front-height-build" content="20261126-frontmatch1">
+<meta name="word-meaning-photo-gap-build" content="20261126-meaning-gap1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <link rel="stylesheet" href="./word-images.css?v=20261126-normalview2">
@@ -66,6 +67,8 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .card.with-images.show-back,.card.is-editing{height:clamp(360px,calc(100dvh - 250px),660px)}
 .card.with-images .back,.card.is-editing .back{align-items:flex-start;padding-top:78px;padding-bottom:66px;overflow:hidden}
 .card.with-images .back-content,.card.is-editing .back-content{height:100%}
+/* Reserve exactly two computed text line-heights between a nonempty meaning and its first picture. */
+.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}
 .card.is-editing .card-number{display:none}
 .card.is-editing .back .editor{min-height:100px;width:100%;max-width:100%;text-align:left;margin:0;padding:2px 4px}
 /* Independent footer below the card border; never inside the scrolling face. */
