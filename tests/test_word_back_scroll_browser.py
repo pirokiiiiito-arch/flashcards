@@ -29,7 +29,6 @@ def fixture_html():
         '<figure class="word-image-item"><div class="word-image-open">'
         '<div class="word-image-picture" '
         'style="width:100%;height:260px;background:#dde4ed"></div>'
-        '<span class="word-image-zoom-hint">ピンチで拡大・縮小</span>'
         '</div></figure>'
         for _ in range(3)
     )
