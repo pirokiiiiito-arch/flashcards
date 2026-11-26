@@ -226,7 +226,7 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 zoomed = native_page_pinch(page, cdp, x, y, outward=True)
                 self.assertGreater(zoomed, 1.2, "browser page is zoomed before flip")
                 with page.expect_navigation(wait_until="load"):
-                    page.evaluate("flipWordCardFace(card)")
+                    page.evaluate("setTimeout(()=>flipWordCardFace(card),0)")
                 self.assertAlmostEqual(page.evaluate("visualViewport.scale"), 1, delta=0.01,
                     msg="front must restore normal browser page display")
                 self.assertFalse(page.evaluate(
