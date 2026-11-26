@@ -501,9 +501,33 @@ test('meaning and first photo have two line-heights of breathing room only in st
   const html=read('index.html');
   assert.ok(html.includes('.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}'),
     'space must follow the visible description by exactly two text lines');
-  assert.ok(html.includes('backContent.append(bt,imageArea)'),
+  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
     'description still precedes image data, without changing word content or pictures');
   assert.ok(html.includes('name="word-meaning-photo-gap-build" content="20261126-meaning-gap1"'));
   assert.ok(!html.includes('.word-image-gallery{margin-top:2lh}'),
     'image-only cards must not gain the spacing');
+});
+
+
+test('reverse card count is centered in document flow between action buttons and meaning, not overlaid', () => {
+  const html=read('index.html');
+  assert.ok(html.includes('const positionText=(pos+1)+" / "+cards.length;'),
+    'both counters must show the same position and total');
+  assert.ok(html.includes('frontNumber.className="card-number card-number-front"'),
+    'front still retains its original discreet counter');
+  assert.ok(html.includes('backNumber.className="card-number card-number-back"'),
+    'back receives its own centered counter');
+  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+    'reverse number must be in flow before the meaning and all pictures');
+  assert.ok(html.includes('front.append(fl,ft,frontNumber)'),
+    'front counter must be displayed on the front face only');
+  assert.ok(html.includes('.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 auto 12px;text-align:center;flex:none}'),
+    'back count must occupy its own line, not overlap long descriptions');
+  assert.ok(html.includes('.card-number-front{position:absolute;right:24px;top:76px;z-index:4}'),
+    'front appearance remains consistent with older study cards');
+  assert.ok(html.includes('.card-number-front{right:18px;top:72px}'),
+    'existing iPhone front number placement is retained');
+  assert.ok(!html.includes('card.appendChild(num)'),
+    'remove old unconditional counter overlay on the back');
+  assert.ok(html.includes('name="word-card-number-build" content="20261126-number-center1"'));
 });

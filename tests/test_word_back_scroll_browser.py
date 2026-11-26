@@ -266,5 +266,92 @@ class WordMeaningPhotoSpacingTest(unittest.TestCase):
             finally:
                 browser.close()
 
+
+class WordCardNumberPlacementTest(unittest.TestCase):
+    def test_reverse_counter_centered_below_buttons_and_above_long_meaning(self):
+        """Check geometry, not merely CSS strings, with real desktop/phone layouts."""
+        with sync_playwright() as playwright:
+            chrome = shutil.which("google-chrome") or shutil.which("chromium")
+            launch = {"headless": True, "args": ["--no-sandbox"]}
+            if chrome:
+                launch["executable_path"] = chrome
+            browser = playwright.chromium.launch(**launch)
+            try:
+                for width, height in ((390, 760), (1200, 800)):
+                    with self.subTest(viewport=(width, height)):
+                        context = browser.new_context(
+                            viewport={"width": width, "height": height},
+                            device_scale_factor=1, is_mobile=width < 600, has_touch=True,
+                        )
+                        try:
+                            page = context.new_page()
+                            page.set_content(fixture_html(), wait_until="load")
+                            result = page.evaluate("""() => {
+                              const card=document.querySelector('#test-card');
+                              const backContent=card.querySelector('.back-content');
+                              const meaning=backContent.querySelector('.card-text');
+                              meaning.textContent=('1890年代末に創業した歴史ある車・エンジンメーカーであり、'
+                                +'近年はレースへの挑戦でも注目されているブランド。').repeat(2);
+                              const buttons=document.createElement('div');
+                              buttons.className='card-actions';
+                              for(const label of ['＋追加','編集','削除']){
+                                const b=document.createElement('button');
+                                b.className='small';b.textContent=label;buttons.appendChild(b);
+                              }
+                              card.appendChild(buttons);
+                              const backNum=document.createElement('div');
+                              backNum.className='card-number card-number-back';
+                              backNum.textContent='67 / 73';
+                              backContent.prepend(backNum);
+                              const frontNum=document.createElement('div');
+                              frontNum.className='card-number card-number-front';
+                              frontNum.textContent=backNum.textContent;
+                              card.querySelector('.front').appendChild(frontNum);
+                              const geometry=()=>{
+                                const cr=card.getBoundingClientRect();
+                                const br=buttons.getBoundingClientRect();
+                                const nr=backNum.getBoundingClientRect();
+                                const mr=meaning.getBoundingClientRect();
+                                return {
+                                  buttonsBottom:br.bottom,numberTop:nr.top,numberBottom:nr.bottom,
+                                  textTop:mr.top,numberCenter:nr.left+nr.width/2,
+                                  cardCenter:cr.left+cr.width/2,
+                                  numberStyle:getComputedStyle(backNum).position,
+                                  scrollable:backContent.scrollHeight>backContent.clientHeight,
+                                  scrollTop:backContent.scrollTop
+                                };
+                              };
+                              const initial=geometry();
+                              backContent.scrollTop=120;
+                              const afterScroll=geometry();
+                              card.classList.remove('show-back');
+                              const backHidden=getComputedStyle(backNum).visibility;
+                              const frontVisible=getComputedStyle(frontNum).display!=='none'
+                                && getComputedStyle(card.querySelector('.front')).display!=='none';
+                              card.classList.add('show-back');
+                              backContent.scrollTop=0;
+                              return {initial,afterScroll,backHidden,frontVisible};
+                            }""")
+                            initial=result["initial"]
+                            self.assertEqual(initial["numberStyle"], "static",
+                                "reverse number must participate in document flow")
+                            self.assertLess(abs(initial["numberCenter"]-initial["cardCenter"]), 1.0,
+                                "count is horizontally centered within the card")
+                            self.assertGreaterEqual(initial["numberTop"], initial["buttonsBottom"]-1,
+                                "count starts below the action buttons")
+                            self.assertGreaterEqual(initial["textTop"], initial["numberBottom"]+8,
+                                "meaning starts below the count with at least 8px separation")
+                            self.assertTrue(initial["scrollable"],
+                                "multiple photos must retain native vertical scrolling")
+                            self.assertGreater(result["afterScroll"]["scrollTop"], 0,
+                                "the number may scroll away together with the image list")
+                            self.assertEqual(result["backHidden"], "hidden")
+                            self.assertTrue(result["frontVisible"],
+                                "front still shows its own count without reverse-side overlay")
+                        finally:
+                            context.close()
+            finally:
+                browser.close()
+
 if __name__ == "__main__":
     unittest.main()
