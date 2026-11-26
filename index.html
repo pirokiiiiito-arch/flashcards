@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2f66e8">
 <meta name="word-back-scroll-build" content="20261126-top2">
-<meta name="word-page-zoom-build" content="20261126-normalview1">
+<meta name="word-page-zoom-build" content="20261126-normalview2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <link rel="stylesheet" href="./word-images.css?v=20261126-normalview1">
@@ -434,53 +434,31 @@ function resetWordBackScroll(card){
     if(back)back.scrollTop=0;
   });
 }
-/* Browser-owned pinch zoom cannot be assigned through visualViewport.scale.
-   A single same-page reload resets the browser's visual zoom on mobile; keep
-   only the one-time view state so the currently studied card reopens on front.
-   This snapshot never reads or writes card content or original image data. */
-const WORD_PAGE_ZOOM_RESTORE_KEY="word-page-normal-display-v1";
+/* The native browser owns pinch zoom (visualViewport.scale is read-only).
+   Temporarily clamp the viewport's maximum scale when flipping to the front,
+   then restore the original zoom permissions for normal study. No reload,
+   photo rewrite, or card position change is needed. */
 function syncWordZoomedTouchPolicy(){
   document.documentElement.classList.toggle("word-page-zoomed",(window.visualViewport?.scale||1)>1.08);
 }
+let normalViewZoomResetPending=false;
 function returnWordPageToNormalView(){
   const scale=window.visualViewport?.scale;
-  if(editing||!cards.length||!Number.isFinite(scale)||scale<=1.08||typeof window.location?.reload!=="function")return false;
-  const item=cards[currentIndex()];
-  if(!item)return false;
-  const snapshot={
-    version:1,at:Date.now(),count:cards.length,
-    order:order.slice(),pos,shuffled:isShuffled,
-    id:item.id??null,sort:Number(item.sort_order)||0,
-    pageY:Math.max(0,Number(window.scrollY)||0)
-  };
-  try{
-    sessionStorage.setItem(WORD_PAGE_ZOOM_RESTORE_KEY,JSON.stringify(snapshot));
-    window.location.reload();
-    return true;
-  }catch{
-    try{sessionStorage.removeItem(WORD_PAGE_ZOOM_RESTORE_KEY)}catch{}
-    return false;
-  }
+  if(editing||!Number.isFinite(scale)||scale<=1.08||normalViewZoomResetPending)return false;
+  const viewportMeta=document.querySelector('meta[name="viewport"]');
+  if(!viewportMeta)return false;
+  const original=viewportMeta.content;
+  normalViewZoomResetPending=true;
+  // Mobile Chrome/WebKit should constrain visual zoom to the new maximum.
+  viewportMeta.content='width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover';
+  window.setTimeout(()=>{
+    viewportMeta.content=original;
+    normalViewZoomResetPending=false;
+    syncWordZoomedTouchPolicy();
+  },220);
+  return true;
 }
-function restoreWordStudyViewAfterZoom(){
-  let data;
-  try{
-    const raw=sessionStorage.getItem(WORD_PAGE_ZOOM_RESTORE_KEY);
-    if(!raw)return null;
-    sessionStorage.removeItem(WORD_PAGE_ZOOM_RESTORE_KEY);
-    data=JSON.parse(raw);
-  }catch{return null}
-  if(!data||data.version!==1||!Number.isFinite(data.at)||Date.now()-data.at<0||Date.now()-data.at>30000)return null;
-  if(data.count!==cards.length||!Array.isArray(data.order)||data.order.length!==cards.length)return null;
-  if(!Number.isInteger(data.pos)||data.pos<0||data.pos>=data.order.length)return null;
-  if(data.order.some(i=>!Number.isInteger(i)||i<0||i>=cards.length)||new Set(data.order).size!==cards.length)return null;
-  const item=cards[data.order[data.pos]];
-  if(!item||item.id!==data.id||(Number(item.sort_order)||0)!==data.sort)return null;
-  order=data.order.slice();
-  pos=data.pos;
-  isShuffled=!!data.shuffled;
-  return Number.isFinite(data.pageY)?Math.max(0,data.pageY):0;
-}
+
 function flipWordCardFace(card){
   const openBack=!card.classList.contains("show-back");
   if(!openBack)resetWordBackScroll(card); // Clear while the back is still visible.
@@ -773,9 +751,7 @@ excelFile.onchange=async e=>{
 rebuildOrder();
 window.visualViewport?.addEventListener("resize",syncWordZoomedTouchPolicy,{passive:true});
 syncWordZoomedTouchPolicy();
-const normalViewRestoreY=restoreWordStudyViewAfterZoom();
 render();updateSyncUI();
-if(normalViewRestoreY!==null)requestAnimationFrame(()=>window.scrollTo(0,normalViewRestoreY));
 (async()=>{if(cloudSession&&!wordDrivePrimary()){try{await ensureSession();if(cloudSession&&!wordDrivePrimary()){await migrateLocalToCloud();startSyncLoop()}}catch{}}})();
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{}));
 
