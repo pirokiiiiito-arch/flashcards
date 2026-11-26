@@ -11,6 +11,7 @@
 <meta name="word-card-number-build" content="20261126-number-right1">
 <meta name="word-text-number-build" content="20261126-textnum-top1">
 <meta name="word-image-number-build" content="20261126-imagenum-near1">
+<meta name="word-front-number-build" content="20261126-frontnum-near1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <link rel="stylesheet" href="./word-images.css?v=20261126-normalview2">
@@ -39,7 +40,8 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .small.add{color:var(--accent);border-color:#bfd0fb;background:#f4f7ff}.small.save{background:var(--accent);border-color:var(--accent);color:#fff}
 .card-number{color:#aeb7c4;opacity:.75;font-size:13px;line-height:1.4;pointer-events:none;font-weight:500;font-variant-numeric:tabular-nums}
 /* Preserve the front counter; flow the back counter between the button row and meaning. */
-.card-number-front{position:absolute;right:24px;top:76px;z-index:4}
+/* Align the front number directly beneath Delete rather than leaving a large gap. */
+.card-number-front{position:absolute;right:24px;top:64px;z-index:4}
 .card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}
 /* Text-only cards: fill the reverse content area so its counter starts just
    below the button row, while the meaning remains vertically centered.
@@ -51,7 +53,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .back.size-medium .editor{font-size:20px;line-height:1.45}.back.size-small .editor{font-size:17px;line-height:1.42}.back.size-xsmall .editor{font-size:14px;line-height:1.38}
 .empty{width:min(670px,100%);min-height:300px;border:1px dashed var(--border);border-radius:28px;background:#fff;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px}
 .empty strong{color:var(--text);font-size:22px}.hint{margin-top:12px;text-align:center;color:var(--muted);font-size:13px}
-@media(max-width:560px){.wrap{margin-top:16px}.card{height:320px}.face{padding:62px 18px 64px}.face-label{left:20px;top:22px}.card-actions{right:16px;top:16px}.card-number-front{right:18px;top:72px}.nav{gap:7px}.nav button{font-size:15px;min-height:48px}.topbar .btn{font-size:14px}}
+@media(max-width:560px){.wrap{margin-top:16px}.card{height:320px}.face{padding:62px 18px 64px}.face-label{left:20px;top:22px}.card-actions{right:16px;top:16px}.card-number-front{right:18px;top:58px}.nav{gap:7px}.nav button{font-size:15px;min-height:48px}.topbar .btn{font-size:14px}}
 
 .sync-btn{background:#fff;border:1px solid var(--border)}
 .sync-btn.on{background:#e9f7ee;color:#1d7a3d;border-color:#a9d9b9;font-weight:800}

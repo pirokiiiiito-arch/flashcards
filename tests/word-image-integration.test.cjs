@@ -523,10 +523,10 @@ test('reverse card count is right aligned in document flow above meaning, not ov
     'front counter must be displayed on the front face only');
   assert.ok(html.includes('.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
     'back count must occupy its own line, not overlap long descriptions');
-  assert.ok(html.includes('.card-number-front{position:absolute;right:24px;top:76px;z-index:4}'),
+  assert.ok(html.includes('.card-number-front{position:absolute;right:24px;top:64px;z-index:4}'),
     'front appearance remains consistent with older study cards');
-  assert.ok(html.includes('.card-number-front{right:18px;top:72px}'),
-    'existing iPhone front number placement is retained');
+  assert.ok(html.includes('.card-number-front{right:18px;top:58px}'),
+    'iPhone front number sits immediately below Delete');
   assert.ok(!html.includes('card.appendChild(num)'),
     'remove old unconditional counter overlay on the back');
   assert.ok(html.includes('name="word-card-number-build" content="20261126-number-right1"'));
@@ -586,4 +586,20 @@ test('image-card progress sits immediately below Delete while text-only card lay
     '.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}'),
     'the two-line separation of explanation and image stays in place');
   assert.ok(html.includes('name="word-image-number-build" content="20261126-imagenum-near1"'));
+});
+
+
+test('front progress number sits just below Delete without moving the word or back count', () => {
+  const html=read('index.html');
+  assert.ok(html.includes('.card-number-front{position:absolute;right:24px;top:64px;z-index:4}'),
+    'desktop count moves up directly below the Delete button');
+  assert.ok(html.includes('.card-number-front{right:18px;top:58px}'),
+    'iPhone count moves up directly below the Delete button');
+  assert.ok(html.includes('front.append(fl,ft,frontNumber)'),
+    'the front count remains in the front face, without changing the word');
+  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+    'the back count keeps the same non-overlapping location as before');
+  assert.ok(html.includes('.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
+    'the back count placement remains unchanged');
+  assert.ok(html.includes('name="word-front-number-build" content="20261126-frontnum-near1"'));
 });
