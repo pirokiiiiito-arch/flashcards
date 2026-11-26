@@ -442,8 +442,6 @@ const WORD_PAGE_ZOOM_RESTORE_KEY="word-page-normal-display-v1";
 function syncWordZoomedTouchPolicy(){
   document.documentElement.classList.toggle("word-page-zoomed",(window.visualViewport?.scale||1)>1.08);
 }
-window.visualViewport?.addEventListener("resize",syncWordZoomedTouchPolicy,{passive:true});
-syncWordZoomedTouchPolicy();
 function returnWordPageToNormalView(){
   const scale=window.visualViewport?.scale;
   if(editing||!cards.length||!Number.isFinite(scale)||scale<=1.08||typeof window.location?.reload!=="function")return false;
@@ -773,6 +771,8 @@ excelFile.onchange=async e=>{
 };
 
 rebuildOrder();
+window.visualViewport?.addEventListener("resize",syncWordZoomedTouchPolicy,{passive:true});
+syncWordZoomedTouchPolicy();
 const normalViewRestoreY=restoreWordStudyViewAfterZoom();
 render();updateSyncUI();
 if(normalViewRestoreY!==null)requestAnimationFrame(()=>window.scrollTo(0,normalViewRestoreY));
