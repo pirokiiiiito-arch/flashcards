@@ -210,6 +210,8 @@ class WordCardFrontHeightTest(unittest.TestCase):
                                 "editor keeps the tall reverse-image layout")
                         finally:
                             context.close()
+            finally:
+                browser.close()
 
 if __name__ == "__main__":
     unittest.main()
