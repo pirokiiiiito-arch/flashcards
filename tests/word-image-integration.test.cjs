@@ -495,3 +495,15 @@ test('image cards keep the same front height as text-only cards, with tall scrol
   assert.ok(html.includes('name="word-front-height-build" content="20261126-frontmatch1"'),
     'the deployed build identifies the standard-front-height fix');
 });
+
+
+test('meaning and first photo have two line-heights of breathing room only in study back', () => {
+  const html=read('index.html');
+  assert.ok(html.includes('.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}'),
+    'space must follow the visible description by exactly two text lines');
+  assert.ok(html.includes('backContent.append(bt,imageArea)'),
+    'description still precedes image data, without changing word content or pictures');
+  assert.ok(html.includes('name="word-meaning-photo-gap-build" content="20261126-meaning-gap1"'));
+  assert.ok(!html.includes('.word-image-gallery{margin-top:2lh}'),
+    'image-only cards must not gain the spacing');
+});
