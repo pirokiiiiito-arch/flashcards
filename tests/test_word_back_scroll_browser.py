@@ -35,6 +35,8 @@ def fixture_html():
     script = """
 const card = document.querySelector('#test-card');
 let editing=false, swipePointerId=null, swipeStartX=0, swipeStartY=0;
+let cards=[], order=[], pos=0, isShuffled=false;
+function currentIndex(){return pos;}
 let swipeMoved=false, touchTapHandled=true;
 window.__captures=0;
 const nativeCapture=card.setPointerCapture.bind(card);
