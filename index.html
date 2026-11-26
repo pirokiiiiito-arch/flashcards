@@ -9,6 +9,7 @@
 <meta name="word-front-height-build" content="20261126-frontmatch1">
 <meta name="word-meaning-photo-gap-build" content="20261126-meaning-gap1">
 <meta name="word-card-number-build" content="20261126-number-right1">
+<meta name="word-text-number-build" content="20261126-textnum-top1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <link rel="stylesheet" href="./word-images.css?v=20261126-normalview2">
@@ -39,6 +40,11 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 /* Preserve the front counter; flow the back counter between the button row and meaning. */
 .card-number-front{position:absolute;right:24px;top:76px;z-index:4}
 .card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}
+/* Text-only cards: fill the reverse content area so its counter starts just
+   below the button row, while the meaning remains vertically centered.
+   The counter and meaning still scroll together instead of overlapping. */
+.card:not(.with-images):not(.is-editing) .back-content{height:100%;display:flex;flex-direction:column}
+.card:not(.with-images):not(.is-editing) .back-content > .card-text{margin-top:auto;margin-bottom:auto;flex:0 0 auto}
 .editor{user-select:text;-webkit-user-select:text;width:100%;min-height:150px;border:0;outline:0;resize:none;background:transparent;text-align:center;color:var(--text);font-size:clamp(28px,5.2vw,46px);font-weight:850;line-height:1.3;padding:0;font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto}
 .back .editor{font-size:clamp(18px,2.8vw,24px);font-weight:700;text-align:center}.back.multiline .editor{width:26em;max-width:90%;margin:0 auto;text-align:left}
 .back.size-medium .editor{font-size:20px;line-height:1.45}.back.size-small .editor{font-size:17px;line-height:1.42}.back.size-xsmall .editor{font-size:14px;line-height:1.38}
