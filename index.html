@@ -54,6 +54,8 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .account-line{font-size:13px;color:var(--muted);margin-bottom:10px}
 
 .back-content{width:100%;max-height:100%;overflow-y:auto;overscroll-behavior-y:contain;min-height:0;touch-action:pan-y pinch-zoom;-webkit-overflow-scrolling:touch}
+/* When the whole browser page is magnified, panning takes priority over card navigation. */
+.word-page-zoomed .card,.word-page-zoomed .back-content{touch-action:auto}
 /* Keep the reverse face measurable while hidden, but stop iOS momentum before reopening. */
 .card:not(.show-back) .back-content{overflow-y:hidden}
 .back.longtext{overflow:hidden;padding-bottom:70px}
@@ -437,6 +439,11 @@ function resetWordBackScroll(card){
    only the one-time view state so the currently studied card reopens on front.
    This snapshot never reads or writes card content or original image data. */
 const WORD_PAGE_ZOOM_RESTORE_KEY="word-page-normal-display-v1";
+function syncWordZoomedTouchPolicy(){
+  document.documentElement.classList.toggle("word-page-zoomed",(window.visualViewport?.scale||1)>1.08);
+}
+window.visualViewport?.addEventListener("resize",syncWordZoomedTouchPolicy,{passive:true});
+syncWordZoomedTouchPolicy();
 function returnWordPageToNormalView(){
   const scale=window.visualViewport?.scale;
   if(editing||!cards.length||!Number.isFinite(scale)||scale<=1.08||typeof window.location?.reload!=="function")return false;
