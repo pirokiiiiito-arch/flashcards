@@ -65,6 +65,32 @@ test('native one-finger vertical scroll and back-to-front reset remain available
 });
 
 
+
+test('magnified browser page can pan over images, while normal view keeps horizontal swipe navigation', () => {
+  assert.match(html, /function syncWordZoomedTouchPolicy\(\)\{/);
+  assert.match(html, /\.word-page-zoomed \.card,\.word-page-zoomed \.back-content\{touch-action:auto\}/);
+  assert.match(css, /\.word-page-zoomed \.word-image-open,\.word-page-zoomed \.word-image-picture\{touch-action:auto\}/);
+  const start=html.indexOf('function syncWordZoomedTouchPolicy(){');
+  const end=html.indexOf('\nfunction returnWordPageToNormalView(){',start);
+  const src=html.slice(start,end);
+  assert.ok(start>0&&end>start);
+  const state={zoomed:false};
+  const doc={documentElement:{classList:{toggle(name,enabled){
+    assert.equal(name,'word-page-zoomed');
+    state.zoomed=!!enabled;
+  }}}};
+  const context={document:doc,window:{visualViewport:{scale:1}}};
+  const zoomPolicy=vm.runInNewContext(src+'\n(syncWordZoomedTouchPolicy)',context);
+  zoomPolicy();
+  assert.equal(state.zoomed,false);
+  context.window.visualViewport.scale=2.25;
+  zoomPolicy();
+  assert.equal(state.zoomed,true);
+  context.window.visualViewport.scale=1;
+  zoomPolicy();
+  assert.equal(state.zoomed,false);
+});
+
 test('photo tap flips its card, while editing controls and multi-touch gestures do not', () => {
   const start = html.indexOf(' card.addEventListener("click",e=>{');
   const end = html.indexOf('\n card.addEventListener("selectstart"', start);
