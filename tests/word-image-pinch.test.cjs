@@ -5,116 +5,136 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const ui = fs.readFileSync(path.join(__dirname, '..', 'word-images-ui.js'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '..', 'word-images.css'), 'utf8');
+const read = filename => fs.readFileSync(path.join(__dirname, '..', filename), 'utf8');
+const ui = read('word-images-ui.js');
+const css = read('word-images.css');
+const html = read('index.html');
 
-function pinchFixture() {
-  const start = ui.indexOf('  function enablePinchZoom(viewport, picture) {');
-  const end = ui.indexOf('\n  function render(container, images) {', start);
-  assert.ok(start > 0 && end > start, 'extract the real inline pinch implementation');
-  const { enablePinchZoom } = vm.runInNewContext(
-    ui.slice(start, end) + '\n({ enablePinchZoom })'
-  );
-  const listeners = new Map(), options = new Map();
-  const flags = new Set();
-  const viewport = {
-    classList: { toggle(name, enabled) {
-      if (enabled) flags.add(name); else flags.delete(name);
-    } },
-    addEventListener(name, callback, opts) {
-      listeners.set(name, callback); options.set(name, opts);
-    },
-    removeEventListener(name) { listeners.delete(name); }
-  };
-  const picture = {
-    offsetWidth: 320, offsetHeight: 240, style: {},
-    getBoundingClientRect() { return { left: 0, right: 320, top: 0, bottom: 240 }; }
-  };
-  const zoom = enablePinchZoom(viewport, picture);
-  const fire = (eventName, touches, extras = {}) => {
-    let cancelled = false, stopped = false;
-    const event = {
-      touches, cancelable: true, scale: extras.scale,
-      preventDefault() { cancelled = true; },
-      stopPropagation() { stopped = true; }
-    };
-    const handler = listeners.get(eventName);
-    assert.ok(handler, eventName + ' handler remains installed');
-    handler(event);
-    return { cancelled, stopped };
-  };
-  const hands = gap => [
-    { clientX: 160 - gap / 2, clientY: 120 },
-    { clientX: 160 + gap / 2, clientY: 120 }
-  ];
-  return { viewport, picture, zoom, fire, hands, listeners, options, flags };
-}
-
-test('single tap does not open an image viewer; pinch hint replaces tap-to-enlarge', () => {
+test('single-tap image has no modal, zoom action, or instructional text', () => {
   assert.doesNotMatch(ui, /function showImage\s*\(/);
   assert.doesNotMatch(ui, /open\.onclick\s*=/);
+  assert.doesNotMatch(ui, /enablePinchZoom/);
+  assert.doesNotMatch(ui, /ピンチで拡大・縮小|タップで拡大/);
+  assert.doesNotMatch(css, /word-image-zoom-hint|word-image-dialog/);
   assert.match(ui, /const open = make\('div', 'word-image-open'\)/);
-  assert.match(ui, /'ピンチで拡大・縮小'/);
-  assert.doesNotMatch(ui, /'タップで拡大'/);
-  assert.doesNotMatch(css, /\.word-image-dialog\{/);
-  assert.match(css, /\.word-image-open\[hidden\]\{display:none!important\}/);
+  assert.match(ui, /const gallery = make\('div', 'word-image-gallery'\)/);
+  assert.doesNotMatch(ui, /const gallery = mark\(make\('div', 'word-image-gallery'\)\)/);
+  assert.match(ui, /open\.append\(picture\);/);
+  assert.match(ui, /open\.setAttribute\('aria-label', image\.name \|\| '画像 ' \+ \(index \+ 1\)\)/);
 });
 
-test('two-finger pinch magnifies in place and pinching in resets to original scale', () => {
-  const f = pinchFixture();
-  assert.equal(f.zoom.getScale(), 1);
-  assert.equal(f.options.get('touchmove').passive, false, 'pinch cancellation must work on iOS');
-  f.fire('touchstart', f.hands(100));
-  const result = f.fire('touchmove', f.hands(190));
-  assert.equal(result.cancelled, true);
-  assert.equal(result.stopped, true);
-  assert.ok(f.zoom.getScale() > 1.8 && f.zoom.getScale() < 2.0);
-  assert.match(f.picture.style.transform, /scale\(1\.9\)/);
-  assert.equal(f.flags.has('word-image-is-zoomed'), true);
-
-  f.fire('touchend', []);
-  f.fire('touchstart', f.hands(190));
-  f.fire('touchmove', f.hands(80));
-  assert.equal(f.zoom.getScale(), 1);
-  assert.equal(f.picture.style.transform, '');
-  assert.equal(f.flags.has('word-image-is-zoomed'), false);
-  f.zoom.destroy();
-  assert.equal(f.listeners.size, 0);
+test('picture, frame, card and back scroller allow native whole-page pinch zoom', () => {
+  assert.match(css, /\.word-image-open\{[^}]*touch-action:pan-y pinch-zoom/);
+  assert.match(css, /\.word-image-picture\{[^}]*touch-action:pan-y pinch-zoom/);
+  assert.match(html, /\.card\{[^}]*touch-action:pan-y pinch-zoom/);
+  assert.match(html, /\.back-content\{[^}]*touch-action:pan-y pinch-zoom/);
+  assert.match(html, /name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/);
+  assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1/);
 });
 
-test('one-finger drag is never prevented and can scroll the card even while magnified', () => {
-  const f = pinchFixture();
-  f.fire('touchstart', f.hands(100));
-  f.fire('touchmove', f.hands(200));
-  assert.equal(f.zoom.getScale(), 2);
-  f.fire('touchend', []);
-  const oneFinger = f.fire('touchmove', [{ clientX: 160, clientY: 80 }]);
-  assert.equal(oneFinger.cancelled, false);
-  assert.equal(oneFinger.stopped, false);
-  assert.equal(f.zoom.getScale(), 2);
-  assert.match(css, /\.word-image-open\{[^}]*touch-action:pan-y/);
-  assert.match(css, /\.word-image-picture\{[^}]*touch-action:pan-y/);
-  f.zoom.destroy();
+test('the application never intercepts native image pinch gestures', () => {
+  assert.doesNotMatch(ui, /touchstart|touchmove|gesturestart|gesturechange|gestureend/);
+  assert.doesNotMatch(ui, /preventDefault\(\).*pinch|scale\(/);
+  assert.doesNotMatch(css, /transform-origin:center center|will-change:transform/);
+  const start = ui.indexOf('  function render(container, images) {');
+  const end = ui.indexOf('\n  function edit(container, images, options = {}) {', start);
+  assert.ok(start >= 0 && end > start);
+  const render = ui.slice(start, end);
+  assert.doesNotMatch(render, /touch(start|move)|gesture(start|change)|preventDefault\(\)/);
+  assert.match(render, /const gallery = make\('div', 'word-image-gallery'\)/);
+  assert.match(ui, /element\.addEventListener\('click', stop\)/,
+    'editing controls continue to stop clicks; study gallery does not');
 });
 
-test('large gestures clamp image magnification without escaping the picture frame', () => {
-  const f = pinchFixture();
-  f.fire('touchstart', f.hands(30));
-  f.fire('touchmove', f.hands(300));
-  assert.equal(f.zoom.getScale(), 4);
-  assert.equal(f.flags.has('word-image-is-zoomed'), true);
-  f.zoom.destroy();
+test('photo data, loading and retry remain intact while whole-page zoom is browser owned', () => {
+  assert.match(ui, /const blob = await root\.WordImages\.getBlob\(image\)/);
+  assert.match(ui, /url = root\.URL\.createObjectURL\(blob\)/);
+  assert.match(ui, /picture\.src = url/);
+  assert.match(ui, /retry\.onclick = load/);
+  assert.match(ui, /for \(const url of urls\) root\.URL\.revokeObjectURL\(url\)/);
+  assert.doesNotMatch(ui, /pinchControllers|zoom\.reset\(/);
 });
 
-test('iOS GestureEvents prevent browser-page zoom and can zoom the image when touch data is absent', () => {
-  const f = pinchFixture();
-  const start = f.fire('gesturestart', [], { scale: 1 });
-  assert.equal(start.cancelled, true);
-  const changed = f.fire('gesturechange', [], { scale: 1.65 });
-  assert.equal(changed.cancelled, true);
-  assert.ok(Math.abs(f.zoom.getScale() - 1.65) < 0.01);
-  f.fire('gestureend', [], { scale: 1.65 });
-  f.zoom.reset();
-  assert.equal(f.zoom.getScale(), 1);
-  f.zoom.destroy();
+test('native one-finger vertical scroll and back-to-front reset remain available', () => {
+  assert.match(html, /if\(card\.classList\.contains\("show-back"\)&&e\.target\.closest\("\.back-content"\)\)/);
+  assert.match(html, /function resetWordBackScroll\(card\)\{/);
+  assert.match(html, /if\(!openBack\)resetWordBackScroll\(card\)/);
+  assert.match(html, /if\(openBack\)resetWordBackScroll\(card\)/);
+  assert.match(html, /\.card:not\(\.show-back\) \.back-content\{overflow-y:hidden\}/);
+  assert.match(html, /\.back-content\{[^}]*overflow-y:auto/);
+});
+
+
+test('photo tap flips its card, while editing controls and multi-touch gestures do not', () => {
+  const start = html.indexOf(' card.addEventListener("click",e=>{');
+  const end = html.indexOf('\n card.addEventListener("selectstart"', start);
+  assert.ok(start >= 0 && end > start, 'use actual study-card click logic');
+  let click, flips = 0;
+  const context = {
+    card: { addEventListener(type, callback) { if (type === 'click') click = callback; } },
+    editing: false, suppressClickUntil: 0, touchTapHandled: false, imageTapBlocked: false,
+    allowAction() { return true; },
+    flipWordCardFace() { flips++; }
+  };
+  vm.runInNewContext(html.slice(start, end), context);
+  assert.equal(typeof click, 'function');
+
+  const imageTarget = {
+    closest(selector) {
+      if (selector === '.word-image-open') return { className: 'word-image-open' };
+      if (selector === 'button,textarea,input,[data-image-ui]') return { dataset: { imageUi: '' } };
+      return null;
+    }
+  };
+  click({ target: imageTarget });
+  assert.equal(flips, 1, 'a photo tap reaches the card despite the image-area ancestor');
+
+  context.imageTapBlocked = true;
+  click({ target: imageTarget });
+  assert.equal(flips, 1, 'pinch/vertical swipe must not act like a tap');
+  context.imageTapBlocked = false;
+
+  const editingControl = { closest(selector) {
+    return selector === '.word-image-open' ? null : {};
+  } };
+  click({ target: editingControl });
+  assert.equal(flips, 1, 'button and editing UI clicks never flip a card');
+
+  context.editing = true;
+  click({ target: imageTarget });
+  assert.equal(flips, 1, 'image taps in edit mode do not interrupt editing');
+});
+
+test('photo tap classification observes movement without cancelling native page pinch', () => {
+  const start = html.indexOf(' let imageTapBlocked=false,imageTouchOrigin=null;');
+  const end = html.indexOf(' card.addEventListener("pointerdown"', start);
+  assert.ok(start >= 0 && end > start, 'actual native gesture observer must exist');
+  const handlers = new Map(), passive = new Map();
+  const context = {
+    card: {
+      addEventListener(type, fn, opts) { handlers.set(type, fn); passive.set(type, opts?.passive); }
+    },
+    touchTapHandled: true,
+    suppressClickUntil: 500
+  };
+  vm.runInNewContext(html.slice(start, end), context);
+  assert.equal(passive.get('touchstart'), true);
+  assert.equal(passive.get('touchmove'), true);
+  const image = { closest(selector) { return selector === '.word-image-open' ? {} : null; } };
+  handlers.get('touchstart')({ touches: [{ clientX: 40, clientY: 150 }], target: image });
+  assert.equal(vm.runInNewContext('imageTapBlocked', context), false);
+  assert.equal(context.touchTapHandled, false);
+  assert.equal(context.suppressClickUntil, 0);
+  handlers.get('touchmove')({ touches: [{ clientX: 40, clientY: 105 }] });
+  assert.equal(vm.runInNewContext('imageTapBlocked', context), true,
+    'vertical scrolling does not trigger card flip');
+  handlers.get('touchstart')({ touches: [{ clientX: 40, clientY: 150 }], target: image });
+  handlers.get('touchstart')({ touches: [
+    { clientX: 40, clientY: 150 }, { clientX: 120, clientY: 150 }
+  ], target: image });
+  assert.equal(vm.runInNewContext('imageTapBlocked', context), true,
+    'native whole-page two-finger pinch must never flip the card');
+  handlers.get('touchstart')({ touches: [{ clientX: 40, clientY: 150 }], target: image });
+  assert.equal(vm.runInNewContext('imageTapBlocked', context), false,
+    'a later deliberate one-finger tap works after pinch');
 });
