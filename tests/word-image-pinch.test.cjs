@@ -29,7 +29,10 @@ test('picture, frame, card and back scroller allow native whole-page pinch zoom'
   assert.match(html, /\.card\{[^}]*touch-action:pan-y pinch-zoom/);
   assert.match(html, /\.back-content\{[^}]*touch-action:pan-y pinch-zoom/);
   assert.match(html, /name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/);
-  assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1/);
+  const initialViewport = html.match(/<meta name="viewport"[^>]*>/)?.[0] || '';
+  assert.doesNotMatch(initialViewport, /user-scalable=no|maximum-scale=1/,
+    'only the temporary front-flip reset may clamp browser page zoom');
+  assert.match(html, /viewportMeta\.content='width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover'/);
 });
 
 test('the application never intercepts native image pinch gestures', () => {
