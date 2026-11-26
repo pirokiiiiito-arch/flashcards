@@ -10,7 +10,7 @@ const uiCode = fs.readFileSync(path.join(__dirname, '..', 'word-images-ui.js'), 
 class Element {
   constructor(tag = 'div') {
     this.tag = tag; this.className = ''; this.children = []; this.parent = null;
-    this.listeners = {}; this.attrs = {}; this.textContent = ''; this.isConnected = true;
+    this.listeners = {}; this.attrs = {}; this.style = {}; this.textContent = ''; this.isConnected = true;
     this.classList = { add() {}, remove() {}, toggle() {} };
   }
   get childNodes() { return this.children; }
