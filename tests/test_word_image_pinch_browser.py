@@ -68,6 +68,8 @@ function allowAction() {{ return true; }}
 function currentIndex() {{ return order[pos]; }}
 {flip_source}
 {gesture_handlers}
+window.visualViewport?.addEventListener('resize',syncWordZoomedTouchPolicy,{passive:true});
+syncWordZoomedTouchPolicy();
 window.__normalRestore = restoreWordStudyViewAfterZoom();
 if(window.__normalRestore!==null)card.classList.remove('show-back');
 </script></body></html>"""
