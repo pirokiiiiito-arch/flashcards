@@ -155,5 +155,61 @@ class WordBackNativeScrollTest(unittest.TestCase):
                 browser.close()
 
 
+
+class WordCardFrontHeightTest(unittest.TestCase):
+    def test_photo_card_front_matches_plain_card_on_phone_and_desktop(self):
+        """Use the actual app CSS with three synthetic photo placeholders."""
+        with sync_playwright() as playwright:
+            chrome = shutil.which("google-chrome") or shutil.which("chromium")
+            launch_options = {"headless": True, "args": ["--no-sandbox"]}
+            if chrome:
+                launch_options["executable_path"] = chrome
+            browser = playwright.chromium.launch(**launch_options)
+            try:
+                for width, height in ((390, 760), (1200, 800)):
+                    with self.subTest(viewport=(width, height)):
+                        context = browser.new_context(
+                            viewport={"width": width, "height": height},
+                            device_scale_factor=1, is_mobile=width < 600, has_touch=True,
+                        )
+                        try:
+                            page = context.new_page()
+                            page.set_content(fixture_html(), wait_until="load")
+                            sizes = page.evaluate("""() => {
+                              const card=document.querySelector('#test-card');
+                              const scroller=document.querySelector('#test-back-content');
+                              const regular=document.createElement('article');
+                              regular.className='card';
+                              document.body.appendChild(regular);
+                              const plain=regular.getBoundingClientRect().height;
+                              regular.remove();
+                              const photoBack=card.getBoundingClientRect().height;
+                              const backScrollable=scroller.scrollHeight>scroller.clientHeight+80;
+                              card.classList.remove('show-back');
+                              const photoFront=card.getBoundingClientRect().height;
+                              const frontFace=card.querySelector('.front').getBoundingClientRect().height;
+                              card.classList.add('show-back');
+                              const restoredBack=card.getBoundingClientRect().height;
+                              card.classList.remove('show-back');
+                              card.classList.add('is-editing');
+                              const editorHeight=card.getBoundingClientRect().height;
+                              return {plain,photoFront,frontFace,photoBack,
+                                      restoredBack,backScrollable,editorHeight};
+                            }""")
+                            self.assertAlmostEqual(sizes["photoFront"], sizes["plain"], delta=0.5,
+                                msg=f"photo front must match text-only card: {sizes}")
+                            self.assertAlmostEqual(sizes["frontFace"], sizes["plain"], delta=0.5,
+                                msg="photo front face must fill same height as text-only face")
+                            self.assertGreater(sizes["photoBack"], sizes["plain"] + 25,
+                                "reverse side keeps extra height for multiple photos")
+                            self.assertAlmostEqual(sizes["restoredBack"], sizes["photoBack"], delta=0.5,
+                                msg="reopening reverse side restores its taller photo view")
+                            self.assertTrue(sizes["backScrollable"],
+                                "stacked images continue to scroll vertically")
+                            self.assertGreaterEqual(sizes["editorHeight"], sizes["photoBack"] - 0.5,
+                                "editor keeps the tall reverse-image layout")
+                        finally:
+                            context.close()
+
 if __name__ == "__main__":
     unittest.main()

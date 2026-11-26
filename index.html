@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#2f66e8">
 <meta name="word-back-scroll-build" content="20261126-top2">
 <meta name="word-page-zoom-build" content="20261126-normalview2">
+<meta name="word-front-height-build" content="20261126-frontmatch1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <link rel="stylesheet" href="./word-images.css?v=20261126-normalview2">
@@ -60,7 +61,9 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .card:not(.show-back) .back-content{overflow-y:hidden}
 .back.longtext{overflow:hidden;padding-bottom:70px}
 .back.longtext .back-content{align-self:stretch}
-.card.with-images{height:clamp(360px,calc(100dvh - 250px),660px)}
+/* The photo list needs extra room on the back only.
+   A front with photos must have exactly the same height as a text-only card. */
+.card.with-images.show-back,.card.is-editing{height:clamp(360px,calc(100dvh - 250px),660px)}
 .card.with-images .back,.card.is-editing .back{align-items:flex-start;padding-top:78px;padding-bottom:66px;overflow:hidden}
 .card.with-images .back-content,.card.is-editing .back-content{height:100%}
 .card.is-editing .card-number{display:none}
@@ -74,7 +77,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .word-image-entry{margin:0;display:block;color:var(--accent);background:#fff;border:1px solid #bfd0fb;border-radius:12px;padding:10px 14px;font-size:15px;min-height:42px;white-space:nowrap}
 @media(max-width:560px){.word-card-footer{padding:0 16px}.word-card-footer .hint{font-size:12px}.word-image-entry{font-size:14px;padding:9px 12px}}
 .card-face-switch{position:absolute;bottom:16px;right:20px;z-index:6}
-@media(max-width:560px){.card.with-images{height:clamp(340px,calc(100dvh - 245px),600px)}.card-face-switch{right:16px;bottom:14px}.card.is-editing .face-label{font-size:14px}}
+@media(max-width:560px){.card.with-images.show-back,.card.is-editing{height:clamp(340px,calc(100dvh - 245px),600px)}.card-face-switch{right:16px;bottom:14px}.card.is-editing .face-label{font-size:14px}}
 @media(max-width:360px){.card-actions{gap:5px;right:12px}.card-actions .small{padding:8px 9px;font-size:14px}.face-label{left:16px;font-size:14px}}
 
 </style>
