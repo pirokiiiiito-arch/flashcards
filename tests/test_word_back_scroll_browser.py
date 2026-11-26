@@ -213,5 +213,58 @@ class WordCardFrontHeightTest(unittest.TestCase):
             finally:
                 browser.close()
 
+
+class WordMeaningPhotoSpacingTest(unittest.TestCase):
+    def test_two_text_lines_of_spacing_only_between_description_and_first_photo(self):
+        """Measure the rendered gap from the actual word-card CSS."""
+        with sync_playwright() as playwright:
+            chrome = shutil.which("google-chrome") or shutil.which("chromium")
+            launch_options = {"headless": True, "args": ["--no-sandbox"]}
+            if chrome:
+                launch_options["executable_path"] = chrome
+            browser = playwright.chromium.launch(**launch_options)
+            try:
+                for width, height in ((390, 760), (1200, 800)):
+                    with self.subTest(viewport=(width, height)):
+                        context = browser.new_context(
+                            viewport={"width": width, "height": height},
+                            device_scale_factor=1, is_mobile=width < 600, has_touch=True,
+                        )
+                        try:
+                            page = context.new_page()
+                            page.set_content(fixture_html(), wait_until="load")
+                            dimensions = page.evaluate("""() => {
+                              const card=document.querySelector('#test-card');
+                              const desc=document.querySelector('#test-back-content > .card-text');
+                              const imageArea=document.querySelector('#test-back-content > [data-image-ui]');
+                              const style=getComputedStyle(desc);
+                              const lines=Number.parseFloat(style.lineHeight);
+                              const gap=imageArea.getBoundingClientRect().top-desc.getBoundingClientRect().bottom;
+                              const margin=Number.parseFloat(style.marginBottom);
+                              desc.textContent='';
+                              const emptyMargin=Number.parseFloat(getComputedStyle(desc).marginBottom);
+                              desc.textContent='元の説明';
+                              card.classList.add('is-editing');
+                              const editMargin=Number.parseFloat(getComputedStyle(desc).marginBottom);
+                              card.classList.remove('is-editing');
+                              card.classList.remove('with-images');
+                              const noPhotoMargin=Number.parseFloat(getComputedStyle(desc).marginBottom);
+                              return {lines,gap,margin,emptyMargin,editMargin,noPhotoMargin};
+                            }""")
+                            self.assertAlmostEqual(dimensions["margin"], 2 * dimensions["lines"], delta=0.5,
+                                msg="the gap is exactly two current description line heights")
+                            self.assertAlmostEqual(dimensions["gap"], 2 * dimensions["lines"], delta=1.0,
+                                msg=f"visible separation must equal two lines: {dimensions}")
+                            self.assertAlmostEqual(dimensions["emptyMargin"], 0, delta=0.5,
+                                msg="image-only cards need no extra empty spacing")
+                            self.assertAlmostEqual(dimensions["editMargin"], 0, delta=0.5,
+                                msg="study-view gap must not change editing UI")
+                            self.assertAlmostEqual(dimensions["noPhotoMargin"], 0, delta=0.5,
+                                msg="text-only cards keep their original layout")
+                        finally:
+                            context.close()
+            finally:
+                browser.close()
+
 if __name__ == "__main__":
     unittest.main()
