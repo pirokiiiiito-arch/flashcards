@@ -544,3 +544,22 @@ test('reverse count right alignment never uses an absolute overlay over descript
   assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
     'number still precedes the explanation and original image display');
 });
+
+
+test('text-only reverse number is top-right below delete, with vertically centered meaning', () => {
+  const html=read('index.html');
+  assert.ok(html.includes(
+    '.card:not(.with-images):not(.is-editing) .back-content{height:100%;display:flex;flex-direction:column}'),
+    'text-only reverse content must stretch to the top of its face');
+  assert.ok(html.includes(
+    '.card:not(.with-images):not(.is-editing) .back-content > .card-text{margin-top:auto;margin-bottom:auto;flex:0 0 auto}'),
+    'description stays centered in the remaining space and never overlaps its number');
+  assert.ok(html.includes(
+    '.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
+    'reverse number must remain right-aligned and in normal document flow');
+  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+    'both text-only and image cards keep number before meaning');
+  assert.ok(html.includes('name="word-text-number-build" content="20261126-textnum-top1"'));
+  assert.ok(!html.includes('.card-number-back{position:absolute'),
+    'text-only counter must not cover a long explanation');
+});

@@ -355,5 +355,88 @@ class WordCardNumberPlacementTest(unittest.TestCase):
             finally:
                 browser.close()
 
+
+class WordTextOnlyCounterTopRightTest(unittest.TestCase):
+    def test_text_only_count_sits_under_delete_while_meaning_stays_centered(self):
+        """Use actual source CSS; measure compact/tall text at phone and desktop widths."""
+        with sync_playwright() as playwright:
+            chrome = shutil.which("google-chrome") or shutil.which("chromium")
+            launch = {"headless": True, "args": ["--no-sandbox"]}
+            if chrome:
+                launch["executable_path"] = chrome
+            browser = playwright.chromium.launch(**launch)
+            try:
+                for width, height in ((390, 760), (1200, 800)):
+                    for long_text in (False, True):
+                        with self.subTest(viewport=(width, height), long_text=long_text):
+                            context = browser.new_context(
+                                viewport={"width": width, "height": height},
+                                device_scale_factor=1, is_mobile=width < 600, has_touch=True,
+                            )
+                            try:
+                                page = context.new_page()
+                                page.set_content(fixture_html(), wait_until="load")
+                                result = page.evaluate("""(longText) => {
+                                  const card=document.querySelector('#test-card');
+                                  card.classList.remove('with-images');
+                                  const back=card.querySelector('.back');
+                                  if(longText)back.classList.add('longtext');
+                                  const content=back.querySelector('.back-content');
+                                  const meaning=content.querySelector('.card-text');
+                                  meaning.textContent=longText
+                                    ? ('ナイトテーブルは、ベッドサイドに置いて照明やスマホ、'
+                                      +'メガネ、飲み物などを手元にまとめる小型テーブル。').repeat(14)
+                                    : 'ナイトテーブルは、ベッドサイドに置く小型のテーブル';
+                                  const gallery=content.querySelector('.word-image-gallery');
+                                  gallery.replaceChildren();
+                                  const actions=document.createElement('div');
+                                  actions.className='card-actions';
+                                  for(const text of ['＋追加','編集','削除']){
+                                    const button=document.createElement('button');
+                                    button.className='small';button.textContent=text;
+                                    actions.appendChild(button);
+                                  }
+                                  card.appendChild(actions);
+                                  const count=document.createElement('div');
+                                  count.className='card-number card-number-back';
+                                  count.textContent='65 / 68';
+                                  content.prepend(count);
+                                  const cr=card.getBoundingClientRect();
+                                  const btn=actions.lastElementChild.getBoundingClientRect();
+                                  const nr=count.getBoundingClientRect();
+                                  const mr=meaning.getBoundingClientRect();
+                                  const sr=content.getBoundingClientRect();
+                                  return {
+                                    buttonBottom:btn.bottom,numberTop:nr.top,
+                                    numberBottom:nr.bottom,numberRight:nr.right,
+                                    textTop:mr.top,textRight:mr.right,
+                                    textCenterY:mr.top+mr.height/2,
+                                    cardCenterY:cr.top+cr.height/2,
+                                    countStyle:getComputedStyle(count).position,
+                                    scrollable:content.scrollHeight>content.clientHeight+5,
+                                    contentHeight:sr.height,cardHeight:cr.height
+                                  };
+                                }""", long_text)
+                                self.assertEqual(result["countStyle"], "static")
+                                self.assertGreaterEqual(result["numberTop"], result["buttonBottom"]-1,
+                                    "top-right counter must appear below Delete")
+                                self.assertLess(result["numberTop"]-result["buttonBottom"], 45,
+                                    "counter must stay near Delete, not drift toward the meaning")
+                                self.assertLess(abs(result["numberRight"]-result["textRight"]), 1,
+                                    "right edges of counter and meaning area must align")
+                                self.assertGreaterEqual(result["textTop"], result["numberBottom"]+8,
+                                    "counter and long Japanese explanation must never overlap")
+                                if long_text:
+                                    self.assertTrue(result["scrollable"],
+                                        "a long text-only meaning remains scrollable")
+                                else:
+                                    self.assertLess(abs(result["textCenterY"]-result["cardCenterY"]), 48,
+                                        "short text-only description remains near the card's center")
+                                    self.assertFalse(result["scrollable"])
+                            finally:
+                                context.close()
+            finally:
+                browser.close()
+
 if __name__ == "__main__":
     unittest.main()
