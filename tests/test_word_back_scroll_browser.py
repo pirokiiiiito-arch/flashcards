@@ -99,7 +99,7 @@ class WordBackNativeScrollTest(unittest.TestCase):
                   };
                 }""")
                 self.assertGreater(dimensions["scroll"] - dimensions["client"], 200)
-                self.assertEqual(dimensions["touchAction"], "pan-y")
+                self.assertEqual(dimensions["touchAction"], "pan-y pinch-zoom")
 
                 # A touch on empty space inside the scrollable face must NOT
                 # start the card-wide swipe handler or capture its pointer.
