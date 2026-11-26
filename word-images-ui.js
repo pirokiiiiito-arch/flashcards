@@ -21,41 +21,106 @@
     element.addEventListener('click', stop);
     return element;
   }
-  function showImage(url, image, onClosed) {
-    const previousFocus = document.activeElement;
-    const dialog = mark(make('dialog', 'word-image-dialog'));
-    dialog.setAttribute('aria-label', 'カードの画像');
-    const bar = make('div', 'word-image-dialog-bar');
-    const title = make('div', 'word-image-dialog-title', image.name || 'カードの画像');
-    const close = button('閉じる');
-    const picture = make('img', 'word-image-full');
-    picture.src = url;
-    picture.alt = image.name || 'カードの画像';
-    picture.draggable = false;
-    bar.append(title, close);
-    dialog.append(bar, picture);
-    document.body.appendChild(dialog);
-    let closed = false;
-    function cleanup() {
-      if (closed) return;
-      closed = true;
-      document.removeEventListener('keydown', escape);
-      dialog.remove();
-      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
-      onClosed?.();
+  // Pinch zooms the picture in its card; a single finger remains native scroll.
+  // No tap, double-tap or image click opens a separate magnified viewer.
+  function enablePinchZoom(viewport, picture) {
+    const MAX_SCALE = 4;
+    let scale = 1, panX = 0, panY = 0, pinch = null, gesture = null;
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+    function draw(nextScale, nextX = panX, nextY = panY) {
+      if (![nextScale, nextX, nextY].every(Number.isFinite)) return;
+      scale = clamp(nextScale, 1, MAX_SCALE);
+      const maxX = (scale - 1) * picture.offsetWidth / 2;
+      const maxY = (scale - 1) * picture.offsetHeight / 2;
+      panX = scale < 1.001 ? 0 : clamp(nextX, -maxX, maxX);
+      panY = scale < 1.001 ? 0 : clamp(nextY, -maxY, maxY);
+      picture.style.transform = scale < 1.001 ? ''
+        : 'translate3d(' + panX + 'px,' + panY + 'px,0) scale(' + scale + ')';
+      viewport.classList.toggle('word-image-is-zoomed', scale > 1.001);
     }
-    function dismiss() {
-      if (typeof dialog.close === 'function' && dialog.open) dialog.close();
-      cleanup();
+    function points(event) {
+      if (!event.touches || event.touches.length !== 2) return null;
+      const a = event.touches[0], b = event.touches[1];
+      return {
+        x: (a.clientX + b.clientX) / 2,
+        y: (a.clientY + b.clientY) / 2,
+        distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+      };
     }
-    function escape(event) { if (event.key === 'Escape') dismiss(); }
-    close.onclick = dismiss;
-    dialog.addEventListener('close', cleanup);
-    dialog.addEventListener('click', event => { if (event.target === dialog) dismiss(); });
-    if (typeof dialog.showModal === 'function') dialog.showModal();
-    else { dialog.setAttribute('open', ''); document.addEventListener('keydown', escape); }
-    close.focus({ preventScroll: true });
-    return dismiss;
+    function startPinch(next) {
+      const rect = picture.getBoundingClientRect();
+      pinch = {
+        distance: Math.max(next.distance, 1), scale, panX, panY,
+        x: next.x, y: next.y,
+        centerX: (rect.left + rect.right) / 2 - panX,
+        centerY: (rect.top + rect.bottom) / 2 - panY
+      };
+    }
+    function touchStart(event) {
+      const next = points(event);
+      if (!next) return;
+      startPinch(next);
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+    }
+    function touchMove(event) {
+      const next = points(event);
+      if (!next) return; // One-finger vertical swipe still scrolls the card.
+      if (!pinch) startPinch(next);
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+      const nextScale = clamp(pinch.scale * next.distance / pinch.distance, 1, MAX_SCALE);
+      const ratio = nextScale / pinch.scale;
+      // Keep the original point beneath the two fingers as they move apart.
+      const nextX = next.x - pinch.centerX - ratio * (pinch.x - pinch.centerX - pinch.panX);
+      const nextY = next.y - pinch.centerY - ratio * (pinch.y - pinch.centerY - pinch.panY);
+      draw(nextScale, nextX, nextY);
+    }
+    function touchEnd(event) {
+      if (!event.touches || event.touches.length < 2) pinch = null;
+    }
+    // iPhone WebKit also emits GestureEvents. Prevent page zoom while using
+    // touch positions above; use gesture scale only if no touch pinch is active.
+    function gestureStart(event) {
+      if (event.cancelable) event.preventDefault();
+      gesture = { scale, panX, panY };
+    }
+    function gestureChange(event) {
+      if (event.cancelable) event.preventDefault();
+      if (pinch || !gesture) return;
+      draw(gesture.scale * (Number(event.scale) || 1), gesture.panX, gesture.panY);
+    }
+    function gestureEnd(event) {
+      if (event.cancelable) event.preventDefault();
+      gesture = null;
+    }
+    function reset() {
+      pinch = null;
+      gesture = null;
+      draw(1, 0, 0);
+    }
+    viewport.addEventListener('touchstart', touchStart, { passive: false });
+    viewport.addEventListener('touchmove', touchMove, { passive: false });
+    viewport.addEventListener('touchend', touchEnd);
+    viewport.addEventListener('touchcancel', touchEnd);
+    viewport.addEventListener('gesturestart', gestureStart, { passive: false });
+    viewport.addEventListener('gesturechange', gestureChange, { passive: false });
+    viewport.addEventListener('gestureend', gestureEnd);
+    return {
+      reset,
+      getScale: () => scale,
+      destroy() {
+        viewport.removeEventListener('touchstart', touchStart);
+        viewport.removeEventListener('touchmove', touchMove);
+        viewport.removeEventListener('touchend', touchEnd);
+        viewport.removeEventListener('touchcancel', touchEnd);
+        viewport.removeEventListener('gesturestart', gestureStart);
+        viewport.removeEventListener('gesturechange', gestureChange);
+        viewport.removeEventListener('gestureend', gestureEnd);
+        reset();
+      }
+    };
   }
 
   function render(container, images) {
@@ -63,22 +128,25 @@
     const gallery = mark(make('div', 'word-image-gallery'));
     container.appendChild(gallery);
     let alive = true;
-    const urls = new Set(), viewers = new Set(), retryTasks = new Set();
+    const urls = new Set(), pinchControllers = new Set(), retryTasks = new Set();
     for (const [index, image] of list.entries()) {
       const figure = make('figure', 'word-image-item');
-      const open = button('', 'word-image-open');
-      open.setAttribute('aria-label', (image.name || '画像 ' + (index + 1)) + 'を拡大');
+      const open = make('div', 'word-image-open');
+      open.setAttribute('role', 'group');
+      open.setAttribute('aria-label', (image.name || '画像 ' + (index + 1)) + '：2本指で拡大・縮小');
       const picture = make('img', 'word-image-picture');
       picture.alt = image.name || 'カードの画像 ' + (index + 1);
       picture.draggable = false;
       picture.decoding = 'async';
-      const caption = make('span', 'word-image-zoom-hint', 'タップで拡大');
+      const caption = make('span', 'word-image-zoom-hint', 'ピンチで拡大・縮小');
       const status = make('p', 'word-image-load-status', '画像を読み込み中…');
       status.setAttribute('role', 'status');
       const retry = button('画像を再読込');
       retry.hidden = true;
       open.hidden = true;
       open.append(picture, caption);
+      const zoom = enablePinchZoom(open, picture);
+      pinchControllers.add(zoom);
       figure.append(open, status, retry);
       gallery.appendChild(figure);
       let url = '', loading = false, failed = false;
@@ -88,6 +156,7 @@
       function fail(error) {
         if (!alive) return;
         failed = true;
+        zoom.reset();
         open.hidden = true;
         status.hidden = false;
         status.textContent = error?.message || '画像を表示できません。接続後に再読込してください。';
@@ -107,6 +176,7 @@
           const blob = await root.WordImages.getBlob(image);
           if (!alive) return;
           clearURL();
+          zoom.reset();
           url = root.URL.createObjectURL(blob);
           urls.add(url);
           picture.onload = () => {
@@ -119,11 +189,6 @@
         } catch (error) { fail(error); }
         finally { loading = false; }
       }
-      open.onclick = () => {
-        if (!url || !alive) return;
-        const dismiss = showImage(url, image, () => viewers.delete(dismiss));
-        viewers.add(dismiss);
-      };
       retry.onclick = load;
       retryTasks.add(() => { if (failed) load(); });
       load();
@@ -136,8 +201,8 @@
       alive = false;
       root.removeEventListener('online', retryFailed);
       root.removeEventListener('word-images-ready', retryFailed);
-      for (const dismiss of viewers) dismiss();
-      viewers.clear();
+      for (const zoom of pinchControllers) zoom.destroy();
+      pinchControllers.clear();
       for (const url of urls) root.URL.revokeObjectURL(url);
       urls.clear();
       gallery.remove();
