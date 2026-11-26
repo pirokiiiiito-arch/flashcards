@@ -63,11 +63,14 @@ def send_touches(cdp, kind, pairs):
 
 
 def pinch(page, cdp, *, outward):
+    # Use the *untransformed viewport* for gesture coordinates. After
+    # zooming, the image bounding box expands beyond the clipped frame;
+    # a second pinch based on that transformed box can miss the target.
     picture = page.locator(".word-image-picture").first
-    rect = picture.bounding_box()
+    rect = page.locator(".word-image-open").first.bounding_box()
     assert rect and rect["width"] > 100 and rect["height"] > 100
     x = rect["x"] + rect["width"] / 2
-    y = rect["y"] + min(90, rect["height"] / 2)
+    y = rect["y"] + min(90, rect["height"] * 0.35)
     small, big = 34, 91
     beginning, ending = (small, big) if outward else (big, small)
     send_touches(cdp, "touchStart", [(x - beginning, y), (x + beginning, y)])
@@ -83,10 +86,10 @@ def pinch(page, cdp, *, outward):
 
 
 def one_finger_scroll(page, cdp):
-    rect = page.locator(".word-image-picture").first.bounding_box()
+    rect = page.locator(".word-image-open").first.bounding_box()
     assert rect is not None
     x = rect["x"] + rect["width"] / 2
-    y = rect["y"] + min(180, rect["height"] * 0.75)
+    y = rect["y"] + min(140, rect["height"] * 0.5)
     send_touches(cdp, "touchStart", [(x, y)])
     for step in range(1, 7):
         send_touches(cdp, "touchMove", [(x, y - step * 28)])
