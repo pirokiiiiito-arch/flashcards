@@ -507,23 +507,52 @@ function renderCard(item){
  const num=document.createElement("div");num.className="card-number";num.textContent=(pos+1)+" / "+cards.length;card.appendChild(num);stage.appendChild(card);
  let swipeStartX=0,swipeStartY=0,swipePointerId=null,swipeMoved=false,suppressClickUntil=0,touchTapHandled=false;
  let imageTapBlocked=false,imageTouchOrigin=null;
- // Observe gesture type passively: native page pinch and vertical scroll must
- // not accidentally flip the card, but neither gesture is cancelled.
+ // The scrollable reverse side owns native vertical pan and page pinch.
+ // Recognize horizontal one-finger navigation without pointer capture.
  card.addEventListener("touchstart",e=>{
    if(e.touches.length>1){imageTapBlocked=true;imageTouchOrigin=null;return}
-   if(!e.target.closest(".word-image-open")||e.touches.length!==1)return;
+   if(editing||!card.classList.contains("show-back")||e.touches.length!==1||
+      !e.target.closest(".back-content")||e.target.closest("button,textarea,input"))return;
    const t=e.touches[0];
    imageTapBlocked=false;
-   imageTouchOrigin={x:t.clientX,y:t.clientY};
-   touchTapHandled=false;suppressClickUntil=0;
+   imageTouchOrigin={
+     id:t.identifier,x:t.clientX,y:t.clientY,
+     onPhoto:!!e.target.closest(".word-image-open")
+   };
+   touchTapHandled=false;
+   suppressClickUntil=0;
  },{passive:true});
  card.addEventListener("touchmove",e=>{
    if(e.touches.length>1){imageTapBlocked=true;imageTouchOrigin=null;return}
    if(!imageTouchOrigin||e.touches.length!==1)return;
    const t=e.touches[0];
-   if(Math.hypot(t.clientX-imageTouchOrigin.x,t.clientY-imageTouchOrigin.y)>12){
-     imageTapBlocked=true;imageTouchOrigin=null;
-   }
+   if(t.identifier!==imageTouchOrigin.id)return;
+   if(Math.hypot(t.clientX-imageTouchOrigin.x,t.clientY-imageTouchOrigin.y)>12)
+     imageTapBlocked=true;
+ },{passive:true});
+ card.addEventListener("touchend",e=>{
+   if(!imageTouchOrigin||e.touches.length!==0)return;
+   const origin=imageTouchOrigin;
+   imageTouchOrigin=null;
+   const t=Array.from(e.changedTouches||[]).find(t=>t.identifier===origin.id);
+   if(!t)return;
+   const dx=t.clientX-origin.x,dy=t.clientY-origin.y;
+   const horizontal=Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.2;
+   // At enlarged page scale, a horizontal finger movement means panning,
+   // never skipping to a different card.
+   if(!horizontal||editing||!card.classList.contains("show-back")||
+      (window.visualViewport?.scale||1)>1.08)return;
+   if(e.cancelable)e.preventDefault();
+   imageTapBlocked=true;
+   touchTapHandled=true;
+   suppressClickUntil=Date.now()+900;
+   if(dx<0)pos=(pos+1)%order.length;
+   else pos=(pos-1+order.length)%order.length;
+   render();
+ },{passive:false});
+ card.addEventListener("touchcancel",()=>{
+   imageTouchOrigin=null;
+   imageTapBlocked=true;
  },{passive:true});
  card.addEventListener("pointerdown",e=>{
    // The next primary press begins a new interaction, rather than the
