@@ -402,98 +402,80 @@ test('word back: vertical touch pan is never cancelled as a tap', () => {
 });
 
 
-test('native page zoom: reversing a zoomed card records only view state and reloads for normal display', () => {
+test('normal view: closing a zoomed reverse face temporarily clamps browser viewport and preserves the card', () => {
   const html=read('index.html');
   const start=html.indexOf('function resetWordBackScroll(card){');
   const end=html.indexOf('\nfunction renderCard(item){',start);
   assert.ok(start>=0&&end>start);
-  const storage=new Map(),frames=[],reloads=[];
-  const items=[
-    {id:'synthetic-a',sort_order:10},{id:'synthetic-b',sort_order:20},
-    {id:'synthetic-c',sort_order:30}
+  const frames=[],timers=[],meta={content:'width=device-width,initial-scale=1,viewport-fit=cover'};
+  const flags=new Set();
+  const cards=[
+    {id:'syn-a',sort_order:10,images:[{ref:'local:synthetic-a'}]},
+    {id:'syn-b',sort_order:20,images:[{ref:'local:synthetic-b'}]},
+    {id:'syn-c',sort_order:30,images:[{ref:'local:synthetic-c'}]}
   ];
   const context={
-    requestAnimationFrame(callback){frames.push(callback)},
-    editing:false,cards:items,order:[2,0,1],pos:2,isShuffled:true,
-    currentIndex(){return context.order[context.pos]},
-    sessionStorage:{
-      setItem(k,v){storage.set(k,v)},getItem(k){return storage.get(k)||null},
-      removeItem(k){storage.delete(k)}
-    },
+    requestAnimationFrame(fn){frames.push(fn)},
+    editing:false,cards,order:[2,0,1],pos:2,isShuffled:true,
     window:{
-      visualViewport:{scale:2.2},scrollY:180,
-      location:{reload(){reloads.push('reload')}}
+      visualViewport:{scale:2.2},
+      setTimeout(fn,ms){timers.push({fn,ms})}
+    },
+    document:{
+      querySelector(selector){assert.equal(selector,'meta[name="viewport"]');return meta},
+      documentElement:{classList:{toggle(name,on){
+        assert.equal(name,'word-page-zoomed');if(on)flags.add(name);else flags.delete(name)
+      }}}
     }
   };
   vm.runInNewContext(html.slice(start,end),context);
-  const classes=new Set(['show-back']),content={scrollTop:710},back={scrollTop:0};
+  const names=new Set(['show-back']),content={scrollTop:770},back={scrollTop:100};
   const card={
     isConnected:true,
     classList:{
-      contains(name){return classes.has(name)},
-      toggle(name,enabled){if(enabled)classes.add(name);else classes.delete(name)}
+      contains(name){return names.has(name)},
+      toggle(name,on){if(on)names.add(name);else names.delete(name)}
     },
     querySelector(selector){return selector==='.back-content'?content:selector==='.back'?back:null}
   };
+  const oldCards=JSON.stringify(cards),oldOrder=[...context.order];
   context.flipWordCardFace(card);
-  assert.equal(classes.has('show-back'),false);
+  assert.equal(names.has('show-back'),false);
   assert.equal(content.scrollTop,0);
-  assert.deepEqual(reloads,['reload'],'only the browser can reset visual viewport zoom');
-  assert.equal(storage.size,1);
-  const snapshot=JSON.parse([...storage.values()][0]);
-  assert.deepEqual([...snapshot.order],[2,0,1]);
-  assert.equal(snapshot.pos,2);
-  assert.equal(snapshot.shuffled,true);
-  assert.equal(snapshot.id,'synthetic-b');
-  assert.equal(snapshot.pageY,180);
-  assert.equal(items[1].id,'synthetic-b','card record is never rewritten');
-
-  // Simulate the next page load: card and shuffle order should be restored
-  // without retaining the zoom snapshot after consuming it once.
-  context.order=[0,1,2];context.pos=0;context.isShuffled=false;
-  const restoredY=context.restoreWordStudyViewAfterZoom();
-  assert.equal(restoredY,180);
-  assert.deepEqual([...context.order],[2,0,1]);
+  assert.equal(back.scrollTop,0);
+  assert.match(meta.content,/maximum-scale=1/);
+  assert.equal(timers.length,1);
+  assert.equal(timers[0].ms,220);
   assert.equal(context.pos,2);
+  assert.deepEqual([...context.order],oldOrder);
   assert.equal(context.isShuffled,true);
-  assert.equal(storage.size,0);
-  assert.equal(context.restoreWordStudyViewAfterZoom(),null);
-
+  assert.equal(JSON.stringify(cards),oldCards);
+  // Browser clamp changes visualViewport, not application JavaScript.
   context.window.visualViewport.scale=1;
-  classes.add('show-back');
-  context.flipWordCardFace(card);
-  assert.equal(reloads.length,1,'normal scale must never reload');
+  timers.shift().fn();
+  assert.equal(meta.content,'width=device-width,initial-scale=1,viewport-fit=cover');
+  assert.equal(flags.has('word-page-zoomed'),false);
+  assert.equal(JSON.stringify(cards),oldCards);
+  assert.doesNotMatch(html.slice(start,end),/window\.location\.reload|sessionStorage\./);
 });
 
-test('native page zoom: stale or changed-card snapshots do not override saved study state', () => {
+test('normal view: regular flips never clamp viewport or interrupt editing', () => {
   const html=read('index.html');
   const start=html.indexOf('function resetWordBackScroll(card){');
   const end=html.indexOf('\nfunction renderCard(item){',start);
-  const storage=new Map(),cards=[
-    {id:'fixture-1',sort_order:1},{id:'fixture-2',sort_order:2}
-  ];
+  const meta={content:'width=device-width,initial-scale=1,viewport-fit=cover'};
+  let timerCount=0;
   const context={
-    requestAnimationFrame(){},editing:false,cards,order:[0,1],pos:0,isShuffled:false,
-    sessionStorage:{
-      setItem(k,v){storage.set(k,v)},getItem(k){return storage.get(k)||null},
-      removeItem(k){storage.delete(k)}
-    },
-    window:{visualViewport:{scale:1},location:{reload(){throw Error('unexpected reload')}}}
+    requestAnimationFrame(){},editing:false,
+    window:{visualViewport:{scale:1},setTimeout(){timerCount++}},
+    document:{querySelector(){return meta},documentElement:{classList:{toggle(){}}}}
   };
   vm.runInNewContext(html.slice(start,end),context);
-  const key='word-page-normal-display-v1';
-  storage.set(key,JSON.stringify({
-    version:1,at:Date.now()-60_000,count:2,order:[1,0],pos:0,
-    id:'fixture-2',sort:2,shuffled:true,pageY:500
-  }));
-  assert.equal(context.restoreWordStudyViewAfterZoom(),null);
-  assert.equal(context.pos,0);
-  assert.equal(storage.size,0);
-  storage.set(key,JSON.stringify({
-    version:1,at:Date.now(),count:2,order:[1,0],pos:0,
-    id:'different-card',sort:2,shuffled:true,pageY:500
-  }));
-  assert.equal(context.restoreWordStudyViewAfterZoom(),null);
-  assert.equal(context.pos,0);
-  assert.equal(context.isShuffled,false);
+  assert.equal(context.returnWordPageToNormalView(),false);
+  assert.equal(timerCount,0);
+  assert.equal(meta.content,'width=device-width,initial-scale=1,viewport-fit=cover');
+  context.window.visualViewport.scale=2;
+  context.editing=true;
+  assert.equal(context.returnWordPageToNormalView(),false);
+  assert.equal(timerCount,0);
 });
