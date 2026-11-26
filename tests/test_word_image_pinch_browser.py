@@ -70,8 +70,6 @@ function currentIndex() {{ return order[pos]; }}
 {gesture_handlers}
 window.visualViewport?.addEventListener('resize',syncWordZoomedTouchPolicy,{{passive:true}});
 syncWordZoomedTouchPolicy();
-window.__normalRestore = restoreWordStudyViewAfterZoom();
-if(window.__normalRestore!==null)card.classList.remove('show-back');
 </script></body></html>"""
 
 
@@ -214,9 +212,9 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 self.assertEqual(page.evaluate("pos"), 0, "right photo swipe goes to previous card")
                 self.assertEqual(page.evaluate("navCount"), 2)
 
-                # Deliberately zoom, then switch to front. A same-page reload
-                # should return the browser's visualViewport to its initial scale
-                # without altering the current studied card or its order.
+                # Deliberately zoom, then switch to front. Temporarily clamping
+                # the viewport should return the entire browser to normal scale
+                # without changing this card or its ordering.
                 page.evaluate("pos=1;order=[2,0,1];isShuffled=true")
                 page.wait_for_timeout(130)
                 frame = page.locator(".word-image-open").first.bounding_box()
@@ -225,10 +223,14 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 y = frame["y"] + min(90, frame["height"] * 0.35)
                 zoomed = native_page_pinch(page, cdp, x, y, outward=True)
                 self.assertGreater(zoomed, 1.2, "browser page is zoomed before flip")
-                with page.expect_navigation(wait_until="load"):
-                    page.evaluate("setTimeout(()=>flipWordCardFace(card),0)")
-                self.assertAlmostEqual(page.evaluate("visualViewport.scale"), 1, delta=0.01,
+                page.evaluate("flipWordCardFace(card)")
+                page.wait_for_function("() => visualViewport.scale < 1.05",timeout=3500)
+                page.wait_for_timeout(300)
+                self.assertAlmostEqual(page.evaluate("visualViewport.scale"), 1, delta=0.05,
                     msg="front must restore normal browser page display")
+                self.assertEqual(page.locator('meta[name="viewport"]').get_attribute('content'),
+                    'width=device-width,initial-scale=1,viewport-fit=cover',
+                    "temporary viewport cap must be removed so pinch works again")
                 self.assertFalse(page.evaluate(
                     "document.documentElement.classList.contains('word-page-zoomed')"
                 ), "normal front display cannot retain zoomed-page gesture policy")
@@ -236,9 +238,8 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 self.assertEqual(page.evaluate("pos"), 1)
                 self.assertEqual(page.evaluate("order"), [2,0,1])
                 self.assertTrue(page.evaluate("isShuffled"))
-                self.assertEqual(page.evaluate(
-                    "sessionStorage.getItem('word-page-normal-display-v1')"
-                ), None, "one-time view snapshot must be consumed")
+                self.assertEqual(page.evaluate("navCount"), 2,
+                    "restoring normal scale must not navigate or rebuild the card")
                 self.assertEqual(page.locator(".word-image-zoom-hint").count(), 0)
             finally:
                 browser.close()
