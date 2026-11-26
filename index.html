@@ -8,6 +8,7 @@
 <meta name="word-page-zoom-build" content="20261126-normalview2">
 <meta name="word-front-height-build" content="20261126-frontmatch1">
 <meta name="word-meaning-photo-gap-build" content="20261126-meaning-gap1">
+<meta name="word-card-number-build" content="20261126-number-center1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="./auth-only-ui.css?v=persist1">
 <link rel="stylesheet" href="./word-images.css?v=20261126-normalview2">
@@ -34,13 +35,16 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .back.longtext{align-items:flex-start;overflow-y:auto;padding-top:72px;padding-bottom:34px}.back.longtext .card-text{margin-top:auto;margin-bottom:auto}
 .card-actions{position:absolute;top:22px;right:24px;z-index:5;display:flex;gap:8px}.small{padding:8px 12px;border-radius:11px;background:rgba(255,255,255,.96);border:1px solid var(--border);color:var(--text);font-weight:700}
 .small.add{color:var(--accent);border-color:#bfd0fb;background:#f4f7ff}.small.save{background:var(--accent);border-color:var(--accent);color:#fff}
-.card-number{position:absolute;right:24px;top:76px;z-index:4;color:#aeb7c4;opacity:.65;font-size:13px;pointer-events:none}
+.card-number{color:#aeb7c4;opacity:.75;font-size:13px;line-height:1.4;pointer-events:none;font-weight:500;font-variant-numeric:tabular-nums}
+/* Preserve the front counter; flow the back counter between the button row and meaning. */
+.card-number-front{position:absolute;right:24px;top:76px;z-index:4}
+.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 auto 12px;text-align:center;flex:none}
 .editor{user-select:text;-webkit-user-select:text;width:100%;min-height:150px;border:0;outline:0;resize:none;background:transparent;text-align:center;color:var(--text);font-size:clamp(28px,5.2vw,46px);font-weight:850;line-height:1.3;padding:0;font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto}
 .back .editor{font-size:clamp(18px,2.8vw,24px);font-weight:700;text-align:center}.back.multiline .editor{width:26em;max-width:90%;margin:0 auto;text-align:left}
 .back.size-medium .editor{font-size:20px;line-height:1.45}.back.size-small .editor{font-size:17px;line-height:1.42}.back.size-xsmall .editor{font-size:14px;line-height:1.38}
 .empty{width:min(670px,100%);min-height:300px;border:1px dashed var(--border);border-radius:28px;background:#fff;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px}
 .empty strong{color:var(--text);font-size:22px}.hint{margin-top:12px;text-align:center;color:var(--muted);font-size:13px}
-@media(max-width:560px){.wrap{margin-top:16px}.card{height:320px}.face{padding:62px 18px 64px}.face-label{left:20px;top:22px}.card-actions{right:16px;top:16px}.card-number{right:18px;top:72px}.nav{gap:7px}.nav button{font-size:15px;min-height:48px}.topbar .btn{font-size:14px}}
+@media(max-width:560px){.wrap{margin-top:16px}.card{height:320px}.face{padding:62px 18px 64px}.face-label{left:20px;top:22px}.card-actions{right:16px;top:16px}.card-number-front{right:18px;top:72px}.nav{gap:7px}.nav button{font-size:15px;min-height:48px}.topbar .btn{font-size:14px}}
 
 .sync-btn{background:#fff;border:1px solid var(--border)}
 .sync-btn.on{background:#e9f7ee;color:#1d7a3d;border-color:#a9d9b9;font-weight:800}
@@ -481,7 +485,10 @@ function renderCard(item){
  const backContent=document.createElement("div");backContent.className="back-content";
  const imageArea=document.createElement("div");imageArea.dataset.imageUi="";
  const imageEntry=document.createElement("button");imageEntry.type="button";imageEntry.className="word-image-entry";imageEntry.textContent=item.images?.length?"画像を編集":"画像を追加";
- backContent.append(bt,imageArea);front.append(fl,ft);back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);
+ const positionText=(pos+1)+" / "+cards.length;
+ const frontNumber=document.createElement("div");frontNumber.className="card-number card-number-front";frontNumber.textContent=positionText;
+ const backNumber=document.createElement("div");backNumber.className="card-number card-number-back";backNumber.textContent=positionText;
+ backContent.append(backNumber,bt,imageArea);front.append(fl,ft,frontNumber);back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);
  let imageView=null,imageEditor=null,imageError=null;
  try{
    if(!window.WordImageUI||!window.WordImages)throw Error("画像機能を読み込めませんでした。ページを再読込してください。カードのデータは保持しています。");
@@ -493,7 +500,7 @@ function renderCard(item){
  const edit=document.createElement("button");edit.className="small";edit.textContent="編集";
  const del=document.createElement("button");del.className="small";del.textContent="削除";
  actions.append(add,edit,del);card.appendChild(actions);
- const num=document.createElement("div");num.className="card-number";num.textContent=(pos+1)+" / "+cards.length;card.appendChild(num);stage.appendChild(card);
+ stage.appendChild(card);
  let swipeStartX=0,swipeStartY=0,swipePointerId=null,swipeMoved=false,suppressClickUntil=0,touchTapHandled=false;
  let imageTapBlocked=false,imageTouchOrigin=null;
  // The scrollable reverse side owns native vertical pan and page pinch.
