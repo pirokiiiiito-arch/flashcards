@@ -25,7 +25,9 @@
 
   function render(container, images) {
     const list = copy(images);
-    const gallery = mark(make('div', 'word-image-gallery'));
+    // Study-side photos must bubble clicks to the card to flip front/back.
+    // Editor controls remain independently guarded by the card click handler.
+    const gallery = make('div', 'word-image-gallery');
     container.appendChild(gallery);
     let alive = true;
     const urls = new Set(), retryTasks = new Set();
