@@ -268,7 +268,7 @@ class WordMeaningPhotoSpacingTest(unittest.TestCase):
 
 
 class WordCardNumberPlacementTest(unittest.TestCase):
-    def test_reverse_counter_centered_below_buttons_and_above_long_meaning(self):
+    def test_reverse_counter_right_aligned_below_buttons_and_above_long_meaning(self):
         """Check geometry, not merely CSS strings, with real desktop/phone layouts."""
         with sync_playwright() as playwright:
             chrome = shutil.which("google-chrome") or shutil.which("chromium")
@@ -314,9 +314,8 @@ class WordCardNumberPlacementTest(unittest.TestCase):
                                 const mr=meaning.getBoundingClientRect();
                                 return {
                                   buttonsBottom:br.bottom,numberTop:nr.top,numberBottom:nr.bottom,
-                                  textTop:mr.top,numberCenter:nr.left+nr.width/2,
-                                  textCenter:mr.left+mr.width/2,
-                                  cardCenter:cr.left+cr.width/2,
+                                  textTop:mr.top,numberRight:nr.right,
+                                  meaningRight:mr.right,cardRight:cr.right,
                                   numberStyle:getComputedStyle(backNum).position,
                                   scrollable:backContent.scrollHeight>backContent.clientHeight,
                                   scrollTop:backContent.scrollTop
@@ -336,10 +335,10 @@ class WordCardNumberPlacementTest(unittest.TestCase):
                             initial=result["initial"]
                             self.assertEqual(initial["numberStyle"], "static",
                                 "reverse number must participate in document flow")
-                            self.assertLess(abs(initial["numberCenter"]-initial["textCenter"]), 1.0,
-                                "count must align precisely with the centered meaning text")
-                            self.assertLess(abs(initial["numberCenter"]-initial["cardCenter"]), 4.5,
-                                "scrollbar gutter may offset the scroll-content center by ~3px")
+                            self.assertLess(abs(initial["numberRight"]-initial["meaningRight"]), 1.0,
+                                "count aligns to the right edge of the description's content region")
+                            self.assertGreater(initial["cardRight"]-initial["numberRight"], 8,
+                                "count remains inside the card's right-side padding")
                             self.assertGreaterEqual(initial["numberTop"], initial["buttonsBottom"]-1,
                                 "count starts below the action buttons")
                             self.assertGreaterEqual(initial["textTop"], initial["numberBottom"]+8,
