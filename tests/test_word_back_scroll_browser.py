@@ -315,6 +315,7 @@ class WordCardNumberPlacementTest(unittest.TestCase):
                                 return {
                                   buttonsBottom:br.bottom,numberTop:nr.top,numberBottom:nr.bottom,
                                   textTop:mr.top,numberCenter:nr.left+nr.width/2,
+                                  textCenter:mr.left+mr.width/2,
                                   cardCenter:cr.left+cr.width/2,
                                   numberStyle:getComputedStyle(backNum).position,
                                   scrollable:backContent.scrollHeight>backContent.clientHeight,
@@ -335,8 +336,10 @@ class WordCardNumberPlacementTest(unittest.TestCase):
                             initial=result["initial"]
                             self.assertEqual(initial["numberStyle"], "static",
                                 "reverse number must participate in document flow")
-                            self.assertLess(abs(initial["numberCenter"]-initial["cardCenter"]), 1.0,
-                                "count is horizontally centered within the card")
+                            self.assertLess(abs(initial["numberCenter"]-initial["textCenter"]), 1.0,
+                                "count must align precisely with the centered meaning text")
+                            self.assertLess(abs(initial["numberCenter"]-initial["cardCenter"]), 4.5,
+                                "scrollbar gutter may offset the scroll-content center by ~3px")
                             self.assertGreaterEqual(initial["numberTop"], initial["buttonsBottom"]-1,
                                 "count starts below the action buttons")
                             self.assertGreaterEqual(initial["textTop"], initial["numberBottom"]+8,
