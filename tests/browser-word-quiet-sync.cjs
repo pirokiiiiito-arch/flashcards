@@ -50,7 +50,13 @@ async function scenario(width,height){
  const chrome=cp.spawn(process.env.CHROME_PATH||'google-chrome',['--headless=new','--no-sandbox','--disable-dev-shm-usage','--no-first-run','--disable-background-networking','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
  let ws,evaluate;const errors=[];let remoteImageRequests=0;
  try{
-  await until(()=>fs.existsSync(path.join(profile,'DevToolsActivePort')),'Chrome startup');
+  // Chromium can create DevToolsActivePort before writing the numeric port.
+  // Readiness must require a valid port, not merely an existing empty file.
+  const portFile=path.join(profile,'DevToolsActivePort');
+  await until(()=>{
+   try { return /^[1-9][0-9]*$/.test(fs.readFileSync(portFile,'utf8').split('\n')[0].trim()); }
+   catch { return false; }
+  },'Chrome debugger port ready');
   const port=fs.readFileSync(path.join(profile,'DevToolsActivePort'),'utf8').split('\n')[0];
   const target=(await(await fetch('http://127.0.0.1:'+port+'/json/list')).json()).find(t=>t.type==='page');
   ws=new WebSocket(target.webSocketDebuggerUrl);await new Promise((r,j)=>{ws.addEventListener('open',r,{once:true});ws.addEventListener('error',j,{once:true});});
