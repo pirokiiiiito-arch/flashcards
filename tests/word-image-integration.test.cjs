@@ -484,7 +484,7 @@ test('normal view: regular flips never clamp viewport or interrupt editing', () 
 test('image cards keep the same front height as text-only cards, with tall scrollable backs', () => {
   const html=read('index.html');
   assert.match(html, /\.card\{[^}]*height:360px/, 'desktop normal cards are 360px');
-  assert.match(html, /@media\(max-width:560px\)\{[^}]*\.card\{height:320px/, 'phone normal cards are 320px');
+  assert.ok(html.includes('@media(max-width:560px){.wrap{margin-top:16px}.card{height:320px}'), 'phone normal cards are 320px');
   assert.ok(html.includes('.card.with-images.show-back,.card.is-editing{height:clamp(360px,calc(100dvh - 250px),660px)}'),
     'only reverse-side photo cards and active editors receive the taller desktop height');
   assert.ok(html.includes('.card.with-images.show-back,.card.is-editing{height:clamp(340px,calc(100dvh - 245px),600px)}'),
