@@ -164,6 +164,12 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 zoomed = native_page_pinch(page, cdp, x, y, outward=True)
                 self.assertGreater(zoomed, 1.2,
                     "spreading fingers must enlarge the *browser page*")
+                page.wait_for_function(
+                    "() => document.documentElement.classList.contains('word-page-zoomed')"
+                )
+                self.assertEqual(page.locator(".word-image-open").first.evaluate(
+                    "(el) => getComputedStyle(el).touchAction"
+                ), "auto", "zoomed page must pan horizontally across the picture")
                 self.assertEqual(pic.evaluate("(img) => img.style.transform"), "",
                     "image may not grow inside a clipped card frame")
                 self.assertEqual(page.locator("dialog").count(), 0)
@@ -174,6 +180,9 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 reduced = native_page_pinch(page, cdp, x, y, outward=False)
                 self.assertLess(reduced, 1.1,
                     "pinching fingers together must reduce whole-page zoom")
+                page.wait_for_function(
+                    "() => !document.documentElement.classList.contains('word-page-zoomed')"
+                )
                 self.assertEqual(pic.evaluate("(img) => img.style.transform"), "")
                 self.assertTrue(page.locator(".card").first.evaluate(
                     "(card) => card.classList.contains('show-back')"
@@ -220,6 +229,9 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                     page.evaluate("flipWordCardFace(card)")
                 self.assertAlmostEqual(page.evaluate("visualViewport.scale"), 1, delta=0.01,
                     msg="front must restore normal browser page display")
+                self.assertFalse(page.evaluate(
+                    "document.documentElement.classList.contains('word-page-zoomed')"
+                ), "normal front display cannot retain zoomed-page gesture policy")
                 self.assertFalse(page.evaluate("card.classList.contains('show-back')"))
                 self.assertEqual(page.evaluate("pos"), 1)
                 self.assertEqual(page.evaluate("order"), [2,0,1])
