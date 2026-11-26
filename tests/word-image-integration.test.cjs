@@ -509,19 +509,19 @@ test('meaning and first photo have two line-heights of breathing room only in st
 });
 
 
-test('reverse card count is centered in document flow between action buttons and meaning, not overlaid', () => {
+test('reverse card count is right aligned in document flow above meaning, not overlaid', () => {
   const html=read('index.html');
   assert.ok(html.includes('const positionText=(pos+1)+" / "+cards.length;'),
     'both counters must show the same position and total');
   assert.ok(html.includes('frontNumber.className="card-number card-number-front"'),
     'front still retains its original discreet counter');
   assert.ok(html.includes('backNumber.className="card-number card-number-back"'),
-    'back receives its own centered counter');
+    'back receives its own right-aligned counter');
   assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
     'reverse number must be in flow before the meaning and all pictures');
   assert.ok(html.includes('front.append(fl,ft,frontNumber)'),
     'front counter must be displayed on the front face only');
-  assert.ok(html.includes('.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 auto 12px;text-align:center;flex:none}'),
+  assert.ok(html.includes('.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
     'back count must occupy its own line, not overlap long descriptions');
   assert.ok(html.includes('.card-number-front{position:absolute;right:24px;top:76px;z-index:4}'),
     'front appearance remains consistent with older study cards');
@@ -529,5 +529,18 @@ test('reverse card count is centered in document flow between action buttons and
     'existing iPhone front number placement is retained');
   assert.ok(!html.includes('card.appendChild(num)'),
     'remove old unconditional counter overlay on the back');
-  assert.ok(html.includes('name="word-card-number-build" content="20261126-number-center1"'));
+  assert.ok(html.includes('name="word-card-number-build" content="20261126-number-right1"'));
+});
+
+
+test('reverse count right alignment never uses an absolute overlay over descriptions', () => {
+  const html=read('index.html');
+  assert.ok(html.includes('.card-number-back{position:static;display:block;'),
+    'reverse number should remain in the same scroll flow as description');
+  assert.ok(html.includes('margin:0 0 12px auto;text-align:right;flex:none'),
+    'margin-left auto places the number at the right edge of the content region');
+  assert.ok(!html.includes('.card-number-back{position:absolute'),
+    'the reverse number must not cover text even on narrow iPhone screens');
+  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+    'number still precedes the explanation and original image display');
 });
