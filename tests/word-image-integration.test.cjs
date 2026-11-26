@@ -265,7 +265,7 @@ test('native image paste field is real editable content and retains text paste i
   assert.ok(ui.includes("isIOSChrome ? 'ペースト欄へ' : '画像を貼り付け'"), 'iPhone Chrome action reflects native paste requirement');
   assert.ok(ui.includes('function clearPasteDiagnostic()'), 'diagnostic resets only explicitly');
   assert.ok(!/dismiss.hidden = !error;\s*pasteDiagnostic.hidden = true/.test(ui), 'status updates must not hide diagnostics');
-  assert.ok(html.includes('word-images-ui.js?v=20261126-normalview1'));
+  assert.ok(html.includes('word-images-ui.js?v=20261126-normalview2'));
 });
 
 function setupCardBackFlipTest() {
