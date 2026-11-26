@@ -24,6 +24,12 @@ def fixture_html():
     ui = (ROOT / "word-images-ui.js").read_text(encoding="utf-8")
     if "enablePinchZoom(" in ui or "ピンチで拡大・縮小" in ui:
         raise AssertionError("In-frame zoom or unwanted instruction text remains")
+    flip_start = index.index("function resetWordBackScroll(card){")
+    flip_end = index.index("\nfunction renderCard(item){", flip_start)
+    flip_source = index[flip_start:flip_end]
+    handler_start = index.index(" let swipeStartX=0,")
+    handler_end = index.index(' card.addEventListener("selectstart"', handler_start)
+    gesture_handlers = index[handler_start:handler_end]
     return f"""<!doctype html><html lang="ja"><head>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>{inline.group(1)}</style><style>{images_css}</style></head>
@@ -49,9 +55,12 @@ window.__imageController = WordImageUI.render(
     ref:'local:synthetic-' + index, name:'Synthetic image ' + (index + 1), type:'image/png'
   }}))
 );
-document.querySelector('.card').addEventListener('click', () => {{
-  document.querySelector('.card').classList.toggle('show-back');
-}});
+const card = document.querySelector('.card');
+let editing = false, pos = 0, order = [0], cards = [{{ word:'synthetic', meaning:'synthetic' }}];
+function render() {{}}
+function allowAction() {{ return true; }}
+{flip_source}
+{gesture_handlers}
 </script></body></html>"""
 
 
@@ -120,10 +129,14 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
 
                 pic = page.locator(".word-image-picture").first
                 pic.tap()
+                self.assertFalse(page.locator(".card").first.evaluate(
+                    "(card) => card.classList.contains('show-back')"
+                ), "one-finger photo tap must flip back to front")
+                self.assertEqual(page.locator("dialog").count(), 0, "tap opens no modal")
+                page.locator(".front .card-text").tap()
                 self.assertTrue(page.locator(".card").first.evaluate(
                     "(card) => card.classList.contains('show-back')"
-                ), "image tap must not flip the card")
-                self.assertEqual(page.locator("dialog").count(), 0, "tap opens no modal")
+                ), "one-finger tap on front flips back to pictures")
                 self.assertEqual(pic.evaluate("(img) => img.style.transform"), "")
                 self.assertAlmostEqual(page.evaluate("visualViewport.scale"), 1, delta=0.01)
 
@@ -138,11 +151,17 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 self.assertEqual(pic.evaluate("(img) => img.style.transform"), "",
                     "image may not grow inside a clipped card frame")
                 self.assertEqual(page.locator("dialog").count(), 0)
+                self.assertTrue(page.locator(".card").first.evaluate(
+                    "(card) => card.classList.contains('show-back')"
+                ), "two-finger pinch must not flip the card")
 
                 reduced = native_page_pinch(page, cdp, x, y, outward=False)
                 self.assertLess(reduced, 1.1,
                     "pinching fingers together must reduce whole-page zoom")
                 self.assertEqual(pic.evaluate("(img) => img.style.transform"), "")
+                self.assertTrue(page.locator(".card").first.evaluate(
+                    "(card) => card.classList.contains('show-back')"
+                ), "pinching back must not flip the card")
                 scroll = one_finger_scroll(page, cdp)
                 self.assertGreater(scroll, 40,
                     "one-finger swipe must still reveal following photos")
