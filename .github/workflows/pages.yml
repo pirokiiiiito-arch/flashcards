@@ -273,12 +273,16 @@ jobs:
           # Verify the actual deployed entries, not just the repository source.
           expected = [
               'data-word-image-footer="outside-v1"',
-              'word-images-ui.js?v=20261126-pagezoom1',
+              'word-images-ui.js?v=20261126-normalview1',
               'back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);',
               'function resetWordBackScroll(card){',
               'function flipWordCardFace(card){',
+              'function returnWordPageToNormalView(){',
+              'function restoreWordStudyViewAfterZoom(){',
+              'card.addEventListener("touchend",e=>{',
+              '.word-page-zoomed .card,.word-page-zoomed .back-content{touch-action:auto}',
               'word-back-scroll-build" content="20261126-top2',
-              'word-page-zoom-build" content="20261126-pagezoom1',
+              'word-page-zoom-build" content="20261126-normalview1',
               '.back{display:flex;visibility:hidden;pointer-events:none;',
               '.card:not(.show-back) .back-content{overflow-y:hidden}',
               'imageEntry.onclick=e=>{e.stopPropagation();if(editing||!card.isConnected||stage.inert)return;startEdit(true)};',
@@ -293,7 +297,7 @@ jobs:
                           if path == 'word-images-ui.js':
                               markers = ["pasteZone.contentEditable = 'true'", 'function consumeNativeInsertion()', 'function pastedImages(event)', 'function readImageSources(sources)', "attributeFilter: ['src']", 'Chrome on iPhone can expose an image item', 'readRemoteImage(src)', 'クリップボードから画像データを取得できませんでした。', 'normalizeClipboardFile(file)', 'reportUnreadable(reason)', 'recordClipboardItems(items)', '写真・ファイルから追加', "const PASTE_VERSION = 'paste8'", 'apiAvailability', 'const isIOSChrome', 'clearPasteDiagnostic()', 'open.append(picture);']
                           elif path == 'word-images.css':
-                              markers = ['.word-image-open{', '.word-image-picture{', 'touch-action:pan-y pinch-zoom', '.word-image-open[hidden]{display:none!important}']
+                              markers = ['.word-image-open{', '.word-image-picture{', 'touch-action:pan-y pinch-zoom', '.word-image-open[hidden]{display:none!important}', '.word-page-zoomed .word-image-open,.word-page-zoomed .word-image-picture{touch-action:auto}']
                           else:
                               markers = expected
                           forbidden = ['function enablePinchZoom(', 'ピンチで拡大・縮小', 'タップで拡大']
