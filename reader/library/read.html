@@ -1323,7 +1323,9 @@ async function loadBook(file,shouldSave=true){
    if(m.schema!==1||!/^[A-Za-z0-9_-]{1,90}$/.test(m.bookId)||m.entry!=='reader.html'||!/^[a-f0-9]{64}$/.test(m.sha256)||(!shouldSave&&BOOK_ID!==m.bookId))
     throw Error('本棚に登録した統合確認版と一致しません');
    if(shouldSave || (!inherited && !LibraryDB.isRegisteredRead(m.bookId,file)))await LibraryDB.authorizeFile({id:m.bookId},file);
-   const bytes=await book.readBytes(m.entry);
+   const layoutModule=!shouldSave&&m.bookId==='killer-in-the-rain'
+    ? import('./novel-resume-layout.js').then(()=>window.NovelResumeLayout).catch(()=>null) : null;
+   const [bytes,fastReader]=await Promise.all([book.readBytes(m.entry),layoutModule]);
    const hash=await crypto.subtle.digest('SHA-256',bytes);
    if(Array.from(new Uint8Array(hash),v=>v.toString(16).padStart(2,'0')).join('')!==m.sha256)
     throw Error('統合確認版の本文ファイルが一致しません');
@@ -1340,7 +1342,7 @@ async function loadBook(file,shouldSave=true){
    else {
     // This edition has been checked with blob-backed original scans on the saved-book route.
     const compact=(m.originalImageHandling==='blob-v1'||m.sha256==='7bec7d5ef409cc65ff30bc5b33f6618c2d1c2e42743c841966d2815f55a9f385')
-     ? compactStandaloneOriginals(bytes) : null;
+     ? (fastReader?.compactOriginals(bytes,m.sha256) ?? compactStandaloneOriginals(bytes)) : null;
     let markup=compact??new TextDecoder('utf-8',{fatal:true}).decode(bytes);
     if(m.template_profile==='novel'&&m.template_variant==='poetry'){
      // Older poetry ZIPs aligned a word's outer ruby box to the column edge.
@@ -1352,7 +1354,7 @@ async function loadBook(file,shouldSave=true){
       if(aligned!==head)markup=aligned+markup.slice(end);
      }
     }
-    document.write(markup);
+    document.write(fastReader ? fastReader.prepare(markup,m.sha256) : markup);
    }
    document.close();
    return;

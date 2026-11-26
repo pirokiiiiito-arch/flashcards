@@ -8,6 +8,7 @@ const ORIGIN='https://pirokiiiiito-arch.github.io';
 const shelfFiles=[
  ['reader/library/index.html','html'],['reader/library/read.html','html'],
  ['reader/library/app.js','script'],['reader/library/storage.js','script'],
+ ['reader/library/novel-resume-layout.js','script'],
  ['reader/library/sw.js','script'],['reader/library/shelf-registration.mjs','script'],
  ['reader/quality/shelf-registration.json','json']
 ];
