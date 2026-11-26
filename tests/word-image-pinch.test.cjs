@@ -65,6 +65,32 @@ test('native one-finger vertical scroll and back-to-front reset remain available
 });
 
 
+
+test('magnified browser page can pan over images, while normal view keeps horizontal swipe navigation', () => {
+  assert.match(html, /function syncWordZoomedTouchPolicy\(\)\{/);
+  assert.match(html, /\.word-page-zoomed \.card,\.word-page-zoomed \.back-content\{touch-action:auto\}/);
+  assert.match(css, /\.word-page-zoomed \.word-image-open,\.word-page-zoomed \.word-image-picture\{touch-action:auto\}/);
+  const start=html.indexOf('function syncWordZoomedTouchPolicy(){');
+  const end=html.indexOf('\nfunction returnWordPageToNormalView(){',start);
+  const src=html.slice(start,end);
+  assert.ok(start>0&&end>start);
+  const state={zoomed:false};
+  const doc={documentElement:{classList:{toggle(name,enabled){
+    assert.equal(name,'word-page-zoomed');
+    state.zoomed=!!enabled;
+  }}}};
+  const context={document:doc,window:{visualViewport:{scale:1}}};
+  const zoomPolicy=vm.runInNewContext(src+'\n(syncWordZoomedTouchPolicy)',context);
+  zoomPolicy();
+  assert.equal(state.zoomed,false);
+  context.window.visualViewport.scale=2.25;
+  zoomPolicy();
+  assert.equal(state.zoomed,true);
+  context.window.visualViewport.scale=1;
+  zoomPolicy();
+  assert.equal(state.zoomed,false);
+});
+
 test('photo tap flips its card, while editing controls and multi-touch gestures do not', () => {
   const start = html.indexOf(' card.addEventListener("click",e=>{');
   const end = html.indexOf('\n card.addEventListener("selectstart"', start);
@@ -105,36 +131,102 @@ test('photo tap flips its card, while editing controls and multi-touch gestures 
   assert.equal(flips, 1, 'image taps in edit mode do not interrupt editing');
 });
 
-test('photo tap classification observes movement without cancelling native page pinch', () => {
-  const start = html.indexOf(' let imageTapBlocked=false,imageTouchOrigin=null;');
-  const end = html.indexOf(' card.addEventListener("pointerdown"', start);
-  assert.ok(start >= 0 && end > start, 'actual native gesture observer must exist');
-  const handlers = new Map(), passive = new Map();
-  const context = {
-    card: {
-      addEventListener(type, fn, opts) { handlers.set(type, fn); passive.set(type, opts?.passive); }
+function gestureFixture() {
+  const html=read('index.html');
+  const start=html.indexOf(' let imageTapBlocked=false,imageTouchOrigin=null;');
+  const end=html.indexOf(' card.addEventListener("pointerdown"',start);
+  assert.ok(start>=0&&end>start,'extract actual back-image gesture handling');
+  const handlers=new Map(),passive=new Map();
+  let renders=0;
+  const context={
+    card:{
+      classList:{contains:name=>name==='show-back'},
+      addEventListener(type,handler,opts){handlers.set(type,handler);passive.set(type,opts?.passive)}
     },
-    touchTapHandled: true,
-    suppressClickUntil: 500
+    editing:false,window:{visualViewport:{scale:1}},
+    order:[0,1,2],pos:1,cards:[{}, {}, {}],
+    touchTapHandled:true,suppressClickUntil:500,
+    render(){renders++}
   };
-  vm.runInNewContext(html.slice(start, end), context);
-  assert.equal(passive.get('touchstart'), true);
-  assert.equal(passive.get('touchmove'), true);
-  const image = { closest(selector) { return selector === '.word-image-open' ? {} : null; } };
-  handlers.get('touchstart')({ touches: [{ clientX: 40, clientY: 150 }], target: image });
-  assert.equal(vm.runInNewContext('imageTapBlocked', context), false);
-  assert.equal(context.touchTapHandled, false);
-  assert.equal(context.suppressClickUntil, 0);
-  handlers.get('touchmove')({ touches: [{ clientX: 40, clientY: 105 }] });
-  assert.equal(vm.runInNewContext('imageTapBlocked', context), true,
-    'vertical scrolling does not trigger card flip');
-  handlers.get('touchstart')({ touches: [{ clientX: 40, clientY: 150 }], target: image });
-  handlers.get('touchstart')({ touches: [
-    { clientX: 40, clientY: 150 }, { clientX: 120, clientY: 150 }
-  ], target: image });
-  assert.equal(vm.runInNewContext('imageTapBlocked', context), true,
-    'native whole-page two-finger pinch must never flip the card');
-  handlers.get('touchstart')({ touches: [{ clientX: 40, clientY: 150 }], target: image });
-  assert.equal(vm.runInNewContext('imageTapBlocked', context), false,
-    'a later deliberate one-finger tap works after pinch');
+  const sandbox=vm.createContext(context);
+  vm.runInContext(html.slice(start,end),sandbox);
+  const target={closest(name){
+    if(name==='.back-content'||name==='.word-image-open')return {};
+    return null;
+  }};
+  const touch=(x,y)=>({identifier:1,clientX:x,clientY:y});
+  function fire(type,coords,extras={}) {
+    let prevented=false;
+    const handler=handlers.get(type);
+    assert.equal(typeof handler,'function','missing '+type);
+    const event={
+      target,touches:coords.map(([x,y])=>touch(x,y)),
+      changedTouches:(extras.changed||coords).map(([x,y])=>touch(x,y)),
+      cancelable:true,
+      preventDefault(){prevented=true}
+    };
+    handler(event);
+    return prevented;
+  }
+  return {
+    context,sandbox,handlers,passive,fire,
+    get renders(){return renders},
+    blocked:()=>vm.runInContext('imageTapBlocked',sandbox)
+  };
+}
+
+test('one-finger horizontal swipe on a photo moves to the next or previous card', () => {
+  const f=gestureFixture();
+  assert.equal(f.passive.get('touchstart'),true);
+  assert.equal(f.passive.get('touchmove'),true);
+  assert.equal(f.passive.get('touchend'),false);
+  f.fire('touchstart',[[240,210]]);
+  f.fire('touchmove',[[125,214]]);
+  const prevented=f.fire('touchend',[],{changed:[[125,214]]});
+  assert.equal(prevented,true,'recognized horizontal swipe is handled as card navigation');
+  assert.equal(f.context.pos,2);
+  assert.equal(f.renders,1);
+  assert.equal(f.blocked(),true,'synthesized click after swipe must not flip a card');
+
+  f.fire('touchstart',[[110,210]]);
+  f.fire('touchmove',[[230,212]]);
+  f.fire('touchend',[],{changed:[[230,212]]});
+  assert.equal(f.context.pos,1);
+  assert.equal(f.renders,2,'right swipe navigates backward');
 });
+
+test('vertical swipe on a photo continues native image scrolling without moving cards', () => {
+  const f=gestureFixture();
+  f.fire('touchstart',[[170,250]]);
+  f.fire('touchmove',[[171,130]]);
+  const prevented=f.fire('touchend',[],{changed:[[171,130]]});
+  assert.equal(prevented,false);
+  assert.equal(f.renders,0);
+  assert.equal(f.context.pos,1);
+  assert.equal(f.blocked(),true,'vertical gesture must not trigger a tap flip');
+});
+
+test('pinch and zoomed-page horizontal gestures never navigate or cancel browser zoom', () => {
+  const f=gestureFixture();
+  f.fire('touchstart',[[170,250]]);
+  f.fire('touchstart',[[145,250],[215,250]]);
+  assert.equal(f.blocked(),true);
+  const prevented=f.fire('touchend',[],{changed:[[110,250]]});
+  assert.equal(prevented,false);
+  assert.equal(f.renders,0);
+
+  f.context.window.visualViewport.scale=2;
+  f.fire('touchstart',[[240,200]]);
+  f.fire('touchmove',[[100,202]]);
+  const blocked=f.fire('touchend',[],{changed:[[100,202]]});
+  assert.equal(blocked,false,'allow zoomed browser page to pan');
+  assert.equal(f.renders,0);
+  assert.equal(f.context.pos,1);
+  f.context.window.visualViewport.scale=1;
+  f.fire('touchstart',[[170,200]]);
+  const tap=f.fire('touchend',[],{changed:[[171,201]]});
+  assert.equal(tap,false);
+  assert.equal(f.blocked(),false,'new stationary tap can flip as usual');
+  assert.equal(f.context.touchTapHandled,false);
+});
+

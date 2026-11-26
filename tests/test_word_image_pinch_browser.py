@@ -56,11 +56,22 @@ window.__imageController = WordImageUI.render(
   }}))
 );
 const card = document.querySelector('.card');
-let editing = false, pos = 0, order = [0], cards = [{{ word:'synthetic', meaning:'synthetic' }}];
-function render() {{}}
+let editing = false, pos = 0, order = [0,1,2], isShuffled = false;
+let cards = [
+  {{ id:'syn-a',sort_order:1,word:'synthetic a',meaning:'a' }},
+  {{ id:'syn-b',sort_order:2,word:'synthetic b',meaning:'b' }},
+  {{ id:'syn-c',sort_order:3,word:'synthetic c',meaning:'c' }}
+];
+let navCount=0;
+function render() {{ navCount++; }}
 function allowAction() {{ return true; }}
+function currentIndex() {{ return order[pos]; }}
 {flip_source}
 {gesture_handlers}
+window.visualViewport?.addEventListener('resize',syncWordZoomedTouchPolicy,{{passive:true}});
+syncWordZoomedTouchPolicy();
+window.__normalRestore = restoreWordStudyViewAfterZoom();
+if(window.__normalRestore!==null)card.classList.remove('show-back');
 </script></body></html>"""
 
 
@@ -117,7 +128,12 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                     device_scale_factor=1, is_mobile=True, has_touch=True,
                 )
                 page = context.new_page()
-                page.set_content(fixture_html(), wait_until="load")
+                # Fulfil every navigation locally, including the one-time reload
+                # that resets iPhone/Chromium's browser-owned visual viewport.
+                page.route("https://word-fixture.test/flashcards", lambda route: route.fulfill(
+                    status=200, content_type="text/html; charset=utf-8", body=fixture_html()
+                ))
+                page.goto("https://word-fixture.test/flashcards", wait_until="load")
                 page.wait_for_function(
                     "() => document.querySelectorAll('.word-image-open').length === 3 && "
                     "[...document.querySelectorAll('.word-image-open')].every(el => !el.hidden)"
@@ -148,6 +164,12 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 zoomed = native_page_pinch(page, cdp, x, y, outward=True)
                 self.assertGreater(zoomed, 1.2,
                     "spreading fingers must enlarge the *browser page*")
+                page.wait_for_function(
+                    "() => document.documentElement.classList.contains('word-page-zoomed')"
+                )
+                self.assertEqual(page.locator(".word-image-open").first.evaluate(
+                    "(el) => getComputedStyle(el).touchAction"
+                ), "auto", "zoomed page must pan horizontally across the picture")
                 self.assertEqual(pic.evaluate("(img) => img.style.transform"), "",
                     "image may not grow inside a clipped card frame")
                 self.assertEqual(page.locator("dialog").count(), 0)
@@ -158,6 +180,9 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 reduced = native_page_pinch(page, cdp, x, y, outward=False)
                 self.assertLess(reduced, 1.1,
                     "pinching fingers together must reduce whole-page zoom")
+                page.wait_for_function(
+                    "() => !document.documentElement.classList.contains('word-page-zoomed')"
+                )
                 self.assertEqual(pic.evaluate("(img) => img.style.transform"), "")
                 self.assertTrue(page.locator(".card").first.evaluate(
                     "(card) => card.classList.contains('show-back')"
@@ -165,6 +190,56 @@ class WordImageNativePageZoomBrowserTest(unittest.TestCase):
                 scroll = one_finger_scroll(page, cdp)
                 self.assertGreater(scroll, 40,
                     "one-finger swipe must still reveal following photos")
+                self.assertEqual(page.evaluate("pos"), 0, "vertical pan never changes card index")
+
+                # From a photo, horizontal finger movement changes cards.
+                page.evaluate("document.querySelector('#scroller').scrollTop=0")
+                frame = page.locator(".word-image-open").first.bounding_box()
+                assert frame is not None
+                x = frame["x"] + frame["width"] / 2
+                y = frame["y"] + min(90, frame["height"] * 0.35)
+                send_touches(cdp, "touchStart", [(x, y)])
+                for step in range(1, 7):
+                    send_touches(cdp, "touchMove", [(x - step * 18, y + 2)])
+                    page.wait_for_timeout(25)
+                send_touches(cdp, "touchEnd", [])
+                self.assertEqual(page.evaluate("pos"), 1, "left photo swipe advances a card")
+                self.assertEqual(page.evaluate("navCount"), 1)
+
+                send_touches(cdp, "touchStart", [(x - 100, y)])
+                for step in range(1, 7):
+                    send_touches(cdp, "touchMove", [(x - 100 + step * 18, y + 2)])
+                    page.wait_for_timeout(25)
+                send_touches(cdp, "touchEnd", [])
+                self.assertEqual(page.evaluate("pos"), 0, "right photo swipe goes to previous card")
+                self.assertEqual(page.evaluate("navCount"), 2)
+
+                # Deliberately zoom, then switch to front. A same-page reload
+                # should return the browser's visualViewport to its initial scale
+                # without altering the current studied card or its order.
+                page.evaluate("pos=1;order=[2,0,1];isShuffled=true")
+                page.wait_for_timeout(130)
+                frame = page.locator(".word-image-open").first.bounding_box()
+                assert frame is not None
+                x = frame["x"] + frame["width"] / 2
+                y = frame["y"] + min(90, frame["height"] * 0.35)
+                zoomed = native_page_pinch(page, cdp, x, y, outward=True)
+                self.assertGreater(zoomed, 1.2, "browser page is zoomed before flip")
+                with page.expect_navigation(wait_until="load"):
+                    page.evaluate("setTimeout(()=>flipWordCardFace(card),0)")
+                self.assertAlmostEqual(page.evaluate("visualViewport.scale"), 1, delta=0.01,
+                    msg="front must restore normal browser page display")
+                self.assertFalse(page.evaluate(
+                    "document.documentElement.classList.contains('word-page-zoomed')"
+                ), "normal front display cannot retain zoomed-page gesture policy")
+                self.assertFalse(page.evaluate("card.classList.contains('show-back')"))
+                self.assertEqual(page.evaluate("pos"), 1)
+                self.assertEqual(page.evaluate("order"), [2,0,1])
+                self.assertTrue(page.evaluate("isShuffled"))
+                self.assertEqual(page.evaluate(
+                    "sessionStorage.getItem('word-page-normal-display-v1')"
+                ), None, "one-time view snapshot must be consumed")
+                self.assertEqual(page.locator(".word-image-zoom-hint").count(), 0)
             finally:
                 browser.close()
 
