@@ -314,6 +314,8 @@ class WordCardNumberPlacementTest(unittest.TestCase):
                                 const mr=meaning.getBoundingClientRect();
                                 return {
                                   buttonsBottom:br.bottom,numberTop:nr.top,numberBottom:nr.bottom,
+                                  numberGap:nr.top-br.bottom,
+                                  studyBackPadding:parseFloat(getComputedStyle(card.querySelector('.back')).paddingTop),
                                   textTop:mr.top,numberRight:nr.right,
                                   meaningRight:mr.right,cardRight:cr.right,
                                   numberStyle:getComputedStyle(backNum).position,
@@ -341,6 +343,11 @@ class WordCardNumberPlacementTest(unittest.TestCase):
                                 "count remains inside the card's right-side padding")
                             self.assertGreaterEqual(initial["numberTop"], initial["buttonsBottom"]-1,
                                 "count starts below the action buttons")
+                            self.assertLessEqual(initial["numberGap"], 14,
+                                "image-card number must sit immediately below Delete, not drift into the meaning")
+                            self.assertAlmostEqual(initial["studyBackPadding"],
+                                60 if width < 600 else 66, delta=0.5,
+                                msg="only image study faces use the compact top spacing")
                             self.assertGreaterEqual(initial["textTop"], initial["numberBottom"]+8,
                                 "meaning starts below the count with at least 8px separation")
                             self.assertTrue(initial["scrollable"],
