@@ -481,7 +481,7 @@ test('native page zoom: stale or changed-card snapshots do not override saved st
     window:{visualViewport:{scale:1},location:{reload(){throw Error('unexpected reload')}}}
   };
   vm.runInNewContext(html.slice(start,end),context);
-  const key=vm.runInNewContext('WORD_PAGE_ZOOM_RESTORE_KEY',context);
+  const key='word-page-normal-display-v1';
   storage.set(key,JSON.stringify({
     version:1,at:Date.now()-60_000,count:2,order:[1,0],pos:0,
     id:'fixture-2',sort:2,shuffled:true,pageY:500
