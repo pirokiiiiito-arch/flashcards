@@ -26,12 +26,11 @@ def fixture_html():
     end = source.index('\n card.addEventListener("pointermove"', start)
     pointer_handler = source[start:end]
     cards = "\n".join(
-        '<figure class="word-image-item"><button type="button" '
-        'class="word-image-button word-image-open">'
+        '<figure class="word-image-item"><div class="word-image-open">'
         '<div class="word-image-picture" '
         'style="width:100%;height:260px;background:#dde4ed"></div>'
-        '<span class="word-image-zoom-hint">タップで拡大</span>'
-        '</button></figure>'
+        '<span class="word-image-zoom-hint">ピンチで拡大・縮小</span>'
+        '</div></figure>'
         for _ in range(3)
     )
     script = """
