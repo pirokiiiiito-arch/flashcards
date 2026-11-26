@@ -354,7 +354,8 @@ test('word back flip: tapping, editing and both save flows use the shared top-re
 
 test('word back: native touch pan is not captured by card navigation in scroll content', () => {
   const html = read('index.html');
-  assert.ok(html.includes('touch-action:pan-y;-webkit-overflow-scrolling:touch'));
+  assert.ok(html.includes('touch-action:pan-y pinch-zoom;-webkit-overflow-scrolling:touch'));
+  assert.ok(html.includes('const photoTap=!!e.target.closest(".word-image-open")'), 'loaded-photo taps are card flips');
   const start = html.indexOf('card.addEventListener("pointerdown",e=>{');
   const end = html.indexOf('\n card.addEventListener("pointermove"', start);
   assert.ok(start > 0 && end > start, 'use the app’s actual card pointer handler');
