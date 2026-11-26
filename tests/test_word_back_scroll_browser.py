@@ -445,5 +445,74 @@ class WordTextOnlyCounterTopRightTest(unittest.TestCase):
             finally:
                 browser.close()
 
+
+class WordFrontNumberUnderDeleteTest(unittest.TestCase):
+    def test_front_progress_just_under_delete_without_covering_word(self):
+        """Measure the real CSS on mobile and desktop with and without photos."""
+        with sync_playwright() as playwright:
+            chrome = shutil.which("google-chrome") or shutil.which("chromium")
+            options = {"headless": True, "args": ["--no-sandbox"]}
+            if chrome:
+                options["executable_path"] = chrome
+            browser = playwright.chromium.launch(**options)
+            try:
+                for width, height in ((390, 760), (1200, 800)):
+                    for photo_card in (False, True):
+                        with self.subTest(viewport=(width, height), photo_card=photo_card):
+                            context = browser.new_context(
+                                viewport={"width": width, "height": height},
+                                device_scale_factor=1, is_mobile=width < 600, has_touch=True,
+                            )
+                            try:
+                                page = context.new_page()
+                                page.set_content(fixture_html(), wait_until="load")
+                                result = page.evaluate("""(photoCard) => {
+                                  const card=document.querySelector('#test-card');
+                                  card.classList.remove('show-back');
+                                  if(!photoCard)card.classList.remove('with-images');
+                                  const front=card.querySelector('.front');
+                                  const word=front.querySelector('.card-text');
+                                  word.textContent='ジャカランダ';
+                                  const actions=document.createElement('div');
+                                  actions.className='card-actions';
+                                  for(const label of ['＋追加','編集','削除']){
+                                    const button=document.createElement('button');
+                                    button.className='small';button.textContent=label;
+                                    actions.appendChild(button);
+                                  }
+                                  card.appendChild(actions);
+                                  const number=document.createElement('div');
+                                  number.className='card-number card-number-front';
+                                  number.textContent='71 / 74';
+                                  front.appendChild(number);
+                                  const nr=number.getBoundingClientRect();
+                                  const dr=actions.lastElementChild.getBoundingClientRect();
+                                  const wr=word.getBoundingClientRect();
+                                  const cr=card.getBoundingClientRect();
+                                  return {
+                                    gap:nr.top-dr.bottom,
+                                    numberRight:nr.right,deleteRight:dr.right,
+                                    numberBottom:nr.bottom,wordTop:wr.top,
+                                    wordCenterY:wr.top+wr.height/2,
+                                    cardCenterY:cr.top+cr.height/2,
+                                    numberPosition:getComputedStyle(number).position
+                                  };
+                                }""", photo_card)
+                                self.assertEqual(result["numberPosition"], "absolute")
+                                self.assertGreaterEqual(result["gap"], -1.0,
+                                    "front progress must stay below Delete, not overlap it")
+                                self.assertLessEqual(result["gap"], 12,
+                                    "front progress must be just beneath Delete")
+                                self.assertLess(abs(result["numberRight"]-result["deleteRight"]), 4,
+                                    "front progress stays aligned with Delete on the right")
+                                self.assertLess(result["numberBottom"], result["wordTop"]-6,
+                                    "number may not cover the studied word")
+                                self.assertLess(abs(result["wordCenterY"]-result["cardCenterY"]), 16,
+                                    "the word stays centered vertically")
+                            finally:
+                                context.close()
+            finally:
+                browser.close()
+
 if __name__ == "__main__":
     unittest.main()
