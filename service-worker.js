@@ -1,4 +1,4 @@
-const CACHE = 'flashcards-v39-word-normalview-public-assets';
+const CACHE = 'flashcards-v40-word-front-back-height-split';
 const BUILD = '20261031-word-auto3';
 const STATIC = ['./', './index.html', './manifest.webmanifest', './icon.svg', './drive-config.js?v=3', './persistent-drive-auth.js?v=1', './drive-core.js?v=word-auto2', './drive-sync.js?v=word-auto3', './auth-only-ui.js?v=persist1', './auth-only-ui.css?v=persist1', './word-sync-diagnostics.js?v=1', './drive-login.html', './drive-login.js?v=1', './word-recovery.js?v=' + BUILD, './word-network-recovery.js?v=' + BUILD];
 STATIC.push('./word-images.js?v=20261126-images1', './word-images-ui.js?v=20261126-normalview2', './word-images.css?v=20261126-normalview2');
