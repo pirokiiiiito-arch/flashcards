@@ -1,6 +1,6 @@
 /* Offline cache for the app shell only. Never cache private Drive book content. */
 'use strict';
-const CACHE='private-bookshelf-shell-v38-saved-edition-20261124';
+const CACHE='private-bookshelf-shell-v39-saved-edition-20261124';
 const REVISION='wh1-library-v9-20261110';
 const local=path=>new URL(path,self.registration.scope).href;
 const ASSETS=[

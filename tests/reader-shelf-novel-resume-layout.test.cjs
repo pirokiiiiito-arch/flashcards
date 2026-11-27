@@ -46,6 +46,52 @@ test('only the two known editions opt in to resume processing', () => {
   assert.equal(api.prepare('unrecognized reader', edition), 'unrecognized reader');
 });
 
+test('page turns replace the whole text surface while preserving attributes, parts and measurement nodes', () => {
+  const binding = "const textFlow=$('text-flow'),measureText=$('measure-text'),caption=$('figure-caption'),measureCaption=$('measure-caption');";
+  const paint = '  textFlow.replaceChildren(frag);';
+  const engine = binding + '\n' + sampleEngine + '\nfunction paint(frag){\n' + paint + '\n}\nfunction currentSurface(){return textFlow;}';
+  for (const id of [edition, priorEdition]) {
+    const nodes = new Map(), transitions = [];
+    class Surface {
+      constructor(attributes) { this.attributes = {...attributes}; this.children = []; this.connected = false; }
+      cloneNode(deep) { assert.equal(deep, false); return new Surface(this.attributes); }
+      append(fragment) { assert.equal(this.connected, false); this.children.push(...fragment.splice(0)); }
+      replaceWith(next) {
+        assert.equal(nodes.get('text-flow'), this);
+        assert.ok(next.children.length, 'the new page must be complete before attachment');
+        this.connected = false; next.connected = true; nodes.set('text-flow', next); transitions.push([this, next]);
+      }
+      replaceChildren() { assert.fail('a page turn must not reuse the prior text paint surface'); }
+    }
+    const original = new Surface({id: 'text-flow', class: 'text-flow front-matter', style: 'padding-right:0.55em', hidden: 'false'});
+    original.connected = true; nodes.set('text-flow', original);
+    for (const name of ['measure-text', 'figure-caption', 'measure-caption']) nodes.set(name, {id: name});
+    const measured = nodes.get('measure-text'), ctx = reader({$: name => nodes.get(name)});
+    vm.runInContext(ctx.NovelResumeLayout.prepare(engine, id), ctx);
+    let clicks = 0;
+    for (const text of ['合成の一頁。', '次の文章。']) {
+      const previous = ctx.currentSurface(), attributes = {...previous.attributes};
+      const part = {textContent: text, onclick() { clicks++; }}, fragment = [part];
+      ctx.paint(fragment);
+      const current = ctx.currentSurface();
+      assert.notEqual(current, previous); assert.equal(current, nodes.get('text-flow'));
+      assert.deepEqual(current.attributes, attributes); assert.deepEqual(current.children, [part]);
+      assert.equal(fragment.length, 0); assert.equal(nodes.get('measure-text'), measured);
+      current.children[0].onclick();
+      current.attributes.class = 'text-flow';
+    }
+    assert.equal(clicks, 2); assert.equal(transitions.length, 2);
+    // If either source anchor is absent, leave the original paint operation and
+    // binding intact; never install only half of the replacement.
+    for (const unmatched of [engine.replace(binding, binding.replace('const ', 'let ')), engine.replace(paint, '  textFlow.replaceChildren(...frag);')]) {
+      const output = ctx.NovelResumeLayout.prepare(unmatched, id);
+      assert.doesNotMatch(output, /nextTextFlow/);
+      assert.ok(output.includes(unmatched.includes(paint) ? paint : '  textFlow.replaceChildren(...frag);'));
+    }
+    assert.equal(ctx.NovelResumeLayout.prepare(engine, '0'.repeat(64)), engine);
+  }
+});
+
 test('the original paginator gets identical cold and warm page starts; changed geometry and invalid records remeasure', () => {
   const stored = new Map();
   const sheet = {width: 160, getBoundingClientRect() { return {width: this.width, height: 420}; }};

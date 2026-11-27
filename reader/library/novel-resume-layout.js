@@ -103,6 +103,25 @@
       .replace(emphasis, emphasis + ' if(!block.emphasis?.length)return [];\n');
   }
 
+  function prepareFreshTextSurface(engine) {
+    const declaration = "const textFlow=$('text-flow'),measureText=$('measure-text'),caption=$('figure-caption'),measureCaption=$('measure-caption');";
+    const paint = '  textFlow.replaceChildren(frag);';
+    if (!engine.includes(declaration) || !engine.includes(paint)) return engine;
+
+    // A complete page is already built off-screen. Swap its entire visible
+    // surface so a page turn does not reuse the previous vertical paint tree.
+    // The shallow clone retains the exact layout attributes (including ruby
+    // padding and front-matter classes); parts keep their original listeners.
+    // Hidden measurement nodes and the paginator remain unchanged.
+    return engine.replace(declaration,
+      "let textFlow=$('text-flow');\nconst measureText=$('measure-text'),caption=$('figure-caption'),measureCaption=$('measure-caption');")
+      .replace(paint,
+        '  const nextTextFlow=textFlow.cloneNode(false);\n' +
+        '  nextTextFlow.append(frag);\n' +
+        '  textFlow.replaceWith(nextTextFlow);\n' +
+        '  textFlow=nextTextFlow;');
+  }
+
   // These editions place every original JPEG in a separate string in bookdata.
   // Keep that data out of the HTML parser and create each original's Blob only
   // when the private reader first asks for its source.
@@ -164,7 +183,7 @@
     if (!editions.has(edition)) return markup;
     // Work on the small engine tail even when the original JPEGs are inline.
     const cut = Math.max(0, markup.length - 128 * 1024);
-    const tail = prepareColdLayout(markup.slice(cut));
+    const tail = prepareFreshTextSurface(prepareColdLayout(markup.slice(cut)));
     const declaration = 'function fitsParts(existing,additional){';
     const build = 'pages=paginateAll();';
     if (tail.indexOf(declaration) < 0 || tail.indexOf(build) < 0) return markup;
