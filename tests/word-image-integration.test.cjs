@@ -497,14 +497,14 @@ test('image cards keep the same front height as text-only cards, with tall scrol
 });
 
 
-test('photos and following meaning have two line-heights of breathing room only in study back', () => {
+test('photos and following meaning have four line-heights of breathing room only in study back', () => {
   const html=read('index.html');
-  assert.ok(html.includes('.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-top:2lh}'),
-    'space must precede the visible description by exactly two text lines');
+  assert.ok(html.includes('.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-top:4lh}'),
+    'space must precede the visible description by exactly four text lines');
   assert.ok(html.includes('backContent.append(backNumber,imageArea,bt)'),
     'description follows all images, without changing word content or pictures');
-  assert.ok(html.includes('name="word-meaning-photo-gap-build" content="20261126-meaning-gap1"'));
-  assert.ok(!html.includes('.word-image-gallery{margin-top:2lh}'),
+  assert.ok(html.includes('name="word-meaning-photo-gap-build" content="20261128-meaning-gap4"'));
+  assert.ok(!html.includes('.word-image-gallery{margin-top:4lh}'),
     'image-only cards must not gain the spacing');
 });
 
@@ -583,8 +583,8 @@ test('image-card progress sits immediately below Delete while text-only card lay
     '.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
     'progress stays in document flow above the meaning without overlap');
   assert.ok(html.includes(
-    '.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-top:2lh}'),
-    'the two-line separation of explanation and image stays in place');
+    '.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-top:4lh}'),
+    'the four-line separation of explanation and image stays in place');
   assert.ok(html.includes('name="word-image-number-build" content="20261126-imagenum-near1"'));
 });
 

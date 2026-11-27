@@ -215,7 +215,7 @@ class WordCardFrontHeightTest(unittest.TestCase):
 
 
 class WordMeaningPhotoSpacingTest(unittest.TestCase):
-    def test_two_text_lines_of_spacing_only_between_last_photo_and_description(self):
+    def test_four_text_lines_of_spacing_only_between_last_photo_and_description(self):
         """Measure the rendered gap from the actual word-card CSS."""
         with sync_playwright() as playwright:
             chrome = shutil.which("google-chrome") or shutil.which("chromium")
@@ -251,10 +251,10 @@ class WordMeaningPhotoSpacingTest(unittest.TestCase):
                               const noPhotoMargin=Number.parseFloat(getComputedStyle(desc).marginTop);
                               return {lines,gap,margin,emptyMargin,editMargin,noPhotoMargin};
                             }""")
-                            self.assertAlmostEqual(dimensions["margin"], 2 * dimensions["lines"], delta=0.5,
-                                msg="the gap is exactly two current description line heights")
-                            self.assertAlmostEqual(dimensions["gap"], 2 * dimensions["lines"], delta=1.0,
-                                msg=f"visible separation must equal two lines: {dimensions}")
+                            self.assertAlmostEqual(dimensions["margin"], 4 * dimensions["lines"], delta=0.5,
+                                msg="the gap is exactly four current description line heights")
+                            self.assertAlmostEqual(dimensions["gap"], 4 * dimensions["lines"], delta=1.0,
+                                msg=f"visible separation must equal four lines: {dimensions}")
                             self.assertAlmostEqual(dimensions["emptyMargin"], 0, delta=0.5,
                                 msg="image-only cards need no extra empty spacing")
                             self.assertAlmostEqual(dimensions["editMargin"], 0, delta=0.5,
