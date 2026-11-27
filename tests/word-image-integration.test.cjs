@@ -497,12 +497,12 @@ test('image cards keep the same front height as text-only cards, with tall scrol
 });
 
 
-test('meaning and first photo have two line-heights of breathing room only in study back', () => {
+test('photos and following meaning have two line-heights of breathing room only in study back', () => {
   const html=read('index.html');
-  assert.ok(html.includes('.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}'),
-    'space must follow the visible description by exactly two text lines');
-  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
-    'description still precedes image data, without changing word content or pictures');
+  assert.ok(html.includes('.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-top:2lh}'),
+    'space must precede the visible description by exactly two text lines');
+  assert.ok(html.includes('backContent.append(backNumber,imageArea,bt)'),
+    'description follows all images, without changing word content or pictures');
   assert.ok(html.includes('name="word-meaning-photo-gap-build" content="20261126-meaning-gap1"'));
   assert.ok(!html.includes('.word-image-gallery{margin-top:2lh}'),
     'image-only cards must not gain the spacing');
@@ -517,7 +517,7 @@ test('reverse card count is right aligned in document flow above meaning, not ov
     'front still retains its original discreet counter');
   assert.ok(html.includes('backNumber.className="card-number card-number-back"'),
     'back receives its own right-aligned counter');
-  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+  assert.ok(html.includes('backContent.append(backNumber,imageArea,bt)'),
     'reverse number must be in flow before the meaning and all pictures');
   assert.ok(html.includes('front.append(fl,ft,frontNumber)'),
     'front counter must be displayed on the front face only');
@@ -541,7 +541,7 @@ test('reverse count right alignment never uses an absolute overlay over descript
     'margin-left auto places the number at the right edge of the content region');
   assert.ok(!html.includes('.card-number-back{position:absolute'),
     'the reverse number must not cover text even on narrow iPhone screens');
-  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+  assert.ok(html.includes('backContent.append(backNumber,imageArea,bt)'),
     'number still precedes the explanation and original image display');
 });
 
@@ -557,7 +557,7 @@ test('text-only reverse number is top-right below delete, with vertically center
   assert.ok(html.includes(
     '.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
     'reverse number must remain right-aligned and in normal document flow');
-  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+  assert.ok(html.includes('backContent.append(backNumber,imageArea,bt)'),
     'both text-only and image cards keep number before meaning');
   assert.ok(html.includes('name="word-text-number-build" content="20261126-textnum-top1"'));
   assert.ok(!html.includes('.card-number-back{position:absolute'),
@@ -583,7 +583,7 @@ test('image-card progress sits immediately below Delete while text-only card lay
     '.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
     'progress stays in document flow above the meaning without overlap');
   assert.ok(html.includes(
-    '.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}'),
+    '.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-top:2lh}'),
     'the two-line separation of explanation and image stays in place');
   assert.ok(html.includes('name="word-image-number-build" content="20261126-imagenum-near1"'));
 });
@@ -597,7 +597,7 @@ test('front progress number sits just below Delete without moving the word or ba
     'iPhone count moves up directly below the Delete button');
   assert.ok(html.includes('front.append(fl,ft,frontNumber)'),
     'the front count remains in the front face, without changing the word');
-  assert.ok(html.includes('backContent.append(backNumber,bt,imageArea)'),
+  assert.ok(html.includes('backContent.append(backNumber,imageArea,bt)'),
     'the back count keeps the same non-overlapping location as before');
   assert.ok(html.includes('.card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}'),
     'the back count placement remains unchanged');

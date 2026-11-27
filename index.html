@@ -8,6 +8,7 @@
 <meta name="word-page-zoom-build" content="20261126-normalview2">
 <meta name="word-front-height-build" content="20261126-frontmatch1">
 <meta name="word-meaning-photo-gap-build" content="20261126-meaning-gap1">
+<meta name="word-description-order-build" content="20261128-images-first1">
 <meta name="word-card-number-build" content="20261126-number-right1">
 <meta name="word-text-number-build" content="20261126-textnum-top1">
 <meta name="word-image-number-build" content="20261126-imagenum-near1">
@@ -39,7 +40,7 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 .card-actions{position:absolute;top:22px;right:24px;z-index:5;display:flex;gap:8px}.small{padding:8px 12px;border-radius:11px;background:rgba(255,255,255,.96);border:1px solid var(--border);color:var(--text);font-weight:700}
 .small.add{color:var(--accent);border-color:#bfd0fb;background:#f4f7ff}.small.save{background:var(--accent);border-color:var(--accent);color:#fff}
 .card-number{color:#aeb7c4;opacity:.75;font-size:13px;line-height:1.4;pointer-events:none;font-weight:500;font-variant-numeric:tabular-nums}
-/* Preserve the front counter; flow the back counter between the button row and meaning. */
+/* Preserve the front counter; flow the back counter between the button row and card content. */
 /* Align the front number directly beneath Delete rather than leaving a large gap. */
 .card-number-front{position:absolute;right:24px;top:64px;z-index:4}
 .card-number-back{position:static;display:block;width:max-content;max-width:100%;margin:0 0 12px auto;text-align:right;flex:none}
@@ -82,8 +83,8 @@ button,input,textarea{font:inherit}button{cursor:pointer;border:0;touch-action:m
 /* In study mode, line the photo card's progress number up just beneath Delete. */
 .card.with-images.show-back:not(.is-editing) .back{padding-top:66px}
 .card.with-images .back-content,.card.is-editing .back-content{height:100%}
-/* Reserve exactly two computed text line-heights between a nonempty meaning and its first picture. */
-.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-bottom:2lh}
+/* Show the explanation below all pictures, separated by two computed text line-heights. */
+.card.with-images.show-back:not(.is-editing) .back-content > .card-text:not(:empty){margin-top:2lh}
 .card.is-editing .card-number{display:none}
 .card.is-editing .back .editor{min-height:100px;width:100%;max-width:100%;text-align:left;margin:0;padding:2px 4px}
 /* Independent footer below the card border; never inside the scrolling face. */
@@ -500,7 +501,7 @@ function renderCard(item){
  const positionText=(pos+1)+" / "+cards.length;
  const frontNumber=document.createElement("div");frontNumber.className="card-number card-number-front";frontNumber.textContent=positionText;
  const backNumber=document.createElement("div");backNumber.className="card-number card-number-back";backNumber.textContent=positionText;
- backContent.append(backNumber,bt,imageArea);front.append(fl,ft,frontNumber);back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);
+ backContent.append(backNumber,imageArea,bt);front.append(fl,ft,frontNumber);back.append(bl,backContent);card.append(front,back);wordImageAction.replaceChildren(imageEntry);
  let imageView=null,imageEditor=null,imageError=null;
  try{
    if(!window.WordImageUI||!window.WordImages)throw Error("画像機能を読み込めませんでした。ページを再読込してください。カードのデータは保持しています。");
@@ -655,6 +656,7 @@ function renderCard(item){
    fe=document.createElement("textarea");fe.className="editor";fe.value=item.word;fe.setAttribute("aria-label","表の単語");
    be=document.createElement("textarea");be.className="editor";be.value=item.meaning;be.placeholder="意味を入力（画像だけでも保存できます）";be.setAttribute("aria-label","裏の意味");
    ft.replaceWith(fe);bt.replaceWith(be);applyBackClasses(back,be.value);be.oninput=()=>applyBackClasses(back,be.value);
+   backContent.append(be,imageArea); // Keep the meaning field before the image controls while editing.
    [fe,be].forEach(x=>x.onclick=e=>e.stopPropagation());
    imageView.destroy();imageView=null;imageEntry.remove();
    imageEditor=WordImageUI.edit(imageArea,item.images,{pasteTarget:back,onBusy:busy=>{edit.disabled=busy||saving}});

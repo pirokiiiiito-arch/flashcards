@@ -53,8 +53,8 @@ card.setPointerCapture=id=>{__captures++;return nativeCapture(id)};
 <div class="face front"><div class="card-text">表面</div></div>
 <div class="face back"><div class="face-label">裏・意味</div>
 <div class="back-content" id="test-back-content">
-<div class="card-text" style="font-size:20px">画像が3枚あるカード</div>
 <div data-image-ui class="word-image-gallery">{cards}</div>
+<div class="card-text" style="font-size:20px">画像が3枚あるカード</div>
 </div></div></article></div></div><script>{script}</script></body></html>"""
 
 
@@ -215,7 +215,7 @@ class WordCardFrontHeightTest(unittest.TestCase):
 
 
 class WordMeaningPhotoSpacingTest(unittest.TestCase):
-    def test_two_text_lines_of_spacing_only_between_description_and_first_photo(self):
+    def test_two_text_lines_of_spacing_only_between_last_photo_and_description(self):
         """Measure the rendered gap from the actual word-card CSS."""
         with sync_playwright() as playwright:
             chrome = shutil.which("google-chrome") or shutil.which("chromium")
@@ -239,16 +239,16 @@ class WordMeaningPhotoSpacingTest(unittest.TestCase):
                               const imageArea=document.querySelector('#test-back-content > [data-image-ui]');
                               const style=getComputedStyle(desc);
                               const lines=Number.parseFloat(style.lineHeight);
-                              const gap=imageArea.getBoundingClientRect().top-desc.getBoundingClientRect().bottom;
-                              const margin=Number.parseFloat(style.marginBottom);
+                              const gap=desc.getBoundingClientRect().top-imageArea.getBoundingClientRect().bottom;
+                              const margin=Number.parseFloat(style.marginTop);
                               desc.textContent='';
-                              const emptyMargin=Number.parseFloat(getComputedStyle(desc).marginBottom);
+                              const emptyMargin=Number.parseFloat(getComputedStyle(desc).marginTop);
                               desc.textContent='元の説明';
                               card.classList.add('is-editing');
-                              const editMargin=Number.parseFloat(getComputedStyle(desc).marginBottom);
+                              const editMargin=Number.parseFloat(getComputedStyle(desc).marginTop);
                               card.classList.remove('is-editing');
                               card.classList.remove('with-images');
-                              const noPhotoMargin=Number.parseFloat(getComputedStyle(desc).marginBottom);
+                              const noPhotoMargin=Number.parseFloat(getComputedStyle(desc).marginTop);
                               return {lines,gap,margin,emptyMargin,editMargin,noPhotoMargin};
                             }""")
                             self.assertAlmostEqual(dimensions["margin"], 2 * dimensions["lines"], delta=0.5,
