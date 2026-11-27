@@ -13,7 +13,7 @@ const clean=c=>({id:c.id,name:c.name,name_en:c.name_en||'',category:c.category,d
   maker:c.maker||'',country:c.country||'',search:c.search,source:c.source||'user'});
 const isDevice=v=>/^(idb:gunimg:|data:image\/|blob:)/.test(String(v||''));
 let sync=null,copyTimer=null,busy=false,delay=30000,nextRetry=0;
-const photoQueue=new Map(),POLL_MS=15000;
+const photoQueue=new Map(),repairOnly=new Map(),POLL_MS=15000;
 const controls=document.querySelector('.header-actions')||document.body;
 const retry=document.createElement('button');retry.className='btn light';retry.type='button';
 retry.textContent='写真コピー再試行';
@@ -50,18 +50,35 @@ async function toCloudValue(key,value){
  return ref;
 }
 function prepareApply(view){
- const records=[];
- for(const [key,val] of Object.entries(view.data||{})){
+ const data=view.data||{},deleted=view.deleted||{};
+ const removed=Object.keys(deleted).filter(k=>k.startsWith('card:')).map(k=>k.slice(5));
+ const removedIds=new Set(removed),local=new Map(deck.getCards().map(c=>[c.id,c]));
+ const records=new Map();
+ for(const [key,val] of Object.entries(data)){
    if(!key.startsWith('card:')||!val||typeof val!=='object')continue;
-   const record={...val,images:[]};
-   for(let i=0;i<3;i++){
-     const image=view.data[imageKey(record,i)]||'';
-     record.images.push(typeof image==='string'?image:'');
-   }
-   records.push(record);
+   if(removedIds.has(val.id))continue;
+   records.set(val.id,{...val,images:[]});
  }
- const removed=Object.keys(view.deleted||{}).filter(k=>k.startsWith('card:')).map(k=>k.slice(5));
- return {cards:records,deleted:removed};
+ // Image journals may arrive independently of their card metadata. Apply them
+ // to known cards too; an orphan photo must never create or revive a card.
+ for(const key of [...Object.keys(data),...Object.keys(deleted)]){
+   const match=key.match(/^image:(.+):([0-2])$/);
+   if(!match)continue;
+   const id=match[1];
+   if(!removedIds.has(id)&&!records.has(id)&&local.has(id))
+     records.set(id,{...local.get(id),images:[]});
+ }
+ for(const record of records.values()){
+   const previous=local.get(record.id);
+   for(let i=0;i<3;i++){
+     const key=imageKey(record,i);
+     // Missing journal entries are not deletions. Only an explicit image
+     // tombstone clears a saved photo; keep local references until received.
+     const image=Object.hasOwn(deleted,key)?'':Object.hasOwn(data,key)?data[key]:previous?.images?.[i]||'';
+     record.images.push(typeof image==='string'?image:previous?.images?.[i]||'');
+   }
+ }
+ return {cards:[...records.values()],deleted:removed};
 }
 const cfg={
  namespace:'gun-flashcards-v1',toolbar:'.header-actions',ready:deck.ready,
@@ -95,8 +112,11 @@ function currentPhotoMap(){
 function resumePending(){
  const current=currentPhotoMap();
  for(const key of sync.pendingKeys?.()||[])
-   if(key.startsWith('image:')&&current.has(key)&&!photoQueue.has(key))
-     photoQueue.set(key,current.get(key));
+   if(key.startsWith('image:')&&current.has(key)&&!photoQueue.has(key)){
+     const ref=current.get(key);photoQueue.set(key,ref);
+     // Resumed registrations keep the same remote-edit protection as a retry.
+     if(P.isDrive(ref))repairOnly.set(key,ref);
+   }
  // A new photo can be saved in IndexedDB before its journal is captured;
  // it must still be retried if the PC is online but the push was deferred.
  for(const [key,ref] of current)
@@ -104,7 +124,8 @@ function resumePending(){
 }
 function pruneQueue(){
  const current=currentPhotoMap();
- for(const key of photoQueue.keys())if(!current.has(key))photoQueue.delete(key);
+ for(const key of photoQueue.keys())if(!current.has(key)){photoQueue.delete(key);repairOnly.delete(key);}
+ for(const [key,ref] of repairOnly)if(photoQueue.get(key)!==ref)repairOnly.delete(key);
 }
 function schedule(wait=700){
  pruneQueue();
@@ -124,6 +145,7 @@ function schedule(wait=700){
    }
    busy=true;retry.disabled=true;
    const batch=new Map(photoQueue);
+   const repairs=new Map([...repairOnly].filter(([key,ref])=>batch.get(key)===ref));
    try{
      if(!sync.account)await sync.sync();
      if(!sync.account)throw Error('Driveのアカウントをまだ確認できません。');
@@ -132,25 +154,34 @@ function schedule(wait=700){
      if(!account||account!==sync.account)throw Error('別のGoogleアカウントです。写真は送信せずPCに保持しました。');
      await copier.sweep();
      const local=currentPhotoMap();
-     const keys=[...batch].filter(([k,expected])=>{
+     const readyKeys=[...batch].filter(([k,expected])=>{
        const ref=local.get(k)||'';
        return P.isDrive(ref)&&
          (ref===expected||isDevice(expected)||/^https?:\/\//i.test(expected));
      }).map(([k])=>k);
+     const keys=readyKeys.filter(key=>!repairs.has(key));
+     const repairKeys=readyKeys.filter(key=>repairs.has(key));
      if(keys.length){
        if(!sync.republish)throw Error('写真の登録情報の再送機能がありません。');
        await sync.republish(keys);
+     }
+     if(repairKeys.length){
+       // The core checks the latest remote heads after pulling. A recovery
+       // retry must not revive a deletion or replace another device's photo.
+       if(!sync.republishSaved)throw Error('写真の再同期機能を更新するため、このページを再読み込みしてください。');
+       await sync.republishSaved(repairKeys);
      }
      await sync.sync();
      if(sync.valid()&&sync.status().pending)await sync.sync();
      const pending=new Set(sync.pendingKeys?.()||[]);
      const result=sync.view().data;
+     const applied=currentPhotoMap();
      for(const [key,expected] of batch){
-       const now=local.get(key)||'';
+       const now=applied.get(key)||'';
        const remote=result[key]||'';
-       if(!now){photoQueue.delete(key);continue;}
+       if(!now){photoQueue.delete(key);repairOnly.delete(key);continue;}
        if(photoQueue.get(key)!==expected)continue;
-       if(P.isDrive(now)&&!pending.has(key)&&remote===now)photoQueue.delete(key);
+       if(P.isDrive(now)&&!pending.has(key)&&remote===now){photoQueue.delete(key);repairOnly.delete(key);}
      }
      delay=photoQueue.size?Math.min(300000,Math.max(30000,delay*2)):30000;
    }catch(e){
@@ -168,6 +199,7 @@ function updateQueue(keys,action){
  const current=currentPhotoMap();
  for(const key of keys||[]){
    if(!key.startsWith('image:'))continue;
+   repairOnly.delete(key);
    const value=current.get(key);
    if(value)photoQueue.set(key,value);else photoQueue.delete(key);
  }
@@ -178,11 +210,17 @@ function updateQueue(keys,action){
 deck.subscribe(update=>updateQueue(update.keys,update.action));
 retry.onclick=()=>{
  const current=currentPhotoMap();
- for(const [key,ref] of current)if(!P.isDrive(ref))photoQueue.set(key,ref);
+ // Saved Drive references retry registration without replacing remote edits.
+ // New local photos keep the ordinary upload and replacement semantics.
+ for(const [key,ref] of current){
+   photoQueue.set(key,ref);
+   if(P.isDrive(ref))repairOnly.set(key,ref);else repairOnly.delete(key);
+ }
  resumePending();copier.retry();delay=30000;nextRetry=0;
  clearTimeout(copyTimer);copyTimer=null;
  if(!sync.valid()){sync.open();return;}
- schedule(0);
+ if(photoQueue.size)schedule(0);
+ else sync.sync().catch(()=>{});
 };
 reportButton.onclick=()=>{
  const body={...copier.report(),sync:sync.status(),queued_photo_keys:[...photoQueue.keys()]};

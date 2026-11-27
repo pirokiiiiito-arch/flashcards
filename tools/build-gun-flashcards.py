@@ -21,6 +21,24 @@ for marker in ['plantPhotoDeferred','async function republish(keys)','pendingKey
                'pendingValues: prefix =>','root.FlashcardsDrive']:
     if marker not in src:raise RuntimeError('The verified plant transfer core changed: '+marker)
 guns=src.replace('plantPhotoDeferred','gunPhotoDeferred')
+def replace_once(body,old,new):
+    if body.count(old)!=1:raise RuntimeError('The verified gun core marker changed: '+old)
+    return body.replace(old,new,1)
+
+# Repairing an existing Drive reference must never undo a change or deletion
+# learned during republish's own pull. Equal values can be re-registered when
+# the sending device retained an event whose Drive journal is missing.
+guns=replace_once(guns,'async function republish(keys) {',
+    'async function republish(keys, options = {}) {')
+guns=replace_once(guns,
+    '        if (!(key in current)) continue;\n        const parents = currentHeads.get(key)?.map(e => e.id) || basis[key] || [];',
+    '        if (!(key in current)) continue;\n'
+    '        // Repair may resend the same value, but never undo remote changes.\n'
+    '        if (options.preserveRemote === true && (currentHeads.get(key) || []).some(e =>\n'
+    '          e.deleted || stable(e.value) !== stable(current[key]))) continue;\n'
+    '        const parents = currentHeads.get(key)?.map(e => e.id) || basis[key] || [];')
+guns=replace_once(guns,'ready, changed, sync, republish, pendingKeys:',
+    'ready, changed, sync, republish, republishSaved: keys => republish(keys, {preserveRemote:true}), pendingKeys:')
 write('guns/drive-transfer-core.js',guns)
 if before!={x:checksum(x) for x in protected}:
     raise RuntimeError('An existing application or its research was changed')
