@@ -43,7 +43,8 @@ h1{margin:0;font-size:28px}
 .nav button{min-height:40px;border-radius:14px;background:#fff;border:1px solid var(--border);font-weight:800;font-size:13px}
 .nav .mode{background:var(--green);color:#fff;border-color:var(--green)}
 .stage{min-height:470px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px}
-.card{width:min(720px,100%);height:470px;position:relative;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.card{width:min(720px,100%);height:470px;position:relative;cursor:pointer;touch-action:pan-y pinch-zoom;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.plant-page-zoomed .card{touch-action:auto}
 .face{position:absolute;inset:0;background:#fff;border:1px solid var(--border);border-radius:26px;box-shadow:0 16px 36px rgba(27,54,39,.07);padding:68px 24px 28px;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .front{top:6px;bottom:168px;padding:42px 14px 16px}
 .back{display:none;background:var(--back);align-items:flex-start;overflow:visible}
@@ -497,6 +498,89 @@ function render(showBack=false){
   if(pos>=order.length)pos=0;
   renderCard(cards[currentIndex()],showBack);
 }
+function plantPageIsZoomed(){return (window.visualViewport?.scale||1)>1.01}
+function syncPlantZoomedTouchPolicy(){
+  document.documentElement.classList.toggle("plant-page-zoomed",plantPageIsZoomed());
+}
+window.visualViewport?.addEventListener("resize",syncPlantZoomedTouchPolicy,{passive:true});
+syncPlantZoomedTouchPolicy();
+
+function bindPlantCardGestures(card){
+  const controls='button,a,input,textarea,select,[contenteditable="true"]';
+  const pointers=new Set();
+  let sx=0,sy=0,pid=null,moved=false,multiTouch=false,suppressUntil=0;
+  function clearGesture(){
+    const captured=pid;pid=null;card.style.transform="";
+    if(captured!==null)try{card.releasePointerCapture(captured)}catch{}
+  }
+  function cancelGesture(){clearGesture();suppressUntil=Date.now()+900}
+  // Observe every finger, including touches on the editable photo slots.
+  // Native browser zoom owns all multi-touch gestures and zoomed-page panning.
+  function observeTouches(e){
+    if(e.touches.length>1){multiTouch=true;cancelGesture()}
+  }
+  card.addEventListener("touchstart",observeTouches,{passive:true});
+  card.addEventListener("touchmove",observeTouches,{passive:true});
+  card.addEventListener("touchend",e=>{
+    if(multiTouch)cancelGesture();
+    if(e.touches.length===0){multiTouch=false;pointers.clear()}
+  },{passive:true});
+  card.addEventListener("touchcancel",()=>{
+    multiTouch=true;pointers.clear();cancelGesture();
+  },{passive:true});
+  card.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="mouse"){suppressUntil=0;return}
+    if(e.isPrimary!==false&&pointers.size===0){multiTouch=false;suppressUntil=0}
+    pointers.add(e.pointerId);
+    if(e.isPrimary===false||pointers.size>1){multiTouch=true;cancelGesture();return}
+    if(multiTouch||plantPageIsZoomed()){cancelGesture();return}
+    if(editing||e.target.closest(controls))return;
+    sx=e.clientX;sy=e.clientY;pid=e.pointerId;moved=false;
+    try{card.setPointerCapture(e.pointerId)}catch{}
+  });
+  card.addEventListener("pointermove",e=>{
+    if(pid!==e.pointerId)return;
+    if(editing||multiTouch||plantPageIsZoomed()){cancelGesture();return}
+    const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(Math.hypot(dx,dy)>12)moved=true;
+    if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.15)
+      card.style.transform="translateX("+Math.max(-44,Math.min(44,dx*.22))+"px)";
+  });
+  card.addEventListener("pointerup",e=>{
+    pointers.delete(e.pointerId);
+    if(pid!==e.pointerId){if(multiTouch)cancelGesture();return}
+    const blocked=editing||multiTouch||pointers.size>0||plantPageIsZoomed();
+    const dx=e.clientX-sx,dy=e.clientY-sy;
+    const swipe=Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.2;
+    const tap=!moved&&Math.abs(dx)<24&&Math.abs(dy)<24;
+    const touch=e.pointerType==="touch"||e.pointerType==="pen";
+    clearGesture();
+    if(blocked){suppressUntil=Date.now()+900;return}
+    if(touch&&(swipe||tap))e.preventDefault();
+    if(swipe&&order.length){
+      suppressUntil=Date.now()+900;
+      pos=dx<0?(pos+1)%order.length:(pos-1+order.length)%order.length;
+      render();
+    }else if(touch&&tap){
+      suppressUntil=Date.now()+900;
+      card.classList.toggle("show-back");
+    }else if(moved){suppressUntil=Date.now()+900}
+  });
+  card.addEventListener("pointercancel",e=>{
+    pointers.delete(e.pointerId);
+    if(pid===e.pointerId||multiTouch)cancelGesture();
+  });
+  card.addEventListener("lostpointercapture",e=>{
+    pointers.delete(e.pointerId);
+    if(pid===e.pointerId)cancelGesture();
+  });
+  card.addEventListener("click",e=>{
+    if(editing||multiTouch||plantPageIsZoomed()||Date.now()<suppressUntil||e.target.closest(controls))return;
+    card.classList.toggle("show-back");
+  });
+  card.addEventListener("selectstart",e=>{if(!editing&&!e.target.closest("input,textarea,[contenteditable=\"true\"]"))e.preventDefault()});
+}
+
 function renderCard(item,showBack=false){
   const idx=currentIndex();
   const card=document.createElement("article");card.className="card"+(showBack?" show-back":"");
@@ -615,41 +699,7 @@ function renderCard(item,showBack=false){
   const num=document.createElement("div");num.className="number";num.textContent=(pos+1)+" / "+order.length;
   card.append(front,back,num);stage.append(editActions,card,actions);
 
-  let sx=0,sy=0,pid=null,moved=false,suppressUntil=0;
-  card.addEventListener("pointerdown",e=>{
-    if(editing||e.pointerType==="mouse"||e.target.closest("button,a,input,textarea,select,[contenteditable=\"true\"]"))return;
-    sx=e.clientX;sy=e.clientY;pid=e.pointerId;moved=false;
-    try{card.setPointerCapture(e.pointerId)}catch{}
-  });
-  card.addEventListener("pointermove",e=>{
-    if(pid!==e.pointerId||editing)return;
-    const dx=e.clientX-sx,dy=e.clientY-sy;
-    if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.15){
-      moved=true;card.style.transform="translateX("+Math.max(-44,Math.min(44,dx*.22))+"px)";
-    }
-  });
-  card.addEventListener("pointerup",e=>{
-    if(pid!==e.pointerId)return;
-    const dx=e.clientX-sx,dy=e.clientY-sy;
-    const swipe=Math.abs(dx)>=55&&Math.abs(dx)>Math.abs(dy)*1.2;
-    const tap=Math.abs(dx)<24&&Math.abs(dy)<24;
-    const touch=e.pointerType==="touch"||e.pointerType==="pen";
-    card.style.transform="";pid=null;
-    if(touch)e.preventDefault();
-    if(swipe&&order.length){
-      suppressUntil=Date.now()+900;
-      pos=dx<0?(pos+1)%order.length:(pos-1+order.length)%order.length;
-      render();
-    }else if(touch&&tap&&!editing){
-      suppressUntil=Date.now()+900;
-      card.classList.toggle("show-back");
-    }
-  });
-  card.addEventListener("click",e=>{
-    if(editing||Date.now()<suppressUntil||e.target.closest("button,a,input,textarea,select,[contenteditable=\"true\"]"))return;
-    card.classList.toggle("show-back");
-  });
-  card.addEventListener("selectstart",e=>{if(!editing&&!e.target.closest("input,textarea,[contenteditable=\"true\"]"))e.preventDefault()});
+  bindPlantCardGestures(card);
 
   add.onclick=e=>{e.stopPropagation();showDraft()};
   edit.onclick=e=>{e.stopPropagation();showEditor(item,idx)};

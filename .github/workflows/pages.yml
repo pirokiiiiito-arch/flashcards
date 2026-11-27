@@ -173,6 +173,7 @@ jobs:
         run: |
           python3 tools/plant-description-first.py
           node --test tests/service-worker.test.cjs
+          node --test tests/plant-pinch.test.cjs
       - name: Keep plant photo copying internal and accessible on request
         run: |
           node --check plants/drive-sync.js
@@ -241,6 +242,7 @@ jobs:
           fi
           "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_back_scroll_browser.py"
           "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_image_pinch_browser.py"
+          "$qa_python" "$GITHUB_WORKSPACE/tests/test_plant_pinch_browser.py"
           "$qa_python" -m unittest discover -v -s tests -p 'test_reader_template_readback.py'
           timeout --signal=ABRT --kill-after=10s 8m "$qa_python" -u -X faulthandler -m unittest discover -v --durations 10 -s tests -p 'test_reader_shelf*.py'
       - name: Configure Pages

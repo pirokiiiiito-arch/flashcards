@@ -48,7 +48,7 @@ for path in ENTRIES:
         raise RuntimeError('Plant render anchor changed: ' + path)
 for path in WORKERS:
     text, count = re.subn(r"(const CACHE\s*=\s*')([^']+)(')",
-                         lambda m: m[1] + m[2] + '-description1' + m[3],
+                         lambda m: m[1] + m[2] + '-description1-pinch1' + m[3],
                          read(path), count=1)
     if count != 1:
         raise RuntimeError('Plant public cache anchor changed: ' + path)

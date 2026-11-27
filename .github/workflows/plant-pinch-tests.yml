@@ -1,0 +1,26 @@
+name: Plant native pinch checks
+on:
+  push:
+    paths:
+      - 'plants/index.html'
+      - 'tests/plant-pinch.test.cjs'
+      - 'tests/test_plant_pinch_browser.py'
+      - '.github/workflows/plant-pinch-tests.yml'
+permissions:
+  contents: read
+jobs:
+  pinch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check native zoom and card gesture interaction
+        run: |
+          node --test tests/plant-pinch.test.cjs
+          python3 -m venv "$RUNNER_TEMP/plant-pinch-qa"
+          qa_python="$RUNNER_TEMP/plant-pinch-qa/bin/python"
+          "$qa_python" -m pip install --disable-pip-version-check playwright
+          if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            "$qa_python" -m playwright install --with-deps chromium
+          fi
+          "$qa_python" tests/test_plant_pinch_browser.py

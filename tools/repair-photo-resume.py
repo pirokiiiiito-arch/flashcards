@@ -47,8 +47,9 @@ for path in ['colors/drive-view.html','colors/saved-view.html','colors/auto-view
 # Private data keys and account namespace are IDENTICAL to auto-view.html.
 for app in ['plants','colors']:
     page=read(app+'/auto-view.html')
-    # iPhone Safari/Chrome: keep one-finger scrolling, block double-tap and pinch zoom.
-    page=re.sub(r'<meta name="viewport"[^>]*>', '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">', page, count=1)
+    # Plants retain native page pinch zoom. Keep the color viewer's existing policy.
+    if app=='colors':
+        page=re.sub(r'<meta name="viewport"[^>]*>', '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">', page, count=1)
     zoom_guard='''<style id="photo-view-zoom-guard">html,body,body *{touch-action:pan-y!important;-ms-touch-action:pan-y!important}</style>
 <script id="photo-view-zoom-guard-js">
 (function(){
@@ -72,7 +73,8 @@ for app in ['plants','colors']:
   document.addEventListener('pointercancel',dropPointer,true);
 })();
 </script>'''
-    page=one(page,'</head>',zoom_guard+'\n</head>')
+    if app=='colors':
+        page=one(page,'</head>',zoom_guard+'\n</head>')
     write(app+'/photo-view.html',page)
 s=one(read('study-view-shell.js'),"['drive-view.html','saved-view.html','pc-order-view.html','auto-view.html']","['drive-view.html','saved-view.html','pc-order-view.html','auto-view.html','photo-view.html']")
 write('photo-view-shell.js',s)
