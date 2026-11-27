@@ -372,10 +372,13 @@ function admittedBookshelfNavUI(root,policy){
  // Each shell revision admits one exact combination of reader, cache and
  // caption runtime. An older review may still verify its own original host.
  const shelfWorker=fs.readFileSync(safe(root,'reader/library/sw.js'),'utf8');
- const fastResume=shelfWorker.includes("const CACHE='private-bookshelf-shell-v37-saved-edition-20261124';");
+ const novelPaint=shelfWorker.includes("const CACHE='private-bookshelf-shell-v38-saved-edition-20261124';");
+ const fastResume=novelPaint||shelfWorker.includes("const CACHE='private-bookshelf-shell-v37-saved-edition-20261124';");
  if(fastResume){
   const helper='reader/library/novel-resume-layout.js',digest=hash(fs.readFileSync(safe(root,helper)));
-  demand(digest==='f2315cd610ad2f0387c77550cb96cc34b300b072e4a018a59674c1e7d1221f4a','NOVEL_RESUME_SCRIPT_NOT_REVIEWED');
+  const expected=novelPaint?'343fb069dabdf9ef0e0abcc6b80210562635800937fbb0c76f89e9861c540ba0':
+   'f2315cd610ad2f0387c77550cb96cc34b300b072e4a018a59674c1e7d1221f4a';
+  demand(digest===expected,'NOVEL_RESUME_SCRIPT_NOT_REVIEWED');
   approved[helper]=digest;
  }
  const poetryRubyFit=fastResume||shelfWorker.includes("const CACHE='private-bookshelf-shell-v36-saved-edition-20261124';");
@@ -472,7 +475,8 @@ function admittedBookshelfNavUI(root,policy){
  // The sort revision changes only the publicly served bookshelf UI and cache.
  // Require all three exact files together; never waive frozen book readers.
  const savedEditionPins=editorialFit?{...SAVED_EDITION_UI_GIT_BLOBS,
-  'reader/library/sw.js':fastResume?'3f8fb3da5047196edde780716ae0381a00c9bf74':poetryRubyFit?'87c1cb57df4c4be1d590be81406aca4f14c45c4e':
+  'reader/library/sw.js':novelPaint?'6b1ff38446b9aa4748637d9f69cd52a3806abb10':
+   fastResume?'3f8fb3da5047196edde780716ae0381a00c9bf74':poetryRubyFit?'87c1cb57df4c4be1d590be81406aca4f14c45c4e':
    editorialCounterFit?'e84245ac9374ba9987da1a68057e2c8cc4a75494':'e130064400531605a4d4ef8aebeda68d5204aebf'}:SAVED_EDITION_UI_GIT_BLOBS;
  const sortPins=savedEditionFit?savedEditionPins:textCoversFit?BOOKSHELF_TEXT_COVER_UI_GIT_BLOBS:captionFit?{...BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS,
   'reader/library/sw.js':'51eb5303c9949fa89baaa1eb27ce0207a18207cb'}:BOOKSHELF_TITLE_ORDER_UI_GIT_BLOBS;

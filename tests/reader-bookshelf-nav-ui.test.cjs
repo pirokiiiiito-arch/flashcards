@@ -722,6 +722,7 @@ test('only the reviewed caption-ruby host and signed proofreading shelf assets a
   ['read.html',/SHARED_SHELF_UI_BYTES_NOT_REVIEWED/],
   ['app.js',/BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED/],
   ['sw.js',/BOOKSHELF_SORT_UI_BYTES_NOT_REVIEWED/],
+  ['novel-resume-layout.js',/NOVEL_RESUME_SCRIPT_NOT_REVIEWED/],
   ['wh1-caption-ruby.js',/REGISTRATION_FILE_CHANGED/],
   ['storage.js',/REGISTRATION_FILE_CHANGED/],
   ['shelf-registration.mjs',/REGISTRATION_FILE_CHANGED/]

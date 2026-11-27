@@ -172,8 +172,17 @@
       ')(' + JSON.stringify(edition) + ');\n' +
       declaration + 'return resumeMeasurements.measure(measureParts,existing,additional);}\n' +
       'function measureParts(existing,additional){';
-    return markup.slice(0, cut) + tail.replace(declaration, () => wrapper)
+    const prepared = markup.slice(0, cut) + tail.replace(declaration, () => wrapper)
       .replace(build, 'pages=resumeMeasurements.paginate(paginateAll,sheet,measureText,font);');
+    // Isolate the changing vertical text to mitigate the reported iPhone
+    // partial-paint symptom. A zero-distance transform changes no glyph positions,
+    // pagination measurements, source characters, or original image bytes.
+    // Install it before the first page is painted; the hidden measuring frame
+    // keeps its existing layout and does not need a compositing layer.
+    const headEnd = prepared.indexOf('</head>');
+    if (headEnd < 0) return prepared;
+    const paintStyle = '<style id="novel-text-paint-layer">#text-flow{transform:translateZ(0)}</style>';
+    return prepared.slice(0, headEnd) + paintStyle + prepared.slice(headEnd);
   }
 
   window.NovelResumeLayout = Object.freeze({prepare, compactOriginals});
