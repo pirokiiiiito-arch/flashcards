@@ -223,7 +223,8 @@ retry.onclick=()=>{
  else sync.sync().catch(()=>{});
 };
 reportButton.onclick=()=>{
- const body={...copier.report(),sync:sync.status(),queued_photo_keys:[...photoQueue.keys()]};
+ const body={...copier.report(),build:'20261128-sync4',sync:sync.status(),
+   runtime:sync.diagnostics?.()||null,queued_photo_keys:[...photoQueue.keys()]};
  const blob=new Blob([JSON.stringify(body,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='guns-photo-copy-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);

@@ -501,7 +501,7 @@ test('gun photos stay mounted on flips and unchanged sync refreshes',()=>{
 });
 test('cached app shell is isolated and does not store remote Google results or user photo bytes',()=>{
  const sw=read('service-worker.js'),html=read('index.html');
- assert.ok(sw.includes("CACHE='gun-flashcards-static-v31'"));
+ assert.ok(sw.includes("CACHE='gun-flashcards-static-v32'"));
  assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));
  assert.ok(!sw.includes('cache.put(url'));
  assert.ok(!sw.includes('localStorage'));
@@ -519,10 +519,10 @@ test('cached app shell is isolated and does not store remote Google results or u
  assert.ok(html.includes('./app.js?v=18'));
  assert.ok(sw.includes('./data.js?v=10'));
  assert.ok(sw.includes('./app.js?v=18'));
- assert.ok(html.includes('./drive-sync.js?v=3'));
- assert.ok(sw.includes('./drive-sync.js?v=3'));
+ assert.ok(html.includes('./drive-sync.js?v=4'));
+ assert.ok(sw.includes('./drive-sync.js?v=4'));
  assert.ok(html.includes('../persistent-drive-auth.js?v=1'));
- assert.ok(html.includes('./drive-transfer-core.js?v=2'));
+ assert.ok(html.includes('./drive-transfer-core.js?v=3'));
  assert.ok(html.includes('./service-worker.js')===false);
 });
 test('build verifies existing apps and never packages private pictures',()=>{

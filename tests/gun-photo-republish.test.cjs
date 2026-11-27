@@ -37,7 +37,7 @@ function replica(server, initial = {}, options = {}) {
   };
   const context = {
     console, document, indexedDB: db.indexedDB, crypto: crypto.webcrypto,
-    TextEncoder, TextDecoder, Blob, Headers, Response, URL, URLSearchParams,
+    TextEncoder, TextDecoder, Blob, Headers, Response, URL, URLSearchParams, AbortController,
     structuredClone, location: {protocol: 'https:', hostname: 'example.github.io'},
     localStorage: {
       getItem: key => storage.get(key) || null,
