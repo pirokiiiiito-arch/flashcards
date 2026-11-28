@@ -48,6 +48,7 @@
   const cfg = {
     namespace: 'word-flashcards', toolbar: '.topbar', primary: wordDrivePrimary,
     explicitDeletions: true, deletionKeyPrefix: 'card:',
+    verifyUploads: true,
     requestTimeoutMs: 60000,
     storageKeys: [KEY], reload: () => { if (!editing) { cards = loadCards(); rebuildOrder(); render(); } },
     read, isEditing: () => editing || !!window.__WORD_RECOVERY_ACTIVE,

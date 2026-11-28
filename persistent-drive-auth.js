@@ -131,11 +131,16 @@
    hasGrantedAllScopes:(response,...wanted)=>wanted.every(s=>String(response.scope||'').split(/\s+/).includes(s))});
  }
  const messages={app_login_required:'最初に、この単語帳のアカウントでログインしてください。Googleのパスワードではありません。',google_auth_required:'Google Driveの継続利用を初回だけ許可してください。',google_permission_required:'Google Driveの利用許可をもう一度確認してください。',offline_permission_required:'自動更新の許可を確認できませんでした。Googleで接続し直してください。',google_account_mismatch:'保存済みのデータと同じGoogleアカウントを選んでください。',app_login_failed:'メールアドレスまたはアプリのパスワードを確認してください。',login_rate_limited:'ログインの試行が多いため、少し時間を置いてから操作してください。',device_storage_unavailable:'ログイン状態をこの端末に保存できません。保存領域の設定を確認してください。',server_not_configured:'サーバー側の初回設定が未完了です。',expired_or_invalid_state:'接続確認の期限が切れました。元の画面からやり直してください。'};
- let controller,dialog;
+ let controller,dialog,requestedContext={};
  function message(code){return messages[code]||'通信を完了できませんでした。写真と名前は保持しています。通信が戻ると自動で再試行します。';}
- function appChanged(){root.AuthOnlySync?.recheck?.();if(dialog?.open&&controller.state().phase==='connected')dialog.close();}
- function open(){
+ function appChanged(){root.AuthOnlySync?.recheck?.();if(dialog?.open&&controller.state().phase==='connected'&&!requestedContext.forceGoogle)dialog.close();}
+ function open(context={}){
   if(!root.document)return;
+  requestedContext={
+   expectedAccount:/^[\w-]{1,200}$/.test(String(context?.expectedAccount||''))?String(context.expectedAccount):'',
+   forceGoogle:context?.forceGoogle===true,
+   returnTo:/^\/flashcards\/(?:[^?#]*)?(?:\?[^#]*)?$/.test(String(context?.returnTo||''))?String(context.returnTo):root.location.pathname+root.location.search
+  };
   if(!dialog){
    dialog=document.createElement('dialog');dialog.className='auth-only-dialog';dialog.id='persistentDriveDialog';
    dialog.innerHTML='<h2>同期の初回ログイン</h2><p data-auth-message></p><form data-login-form><label>アプリのメールアドレス<input name="email" type="email" autocomplete="username" required></label><label>アプリのパスワード（Googleのパスワードではありません）<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">ログインして続ける</button></form><button type="button" data-google>Googleで接続する</button><button type="button" data-close>閉じる</button><p data-error role="alert"></p>';
@@ -145,8 +150,8 @@
     try{await controller.login(form.elements.email.value,pass.value);}catch(err){dialog.querySelector('[data-error]').textContent=message(err.code);}finally{pass.value='';button.disabled=false;renderDialog();}
    };
    dialog.querySelector('[data-google]').onclick=()=>{
-    let expected='';for(const api of [root.WordDriveSync,root.PlantDriveSync,root.ColorDriveSync]){if(api?.account){expected=api.account;break;}}
-    try{root.sessionStorage.setItem('flashcards_drive_login_context_v1',JSON.stringify({expected_account:expected,returnTo:root.location.pathname+root.location.search}));}catch{}
+    let expected=requestedContext.expectedAccount;for(const api of [root.WordDriveSync,root.PlantDriveSync,root.ColorDriveSync]){if(!expected&&api?.account){expected=api.account;break;}}
+    try{root.sessionStorage.setItem('flashcards_drive_login_context_v1',JSON.stringify({expected_account:expected,returnTo:requestedContext.returnTo}));}catch{}
     const popup=root.open('/flashcards/drive-login.html?start=1','flashcardsDriveLogin','popup=yes,width=520,height=720');
     if(!popup)dialog.querySelector('[data-error]').textContent='このサイトのポップアップを許可して、もう一度押してください。編集中の画面はそのまま残します。';
    };
@@ -157,8 +162,14 @@
   if(!dialog)return;const {phase}=controller.state();
   const needApp=phase==='app_login_required'||phase==='app_login_failed';
   dialog.querySelector('[data-login-form]').hidden=!needApp;
-  dialog.querySelector('[data-google]').hidden=needApp||phase==='connected'||phase==='starting'||phase==='temporary';
-  dialog.querySelector('[data-auth-message]').textContent=message(phase);
+  dialog.querySelector('[data-google]').hidden=needApp||(!requestedContext.forceGoogle&&(phase==='connected'||phase==='starting'||phase==='temporary'));
+  dialog.querySelector('[data-auth-message]').textContent=requestedContext.forceGoogle&&!needApp?'保存済みデータと同じGoogleアカウントで、Driveへの接続を確認してください。':message(phase);
+ }
+ function googleConnected(){
+  requestedContext.forceGoogle=false;
+  // Explicit Google consent may change permissions while an older access token
+  // is still valid. Fetch the newly confirmed token instead of reusing it.
+  controller.resume().then(()=>controller.getToken(true)).then(appChanged).catch(()=>renderDialog());
  }
  function start(){
   if(!root.document||controller)return;
@@ -169,8 +180,8 @@
   root.setInterval(()=>{if(document.visibilityState!=='hidden')controller.tick();},30000);
   for(const event of ['online','focus','pageshow'])root.addEventListener(event,()=>controller.tick());
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')controller.tick();});
-  root.addEventListener('storage',e=>{if(e.key===SIGNAL_KEY||e.key===SESSION_KEY)controller.resume().catch(()=>{});});
-  root.addEventListener('message',e=>{if(e.origin===root.location.origin&&e.data?.type==='flashcards-drive-connected')controller.resume().catch(()=>{});});
+  root.addEventListener('storage',e=>{if(e.key===SIGNAL_KEY)googleConnected();else if(e.key===SESSION_KEY)controller.resume().then(appChanged).catch(()=>{});});
+  root.addEventListener('message',e=>{if(e.origin===root.location.origin&&e.data?.type==='flashcards-drive-connected')googleConnected();});
  }
  root.PersistentDriveAuthFactory=Object.freeze({createController,SESSION_KEY,SCOPE,ENDPOINT,SIGNAL_KEY,LIVE_ORIGIN,message});
  if(typeof module!=='undefined'&&module.exports)module.exports=root.PersistentDriveAuthFactory;

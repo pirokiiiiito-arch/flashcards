@@ -79,7 +79,7 @@ test('image: identical metadata is a no-op while image order and filename change
   assert.equal(Q.plan(before,[{...before[0],images}],{order:[0],pos:0}).redraw,true);
 });
 test('build retains existing URLs and loads quiet UI before the adapter',()=>{
- for(const p of ['index.html','word-sync-v2.html']){const h=read(p);assert.ok(h.includes('id="wordQuietStyle"'));const quiet=h.indexOf('./word-quiet-sync.js?v=20261128-word-sync4'),adapter=h.indexOf('./drive-sync.js?v=20261128-word-sync4');assert.ok(quiet>=0&&adapter>quiet);assert.ok(h.includes('./drive-core.js?v=20261128-word-sync4'));assert.ok(h.includes('./persistent-drive-auth.js?v=20261128-word-sync4'));assert.ok(h.includes('const KEY="simple_vocab_cards_v1";'));}
+ for(const p of ['index.html','word-sync-v2.html']){const h=read(p);assert.ok(h.includes('id="wordQuietStyle"'));const quiet=h.indexOf('./word-quiet-sync.js?v=20261128-word-sync5'),adapter=h.indexOf('./drive-sync.js?v=20261128-word-sync5');assert.ok(quiet>=0&&adapter>quiet);assert.ok(h.includes('./drive-core.js?v=20261128-word-sync5'));assert.ok(h.includes('./persistent-drive-auth.js?v=20261128-word-sync5'));assert.ok(h.includes('const KEY="simple_vocab_cards_v1";'));}
  const adapter=read('drive-sync.js');assert.ok(adapter.includes('if(!plan)return;'));assert.ok(adapter.includes('if(editing)throw'));assert.ok(adapter.includes('Q.restore(stage,viewport'));assert.ok(read('word-recovery.js').includes('wordRecoveryResult'));
 });
 test('shared sync/auth/photo code, all plant/color assets and recovery payload code are byte-identical',()=>{

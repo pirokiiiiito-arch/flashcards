@@ -35,6 +35,8 @@ jobs:
         run: |
           node --check word-sync-check/safety.js
           node --test tests/word-sync-safety.test.cjs
+          node --check word-sync-check/transfer.js
+          node --test tests/word-sync-transfer.test.cjs tests/word-sync-delivery.test.cjs
           node --check drive-core.js
           node --check persistent-drive-auth.js
           node --test tests/drive-core.test.cjs tests/drive-auth-integration.test.cjs server/drive-auth/client.test.mjs
@@ -250,6 +252,7 @@ jobs:
           "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_back_scroll_browser.py"
           "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_image_pinch_browser.py"
           "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_sync_check_browser.py"
+          "$qa_python" "$GITHUB_WORKSPACE/tests/test_word_sync_transfer_browser.py"
           "$qa_python" "$GITHUB_WORKSPACE/tests/test_plant_pinch_browser.py"
           "$qa_python" -m unittest discover -v -s tests -p 'test_reader_template_readback.py'
           timeout --signal=ABRT --kill-after=10s 8m "$qa_python" -u -X faulthandler -m unittest discover -v --durations 10 -s tests -p 'test_reader_shelf*.py'
@@ -298,9 +301,9 @@ jobs:
               'word-meaning-photo-gap-build" content="20261128-meaning-gap4',
               'word-description-order-build" content="20261128-images-first1',
               'word-photo-photo-gap-build" content="20261128-photo-gap3',
-              'drive-core.js?v=20261128-word-sync4',
-              'drive-sync.js?v=20261128-word-sync4',
-              'persistent-drive-auth.js?v=20261128-word-sync4',
+              'drive-core.js?v=20261128-word-sync5',
+              'drive-sync.js?v=20261128-word-sync5',
+              'persistent-drive-auth.js?v=20261128-word-sync5',
               'word-images.css?v=20261128-photo-gap3',
               'word-card-number-build" content="20261126-number-right1',
               'word-text-number-build" content="20261126-textnum-top1',

@@ -5,6 +5,7 @@
   const CLIENT_KEY = 'flashcards_gdrive_client_id_v1';
   const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
   const API = 'https://www.googleapis.com/drive/v3/';
+  const wordSyncLock = 'flashcards-drive-sync-word-v1';
   const clone = x => structuredClone(x);
   const stable = x => x === undefined ? 'null' : JSON.stringify(x, function (k, v) {
     return v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(n => [n, v[n]])) : v;
@@ -39,6 +40,26 @@
     }
     return { data, deleted, conflicts };
   }
+  // Recover only the wire representation of the same word-image event. This
+  // never treats changed text, metadata, ancestry, or a different image as equal.
+  function wordImageEventEquivalent(localEvent, remoteEvent) {
+    if (!localEvent || !remoteEvent || typeof localEvent.key !== 'string' || !localEvent.key.startsWith('card:')
+        || localEvent.deleted || remoteEvent.deleted) return false;
+    if (stable(localEvent) === stable(remoteEvent)) return true;
+    const before = localEvent.value?.images, after = remoteEvent.value?.images;
+    if (!Array.isArray(before) || !Array.isArray(after) || before.length !== after.length) return false;
+    const converted = clone(localEvent);
+    for (let index = 0; index < before.length; index++) {
+      const a = before[index], b = after[index];
+      if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+      if (a.ref === b.ref) continue;
+      const local = typeof a.ref === 'string' && a.ref.match(/^local:([a-f0-9]{64})$/);
+      const remote = typeof b.ref === 'string' && b.ref.match(/^gdrive:([A-Za-z0-9_-]{1,256}):([a-f0-9]{64})$/);
+      if (!local || !remote || local[1] !== remote[2]) return false;
+      converted.value.images[index].ref = b.ref;
+    }
+    return stable(converted) === stable(remoteEvent);
+  }
   function openDB() {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open('flashcards_drive_cache_v3', 1);
@@ -55,6 +76,7 @@
   }
   const cache = { get: (store, key) => dbAction(store, 'readonly', s => s.get(key)), put: (store, key, val) => dbAction(store, 'readwrite', s => s.put(val, key)) };
   function install(cfg) {
+    const verifyUploads = cfg.verifyUploads === true && cfg.namespace === 'word-flashcards';
     let token = '', expires = 0, authVersion = 0, tokenClient, gisPromise, running, timer, expiryTimer, applying = false, generation = 0, lastFocus = 0, state;
     let captureQueue = Promise.resolve(), blobQueue = Promise.resolve();
     let status = '未接続', detail = '', stateWrite = Promise.resolve();
@@ -287,12 +309,71 @@
         e.clock = Date.parse(time) || 0; e.device_id = 'legacy'; append(e);
       }
     }
+    function verifiedJournalShape(journal) {
+      if (journal?.schema !== SCHEMA || journal.namespace !== cfg.namespace || !Array.isArray(journal.events)) return false;
+      const ids = new Set();
+      for (const e of journal.events) {
+        if (!e || typeof e.id !== 'string' || !e.id || ids.has(e.id) || typeof e.key !== 'string' || !e.key
+            || typeof e.deleted !== 'boolean' || !Number.isFinite(e.clock)
+            || !Array.isArray(e.parents) || e.parents.some(id => typeof id !== 'string')) return false;
+        ids.add(e.id);
+      }
+      return true;
+    }
+    async function verifyWordImageEvents(events) {
+      const fetched = new Map();
+      for (const e of events) {
+        if (e.deleted || !e.key.startsWith('card:') || e.value?.images == null) continue;
+        if (!Array.isArray(e.value.images)) throw new Error('単語の画像一覧を確認できません。送信待ちを保持しています。');
+        for (const image of e.value.images) {
+          if (!image || typeof image.ref !== 'string' || !/^gdrive:[A-Za-z0-9_-]{1,256}:[a-f0-9]{64}$/.test(image.ref)
+              || !/^image\/(png|jpeg|webp|gif)$/.test(image.type || ''))
+            throw new Error('Driveの画像参照を確認できません。送信待ちを保持しています。');
+          if (!fetched.has(image.ref)) fetched.set(image.ref, await getBlob(image.ref, { fresh: true }));
+          const blob = fetched.get(image.ref);
+          if (blob.type !== image.type || !blob.size) throw new Error('Drive画像の形式が元の画像と一致しません。送信待ちを保持しています。');
+        }
+      }
+    }
+    async function acknowledgeVerifiedJournal(file, ids) {
+      const before = [...state.pending], hadSeen = Object.prototype.hasOwnProperty.call(state.seen, file.id), previousSeen = state.seen[file.id];
+      const acknowledged = new Set(ids);
+      state.pending = state.pending.filter(id => !acknowledged.has(id));
+      state.seen[file.id] = file.md5Checksum || '';
+      try { await persist(); }
+      catch (e) {
+        state.pending = [...new Set([...before, ...state.pending])];
+        if (hadSeen) state.seen[file.id] = previousSeen; else delete state.seen[file.id];
+        throw e;
+      }
+    }
+    async function acceptVerifiedJournal(file, journal) {
+      if (!verifiedJournalShape(journal)) throw new Error('Driveの同期形式が一致しません。');
+      const pending = new Set(state.pending), originals = new Map(), verified = [], acknowledged = [];
+      for (const e of journal.events) {
+        const old = state.events[e.id]; originals.set(e.id, stable(old));
+        const changed = old && stable(old) !== stable(e);
+        if (changed && !wordImageEventEquivalent(old, e)) throw new Error('Drive同期履歴が競合しています。');
+        if (pending.has(e.id) && !old) throw new Error('送信待ち履歴を確認できません。保存データは保持しています。');
+        if (changed || pending.has(e.id)) verified.push(e);
+        if (pending.has(e.id)) acknowledged.push(e.id);
+      }
+      // The GET-proven journal is authoritative only after its referenced bytes
+      // also match. A fake same-hash URL must not repair or acknowledge a queue.
+      await verifyWordImageEvents(verified);
+      for (const e of journal.events) if (stable(state.events[e.id]) !== originals.get(e.id))
+        throw new Error('端末の同期履歴が更新されました。送信待ちを保持して再試行します。');
+      state.events = { ...state.events, ...Object.fromEntries(journal.events.map(e => [e.id, e])) };
+      for (const e of journal.events) state.clock = Math.max(state.clock || 0, e.clock);
+      await acknowledgeVerifiedJournal(file, acknowledged);
+    }
     async function pull() {
       const files = await list(queryKind('journal'));
       for (const file of files) {
         if (state.seen[file.id] === file.md5Checksum && file.md5Checksum) continue;
         const journal = await (await request(API + 'files/' + encodeURIComponent(file.id) + '?alt=media')).json();
         if (journal.schema !== SCHEMA || journal.namespace !== cfg.namespace || !Array.isArray(journal.events)) throw new Error('Driveの同期形式が一致しません。');
+        if (verifyUploads) { await acceptVerifiedJournal(file, journal); continue; }
         for (const e of journal.events) {
           if (state.events[e.id] && stable(state.events[e.id]) !== stable(e)) throw new Error('Drive同期履歴が競合しています。');
           state.events[e.id] = e; state.clock = Math.max(state.clock || 0, Number(e.clock) || 0);
@@ -304,14 +385,35 @@
       // Immutable uploads, including tombstones and all conflicting revisions. No PATCH of shared state.
       while (state.pending.length) {
         const ids = state.pending.slice(0, 250), events = [];
+        const originals = verifyUploads ? new Map(ids.map(id => [id, stable(state.events[id])])) : null;
         for (const id of ids) {
           const e = clone(state.events[id]);
+          if (verifyUploads && (!e || e.id !== id)) throw new Error('送信待ち履歴を確認できません。保存データは保持しています。');
           if (!e.deleted) e.value = await cfg.toCloudValue(e.key, e.value, api);
-          state.events[id] = e; events.push(e);
+          if (!verifyUploads) state.events[id] = e;
+          events.push(e);
         }
         const doc = { schema: SCHEMA, namespace: cfg.namespace, saved_at: new Date().toISOString(), device_id: device, data: materialize(Object.fromEntries(events.map(e => [e.id, e]))).data, deleted: events.filter(e => e.deleted), events };
+        if (verifyUploads) {
+          if (!verifiedJournalShape(doc)) throw new Error('送信待ち履歴の形式を確認できません。');
+          await verifyWordImageEvents(events);
+          for (const e of events) if (stable(state.events[e.id]) !== originals.get(e.id))
+            throw new Error('端末の同期履歴が更新されました。送信待ちを保持して再試行します。');
+          for (const e of events) state.events[e.id] = e;
+          // A lost POST response must leave exactly the same immutable event
+          // bytes ready for a later pull/retry, with every pending ID retained.
+          await persist();
+        }
         const result = await create(cfg.namespace + '-journal-' + uuid() + '.json', new Blob([JSON.stringify(doc)], { type: 'application/json' }), { kind: 'journal' });
-        state.seen[result.id] = result.md5Checksum || ''; state.pending = state.pending.filter(id => !ids.includes(id)); await persist();
+        if (verifyUploads) {
+          if (typeof result.id !== 'string' || !result.id) throw new Error('Driveの保存結果を確認できません。送信待ちを保持しています。');
+          const saved = await (await request(API + 'files/' + encodeURIComponent(result.id) + '?alt=media')).json();
+          if (!verifiedJournalShape(saved) || stable(saved) !== stable(doc))
+            throw new Error('Driveに保存した同期履歴の読み戻しが一致しません。送信待ちを保持しています。');
+          await acknowledgeVerifiedJournal(result, ids);
+        } else {
+          state.seen[result.id] = result.md5Checksum || ''; state.pending = state.pending.filter(id => !ids.includes(id)); await persist();
+        }
       }
     }
     async function recoverDeletedPrefix(prefix, options = {}) {
@@ -398,7 +500,10 @@
     }
     function sync() {
       if (running) return running;
-      running = doSync().catch(e => { error(e); throw e; }).finally(() => { running = null; });
+      const locks = verifyUploads && root.navigator?.locks;
+      const work = typeof locks?.request === 'function'
+        ? locks.request(wordSyncLock, { mode: 'exclusive' }, doSync) : doSync();
+      running = work.catch(e => { error(e); throw e; }).finally(() => { running = null; });
       return running;
     }
     const button = document.createElement('button'); button.className = 'btn'; button.type = 'button';
@@ -478,6 +583,6 @@
     setStatus('未接続', root.PersistentDriveAuth ? '自動接続を確認しています。' : (cfg.primary() ? 'Googleに再接続してください。Supabase同期は停止中です。' : '接続後にDriveへ移行します。'));
     ready.catch(error); return Object.freeze(api);
   }
-  root.FlashcardsDrive = Object.freeze({ install, stable, digest, heads, materialize, schema: SCHEMA, scope: SCOPE });
+  root.FlashcardsDrive = Object.freeze({ install, stable, digest, heads, materialize, wordImageEventEquivalent, wordSyncLock, schema: SCHEMA, scope: SCOPE });
   if (typeof module !== 'undefined' && module.exports) module.exports = root.FlashcardsDrive;
 })(typeof window !== 'undefined' ? window : globalThis);

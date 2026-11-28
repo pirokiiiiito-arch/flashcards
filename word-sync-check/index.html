@@ -3,49 +3,56 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="word-sync-check-build" content="20261128-check1">
+<meta name="word-sync-check-build" content="20261128-check2">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:,">
 <title>単語帳の保全と同期確認</title>
 <style>
 :root{color-scheme:light;font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#202b39;background:#f4f7fb}
 *{box-sizing:border-box}body{margin:0;padding:24px 16px 48px}main{max-width:740px;margin:0 auto}h1{font-size:25px;line-height:1.45;margin:0 0 10px}h2{font-size:19px;line-height:1.5;margin:0 0 12px}p{line-height:1.7;margin:8px 0}.intro{color:#526171;font-size:15px;margin-bottom:22px}.panel{background:#fff;border:1px solid #dbe3ed;border-radius:18px;padding:22px;margin:16px 0;box-shadow:0 6px 24px #213d5806}.count-label{font-size:14px;color:#526171}.count{font-size:48px;font-weight:750;line-height:1.25;margin:8px 0 16px;overflow-wrap:anywhere}.count small{font-size:20px;margin-left:6px;font-weight:500}.notice{font-size:15px;color:#34465a;white-space:pre-wrap;overflow-wrap:anywhere}.notice[data-kind="success"]{color:#14734c}.notice[data-kind="warning"]{color:#85591d}.notice[data-kind="error"]{color:#a72f35}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button{font:inherit;font-weight:650;font-size:15px;line-height:1.5;padding:12px 16px;border:1px solid #c8d7e8;border-radius:12px;background:#fff;color:#285d9c;cursor:pointer;touch-action:manipulation}button.primary{background:#245f9d;color:#fff;border-color:#245f9d}button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:3px solid #75aff1;outline-offset:3px}pre{font:14px/1.9 system-ui,-apple-system,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0 0;padding:16px;border-radius:12px;background:#f4f7fb}.small{font-size:13px;color:#657284}footer{font-size:13px;line-height:1.7;color:#657284;margin-top:20px}.privacy{padding-top:12px;border-top:1px solid #e9eef4}.hidden{display:none!important}noscript p{color:#a72f35}@media(max-width:420px){body{padding:20px 14px 36px}.panel{padding:19px}h1{font-size:23px}.actions button{width:100%}pre{padding:12px;font-size:13px}}
+.auth-only-dialog{width:min(92vw,520px);max-height:88vh;overflow:auto;border:1px solid #c8d7e8;border-radius:16px;padding:22px;color:#202b39}.auth-only-dialog::backdrop{background:#17263866}.auth-only-dialog label{display:block;margin:14px 0}.auth-only-dialog input{display:block;width:100%;font:inherit;margin-top:5px;padding:11px;border:1px solid #c8d7e8;border-radius:8px}.auth-only-dialog button{margin:5px 6px 5px 0}.auth-only-dialog [data-error]{color:#a72f35}
 </style>
 </head>
 <body>
 <main>
 <h1>単語帳の保全と同期確認</h1>
-<p class="intro">このブラウザーにある単語を確認して、保全コピーを作ります。元の単語帳は書き換えません。</p>
+<p class="intro">このブラウザーの単語と画像を保全します。保全後に、送信待ちの変更をGoogle Driveへ同期できます。</p>
 <p id="startupNotice" class="notice" role="status">このページは開けています。確認処理の開始を待っています。</p>
 <noscript><p>JavaScriptが動作していないため、データの確認は始まっていません。この見出しを含めた画面をお知らせください。</p></noscript>
 <section class="panel" aria-labelledby="localHeading">
 <h2 id="localHeading" class="count-label">このブラウザーの単語</h2>
 <div class="count"><span id="localCount">確認中</span><small>件</small></div>
 <p id="backupStatus" class="notice" role="status">保全処理はまだ始まっていません。</p>
-<div class="actions"><button id="downloadBackup" class="primary" type="button" disabled>バックアップファイルを作る</button><button id="retryCheck" type="button">もう一度確認</button></div>
+<div class="actions"><button id="syncNow" class="primary" type="button" disabled>保全した単語を同期</button><button id="syncAuth" type="button" hidden>接続を確認する</button></div>
+<p id="syncStatus" class="notice" role="status">同期ボタンを押すと、接続先と保存内容を確認して送信します。</p>
+<p id="syncStage" class="small" role="status"></p>
+<p id="openCards" class="small" hidden><a href="../word-sync-v2.html?quiet=1&amp;syncbuild=20261128-word-sync5">単語帳に戻る</a></p>
+<div class="actions"><button id="downloadBackup" type="button" disabled>バックアップファイルを作る</button><button id="retryCheck" type="button">もう一度確認</button></div>
 <p id="downloadStatus" class="small" role="status"></p>
 </section>
 <section class="panel" aria-labelledby="diagnosticHeading">
 <h2 id="diagnosticHeading">同期の確認情報</h2>
 <p id="diagnosticStatus" class="notice" role="status">確認処理が始まると、ここに結果を表示します。</p>
-<p class="small">この端末に保存済みの同期履歴を確認します。現在のDrive上の件数や、もう一方の端末との一致を保証する表示ではありません。</p>
+<p class="small">「取得済みDrive履歴」はこの端末の保存済み情報です。同期を実行すると、今回Driveから読み戻して確認した結果を末尾に表示します。</p>
 <pre id="diagnosticDetails">確認結果はまだありません。</pre>
 <div class="actions"><button id="copyReport" type="button" disabled>確認結果をコピー</button></div>
 <p id="copyStatus" class="small" role="status"></p>
 </section>
 <footer>
-<p class="privacy">このページは単語の送信・削除・自動同期を行いません。診断表示とコピーする確認結果には、単語の本文や認証情報を含めません。保存ファイルには単語と画像が含まれます。</p>
-<p>確認ページの版：20261128-check1</p>
+<p class="privacy">同期ボタンを押した時に、保存済みの変更をDriveへ送信します。端末の単語・画像と保全コピーを保持し、削除処理は行いません。診断表示とコピー結果には単語の本文や認証情報を含めません。バックアップファイルには単語と画像が含まれます。</p>
+<p>確認ページの版：20261128-check2</p>
 </footer>
 </main>
 <script>
 (function(){
   'use strict';
-  const KEY='simple_vocab_cards_v1',VERSION='20261128-check1';
+  const KEY='simple_vocab_cards_v1',VERSION='20261128-check2';
   const el=id=>document.getElementById(id);
   const count=el('localCount'),startup=el('startupNotice'),backup=el('backupStatus'),diagnostic=el('diagnosticStatus'),details=el('diagnosticDetails');
   const download=el('downloadBackup'),retry=el('retryCheck'),copy=el('copyReport');
-  let loader=null,busy=false,receipt=null,prepared=null,preparedURL='',lastRaw=null;
+  const syncButton=el('syncNow'),syncStatus=el('syncStatus'),syncStage=el('syncStage'),syncAuth=el('syncAuth');
+  let loader=null,busy=false,receipt=null,prepared=null,preparedURL='',lastRaw=null,sourceInspection=null,lastTransfer=null,syncAttempted=false,forceGoogle=false;
+  const scripts=new Map();
   function notice(node,message,kind=''){node.textContent=message;node.dataset.kind=kind;}
   function initialCount(){
     try{
@@ -74,6 +81,26 @@
     }).catch(error=>{loader=null;throw error;});
     return loader;
   }
+  function loadScript(src,globalName){
+    if(window[globalName])return Promise.resolve(window[globalName]);
+    if(scripts.has(src))return scripts.get(src);
+    const pending=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');let settled=false;
+      const finish=ok=>{if(settled)return;settled=true;clearTimeout(timer);script.onload=script.onerror=null;if(ok)resolve(window[globalName]);else{script.remove();reject(Object.assign(Error('load'),{code:'TRANSFER_LOAD_FAILED'}));}};
+      const timer=setTimeout(()=>finish(false),15000);
+      script.async=true;script.src=src;script.onload=()=>finish(!!window[globalName]);script.onerror=()=>finish(false);document.head.appendChild(script);
+    }).catch(error=>{scripts.delete(src);throw error;});
+    scripts.set(src,pending);return pending;
+  }
+  function maySync(){
+    const summary=sourceInspection?.summary;
+    return !!(receipt?.verified&&receipt.complete&&summary?.validCards&&summary.duplicateIdCount===0&&summary.missingIdCount===0&&summary.cacheStatus==='present'&&sourceInspection.cacheState?.account);
+  }
+  function controls(){
+    retry.disabled=busy;download.disabled=busy||!receipt?.verified;
+    syncButton.disabled=busy||!maySync();syncAuth.disabled=busy;
+    syncButton.textContent=receipt?.cardCount?receipt.cardCount+'件を保ったまま同期':'保全した単語を同期';
+  }
   const amount=value=>typeof value==='number'&&Number.isFinite(value)?value+'件':'未確認';
   const imageAmount=value=>typeof value==='number'&&Number.isFinite(value)?value+'枚':'未確認';
   function display(summary){
@@ -93,18 +120,31 @@
       '未取得・未確認の画像：'+imageAmount(summary.missingImageCount),
       'ログイン情報の保存：'+(summary.loginStored===true?'あり（現在の接続は未確認）':summary.loginStored===false?'なし':'未確認'),
       '接続先の照合用番号（保存済み）：'+(/^[a-f0-9]{12}$/i.test(summary.accountFingerprint||'')?summary.accountFingerprint:'未確認'),
-      'このページからの送信・削除：実行していません'
+      '今回の確認からの送信：'+(lastTransfer?'Driveから読み戻し済み':syncAttempted?'確認処理を実行（結果は末尾）':'実行していません'),
+      'このページからの削除：実行していません'
     ];
     details.textContent=lines.join('\n');copy.disabled=false;
     notice(diagnostic,summary.cacheStatus==='present'?'保存済みの同期情報を読み取りました。':'同期履歴を確認できない項目は「未確認」と表示しています。');
   }
+  function addReceipt(){
+    if(receipt?.verified)details.textContent+='\n保全コピー：'+receipt.cardCount+'件・保存後の一致を確認済み\n画像本体の保全：'+receipt.savedImageCount+'／'+receipt.imageCount+'枚';
+  }
+  function showBackup(){
+    if(receipt.complete){
+      notice(backup,receipt.cardCount+'件の単語・説明と、読み取った画像を保全しました。保存した内容の一致も確認済みです。','success');
+    }else{
+      notice(backup,receipt.cardCount+'件の単語・説明・画像の保存先を保全しました。画像本体は'+receipt.savedImageCount+'／'+receipt.imageCount+'枚です。画像がそろっていないため、完全な画像バックアップではありません。','warning');
+    }
+    addReceipt();
+  }
   async function run(){
-    if(busy)return;busy=true;retry.disabled=true;download.disabled=true;receipt=null;prepared=null;
+    if(busy)return;busy=true;receipt=null;prepared=null;sourceInspection=null;lastTransfer=null;syncAttempted=false;controls();syncAuth.hidden=true;
+    notice(syncStatus,'保全した内容を確認してから同期できます。');syncStage.textContent='';el('openCards').hidden=true;
     if(preparedURL){URL.revokeObjectURL(preparedURL);preparedURL='';}
     download.textContent='バックアップファイルを作る';el('downloadStatus').textContent='';
     initialCount();notice(backup,'保存内容を確認しています。');
     try{
-      const api=await loadSafety(),inspection=await api.inspect();lastRaw=inspection.originalRaw;
+      const api=await loadSafety(),inspection=await api.inspect();sourceInspection=inspection;lastRaw=inspection.originalRaw;
       display(inspection.summary);
       if(!inspection.summary.rawPresent||inspection.summary.cardCount===0){
         notice(backup,'このブラウザーでは保全する単語を確認できません。単語が表示されている単語帳と同じブラウザーで、このページを開いてください。','warning');
@@ -113,13 +153,10 @@
       notice(startup,'単語帳の内容を読み取りました。保全コピーを保存しています。');
       receipt=await api.save(inspection);
       if(!receipt||receipt.verified!==true)throw Error('保全した内容の一致を確認できませんでした。');
-      if(receipt.complete){
-        notice(backup,receipt.cardCount+'件の単語・説明と、読み取った画像を保全しました。保存した内容の一致も確認済みです。','success');
-      }else{
-        notice(backup,receipt.cardCount+'件の単語・説明・画像の保存先を保全しました。画像本体は'+receipt.savedImageCount+'／'+receipt.imageCount+'枚です。画像がそろっていないため、完全な画像バックアップではありません。','warning');
-      }
-      details.textContent+='\n保全コピー：'+receipt.cardCount+'件・保存後の一致を確認済み\n画像本体の保全：'+receipt.savedImageCount+'／'+receipt.imageCount+'枚';
+      showBackup();
       download.disabled=false;
+      notice(syncStatus,maySync()?'保全を確認しました。同期ボタンから送信待ちの変更を送れます。':'画像と同期先の確認がそろうと、同期ボタンを使えます。',maySync()?'':'warning');
+      syncStage.textContent='';
       notice(startup,'確認結果が下に表示されています。このページで自動同期は始めません。','success');
     }catch(error){
       const loading=!window.WordSyncSafety;
@@ -127,15 +164,94 @@
       notice(backup,loading?'保全コピーはまだ作成できていません。通信が戻ってから「もう一度確認」を押してください。':'保全コピーの保存・検証が完了していません。元の単語と画像を消す操作は行っていません。','error');
       // Exception strings may contain saved data. Only a generic failure is shown.
       details.textContent+='\n保全処理：未完了';copy.disabled=false;
-    }finally{busy=false;retry.disabled=false;}
+    }finally{busy=false;controls();}
   }
+  const failures={
+    TRANSFER_BUSY:'別の単語帳タブで同期中です。完了を待ってから、もう一度同期を押してください。',
+    TRANSFER_DEPENDENCY:'同期機能の読み込みがそろっていません。この確認ページを開き直してください。',
+    TRANSFER_BACKUP_UNVERIFIED:'保存済みの保全コピーを読み戻せませんでした。「もう一度確認」で保全を確認してください。',
+    TRANSFER_SOURCE_MISSING:'このブラウザーの同期履歴を読み取れませんでした。単語帳と同じブラウザーで開いているか確認してください。',
+    TRANSFER_SOURCE_INVALID:'単語または送信待ち履歴の形式を確認できないため、内容を保持して止めました。確認結果をお知らせください。',
+    TRANSFER_ACCOUNT_UNCONFIRMED:'保存済みの接続先を確認できないため、送信を止めました。確認結果をお知らせください。',
+    TRANSFER_CHECKPOINT_FAILED:'送信前の履歴の保全を確認できませんでした。元の単語と画像は保持しています。',
+    TRANSFER_IMAGE_METADATA:'送信待ちの画像情報を確認できないため、内容を保持して止めました。確認結果をお知らせください。',
+    TRANSFER_REMOTE_INVALID:'Driveの変更履歴の形式を確認できないため、内容を保持して止めました。確認結果をお知らせください。',
+    TRANSFER_AUTH_TEMPORARY:'接続確認の通信が完了しませんでした。少し待ってから同期ボタンで再試行してください。',
+    TRANSFER_DRIVE_REQUEST_FAILED:'Driveへの通信を完了できませんでした。元の単語・画像と送信待ちを保持しています。確認結果をお知らせください。',
+    TRANSFER_READBACK_MISMATCH:'送信内容とDriveから読み戻した内容の一致を確認できませんでした。送信待ちと保全コピーを保持しています。',
+    TRANSFER_LOAD_FAILED:'同期機能を読み込めませんでした。通信を確認して、同期ボタンで再試行してください。',
+    TRANSFER_BACKUP_INCOMPLETE:'単語と画像の保全がそろっていません。確認結果をお知らせください。',
+    TRANSFER_AUTH_REQUIRED:'Google Driveの接続確認が必要です。「接続を確認する」を押し、接続後に同期ボタンを押してください。',
+    TRANSFER_ACCOUNT_MISMATCH:'保存済みデータと接続先のGoogleアカウントが一致しないため、送信を止めました。元のアカウントで接続してください。',
+    TRANSFER_BACKUP_CHANGED:'保全後に単語帳が更新されました。もう一度同期すると、最新の内容を保全してから確認します。',
+    TRANSFER_PENDING_DELETION:'削除を含む変更が送信待ちにあるため、このページからの送信を止めました。確認結果をお知らせください。',
+    TRANSFER_REMOTE_DELETION:'Driveの削除履歴と端末の単語が重なるため、内容を保持して止めました。確認結果をお知らせください。',
+    TRANSFER_HISTORY_CONFLICT:'同じ変更履歴に異なる内容があるため、元データを保持して止めました。確認結果をお知らせください。',
+    TRANSFER_IMAGE_MISSING:'送信待ちの履歴に必要な画像を確認できませんでした。現在の単語と画像の保全コピーは残っています。',
+    TRANSFER_IMAGE_MISMATCH:'画像の内容の一致を確認できないため、同期完了にはしていません。確認結果をお知らせください。',
+    TRANSFER_REMOTE_INCOMPLETE:'Driveから読み戻した内容の確認が完了していません。送信待ちと保全コピーを保持しています。',
+    TRANSFER_SOURCE_CHANGED:'処理中に別のタブで保存内容が更新されました。最新の内容を保全し直すため、同期ボタンで再試行してください。',
+    TRANSFER_TIMEOUT:'通信が時間内に完了しませんでした。保全コピーを残しています。同期ボタンで再試行できます。',
+    TRANSFER_NETWORK:'Driveとの通信を完了できませんでした。保全コピーを残しています。同期ボタンで再試行できます。',
+    TRANSFER_STORAGE:'送信内容の保存・照合を完了できませんでした。現在の単語と画像は保持しています。確認結果をお知らせください。'
+  };
+  const stages={backup:'単語と画像の保全を確認しています',checkpoint:'送信前の履歴を保全しています',auth:'Google Driveの接続を確認しています',account:'Googleアカウントを照合しています',remote:'Driveの現在の変更履歴を取得しています',images:'画像の内容を確認しています',prepare:'送信する変更を準備しています',upload:'保存済みの変更を送信しています',verify:'Driveに保存された内容を読み戻しています',ack:'読み戻した変更を端末の送信待ちと照合しています',done:'Driveへの保存を確認しました'};
+  function progress(value){
+    const stage=typeof value?.stage==='string'?value.stage:'';
+    const text=stages[stage]||'保存内容を確認しています';
+    const numbers=Number.isSafeInteger(value?.completed)&&Number.isSafeInteger(value?.total)&&value.completed>=0&&value.total>=value.completed?'（'+value.completed+'／'+value.total+'）':'';
+    syncStage.textContent=text+numbers;syncStage.dataset.stage=stage in stages?stage:'working';
+  }
+  async function runSync(){
+    if(busy||!maySync())return;
+    busy=true;lastTransfer=null;syncAttempted=true;forceGoogle=false;controls();syncAuth.hidden=true;el('openCards').hidden=true;
+    prepared=null;if(preparedURL){URL.revokeObjectURL(preparedURL);preparedURL='';}
+    download.textContent='バックアップファイルを作る';el('downloadStatus').textContent='';
+    notice(syncStatus,'保全した内容を確認してから、送信待ちの変更を同期します。');progress({stage:'backup'});
+    try{
+      const safety=await loadSafety(),inspection=await safety.inspect();sourceInspection=inspection;lastRaw=inspection.originalRaw;
+      display(inspection.summary);
+      receipt=await safety.save(inspection);showBackup();
+      if(!maySync())throw Object.assign(Error('backup'),{code:'TRANSFER_BACKUP_INCOMPLETE'});
+      await Promise.all([
+        loadScript('../drive-core.js?v=20261128-word-sync5','FlashcardsDrive'),
+        loadScript('../persistent-drive-auth.js?v='+VERSION,'PersistentDriveAuth'),
+        loadScript('./transfer.js?v='+VERSION,'WordSyncTransfer')
+      ]);
+      const transfer=window.WordSyncTransfer.create({core:window.FlashcardsDrive,safety,auth:window.PersistentDriveAuth,onProgress:progress});
+      const result=await transfer.run({backupId:receipt.id});
+      for(const name of ['localCount','remoteCount','pendingBefore','pendingAfter','uploadedEvents','verifiedEvents','verifiedImages']){
+        if(!Number.isSafeInteger(result?.[name])||result[name]<0)throw Object.assign(Error('result'),{code:'TRANSFER_REMOTE_INCOMPLETE'});
+      }
+      if(result.verified!==true||result.localCount!==receipt.cardCount||result.remoteCount<receipt.cardCount)throw Object.assign(Error('result'),{code:'TRANSFER_REMOTE_INCOMPLETE'});
+      const latest=await safety.inspect();
+      if(latest.originalRaw!==lastRaw)throw Object.assign(Error('changed'),{code:'TRANSFER_SOURCE_CHANGED'});
+      sourceInspection=latest;lastTransfer=result;display(latest.summary);addReceipt();
+      details.textContent+='\n今回Driveから確認した単語数：'+result.remoteCount+'件\n今回読み戻した変更：'+result.verifiedEvents+'件\n今回Driveから照合した画像：'+result.verifiedImages+'枚\n同期後の送信待ち：'+result.pendingAfter+'件\n端末の単語・画像：保持確認済み\n別端末への反映：この画面では未確認';
+      notice(syncStatus,'Driveへの保存と読み戻しを確認しました。この端末'+result.localCount+'件／Drive'+result.remoteCount+'件、送信待ち'+result.pendingAfter+'件です。',result.pendingAfter===0?'success':'warning');
+      syncStage.textContent=result.pendingAfter===0?'PCでの受信結果は、PCの単語帳で確認できます。':'新しい変更が送信待ちにあります。同期ボタンで続けて確認できます。';syncStage.dataset.stage='done';
+      notice(startup,'同期結果を確認しました。端末の単語・画像と保全コピーを保持しています。','success');el('openCards').hidden=false;
+    }catch(error){
+      const code=Object.hasOwn(failures,error?.code)?error.code:'TRANSFER_FAILED';
+      notice(syncStatus,failures[code]||'同期の確認を完了できませんでした。元の単語・画像と保全コピーは残っています。確認結果をお知らせください。','error');
+      syncStage.textContent='確認コード：'+code;syncStage.dataset.stage='error';
+      details.textContent+='\n同期処理：未完了\n確認コード：'+code+'\nこのページからの削除：実行していません';copy.disabled=false;
+      if(Number.isInteger(error?.httpStatus)&&error.httpStatus>=400&&error.httpStatus<=599)details.textContent+='\nDrive応答コード：'+error.httpStatus;
+      syncAuth.hidden=!(code==='TRANSFER_AUTH_REQUIRED'||code==='TRANSFER_ACCOUNT_MISMATCH');
+      forceGoogle=code==='TRANSFER_ACCOUNT_MISMATCH'||['google_auth_required','google_permission_required','offline_permission_required','google_account_mismatch'].includes(error?.reason);
+    }finally{busy=false;controls();}
+  }
+  syncButton.addEventListener('click',runSync);
+  syncAuth.addEventListener('click',()=>{
+    window.PersistentDriveAuth?.open({expectedAccount:sourceInspection?.cacheState?.account||'',returnTo:location.pathname+location.search,forceGoogle});
+  });
   download.addEventListener('click',async()=>{
     if(download.disabled||!receipt)return;
     if(prepared){
       const link=document.createElement('a');link.href=preparedURL;link.download=prepared.filename;document.body.appendChild(link);link.click();link.remove();
       el('downloadStatus').textContent='保存ファイルを開きました。ファイル名は '+prepared.filename+' です。';return;
     }
-    busy=true;retry.disabled=true;download.disabled=true;download.textContent='ファイルを準備中…';
+    busy=true;controls();download.textContent='ファイルを準備中…';
     el('downloadStatus').textContent='保全した単語と画像から保存ファイルを作っています。';
     try{
       prepared=await window.WordSyncSafety.exportJSON(receipt.id);preparedURL=URL.createObjectURL(prepared.blob);
@@ -144,7 +260,7 @@
     }catch{
       prepared=null;download.textContent='バックアップファイルを作る';
       el('downloadStatus').textContent='ファイルを準備できませんでした。検証済みの保全コピーはこのブラウザー内に残っています。';
-    }finally{busy=false;retry.disabled=false;download.disabled=false;}
+    }finally{busy=false;controls();}
   });
   copy.addEventListener('click',async()=>{
     try{
