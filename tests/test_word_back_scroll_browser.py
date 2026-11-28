@@ -19,6 +19,7 @@ def fixture_html():
     css = re.search(r"<style>(.*?)</style>", source, re.S)
     if not css:
         raise AssertionError("Missing actual word-card inline stylesheet")
+    images_css = (ROOT / "word-images.css").read_text(encoding="utf-8")
     start = source.index("function resetWordBackScroll(card){")
     end = source.index("\nfunction renderCard(item){", start)
     flip_helpers = source[start:end]
@@ -44,7 +45,7 @@ card.setPointerCapture=id=>{__captures++;return nativeCapture(id)};
 """ + flip_helpers + "\n" + pointer_handler
     return f"""<!doctype html><html lang="ja"><head>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>{css.group(1)}</style>
+<style>{images_css}</style><style>{css.group(1)}</style>
 <link rel="stylesheet" href="data:text/css,.word-image-picture{{height:260px}}">
 <style>
 #test-back-content{{padding-left:14px;padding-right:8px}}
@@ -54,7 +55,7 @@ card.setPointerCapture=id=>{__captures++;return nativeCapture(id)};
 <div class="face back"><div class="face-label">裏・意味</div>
 <div class="back-content" id="test-back-content">
 <div data-image-ui class="word-image-gallery">{cards}</div>
-<div class="card-text" style="font-size:20px">画像が3枚あるカード</div>
+<div class="card-text">画像が3枚あるカード</div>
 </div></div></article></div></div><script>{script}</script></body></html>"""
 
 
@@ -215,8 +216,8 @@ class WordCardFrontHeightTest(unittest.TestCase):
 
 
 class WordMeaningPhotoSpacingTest(unittest.TestCase):
-    def test_four_text_lines_of_spacing_only_between_last_photo_and_description(self):
-        """Measure the rendered gap from the actual word-card CSS."""
+    def test_photo_and_description_spacing_follow_current_text_line_height(self):
+        """Measure three-line photo gaps and the four-line description gap at every text size."""
         with sync_playwright() as playwright:
             chrome = shutil.which("google-chrome") or shutil.which("chromium")
             launch_options = {"headless": True, "args": ["--no-sandbox"]}
@@ -224,8 +225,10 @@ class WordMeaningPhotoSpacingTest(unittest.TestCase):
                 launch_options["executable_path"] = chrome
             browser = playwright.chromium.launch(**launch_options)
             try:
-                for width, height in ((390, 760), (1200, 800)):
-                    with self.subTest(viewport=(width, height)):
+                cases = ((w, h, size) for w, h in ((390, 760), (1200, 800))
+                         for size in ("", "size-medium", "size-small", "size-xsmall"))
+                for width, height, size_class in cases:
+                    with self.subTest(viewport=(width, height), size_class=size_class):
                         context = browser.new_context(
                             viewport={"width": width, "height": height},
                             device_scale_factor=1, is_mobile=width < 600, has_touch=True,
@@ -233,24 +236,33 @@ class WordMeaningPhotoSpacingTest(unittest.TestCase):
                         try:
                             page = context.new_page()
                             page.set_content(fixture_html(), wait_until="load")
-                            dimensions = page.evaluate("""() => {
+                            dimensions = page.evaluate("""(sizeClass) => {
                               const card=document.querySelector('#test-card');
+                              if(sizeClass)card.querySelector('.back').classList.add(sizeClass);
                               const desc=document.querySelector('#test-back-content > .card-text');
                               const imageArea=document.querySelector('#test-back-content > [data-image-ui]');
                               const style=getComputedStyle(desc);
                               const lines=Number.parseFloat(style.lineHeight);
+                              const pictures=[...imageArea.querySelectorAll('.word-image-item')];
+                              const photoGaps=()=>pictures.slice(1).map((picture,i)=>
+                                picture.getBoundingClientRect().top-pictures[i].getBoundingClientRect().bottom);
+                              const imageGaps=photoGaps();
                               const gap=desc.getBoundingClientRect().top-imageArea.getBoundingClientRect().bottom;
                               const margin=Number.parseFloat(style.marginTop);
                               desc.textContent='';
                               const emptyMargin=Number.parseFloat(getComputedStyle(desc).marginTop);
+                              const imageOnlyGaps=photoGaps();
                               desc.textContent='元の説明';
                               card.classList.add('is-editing');
                               const editMargin=Number.parseFloat(getComputedStyle(desc).marginTop);
                               card.classList.remove('is-editing');
                               card.classList.remove('with-images');
                               const noPhotoMargin=Number.parseFloat(getComputedStyle(desc).marginTop);
-                              return {lines,gap,margin,emptyMargin,editMargin,noPhotoMargin};
-                            }""")
+                              return {lines,imageGaps,imageOnlyGaps,gap,margin,emptyMargin,editMargin,noPhotoMargin};
+                            }""", size_class)
+                            for gap in dimensions["imageGaps"] + dimensions["imageOnlyGaps"]:
+                                self.assertAlmostEqual(gap, 3 * dimensions["lines"], delta=1.0,
+                                    msg=f"consecutive images have exactly three text lines between them: {dimensions}")
                             self.assertAlmostEqual(dimensions["margin"], 4 * dimensions["lines"], delta=0.5,
                                 msg="the gap is exactly four current description line heights")
                             self.assertAlmostEqual(dimensions["gap"], 4 * dimensions["lines"], delta=1.0,

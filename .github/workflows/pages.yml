@@ -291,6 +291,8 @@ jobs:
               'word-front-height-build" content="20261126-frontmatch1',
               'word-meaning-photo-gap-build" content="20261128-meaning-gap4',
               'word-description-order-build" content="20261128-images-first1',
+              'word-photo-photo-gap-build" content="20261128-photo-gap3',
+              'word-images.css?v=20261128-photo-gap3',
               'word-card-number-build" content="20261126-number-right1',
               'word-text-number-build" content="20261126-textnum-top1',
               'word-image-number-build" content="20261126-imagenum-near1',
@@ -320,7 +322,7 @@ jobs:
                           if path == 'word-images-ui.js':
                               markers = ["pasteZone.contentEditable = 'true'", 'function consumeNativeInsertion()', 'function pastedImages(event)', 'function readImageSources(sources)', "attributeFilter: ['src']", 'Chrome on iPhone can expose an image item', 'readRemoteImage(src)', 'クリップボードから画像データを取得できませんでした。', 'normalizeClipboardFile(file)', 'reportUnreadable(reason)', 'recordClipboardItems(items)', '写真・ファイルから追加', "const PASTE_VERSION = 'paste8'", 'apiAvailability', 'const isIOSChrome', 'clearPasteDiagnostic()', 'open.append(picture);']
                           elif path == 'word-images.css':
-                              markers = ['.word-image-open{', '.word-image-picture{', 'touch-action:pan-y pinch-zoom', '.word-image-open[hidden]{display:none!important}', '.word-page-zoomed .word-image-open,.word-page-zoomed .word-image-picture{touch-action:auto}']
+                              markers = ['.word-image-open{', '.word-image-picture{', 'touch-action:pan-y pinch-zoom', '.word-image-open[hidden]{display:none!important}', '.word-page-zoomed .word-image-open,.word-page-zoomed .word-image-picture{touch-action:auto}', '.card.with-images.show-back:not(.is-editing) .back .word-image-gallery{font-size:var(--word-meaning-font-size);line-height:var(--word-meaning-line-height);row-gap:3lh}']
                           else:
                               markers = expected
                           forbidden = ['function enablePinchZoom(', 'ピンチで拡大・縮小', 'タップで拡大']

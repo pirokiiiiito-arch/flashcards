@@ -1,5 +1,7 @@
 /* Image controls are scoped to the ordinary word-card app. */
 .word-image-gallery{display:grid;gap:16px;width:100%;min-width:0}
+/* Space consecutive study images by three lines of the card's current meaning text. */
+.card.with-images.show-back:not(.is-editing) .back .word-image-gallery{font-size:var(--word-meaning-font-size);line-height:var(--word-meaning-line-height);row-gap:3lh}
 .word-image-item{margin:0;width:100%;min-width:0}
 .word-image-button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 12px;border:1px solid var(--border,#d9e1ec);border-radius:11px;background:#fff;color:var(--text,#1f2937);font-family:inherit;font-size:14px;font-weight:700;line-height:1.35;cursor:pointer;touch-action:manipulation}
 .word-image-button:hover{background:#f2f6fd}
