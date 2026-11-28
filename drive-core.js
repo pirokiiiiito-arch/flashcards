@@ -55,7 +55,7 @@
   }
   const cache = { get: (store, key) => dbAction(store, 'readonly', s => s.get(key)), put: (store, key, val) => dbAction(store, 'readwrite', s => s.put(val, key)) };
   function install(cfg) {
-    let token = '', expires = 0, tokenClient, gisPromise, running, timer, expiryTimer, applying = false, generation = 0, lastFocus = 0, state;
+    let token = '', expires = 0, authVersion = 0, tokenClient, gisPromise, running, timer, expiryTimer, applying = false, generation = 0, lastFocus = 0, state;
     let captureQueue = Promise.resolve(), blobQueue = Promise.resolve();
     let status = '未接続', detail = '', stateWrite = Promise.resolve();
     const stateKey = cfg.namespace;
@@ -81,14 +81,61 @@
       messageEl.textContent = message || text; messageEl.dataset.state = text;
       cfg.onStatus?.(text, message);
     }
-    function error(e) { setStatus(e.auth ? '未接続' : '同期エラー', e.message || String(e)); }
+    function error(e) {
+      // A response from an older connection must not undo a newer connection's state.
+      if (e.authVersion !== undefined && e.authVersion !== authVersion) return;
+      setStatus(e.auth ? '未接続' : '同期エラー', e.message || String(e));
+    }
+    function authError(message, version = authVersion) {
+      const e = new Error(message); e.auth = true; e.authVersion = version; return e;
+    }
     function valid() { return !!token && Date.now() < expires - 30000; }
     function expire() { token = ''; expires = 0; setStatus('未接続', '認証期限が切れました。「接続して同期」で再接続してください。端末の変更は保持しています。'); }
+    async function fetchResponse(url, options) {
+      const timeoutMs = Number(cfg.requestTimeoutMs);
+      if (!(timeoutMs > 0) || !Number.isFinite(timeoutMs)) return fetch(url, options);
+      const controller = new AbortController(), external = options.signal;
+      let timeout, onAbort;
+      const interrupted = new Promise((resolve, reject) => {
+        const stop = e => { reject(e); controller.abort(e); };
+        timeout = setTimeout(() => {
+          const e = new Error('Driveへの通信が時間内に完了しませんでした。通信が戻ると再試行します。');
+          e.code = 'drive_request_timeout'; stop(e);
+        }, timeoutMs);
+        if (external) {
+          onAbort = () => stop(external.reason || new Error('Driveへの通信が中断されました。'));
+          external.addEventListener('abort', onAbort, { once: true });
+          if (external.aborted) onAbort();
+        }
+      });
+      try {
+        return await Promise.race([interrupted, (async () => {
+          const response = await fetch(url, { ...options, signal: controller.signal });
+          // A rejected token can be renewed immediately, even if its error body stalls.
+          if (response.status === 401) { controller.abort(); return response; }
+          const bytes = await response.arrayBuffer();
+          return new Response(response.body === null ? null : bytes, { status: response.status, statusText: response.statusText, headers: response.headers });
+        })()]);
+      } finally {
+        clearTimeout(timeout);
+        if (onAbort) external.removeEventListener('abort', onAbort);
+      }
+    }
     async function request(url, options = {}) {
-      if (!valid()) { expire(); const e = new Error(detail); e.auth = true; throw e; }
-      const headers = new Headers(options.headers); headers.set('Authorization', 'Bearer ' + token);
-      const response = await fetch(url, { ...options, headers, cache: 'no-store' });
-      if (response.status === 401) { expire(); const e = new Error(detail); e.auth = true; throw e; }
+      const requestToken = token, requestVersion = authVersion;
+      if (!valid()) { expire(); throw authError(detail, requestVersion); }
+      const headers = new Headers(options.headers); headers.set('Authorization', 'Bearer ' + requestToken);
+      const response = await fetchResponse(url, { ...options, headers, cache: 'no-store' });
+      if (response.status === 401) {
+        const e = authError('認証期限が切れました。接続を更新してから再試行します。端末の変更は保持しています。', requestVersion);
+        if (requestToken === token && requestVersion === authVersion) {
+          expire();
+          // The broker owns retry/backoff and the authentication prompt. Do not
+          // wait here: its token callback must be able to restart this sync.
+          Promise.resolve().then(() => root.PersistentDriveAuth?.invalidateAccess?.(requestToken)).catch(() => {});
+        }
+        throw e;
+      }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         const e = new Error(body.error?.message || 'Drive APIエラー ' + response.status); e.status = response.status; throw e;
@@ -145,16 +192,78 @@
       if (old && stable(old) !== stable(e)) throw new Error('同期履歴IDが競合しています。');
       if (!old) { state.events[e.id] = e; state.pending.push(e.id); }
     }
+    const deletionPrefix = 'flashcards_drive_delete_intent_v1:' + cfg.namespace + ':';
+    function cancelDeletions(receipt) {
+      for (const entry of receipt || []) {
+        if (!entry || typeof entry.storageKey !== 'string' || !entry.storageKey.startsWith(deletionPrefix)) continue;
+        // A later operation has its own key. Never acknowledge a different receipt.
+        if (localStorage.getItem(entry.storageKey) === entry.raw) localStorage.removeItem(entry.storageKey);
+      }
+    }
+    function recordDeletions(keys) {
+      if (!cfg.explicitDeletions || !state) throw new Error('削除を保存するための同期準備が完了していません。');
+      if (!Array.isArray(keys) || keys.some(key => typeof key !== 'string' || !key || key.length > 512
+          || (cfg.deletionKeyPrefix && !key.startsWith(cfg.deletionKeyPrefix))))
+        throw new Error('削除するカードのIDを確認できません。');
+      const receipt = [];
+      try {
+        for (const key of new Set(keys)) {
+          const id = device + ':' + uuid();
+          // Persist the complete event so two tabs replay the identical history ID.
+          const event = newEvent(key, null, true, state.basis?.[key] || [], 'delete-intent:' + id);
+          const entry = { storageKey: deletionPrefix + id, raw: JSON.stringify({ schema: 'flashcards-drive-delete-intent-v1', id, event }) };
+          receipt.push(entry); localStorage.setItem(entry.storageKey, entry.raw);
+          if (localStorage.getItem(entry.storageKey) !== entry.raw) throw new Error('削除操作を端末に保存できません。');
+        }
+      } catch (e) { cancelDeletions(receipt); throw e; }
+      if (receipt.length) generation++;
+      return receipt;
+    }
+    function deletionIntents() {
+      if (!cfg.explicitDeletions) return [];
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i); if (key?.startsWith(deletionPrefix)) keys.push(key);
+      }
+      return keys.map(storageKey => {
+        const raw = localStorage.getItem(storageKey); if (raw === null) return null;
+        let intent; try { intent = JSON.parse(raw); } catch { throw new Error('保存済みの削除操作を確認できません。'); }
+        const e = intent?.event;
+        if (intent?.schema !== 'flashcards-drive-delete-intent-v1' || typeof intent.id !== 'string'
+            || storageKey !== deletionPrefix + intent.id || !e || e.id !== 'delete-intent:' + intent.id
+            || typeof e.key !== 'string' || !e.key || e.deleted !== true || e.value !== null
+            || (cfg.deletionKeyPrefix && !e.key.startsWith(cfg.deletionKeyPrefix))
+            || !Array.isArray(e.parents) || e.parents.some(id => typeof id !== 'string')
+            || !Number.isFinite(e.clock) || typeof e.updated_at !== 'string' || typeof e.device_id !== 'string')
+          throw new Error('保存済みの削除操作の形式を確認できません。');
+        return { storageKey, raw, event: e };
+      }).filter(Boolean);
+    }
     async function capture() {
       const current = await cfg.read();
       if (!state.initialized) { state.snapshot = clone(current); return; }
-      const basis = state.basis || {};
+      const basis = state.basis || {}, intents = deletionIntents();
+      const intendedKeys = new Set(intents.map(entry => entry.event.key));
+      for (const { event } of intents) {
+        append(event); state.clock = Math.max(state.clock || 0, event.clock);
+      }
+      if (intents.length) {
+        const currentHeads = heads(state.events);
+        for (const key of intendedKeys) basis[key] = (currentHeads.get(key) || []).map(e => e.id);
+      }
+      const deleted = cfg.explicitDeletions ? materialize(state.events).deleted : {};
       for (const key of new Set([...Object.keys(localSnapshot), ...Object.keys(current)])) {
+        if (intendedKeys.has(key)) continue;
         if (stable(current[key]) === stable(localSnapshot[key])) continue;
+        // A stale/missing local copy is not a user deletion. A known tombstone
+        // also cannot be undone merely by reopening an older local copy.
+        if (cfg.explicitDeletions && (!(key in current) || key in deleted)) continue;
         const event = newEvent(key, current[key], !(key in current), basis[key] || []);
         append(event); basis[key] = [event.id];
       }
       state.basis = basis; localSnapshot = clone(current); state.snapshot = clone(current); await persist();
+      // The journal and pending queue are durable before the exact intent is removed.
+      cancelDeletions(intents);
     }
     function changed() {
       if (applying) return;
@@ -234,7 +343,7 @@
 
     async function doSync() {
       await ready; await captureQueue; await capture();
-      if (!valid()) { const e = new Error('「接続して同期」でGoogleに接続してください。'); e.auth = true; throw e; }
+      if (!valid()) throw authError('「接続して同期」でGoogleに接続してください。');
       setStatus('同期中');
       const account = (await (await request(API + 'about?fields=user(permissionId)')).json()).user?.permissionId;
       if (!account) throw new Error('Googleアカウントを確認できません。');
@@ -320,9 +429,18 @@
         tokenClient = oauth.initTokenClient({ client_id: id, scope: SCOPE, include_granted_scopes: false, callback: async response => {
           if (response.error) return error(new Error(response.error_description || response.error));
           if (!response.access_token || !oauth.hasGrantedAllScopes(response, SCOPE)) return error(new Error('Drive専用データ領域への許可を確認できません。'));
+          const connection = ++authVersion, previous = running;
           token = response.access_token; expires = Date.now() + Number(response.expires_in || 3600) * 1000;
-          clearTimeout(expiryTimer); expiryTimer = setTimeout(expire, Math.max(0, expires - Date.now() - 30000));
-          try { await cfg.enablePrimary(); setStatus('接続済み'); await sync(); } catch (e) { error(e); }
+          clearTimeout(expiryTimer); expiryTimer = setTimeout(() => { if (connection === authVersion) expire(); }, Math.max(0, expires - Date.now() - 30000));
+          try {
+            await cfg.enablePrimary();
+            if (connection !== authVersion || !valid()) return;
+            setStatus('接続済み');
+            // A fast refresh can arrive while the rejected request is still
+            // unwinding. Start a fresh sync after that promise has settled.
+            if (previous) await previous.catch(() => {});
+            if (connection === authVersion && valid()) await sync();
+          } catch (e) { if (connection === authVersion) error(e); }
         }, error_callback: e => error(new Error(e.type === 'popup_closed' ? 'Googleの認証画面が閉じられました。' : 'ポップアップを許可して再接続してください。')) });
         connect.disabled = false;
       } catch (e) { error(e); }
@@ -341,7 +459,7 @@
       tokenClient.requestAccessToken({ prompt: '' });
     };
     dialog.querySelector('[data-now]').onclick = () => sync().catch(() => {});
-    dialog.querySelector('[data-off]').onclick = () => { token = ''; expires = 0; clearTimeout(timer); clearTimeout(expiryTimer); root.PersistentDriveAuth?.pause?.(); setStatus('未接続', 'この端末の自動接続を停止しました。Driveデータと端末の変更は保持しています。'); };
+    dialog.querySelector('[data-off]').onclick = () => { authVersion++; token = ''; expires = 0; clearTimeout(timer); clearTimeout(expiryTimer); root.PersistentDriveAuth?.pause?.(); setStatus('未接続', 'この端末の自動接続を停止しました。Driveデータと端末の変更は保持しています。'); };
     dialog.querySelector('[data-close]').onclick = () => dialog.close ? dialog.close() : dialog.removeAttribute('open');
     dialog.querySelector('[data-backup]').onclick = async () => {
       await ready; await captureQueue; const backup = { schema: SCHEMA, namespace: cfg.namespace, saved_at: new Date().toISOString(), device_id: device, ...clone(state), ...materialize(state.events), local: await cfg.read() };
@@ -350,8 +468,12 @@
     };
     function onReturn() { if (document.visibilityState !== 'visible' || Date.now() - lastFocus < 15000) return; lastFocus = Date.now(); if (valid()) sync().catch(() => {}); else if (cfg.primary()) expire(); }
     window.addEventListener('focus', onReturn); document.addEventListener('visibilitychange', onReturn); window.addEventListener('online', onReturn);
-    window.addEventListener('storage', e => { if (cfg.storageKeys?.includes(e.key)) { cfg.reload?.(); changed(); } });
+    window.addEventListener('storage', e => {
+      if (cfg.storageKeys?.includes(e.key)) { cfg.reload?.(); changed(); }
+      else if (cfg.explicitDeletions && e.newValue && e.key?.startsWith(deletionPrefix)) changed();
+    });
     const api = { ready, changed, sync, open, putBlob, getBlob, digest, cache, valid, request, list, create, queryKind, setStatus, recoverDeletedPrefix, view: () => state ? clone(materialize(state.events)) : {data:{},deleted:{},conflicts:[]}, get account() { return state?.account; }, get applying() { return applying; }, status: () => ({ status, detail, pending: state?.pending?.length || 0, conflicts: state ? materialize(state.events).conflicts.length : 0 }) };
+    if (cfg.explicitDeletions) Object.assign(api, { recordDeletions, cancelDeletions });
     if (root.PersistentDriveAuth) { button.hidden = true; prepareAuth(); }
     setStatus('未接続', root.PersistentDriveAuth ? '自動接続を確認しています。' : (cfg.primary() ? 'Googleに再接続してください。Supabase同期は停止中です。' : '接続後にDriveへ移行します。'));
     ready.catch(error); return Object.freeze(api);

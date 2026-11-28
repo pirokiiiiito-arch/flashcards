@@ -10,6 +10,7 @@ function app(relative, initial = {}, sharedServer) {
     querySelector(s) { if (s.startsWith('#')) return nodes.get(s.slice(1)) || null; return super.querySelector(s); }
     querySelectorAll() { return []; }
     appendChild(e) { e.parentNode = this; if (e.id) nodes.set(e.id, e); return super.appendChild(e); }
+    remove() { this.isConnected = false; if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(e => e !== this); this.parentNode = null; }
     focus() {} replaceWith() {} contains() { return true; } getBoundingClientRect() { return { top: 0 }; } closest() { return null; }
     replaceChildren(...xs) { this.children = xs; }
   }
@@ -18,12 +19,15 @@ function app(relative, initial = {}, sharedServer) {
     getElementById: id => nodes.get(id) || null, createElement: t => new Node(t), querySelector: s => s.startsWith('[data-count=') ? new Node() : ['.toolbar', '.topbar', '.toolbar .controls'].includes(s) ? toolbar : s.startsWith('#') && !s.includes(' ') ? nodes.get(s.slice(1)) || null : null,
     querySelectorAll: () => [], addEventListener: (k, fn) => { if (!events.has(k)) events.set(k, []); events.get(k).push(fn); }, dispatchEvent: e => (events.get(e.type) || []).forEach(fn => fn(e)) };
   let config;
-  const context = { document: doc, console, TextEncoder, TextDecoder, Buffer, Blob, Headers, Response, URL, URLSearchParams, structuredClone, crypto: crypto.webcrypto, indexedDB: db.indexedDB, performance, navigator: {}, innerHeight: 800, scrollX: 0, scrollY: 0,
-    localStorage: { getItem: k => store.get(k) || null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k) }, location: { protocol: 'https:', hostname: 'example.github.io' },
+  const context = { document: doc, console, TextEncoder, TextDecoder, Buffer, Blob, Headers, Response, URL, URLSearchParams, AbortController, Event, structuredClone, crypto: crypto.webcrypto, indexedDB: db.indexedDB, performance, navigator: {}, innerHeight: 800, scrollX: 0, scrollY: 0,
+    // The private historical snapshot has its own synthetic integration tests.
+    // This adapter fixture exchanges only its locally created synthetic cards.
+    WordNetworkRecovery: { version: 2, prepare: async () => null, verifyApplied: () => ({}) },
+    localStorage: { getItem: k => store.get(k) || null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k), key: i => [...store.keys()][i] ?? null, get length() { return store.size; } }, location: { protocol: 'https:', hostname: 'example.github.io' },
     alert: m => { throw new Error('alert: ' + m); }, confirm: () => true, CustomEvent: class { constructor(t) { this.type = t; } }, MutationObserver: class { observe() {} },
     FileReader: class { readAsDataURL(blob) { blob.arrayBuffer().then(bytes => { this.result = 'data:' + blob.type + ';base64,' + Buffer.from(bytes).toString('base64'); this.onload?.(); }).catch(e => { this.error = e; this.onerror?.(); }); } },
-    scrollTo() {}, addEventListener() {}, requestAnimationFrame: fn => setImmediate(fn), cancelAnimationFrame: clearImmediate,
-    setInterval: () => { throw new Error('unexpected legacy polling'); }, clearInterval() {},
+    scrollTo() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: event => doc.dispatchEvent(event), queueMicrotask, requestAnimationFrame: fn => setImmediate(fn), cancelAnimationFrame: clearImmediate,
+    setInterval: (_fn, ms) => { assert.ok([1000, 15000, 30000].includes(ms), 'unexpected legacy polling'); return 0; }, clearInterval() {},
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); timers.add(t); return t; }, clearTimeout,
     fetch: async (url, opts = {}) => {
       network.push({ url, method: opts.method || 'GET' });
@@ -91,7 +95,7 @@ test('word adapters exchange additions, edits and deletion in two isolated runti
   const server = driveServer(), a = app('index.html', {}, server), b = app('index.html', {}, server); await a.api.ready; await b.api.ready; await a.connect(); await b.connect();
   a.evaluate("cards.push({id:'test-card',word:'test',meaning:'PC',sort_order:1});saveCards()"); await a.api.sync(); await b.api.sync(); assert.equal(b.evaluate('cards[0].meaning'), 'PC');
   b.evaluate("cards[0].meaning='phone';saveCards()"); await b.api.sync(); await a.api.sync(); assert.equal(a.evaluate('cards[0].meaning'), 'phone');
-  b.evaluate('cards=[];saveCards()'); await b.api.sync(); await a.api.sync(); assert.equal(a.evaluate('cards.length'), 0); await a.close(); await b.close();
+  b.evaluate('saveWordCardsReplacing([])'); await b.api.sync(); await a.api.sync(); assert.equal(a.evaluate('cards.length'), 0); await a.close(); await b.close();
 });
 test('plant adapters exchange images and deletion without resurrecting old images', async () => {
   const server = driveServer(), flags = { plant_flashcards_seed_loaded_v1: '1', plant_angiosperm_greenlist_v2: '1', plant_nonangio_expand_v1: '1' }, a = app('plants/index.html', flags, server), b = app('plants/index.html', flags, server);

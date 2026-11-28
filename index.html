@@ -218,6 +218,26 @@ function loadCards(){
   }catch{return[]}
 }
 function saveCards(){localStorage.setItem(KEY,JSON.stringify(cards))}
+function saveWordCardsReplacing(nextCards){
+  if(!Array.isArray(nextCards))throw Error('保存するカードの形式を確認できません。');
+  const validId=id=>typeof id==='string'&&/^[\w-]{1,128}$/.test(id),retained=new Set();
+  for(const c of nextCards){
+    if(!c||typeof c.word!=='string'||!c.word.trim()||typeof c.meaning!=='string')throw Error('保存するカードの内容を確認できません。');
+    WordImages.normalizeImages(c.images);
+    if(c.id!=null){if(!validId(c.id)||retained.has(c.id))throw Error('保存するカードのIDを確認できません。');retained.add(c.id)}
+  }
+  const previous=cards,removed=previous.filter(c=>!retained.has(c.id)),sync=window.WordDriveSync;
+  for(const c of removed){
+    if(!validId(c.id))throw Error('削除するカードのIDを確認できません。');
+    WordImages.normalizeImages(c.images);
+  }
+  if(removed.length&&(sync||wordDrivePrimary())&&typeof sync?.recordDeletions!=='function')
+    throw Error('削除操作を安全に保存するため、単語帳を読み直してください。');
+  // No await between the durable deletion receipt and the corresponding card save.
+  const receipt=removed.length&&sync?sync.recordDeletions(removed.map(c=>'card:'+c.id)):[];
+  cards=nextCards;
+  try{saveCards()}catch(err){cards=previous;if(receipt.length)sync.cancelDeletions(receipt);throw err}
+}
 function loadSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY))||null}catch{return null}}
 function saveSession(s){
   cloudSession=s;
@@ -645,8 +665,14 @@ function renderCard(item){
    e.stopPropagation();
    if(editing){render();return}
    if(confirm("「"+item.word+"」を削除しますか？")){
-     try{await cloudDelete(item)}catch(err){alert(err.message);return}
-     cards.splice(idx,1);saveCards();rebuildOrder();if(pos>=order.length)pos=Math.max(0,order.length-1);render();
+     try{
+       await window.WordDriveSync?.ready;
+       await cloudDelete(item);
+       const removeAt=cards.findIndex(c=>c===item||(item.id&&c.id===item.id));
+       if(removeAt<0)return;
+       saveWordCardsReplacing(cards.filter((_,i)=>i!==removeAt));
+     }catch(err){alert(err.message);return}
+     rebuildOrder();if(pos>=order.length)pos=Math.max(0,order.length-1);render();
      lastCloudFingerprint="";
    }
  };
@@ -743,13 +769,14 @@ importFile.onchange=async e=>{
     const imported=await WordImages.importCards(d);
     const incoming=imported.map((x,i)=>({...x,sort_order:Date.now()*1000+i,updated_at:new Date().toISOString()}));
     await prepareImageSave(incoming.flatMap(x=>x.images||[]));
-    const previous=cards;
+    await window.WordDriveSync?.ready;
+    let replacement=incoming;
     if(cloudSession&&!wordDrivePrimary()){
       await api("/rest/v1/flashcards_sync?user_id=eq."+encodeURIComponent(cloudSession.user.id),{method:"DELETE",headers:{"Prefer":"return=minimal"}});
       const ins=await cloudInsert(incoming);
-      cards=(ins||[]).map(x=>({id:x.id,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||0,updated_at:x.updated_at||null}));
-    }else cards=incoming;
-    try{saveCards()}catch(err){cards=previous;throw err}rebuildOrder();pos=0;lastCloudFingerprint="";applied=true;render();
+      replacement=(ins||[]).map(x=>({id:x.id,word:x.word,meaning:x.meaning,sort_order:Number(x.sort_order)||0,updated_at:x.updated_at||null}));
+    }
+    saveWordCardsReplacing(replacement);rebuildOrder();pos=0;lastCloudFingerprint="";applied=true;render();
   }catch(err){alert(err?.message||"読み込めないファイルです。")}
   finally{if(!applied)editing=wasEditing;stage.inert=false;importBtn.disabled=false;excelBtn.disabled=false;importBtn.textContent="データ読込";e.target.value="";updateNav()}
 };
@@ -785,7 +812,7 @@ if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.ser
 
 </script>
 <script src="./drive-config.js?v=3"></script>
-<script src="./persistent-drive-auth.js?v=1"></script>
+<script src="./persistent-drive-auth.js?v=20261128-word-sync4"></script>
 <script src="./drive-core.js?v=word-auto2"></script>
 <script src="./drive-sync.js?v=word-auto3"></script>
 <script src="./auth-only-ui.js?v=persist1"></script>

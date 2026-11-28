@@ -108,6 +108,64 @@ function setup(initial = []) {
 }
 const card = (id, images, sort = 1) => ({ id, word: '検証単語 ' + id, meaning: '検証用の意味', ...(images === undefined ? {} : { images }), sort_order: sort, updated_at: null });
 
+function replacementFixture(initial) {
+  const state = setup(initial), recorded = [], cancelled = [];
+  state.api.recordDeletions = keys => {
+    const receipt = plain(keys).map((key, i) => ({ storageKey: 'synthetic-receipt-' + i, raw: key }));
+    recorded.push({ keys: plain(keys), receipt }); return receipt;
+  };
+  state.api.cancelDeletions = receipt => cancelled.push(receipt);
+  const html = read('index.html'), start = html.indexOf('function saveWordCardsReplacing(nextCards){'), end = html.indexOf('\nfunction loadSession()', start);
+  assert.ok(start >= 0 && end > start);
+  vm.runInContext(html.slice(start, end), state.context);
+  return { ...state, recorded, cancelled, replace: next => { state.context.nextForTest = next; return vm.runInContext('saveWordCardsReplacing(nextForTest)', state.context); } };
+}
+
+test('word explicit replacement records only removed IDs while retaining remaining image metadata', () => {
+  const image = { ref: 'gdrive:kept-image:' + sha(png()), name: '保持.png', type: 'image/png' };
+  const state = replacementFixture([card('keep', [image]), card('remove')]);
+  assert.equal(state.cfg.explicitDeletions, true); assert.equal(state.cfg.deletionKeyPrefix, 'card:');
+  const next = [state.context.cards[0], { word: '新しい単語', meaning: '新しい説明', images: [] }];
+  state.replace(next);
+  assert.deepEqual(state.recorded[0].keys, ['card:remove']); assert.equal(state.cancelled.length, 0);
+  const saved = JSON.parse(state.saved.get(state.context.KEY));
+  assert.equal(saved.length, 2); assert.deepEqual(saved[0].images, [image]);
+  assert.equal(saved[0].id, 'keep'); assert.ok(saved[1].id); assert.notEqual(saved[1].id, 'remove');
+});
+
+test('word deletion and JSON replacement preserve local cards and cancel only their receipt if saving fails', () => {
+  const state = replacementFixture([card('keep'), card('remove')]), before = JSON.stringify(state.context.cards);
+  state.context.saveCards = () => { throw Error('synthetic quota failure'); };
+  assert.throws(() => state.replace([state.context.cards[0]]), /synthetic quota failure/);
+  assert.equal(JSON.stringify(state.context.cards), before);
+  assert.equal(state.recorded.length, 1); assert.equal(state.cancelled.length, 1);
+  assert.equal(state.cancelled[0], state.recorded[0].receipt);
+});
+
+test('invalid replacement IDs or image metadata create no deletion intent', () => {
+  const badImage = { ref: 'https://example.test/unsafe.png', name: 'invalid.png', type: 'image/png' };
+  const cases = [
+    { initial: [card('bad/id')], next: [] },
+    { initial: [card('remove', [badImage])], next: [] },
+    { initial: [card('keep'), card('remove')], next: [card('bad/id')] },
+    { initial: [card('keep'), card('remove')], next: [card('keep', [badImage])] },
+    { initial: [card('keep'), card('remove')], next: [card('keep'), card('keep')] }
+  ];
+  for (const { initial, next } of cases) {
+    const state = replacementFixture(initial), before = JSON.stringify(state.context.cards);
+    assert.throws(() => state.replace(next));
+    assert.equal(state.recorded.length, 0); assert.equal(JSON.stringify(state.context.cards), before);
+    assert.equal(state.counts().localWrites, 0);
+  }
+});
+
+test('failure to durably record a word deletion never writes the replacement cards', () => {
+  const state = replacementFixture([card('keep'), card('remove')]), before = JSON.stringify(state.context.cards);
+  state.api.recordDeletions = () => { throw Error('synthetic receipt failure'); };
+  assert.throws(() => state.replace([state.context.cards[0]]), /synthetic receipt failure/);
+  assert.equal(JSON.stringify(state.context.cards), before); assert.equal(state.counts().localWrites, 0);
+});
+
 test('image integration: legacy text cards normalize to no images and migration records stay untouched', async () => {
   const state = setup([card('plain')]);
   const values = await state.cfg.read();

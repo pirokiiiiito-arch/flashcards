@@ -72,7 +72,7 @@ function replica(server, initial = {}, options = {}) {
   const db = options.db || database(), storage = options.storage || new Map(), body = new Element('body'), toolbar = new Element(), docEvents = new Map(), winEvents = new Map();
   let authCallback, tokenRequests = 0, primary = false, local = structuredClone(initial), gate;
   const document = { body, head: new Element('head'), visibilityState: 'visible', createElement: t => new Element(t), querySelector: () => toolbar, addEventListener: (k, f) => docEvents.set(k, f) };
-  const context = { console, document, indexedDB: db.indexedDB, crypto: crypto.webcrypto, TextEncoder, TextDecoder, Blob, Headers, Response, URL, URLSearchParams, structuredClone, location: { protocol: 'https:', hostname: 'example.github.io' }, localStorage: { getItem: k => storage.get(k) || null, setItem: (k, v) => storage.set(k, String(v)) },
+  const context = { console, document, indexedDB: db.indexedDB, crypto: crypto.webcrypto, TextEncoder, TextDecoder, Blob, Headers, Response, URL, URLSearchParams, AbortController, structuredClone, location: { protocol: 'https:', hostname: 'example.github.io' }, localStorage: { getItem: k => storage.get(k) || null, setItem: (k, v) => storage.set(k, String(v)), removeItem: k => storage.delete(k), key: i => [...storage.keys()][i] ?? null, get length() { return storage.size; } },
     fetch: (url, opts) => server.fetch(url, opts, options.account || 'account1'),
     setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); return t; }, clearTimeout,
     addEventListener: (k, f) => winEvents.set(k, f), FLASHCARDS_DRIVE_CONFIG: { clientId: 'test.apps.googleusercontent.com' },
@@ -80,6 +80,7 @@ function replica(server, initial = {}, options = {}) {
   };
   context.window = context; vm.createContext(context); vm.runInContext(source, context);
   const api = context.FlashcardsDrive.install({ namespace: options.namespace || 'unit-test', toolbar: '.toolbar', ready: Promise.resolve(), primary: () => primary, enablePrimary: () => { primary = true; },
+    explicitDeletions: options.explicitDeletions, deletionKeyPrefix: options.deletionKeyPrefix, storageKeys: options.storageKeys,
     read: () => structuredClone(local), timestamps: () => options.timestamps || {}, toCloudValue: options.toCloudValue || (async (k, v) => v), legacy: options.legacy || [],
     prepareApply: async view => { if (gate) { const g = gate; gate = null; await g; } return view.data; },
     apply: data => { local = structuredClone(data); }

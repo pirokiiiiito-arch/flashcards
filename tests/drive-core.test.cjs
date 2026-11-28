@@ -59,3 +59,100 @@ test('offline pending edits survive reload of the app', async () => {
   await assert.rejects(a.api.sync()); const b = replica(s, a.local, { db: a.db, storage: a.storage }); await b.connect();
   assert.equal(b.local.x, 'offline-after-reload');
 });
+
+const explicitWord = { namespace: 'word-flashcards', explicitDeletions: true, deletionKeyPrefix: 'card:' };
+const syntheticWords = count => Object.fromEntries(Array.from({ length: count }, (_, i) => ['card:synthetic-' + i,
+  { id: 'synthetic-' + i, word: 'Synthetic ' + i, meaning: 'Example ' + i, sort_order: i + 1,
+    images: i === 0 ? [{ ref: 'gdrive:synthetic-image:' + 'a'.repeat(64), name: 'synthetic.png', type: 'image/png' }] : [] }]));
+const intentsIn = storage => [...storage.keys()].filter(k => k.startsWith('flashcards_drive_delete_intent_v1:'));
+const journalEvents = server => [...server.files.values()].filter(f => f.appProperties.kind === 'journal').flatMap(f => JSON.parse(f.content).events);
+
+test('word stale 75-card local copy does not delete the 93-card journal on restart', async () => {
+  const server = driveServer(), full = syntheticWords(93), original = replica(server, full, explicitWord);
+  await original.connect(); await original.off();
+  const history = JSON.stringify(journalEvents(server));
+  const stale = Object.fromEntries(Object.entries(full).slice(0, 75));
+  const reopened = replica(server, stale, { ...explicitWord, db: original.db, storage: original.storage });
+  await reopened.api.ready;
+  assert.equal(Object.keys(reopened.api.view().deleted).length, 0);
+  await reopened.connect();
+  assert.equal(Object.keys(reopened.local).length, 93);
+  assert.deepEqual(reopened.local['card:synthetic-0'].images, full['card:synthetic-0'].images);
+  assert.equal(JSON.stringify(journalEvents(server)), history, 'missing local rows must not create new history');
+});
+
+test('word devices still receive ordinary additions from 75 to 93 without explicit deletions', async () => {
+  const server = driveServer(), pc = replica(server, syntheticWords(75), explicitWord), phone = replica(server, {}, explicitWord);
+  await pc.connect(); await phone.connect(); phone.local = syntheticWords(93); await phone.api.sync(); await pc.api.sync();
+  assert.equal(Object.keys(pc.local).length, 93); assert.deepEqual(pc.local, phone.local);
+  assert.equal(Object.keys(pc.api.view().deleted).length, 0);
+});
+
+test('confirmed offline deletion survives a crash before the card save and retains prior image history', async () => {
+  const server = driveServer(), full = syntheticWords(3), original = replica(server, full, explicitWord);
+  await original.connect(); await original.off();
+  const receipt = original.api.recordDeletions(['card:synthetic-0']);
+  assert.equal(intentsIn(original.storage).length, 1);
+  const reopened = replica(server, full, { ...explicitWord, db: original.db, storage: original.storage });
+  await reopened.api.ready;
+  assert.equal(intentsIn(original.storage).length, 0, 'the exact receipt is acknowledged after journal persistence');
+  await reopened.connect();
+  assert.equal(Object.keys(reopened.local).length, 2);
+  assert.ok(reopened.api.view().deleted['card:synthetic-0']);
+  const events = journalEvents(server);
+  assert.ok(events.some(e => e.key === 'card:synthetic-0' && !e.deleted && e.value.images[0].ref === full['card:synthetic-0'].images[0].ref));
+  // Replaying an unacknowledged receipt after a crash must reuse the same event.
+  original.storage.set(receipt[0].storageKey, receipt[0].raw);
+  const replay = replica(server, reopened.local, { ...explicitWord, db: original.db, storage: original.storage });
+  await replay.connect();
+  assert.equal(journalEvents(server).filter(e => e.id === JSON.parse(receipt[0].raw).event.id).length, 1);
+});
+
+test('a deletion recorded before first Drive initialization remains durable until initial import completes', async () => {
+  const server = driveServer(), full = syntheticWords(3), original = replica(server, full, explicitWord);
+  await original.api.ready; original.api.recordDeletions(['card:synthetic-1']);
+  const reopened = replica(server, full, { ...explicitWord, db: original.db, storage: original.storage });
+  await reopened.api.ready;
+  assert.equal(intentsIn(original.storage).length, 1, 'uninitialized capture must not acknowledge the intent');
+  await reopened.connect();
+  assert.equal(Object.keys(reopened.local).length, 2);
+  assert.ok(reopened.api.view().deleted['card:synthetic-1']);
+  assert.equal(intentsIn(original.storage).length, 0);
+});
+
+test('an intent is retained if journal persistence fails and only its own receipt can be cancelled', async () => {
+  const server = driveServer(), original = replica(server, syntheticWords(2), explicitWord);
+  await original.connect(); await original.off();
+  const cancelled = original.api.recordDeletions(['card:synthetic-0']);
+  const retained = original.api.recordDeletions(['card:synthetic-0']);
+  original.api.cancelDeletions(cancelled);
+  assert.deepEqual(intentsIn(original.storage), [retained[0].storageKey]);
+  const put = original.api.cache.put;
+  original.api.cache.put = async () => { throw Error('synthetic persistence failure'); };
+  await assert.rejects(original.api.sync(), /synthetic persistence failure/);
+  assert.equal(original.storage.get(retained[0].storageKey), retained[0].raw);
+  const stored = original.db.dbs.get('flashcards_drive_cache_v3').get('states').get('word-flashcards');
+  assert.equal(stored.events[JSON.parse(retained[0].raw).event.id], undefined);
+  original.api.cache.put = put;
+  const reopened = replica(server, original.local, { ...explicitWord, db: original.db, storage: original.storage });
+  await reopened.connect(); assert.equal(Object.keys(reopened.local).length, 1);
+  assert.equal(intentsIn(original.storage).length, 0);
+});
+
+test('an old local value cannot resurrect a known word tombstone after restart', async () => {
+  const server = driveServer(), full = syntheticWords(3), original = replica(server, full, explicitWord);
+  await original.connect(); original.api.recordDeletions(['card:synthetic-1']);
+  original.local = { 'card:synthetic-0': full['card:synthetic-0'], 'card:synthetic-2': full['card:synthetic-2'] };
+  await original.api.sync(); await original.off();
+  const history = JSON.stringify(journalEvents(server));
+  const reopened = replica(server, full, { ...explicitWord, db: original.db, storage: original.storage });
+  await reopened.connect();
+  assert.equal(Object.keys(reopened.local).length, 2); assert.ok(reopened.api.view().deleted['card:synthetic-1']);
+  assert.equal(JSON.stringify(journalEvents(server)), history);
+});
+
+test('explicit word deletion records reject invalid keys before any durable intent is written', async () => {
+  const server = driveServer(), local = replica(server, syntheticWords(1), explicitWord); await local.api.ready;
+  assert.throws(() => local.api.recordDeletions(['card:synthetic-0', 'migration:unrelated']), /ID/);
+  assert.equal(intentsIn(local.storage).length, 0);
+});

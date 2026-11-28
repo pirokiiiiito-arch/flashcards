@@ -47,6 +47,8 @@
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o || {}, k);
   const cfg = {
     namespace: 'word-flashcards', toolbar: '.topbar', primary: wordDrivePrimary,
+    explicitDeletions: true, deletionKeyPrefix: 'card:',
+    requestTimeoutMs: 60000,
     storageKeys: [KEY], reload: () => { if (!editing) { cards = loadCards(); rebuildOrder(); render(); } },
     read, isEditing: () => editing || !!window.__WORD_RECOVERY_ACTIVE,
     onStatus: statusChanged,
@@ -109,7 +111,7 @@
       return (await networkRecovery()).verifyApplied(view, local);
     }
   };
-  window.WordAutoSyncBuild = '20261031-word-auto3';
+  window.WordAutoSyncBuild = '20261128-word-sync4';
   const sync = F.install(cfg); window.WordDriveSync = sync;
   // Pull remote word changes even when this device is only reading. Saving already
   // pushes automatically; this completes the opposite direction (phone -> PC).

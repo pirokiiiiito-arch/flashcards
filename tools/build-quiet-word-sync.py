@@ -4,6 +4,7 @@ local data keys, network recovery, automatic sync timing, and Drive protocol.
 from pathlib import Path
 import hashlib,json,re
 R=Path(__file__).resolve().parents[1]
+BUILD='20261128-word-sync4'
 def read(p):return (R/p).read_text(encoding='utf-8')
 def write(p,s):(R/p).write_text(s,encoding='utf-8')
 def one(s,a,b):
@@ -26,8 +27,7 @@ s=s[:a]+'''    apply: list => {
         render();
         if(plan.sameCard&&viewport.back)stage.querySelector('.card')?.classList.add('show-back');
       }else{
-        const number=stage.querySelector('.card-number');
-        if(number)number.textContent=(pos+1)+' / '+cards.length;
+        for(const number of stage.querySelectorAll('.card-number'))number.textContent=(pos+1)+' / '+cards.length;
         updateNav();updateMode();
       }
       updateSyncUI();Q.refresh();Q.restore(stage,viewport,plan.redraw,plan.sameCard);
@@ -38,7 +38,7 @@ s=one(s,'  const sync = F.install(cfg); window.WordDriveSync = sync;', '''  cons
   const sync = F.install(cfg); window.WordDriveSync = sync;
   window.WordQuietSync.attach(sync,()=>cards.length);''')
 s=one(s,"const p = document.createElement('p'); p.setAttribute('role','alert'); p.textContent = '件数表示", "const p = document.createElement('p'); p.id='wordRecoveryLoadError'; p.setAttribute('role','alert'); p.textContent = '件数表示")
-s=s.replace('20261028-network2','20261028-quiet1')
+s=s.replace('20261028-network2',BUILD)
 write('drive-sync.js',s)
 s=read('word-recovery.js')
 s=one(s,"const output = document.createElement('p'); output.setAttribute('role','status');", "const output = document.createElement('p'); output.id='wordRecoveryResult'; output.setAttribute('role','status');")
@@ -66,13 +66,13 @@ css='''
 for path in ['index.html','word-sync-v2.html']:
     s=read(path)
     s=one(s,'</head>','<meta name="word-quiet-sync" content="quiet1">\n<style id="wordQuietStyle">'+css+'</style>\n</head>')
-    s=s.replace('20261028-network2','20261028-quiet1')
-    s=one(s,'<script src="./drive-sync.js?v=20261028-quiet1"></script>','<script src="./word-quiet-sync.js?v=20261028-quiet1"></script>\n<script src="./drive-sync.js?v=20261028-quiet1"></script>')
+    s=s.replace('20261028-network2',BUILD)
+    s=one(s,'<script src="./drive-sync.js?v='+BUILD+'"></script>','<script src="./word-quiet-sync.js?v='+BUILD+'"></script>\n<script src="./drive-sync.js?v='+BUILD+'"></script>')
     write(path,s)
 s=read('service-worker.js')
-s,n=re.subn(r"const CACHE = '[^']+';","const CACHE = 'flashcards-v28-word-image-blob-paste';",s,count=1)
+s,n=re.subn(r"const CACHE = '[^']+';","const CACHE = 'flashcards-v50-word-sync4';",s,count=1)
 if n!=1:raise RuntimeError('Root worker cache declaration changed')
-s,n=re.subn(r"const BUILD = '[^']+';","const BUILD = '20261028-quiet1';",s,count=1)
+s,n=re.subn(r"const BUILD = '[^']+';","const BUILD = '"+BUILD+"';",s,count=1)
 if n!=1:raise RuntimeError('Root worker build declaration changed')
 # Keep the persistent-auth resources already present, and add the generated word
 # alias/quiet module without depending on an obsolete exact STATIC layout.

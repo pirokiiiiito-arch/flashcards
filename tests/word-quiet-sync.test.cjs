@@ -3,6 +3,26 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const Q=require('../word-quiet-sync.js');
 const card=(id,n=0)=>({id,word:'単語 '+id,meaning:'意味 '+id,sort_order:n,updated_at:null});
 const read=p=>fs.readFileSync(p,'utf8');
+test('generated sync updates both faces from 75 to 93 without replacing the visible card',()=>{
+ const vm=require('node:vm'),adapter=read('drive-sync.js');
+ const start=adapter.indexOf('    apply: list => {'),end=adapter.indexOf('    afterSync:',start);
+ assert.ok(start>=0&&end>start,'generated apply handler is present');
+ const applySource=adapter.slice(start,end).trim().replace(/^apply:\s*/,'').replace(/,$/,'');
+ const initial=Array.from({length:75},(_,i)=>card('count-'+i,i));
+ const numbers=[{textContent:'75 / 75'},{textContent:'75 / 75'}];let saves=0,refreshes=0;
+ const context={cards:structuredClone(initial),order:initial.map((_,i)=>i),pos:74,isShuffled:false,editing:false,
+  stage:{querySelectorAll:selector=>{assert.equal(selector,'.card-number');return numbers;}},
+  window:{WordQuietSync:{...Q,capture:()=>({back:true}),restore:()=>{},refresh:()=>{refreshes++;}}},
+  saveCards:()=>{saves++;},render:()=>{throw Error('unrelated additions must retain the visible card');},
+  updateNav:()=>{},updateMode:()=>{},updateSyncUI:()=>{}};
+ vm.createContext(context);const apply=vm.runInContext('('+applySource+')',context);
+ const remote=[...initial,...Array.from({length:18},(_,i)=>card('count-'+(75+i),75+i))];
+ apply(remote);
+ assert.equal(context.cards.length,93);assert.deepEqual(numbers.map(n=>n.textContent),['75 / 93','75 / 93']);
+ assert.equal(context.cards[context.order[context.pos]].id,'count-74');assert.equal(saves,1);assert.equal(refreshes,1);
+ apply(initial);
+ assert.deepEqual(numbers.map(n=>n.textContent),['75 / 75','75 / 75']);assert.equal(saves,2);
+});
 test('identical materialized records do not trigger local saving or rendering',()=>{
  const list=[card('a'),card('b',1)];assert.equal(Q.plan(list,structuredClone(list),{order:[0,1],pos:1,shuffled:false}),null);
 });
@@ -59,7 +79,7 @@ test('image: identical metadata is a no-op while image order and filename change
   assert.equal(Q.plan(before,[{...before[0],images}],{order:[0],pos:0}).redraw,true);
 });
 test('build retains existing URLs and loads quiet UI before the adapter',()=>{
- for(const p of ['index.html','word-sync-v2.html']){const h=read(p);assert.ok(h.includes('id="wordQuietStyle"'));assert.ok(h.indexOf('./word-quiet-sync.js?v=20261028-quiet1')<h.indexOf('./drive-sync.js?v=20261028-quiet1'));assert.ok(h.includes('const KEY="simple_vocab_cards_v1";'));}
+ for(const p of ['index.html','word-sync-v2.html']){const h=read(p);assert.ok(h.includes('id="wordQuietStyle"'));const quiet=h.indexOf('./word-quiet-sync.js?v=20261128-word-sync4'),adapter=h.indexOf('./drive-sync.js?v=20261128-word-sync4');assert.ok(quiet>=0&&adapter>quiet);assert.ok(h.includes('./drive-core.js?v=20261128-word-sync4'));assert.ok(h.includes('./persistent-drive-auth.js?v=20261128-word-sync4'));assert.ok(h.includes('const KEY="simple_vocab_cards_v1";'));}
  const adapter=read('drive-sync.js');assert.ok(adapter.includes('if(!plan)return;'));assert.ok(adapter.includes('if(editing)throw'));assert.ok(adapter.includes('Q.restore(stage,viewport'));assert.ok(read('word-recovery.js').includes('wordRecoveryResult'));
 });
 test('shared sync/auth/photo code, all plant/color assets and recovery payload code are byte-identical',()=>{

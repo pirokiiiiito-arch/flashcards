@@ -16,7 +16,7 @@
  function createController(options={}){
   const fetcher=options.fetcher||root.fetch.bind(root),storage=options.storage||root.localStorage;
   const tab=options.tabStorage||root.sessionStorage,now=options.now||Date.now,locks=options.locks||root.navigator?.locks;
-  let memorySession=null,access=null,inflight=null,sessionFlight=null,phase='starting',reason='',epoch=0,nextRetry=0,failures=0;
+  let memorySession=null,access=null,inflight=null,sessionFlight=null,phase='starting',reason='',epoch=0,nextRetry=0,failures=0,forceRefreshPending=false;
   let paused=false;try{paused=tab?.getItem(PAUSE_KEY)==='1';}catch{}
   const clients=new Set();
   function announce(p,r=''){phase=p;reason=r;options.onState?.({phase,reason});}
@@ -78,15 +78,15 @@
   }
   function getToken(force=false){
    if(paused)return Promise.reject(failure('connection_paused',true));
-   if(!force&&access&&access.until>now()+120000)return Promise.resolve(access);
+   if(!force&&!forceRefreshPending&&access&&access.until>now()+120000)return Promise.resolve(access);
    if(inflight)return inflight;
    if(!force&&now()<nextRetry)return Promise.reject(failure('retry_pending'));
-   const stamp=epoch;
+   const stamp=epoch,refreshForced=force||forceRefreshPending;
    inflight=(async()=>{
-    const data=await call('token',{force});
+    const data=await call('token',{force:refreshForced});
     if(stamp!==epoch||paused)throw failure('connection_changed');
     if(typeof data.access_token!=='string'||!data.access_token||!(Number(data.expires_in)>60)||typeof data.account!=='string')throw failure('invalid_provider_response');
-    access={token:data.access_token,until:now()+Number(data.expires_in)*1000,account:data.account};failures=0;nextRetry=0;announce('connected');
+    access={token:data.access_token,until:now()+Number(data.expires_in)*1000,account:data.account};forceRefreshPending=false;failures=0;nextRetry=0;announce('connected');
     for(const c of clients)deliver(c);return access;
    })().catch(e=>{
     if(stamp===epoch&&!paused){
@@ -96,11 +96,25 @@
     throw e;
    }).finally(()=>{inflight=null;});return inflight;
   }
+  async function invalidateAccess(rejectedToken){
+   // A delayed 401 for an older request must not discard a newer connection.
+   if(paused||authCodes.has(phase)||!access||access.token!==rejectedToken)return false;
+   const previousFlight=inflight,stamp=++epoch;
+   access=null;forceRefreshPending=true;
+   for(const client of clients)if(client.last===rejectedToken)client.last='';
+   announce('starting');
+   // An older refresh may still return its cached token. Let its epoch check
+   // reject it before starting a forced refresh, without bypassing backoff.
+   if(previousFlight)await previousFlight.catch(()=>{});
+   if(stamp!==epoch||paused)return false;
+   if(authCodes.has(phase))throw failure(phase,true);
+   await getToken();return true;
+  }
   async function login(email,password){
    const {response,data}=await authRequest('password',{email:String(email).trim(),password:String(password)});
    if(!response.ok)throw failure(response.status===429?'login_rate_limited':'app_login_failed',true);
    if(!data.access_token||!data.refresh_token||!data.user?.id)throw failure('invalid_session_response');
-   epoch++;access=null;save({access_token:data.access_token,refresh_token:data.refresh_token,expires_at:now()+Number(data.expires_in||3600)*1000,user:data.user});
+   epoch++;access=null;forceRefreshPending=false;save({access_token:data.access_token,refresh_token:data.refresh_token,expires_at:now()+Number(data.expires_in||3600)*1000,user:data.user});
    paused=false;try{tab?.removeItem(PAUSE_KEY);}catch{}nextRetry=0;announce('starting');return getToken();
   }
   function resume(){paused=false;try{tab?.removeItem(PAUSE_KEY);}catch{}nextRetry=0;return getToken();}
@@ -112,7 +126,7 @@
   }
   function tick(){if(!paused&&!authCodes.has(phase)&&phase!=='connection_paused')getToken().catch(()=>{});}
   function refreshNow(){if(paused||authCodes.has(phase)||phase==='starting'||now()<nextRetry)return;getToken(true).catch(()=>{});}
-  return Object.freeze({session,call,getToken,login,resume,pause,initTokenClient,tick,refreshNow,
+  return Object.freeze({session,call,getToken,invalidateAccess,login,resume,pause,initTokenClient,tick,refreshNow,
    required:()=>authCodes.has(phase)||phase==='connection_paused',state:()=>({phase,reason,account:access?.account||''}),
    hasGrantedAllScopes:(response,...wanted)=>wanted.every(s=>String(response.scope||'').split(/\s+/).includes(s))});
  }

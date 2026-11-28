@@ -33,6 +33,9 @@ jobs:
           node tools/reader-work-ledger-validate.cjs
       - name: Check word recovery before publication
         run: |
+          node --check drive-core.js
+          node --check persistent-drive-auth.js
+          node --test tests/drive-core.test.cjs tests/drive-auth-integration.test.cjs server/drive-auth/client.test.mjs
           node --check word-images.js
           node --check word-images-ui.js
           node --test tests/word-images.test.cjs tests/word-image-integration.test.cjs tests/word-image-paste.test.cjs tests/word-image-pinch.test.cjs
@@ -292,6 +295,9 @@ jobs:
               'word-meaning-photo-gap-build" content="20261128-meaning-gap4',
               'word-description-order-build" content="20261128-images-first1',
               'word-photo-photo-gap-build" content="20261128-photo-gap3',
+              'drive-core.js?v=20261128-word-sync4',
+              'drive-sync.js?v=20261128-word-sync4',
+              'persistent-drive-auth.js?v=20261128-word-sync4',
               'word-images.css?v=20261128-photo-gap3',
               'word-card-number-build" content="20261126-number-right1',
               'word-text-number-build" content="20261126-textnum-top1',

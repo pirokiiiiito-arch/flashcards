@@ -55,7 +55,7 @@ guns=guns[:a]+"""  function openDB() {
   }
 """+guns[b:]
 guns=replace_once(guns,
-    "      const response = await fetch(url, { ...options, headers, cache: 'no-store' });",
+    "      const response = await fetchResponse(url, { ...options, headers, cache: 'no-store' });",
     "      const response = await root.GunSyncIO.fetchResponse(url, { ...options, headers, cache: 'no-store' });")
 # A failed first cache read must not poison every later retry in this page.
 # Only one initialization may run at a time, and successful initialization is
@@ -86,7 +86,7 @@ guns=replace_once(guns,"    const stateKey = cfg.namespace;","""    const diagno
       downloadedJournals: 0, totalJournals: 0, journalFilesSeen: 0 };
     const stateKey = cfg.namespace;""")
 guns=replace_once(guns,
-    "    function error(e) { setStatus(e.auth ? '未接続' : '同期エラー', e.message || String(e)); }",
+    "    function error(e) {",
     """    function progress(stage, counts = {}) {
       Object.assign(diagnostic, counts, {stage, phase: 'running'});
       setStatus('同期中', stage);
@@ -95,14 +95,17 @@ guns=replace_once(guns,
       return {...clone(diagnostic), elapsedMs: diagnostic.startedAt ?
         Math.max(0, (diagnostic.finishedAt || Date.now()) - diagnostic.startedAt) : 0};
     }
-    function error(e) {
+    function error(e) {""")
+# Keep the shared core's stale-authentication guard before recording an error.
+guns=replace_once(guns,
+    "      setStatus(e.auth ? '未接続' : '同期エラー', e.message || String(e));",
+    """
       const message = String(e.message || e).slice(0, 320);
       diagnostic.lastError = {code: e.code || (e.auth ? 'authentication_required' : 'sync_error'),
         stage: diagnostic.stage, message, at: Date.now()};
       diagnostic.phase = 'error'; diagnostic.finishedAt = Date.now();
       setStatus(e.auth ? '未接続' : '同期エラー',
-        (diagnostic.stage ? diagnostic.stage + '：' : '') + message);
-    }""")
+        (diagnostic.stage ? diagnostic.stage + '：' : '') + message);""")
 
 a=guns.index('    async function pull() {')
 b=guns.index('    async function push() {',a)
