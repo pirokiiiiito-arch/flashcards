@@ -5,6 +5,9 @@ on:
     paths:
       - 'tools/unblock-plant-transfers.py'
       - 'tests/*plant-transfer-queue*'
+      - 'tests/browser-word-quiet-sync.cjs'
+      - 'tests/browser-auth-only-ui.cjs'
+      - 'tests/browser-auth-entry.cjs'
       - '.github/workflows/plant-transfer-queue-tests.yml'
 permissions:
   contents: read

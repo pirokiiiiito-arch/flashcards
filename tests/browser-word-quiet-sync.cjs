@@ -65,7 +65,7 @@ async function scenario(width,height){
   ws.addEventListener('message',event=>{
    const m=JSON.parse(event.data);if(m.id){const p=pending.get(m.id);pending.delete(m.id);if(m.error)p?.reject(Error(m.error.message));else p?.resolve(m.result);return;}
    if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);
-   if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;if(request.url==='https://example.invalid/pasted-remote.png')remoteImageRequests++;send(request.url.startsWith(origin+'/')?'Fetch.continueRequest':'Fetch.failRequest',request.url.startsWith(origin+'/')?{requestId}:{requestId,errorReason:'Aborted'}).catch(()=>{});}
+   if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;if(request.url==='https://example.invalid/picture.png'||request.url==='https://example.invalid/pasted-remote.png')remoteImageRequests++;send(request.url.startsWith(origin+'/')?'Fetch.continueRequest':'Fetch.failRequest',request.url.startsWith(origin+'/')?{requestId}:{requestId,errorReason:'Aborted'}).catch(()=>{});}
   });
   evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression:'{'+expression+'}',awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result?.value;};
   await send('Runtime.enable');await send('Page.enable');await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<600});
@@ -108,12 +108,16 @@ async function scenario(width,height){
   await sleep(450);
   assert.equal(await evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-status').textContent===__pasteSuccess"),true,'empty native editing filler does not overwrite successful paste');
 
+  // Remote URLs are fetched directly; CDP blocks both attempts before they leave
+  // the browser. Failed reads must settle without changing the six draft images.
+  const beforeURLRequests=remoteImageRequests;
   await evaluate("(()=>{const zone=stage.querySelector('.word-image-paste-zone'),dt=new DataTransfer();dt.setData('text/plain','https://example.invalid/picture.png');zone.dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
-  await until(()=>evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-status').textContent.includes('読み取れませんでした')"),'URL alone does not add an image');
+  await until(()=>remoteImageRequests>beforeURLRequests&&evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'&&stage.querySelector('.word-image-status').textContent.includes('画像の提供元から直接取得できませんでした。')"),'blocked URL paste reports failure without adding an image');
+  assert.ok(remoteImageRequests>beforeURLRequests,'URL-only paste attempts a direct image fetch');
+  const beforeHTMLRequests=remoteImageRequests;
   await evaluate("(()=>{const dt=new DataTransfer();dt.setData('text/html','<img src=\"https://example.invalid/pasted-remote.png\">');stage.querySelector('.word-image-paste-zone').dispatchEvent(new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true}))})()");
-  await sleep(450);
-  assert.equal(await evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-status').textContent.includes('読み取れませんでした')"),true,'unsupported remote HTML reports that the app could not read the image');
-  assert.equal(remoteImageRequests,0,'pasted remote image URLs are not fetched');
+  await until(()=>remoteImageRequests>beforeHTMLRequests&&evaluate("stage.querySelectorAll('.word-image-edit-item').length===6&&stage.querySelector('.word-image-editor').getAttribute('aria-busy')==='false'&&stage.querySelector('.word-image-status').textContent.includes('画像の提供元から直接取得できませんでした。')"),'blocked remote HTML paste reports failure without adding an image');
+  assert.ok(remoteImageRequests>beforeHTMLRequests,'remote HTML paste attempts a direct image fetch');
   assert.equal(await evaluate("(()=>{const dt=new DataTransfer();dt.setData('text/plain','通常の意味を貼り付け');const event=new ClipboardEvent('paste',{clipboardData:dt,bubbles:true,cancelable:true});stage.querySelector('.back textarea').dispatchEvent(event);return !event.defaultPrevented})()"),true,'ordinary meaning text paste keeps its native default behavior');
   await evaluate("URL.revokeObjectURL(__pasteBlobURL)");
   await evaluate("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{read:()=>Promise.reject(new DOMException('denied','NotAllowedError'))}});stage.querySelector('.word-image-paste-button').click()");

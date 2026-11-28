@@ -7,6 +7,9 @@ on:
       - 'tools/repair-plant-source.py'
       - 'tests/plant-source-repair.test.cjs'
       - 'tests/browser-plant-source.cjs'
+      - 'tests/browser-word-quiet-sync.cjs'
+      - 'tests/browser-auth-only-ui.cjs'
+      - 'tests/browser-auth-entry.cjs'
       - '.github/workflows/plant-source-tests.yml'
       - '.github/workflows/pages.yml'
 permissions:
